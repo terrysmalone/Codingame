@@ -28,23 +28,23 @@ namespace Spring2021Challenge
                 var neighs = new int[] { neigh0, neigh1, neigh2, neigh3, neigh4, neigh5 };
                 
                 var cell = new Cell(index, richness, neighs);
-                game.board.Add(cell);
+                game.Board.Add(cell);
             }
     
             // game loop
             while (true)
             {
-                game.day = int.Parse(Console.ReadLine()); // the game lasts 24 days: 0-23
-                game.nutrients = int.Parse(Console.ReadLine()); // the base score you gain from the next COMPLETE action
+                game.Round = int.Parse(Console.ReadLine()); // the game lasts 24 days: 0-23
+                game.Nutrients = int.Parse(Console.ReadLine()); // the base score you gain from the next COMPLETE action
                 inputs = Console.ReadLine().Split(' ');
-                game.mySun = int.Parse(inputs[0]); // your sun points
-                game.myScore = int.Parse(inputs[1]); // your current score
+                game.MySun = int.Parse(inputs[0]); // your sun points
+                game.MyScore = int.Parse(inputs[1]); // your current score
                 inputs = Console.ReadLine().Split(' ');
-                game.opponentSun = int.Parse(inputs[0]); // opponent's sun points
-                game.opponentScore = int.Parse(inputs[1]); // opponent's score
-                game.opponentIsWaiting = inputs[2] != "0"; // whether your opponent is asleep until the next day
+                game.OpponentSun = int.Parse(inputs[0]); // opponent's sun points
+                game.OpponentScore = int.Parse(inputs[1]); // opponent's score
+                game.OpponentIsWaiting = inputs[2] != "0"; // whether your opponent is asleep until the next day
     
-                game.trees.Clear();
+                game.Trees.Clear();
                 var numberOfTrees = int.Parse(Console.ReadLine()); // the current amount of trees
                 for (var i = 0; i < numberOfTrees; i++)
                 {
@@ -54,17 +54,17 @@ namespace Spring2021Challenge
                     var isMine = inputs[2] != "0"; // 1 if this is your tree
                     var isDormant = inputs[3] != "0"; // 1 if this tree is dormant
                     var tree = new Tree(cellIndex, size, isMine, isDormant);
-                    game.trees.Add(tree);
+                    game.Trees.Add(tree);
                 }
     
-                game.possibleActions.Clear();
+                game.PossibleActions.Clear();
     
                 var numberOfPossibleMoves = int.Parse(Console.ReadLine());
                 
                 for (var i = 0; i < numberOfPossibleMoves; i++)
                 {
                     var possibleMove = Console.ReadLine();
-                    game.possibleActions.Add(Action.Parse(possibleMove));
+                    game.PossibleActions.Add(Action.Parse(possibleMove));
                 }
     
                 var action = game.GetNextAction();
@@ -159,24 +159,27 @@ namespace Spring2021Challenge
     
     internal sealed class Game
     {
-        public int day;
-        public int nutrients;
-        public List<Cell> board;
-        public List<Action> possibleActions;
-        public List<Tree> trees;
-        public int mySun, opponentSun;
-        public int myScore, opponentScore;
-        public bool opponentIsWaiting;
+        public int Round { get; set; }
+        public int Nutrients { get; set; }
+        public int MySun { get; set; }
+        public int OpponentSun { get; set; }
+        public int MyScore { get; set; }
+        public int OpponentScore { get; set; }
+        public bool OpponentIsWaiting { get; set; }
+        
+        public List<Cell> Board { get; }
+        public List<Action> PossibleActions { get; }
+        public List<Tree> Trees { get; }
     
         private readonly DistanceCalculator _distanceCalculator;
     
         public Game()
         {
-            board = new List<Cell>();
-            possibleActions = new List<Action>();
-            trees = new List<Tree>();
+            Board = new List<Cell>();
+            PossibleActions = new List<Action>();
+            Trees = new List<Tree>();
     
-            _distanceCalculator = new DistanceCalculator(board);
+            _distanceCalculator = new DistanceCalculator(Board);
         }
     
         public Action GetNextAction()
@@ -223,12 +226,12 @@ namespace Spring2021Challenge
             var totalRounds = 24;
             var allOutCompleteMultiplier = 1.0;
     
-            var completeActions = possibleActions.Count(a => a.Type == "COMPLETE");
+            var completeActions = PossibleActions.Count(a => a.Type == "COMPLETE");
     
             // If we can't get another complete before the end just wait        
             var waitScore = 1.0;
     
-            if(day == totalRounds-1)
+            if(Round == totalRounds-1)
             {
                 // Work out if we can get a complete. Otherwise just wait
                 // Can we complete?
@@ -264,19 +267,19 @@ namespace Spring2021Challenge
                 allOutCompleteMultiplier = 100.0;
             }
             // If the number of trees that can be completed is the same as the number of rounds left just complete
-            else if(numberOfTrees[3] >= (totalRounds - day))
+            else if(numberOfTrees[3] >= (totalRounds - Round))
             {
                 allOutCompleteMultiplier = 1000.0;
             }
     
             //Console.Error.WriteLine($"numberOfSeeds:{numberOfSeeds}"); 
-            Console.Error.WriteLine($"Day: {day}");
+            Console.Error.WriteLine($"Day: {Round}");
             // Score every action and then order them
-            foreach(var action in possibleActions)
+            foreach(var action in PossibleActions)
             {  
                 var actionScore = 1.0;
     
-                var treeCell = board.Find(b => b.Index == action.TargetCellIdx);
+                var treeCell = Board.Find(b => b.Index == action.TargetCellIdx);
     
                 if(action.Type == "WAIT")
                 { 
@@ -297,15 +300,15 @@ namespace Spring2021Challenge
                     // We don't want to scale this because it should be heavily biased towards completing at the end of the game
                     var dayScore = 1.0;
                     
-                    if(day > 22)
+                    if(Round > 22)
                     {
                         dayScore = 4.0;                 
                     }
-                    else if(day > 20)
+                    else if(Round > 20)
                     {
                         dayScore = 3.0;                
                     }
-                    else if(day > 18)
+                    else if(Round > 18)
                     {
                         dayScore = 2.0;                
                     }
@@ -352,7 +355,7 @@ namespace Spring2021Challenge
                 }
                 else if(action.Type == "GROW")
                 {
-                    var tree = trees.Find(t => t.CellIndex == action.TargetCellIdx);                
+                    var tree = Trees.Find(t => t.CellIndex == action.TargetCellIdx);                
                     
                     // Prioritise growing by richness  
                     //Console.Error.WriteLine("---------------------------------------------");
@@ -416,10 +419,10 @@ namespace Spring2021Challenge
         {
             var numberOfTrees = new int[4];
     
-            numberOfTrees[0] = trees.Count(t => t.Size == 0 && t.IsMine);
-            numberOfTrees[1] = trees.Count(t => t.Size == 1 && t.IsMine);
-            numberOfTrees[2] = trees.Count(t => t.Size == 2 && t.IsMine);
-            numberOfTrees[3] = trees.Count(t => t.Size == 3 && t.IsMine); 
+            numberOfTrees[0] = Trees.Count(t => t.Size == 0 && t.IsMine);
+            numberOfTrees[1] = Trees.Count(t => t.Size == 1 && t.IsMine);
+            numberOfTrees[2] = Trees.Count(t => t.Size == 2 && t.IsMine);
+            numberOfTrees[3] = Trees.Count(t => t.Size == 3 && t.IsMine); 
     
             return numberOfTrees;
         }

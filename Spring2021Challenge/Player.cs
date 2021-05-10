@@ -60,13 +60,14 @@ namespace Spring2021Challenge
                 game.possibleActions.Clear();
     
                 var numberOfPossibleMoves = int.Parse(Console.ReadLine());
+                
                 for (var i = 0; i < numberOfPossibleMoves; i++)
                 {
-                    string possibleMove = Console.ReadLine();
+                    var possibleMove = Console.ReadLine();
                     game.possibleActions.Add(Action.Parse(possibleMove));
                 }
     
-                Action action = game.GetNextAction();
+                var action = game.GetNextAction();
                 Console.WriteLine(action);
             }
         }
@@ -102,61 +103,57 @@ namespace Spring2021Challenge
         }
     }
     
-    class Action
+    internal sealed class Action
     {
-        public const string WAIT = "WAIT";
-        public const string SEED = "SEED";
-        public const string GROW = "GROW";
-        public const string COMPLETE = "COMPLETE";
-    
+        public string Type { get; }
+        public int SourceCellIdx { get; }
+        public int TargetCellIdx { get; }
+
+        private Action(string type, int sourceCellIdx, int targetCellIdx)
+        {
+            Type = type;
+            SourceCellIdx = sourceCellIdx;
+            TargetCellIdx = targetCellIdx;
+        }
+
+        private Action(string type, int targetCellIdx)
+            : this(type, 0, targetCellIdx)
+        {
+        }
+
+        private Action(string type)
+            : this(type, 0, 0)
+        {
+        }
+        
         public static Action Parse(string action)
         {
-            string[] parts = action.Split(" ");
+            var parts = action.Split(" ");
+            
             switch (parts[0])
             {
-                case WAIT:
-                    return new Action(WAIT);
-                case SEED:
-                    return new Action(SEED, int.Parse(parts[1]), int.Parse(parts[2]));
-                case GROW:
-                case COMPLETE:
+                case "WAIT":
+                    return new Action("WAIT");
+                case "SEED":
+                    return new Action("SEED", int.Parse(parts[1]), int.Parse(parts[2]));
+                case "GROW":
+                case "COMPLETE":
                 default:
                     return new Action(parts[0], int.Parse(parts[1]));
             }
         }
     
-        public string type;
-        public int targetCellIdx;
-        public int sourceCellIdx;
-    
-        public Action(string type, int sourceCellIdx, int targetCellIdx)
-        {
-            this.type = type;
-            this.targetCellIdx = targetCellIdx;
-            this.sourceCellIdx = sourceCellIdx;
-        }
-    
-        public Action(string type, int targetCellIdx)
-            : this(type, 0, targetCellIdx)
-        {
-        }
-    
-        public Action(string type)
-            : this(type, 0, 0)
-        {
-        }
-    
         public override string ToString()
         {
-            if (type == WAIT)
+            switch (Type)
             {
-                return Action.WAIT;
+                case "WAIT":
+                    return "WAIT";
+                case "SEED":
+                    return $"SEED {SourceCellIdx} {TargetCellIdx}";
+                default:
+                    return $"{Type} {TargetCellIdx}";
             }
-            if (type == SEED)
-            {
-                return string.Format("{0} {1} {2}", SEED, sourceCellIdx, targetCellIdx);
-            }
-            return string.Format("{0} {1}", type, targetCellIdx);
         }
     }
     
@@ -226,7 +223,7 @@ namespace Spring2021Challenge
             var totalRounds = 24;
             var allOutCompleteMultiplier = 1.0;
     
-            var completeActions = possibleActions.Count(a => a.type == "COMPLETE");
+            var completeActions = possibleActions.Count(a => a.Type == "COMPLETE");
     
             // If we can't get another complete before the end just wait        
             var waitScore = 1.0;
@@ -279,13 +276,13 @@ namespace Spring2021Challenge
             {  
                 var actionScore = 1.0;
     
-                var treeCell = board.Find(b => b.Index == action.targetCellIdx);
+                var treeCell = board.Find(b => b.Index == action.TargetCellIdx);
     
-                if(action.type == "WAIT")
+                if(action.Type == "WAIT")
                 { 
                     actionScore *= waitScore;
                 }
-                else if(action.type == "COMPLETE")
+                else if(action.Type == "COMPLETE")
                 { 
                     // Higher score for completing rich soil trees
                     var richnessScore = GetScaledValue((double)treeCell.Richness, 1.0, 3.0, 1.0, 2.0) * richnessCompletionMultipier;
@@ -325,7 +322,7 @@ namespace Spring2021Challenge
                     actionScore *= allOutCompleteMultiplier;
     
                 }
-                else if(action.type == "SEED")
+                else if(action.Type == "SEED")
                 {  
                     // The more seeds there are the less likely we are to seed
                     // Mote: This is very crude. There should be a better way to do this (maybe scale it)               
@@ -333,14 +330,14 @@ namespace Spring2021Challenge
     
                     //Prefer planting seeds in the centre                
                     // The target cell can be 0-3 away. If 3 away we want a 1 * multiplier, if 0 away we want 2. 
-                    var distanceFromCentre = _distanceCalculator.GetDistanceFromCentre(action.targetCellIdx);
+                    var distanceFromCentre = _distanceCalculator.GetDistanceFromCentre(action.TargetCellIdx);
     
                     var centreBonus = GetScaledValue(distanceFromCentre, 4.0, 0.0, 1.0, 2.0);
                     centreBonus *= seedNearCentreWeighting;
                     actionScore *= centreBonus;  
     
                     // Higher score for seeding far away from tree
-                    var distanceApart = _distanceCalculator.GetDistanceBetweenCells(action.sourceCellIdx, action.targetCellIdx);
+                    var distanceApart = _distanceCalculator.GetDistanceBetweenCells(action.SourceCellIdx, action.TargetCellIdx);
                     var distanceApartScore = GetScaledValue(distanceApart, 1.0, 3.0, 1.0, 2.0);
                     distanceApartScore *= seedDistanceApartWeighting;
     
@@ -353,9 +350,9 @@ namespace Spring2021Challenge
                     // General weighting
                     actionScore *= generalSeedMultiplier; 
                 }
-                else if(action.type == "GROW")
+                else if(action.Type == "GROW")
                 {
-                    var tree = trees.Find(t => t.CellIndex == action.targetCellIdx);                
+                    var tree = trees.Find(t => t.CellIndex == action.TargetCellIdx);                
                     
                     // Prioritise growing by richness  
                     //Console.Error.WriteLine("---------------------------------------------");
@@ -403,7 +400,7 @@ namespace Spring2021Challenge
             // Output all actions with scores
             OutputActionsAndScores(actionsWithScores);
     
-            Console.Error.WriteLine($"{actionsWithScores.OrderBy(a => a.Item2).Last().Item1.type}");
+            Console.Error.WriteLine($"{actionsWithScores.OrderBy(a => a.Item2).Last().Item1.Type}");
     
             return actionsWithScores.OrderBy(a => a.Item2).Last().Item1;
         }
@@ -442,9 +439,9 @@ namespace Spring2021Challenge
         {
             foreach(var actionWithScore in actionsWithScores)
             {
-                Console.Error.WriteLine($"Action type: {actionWithScore.Item1.type}");
-                Console.Error.WriteLine($"targetCellIdx: {actionWithScore.Item1.targetCellIdx}");
-                Console.Error.WriteLine($"sourceCellIdx: {actionWithScore.Item1.sourceCellIdx}");
+                Console.Error.WriteLine($"Action type: {actionWithScore.Item1.Type}");
+                Console.Error.WriteLine($"targetCellIdx: {actionWithScore.Item1.TargetCellIdx}");
+                Console.Error.WriteLine($"sourceCellIdx: {actionWithScore.Item1.SourceCellIdx}");
                 Console.Error.WriteLine($"Score: {actionWithScore.Item2}");    
                 Console.Error.WriteLine($"-------------------------------------------------");         
             }

@@ -183,8 +183,7 @@ namespace Spring2021Challenge
         }
     
         public Action GetNextAction()
-        {      
-    
+        { 
             // TO Do
             // Try to complete and reseed in one move *******
             // Tidy up and refactor  
@@ -347,7 +346,7 @@ namespace Spring2021Challenge
                     actionScore *= distanceApartScore;
     
                     // Try to plant on richer soil
-                    var richnessScore = GetScaledValue((double)treeCell.Richness, 1.0, 3.0, 1.0, 2.0) * seedRichnessWeighting;
+                    var richnessScore = GetScaledValue(treeCell.Richness, 1.0, 3.0, 1.0, 2.0) * seedRichnessWeighting;
                     actionScore *= richnessScore;
     
                     // General weighting

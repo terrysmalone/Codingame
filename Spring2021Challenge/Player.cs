@@ -322,6 +322,11 @@ namespace Spring2021Challenge
                     actionScore *= completeMultipler;
                                   
                     actionScore *= allOutCompleteMultiplier;
+                    
+                    if(Round <= 21 && numberOfTrees[3] <= 3)
+                    {
+                        actionScore = 0;
+                    }
     
                 }
                 else if(action.Type == "SEED")
@@ -351,6 +356,32 @@ namespace Spring2021Challenge
     
                     // General weighting
                     actionScore *= generalSeedMultiplier; 
+                    
+                    // We never want to seed next to ourselves
+                    // Note: this is covered by the rule below but we may want to distinguish between them
+                    // at some point so it stays
+                    if(_distanceCalculator.GetDistanceBetweenCells(action.SourceCellIdx, action.TargetCellIdx) == 1)
+                    {
+                        actionScore = 0;
+                    }
+                    
+                    // We never want to seed next to a cell that has another tree
+                    var targetCell = Board.Find(c => c.Index == action.TargetCellIdx);
+                    
+                    var hasNeighbouringTree = false;
+                    
+                    foreach (var neighbourindex in targetCell.Neighbours)
+                    {
+                        if(Trees.Find(t => t.CellIndex == neighbourindex) != null)
+                        {
+                            hasNeighbouringTree = true;
+                        }
+                    }
+                    
+                    if(hasNeighbouringTree)
+                    {
+                        actionScore = 0;
+                    }
                 }
                 else if(action.Type == "GROW")
                 {
@@ -365,8 +396,6 @@ namespace Spring2021Challenge
                     // get scaling min and max
                     var minTreeCount = Math.Min(numberOfTrees[1], Math.Min(numberOfTrees[2], numberOfTrees[3]));
                     var maxTreeCount = Math.Max(numberOfTrees[1], Math.Max(numberOfTrees[2], numberOfTrees[3]));
-    
-                    var sizeGoingTo = tree.Size + 1;
     
                     var amountOfThisSize =  numberOfTrees[tree.Size + 1];
     
@@ -547,3 +576,6 @@ namespace Spring2021Challenge
         }
     }
 }
+
+// Previous Rank: 1,249
+// Current Rank: 930

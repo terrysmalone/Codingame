@@ -86,19 +86,19 @@ namespace Spring2021Challenge
         }
     }
     
-    class Tree
+    internal sealed class Tree
     {
-        public int cellIndex;
-        public int size;
-        public bool isMine;
-        public bool isDormant;
-    
+        public int CellIndex { get; }
+        public int Size { get; }
+        public bool IsMine { get; }
+        public bool IsDormant { get; }
+        
         public Tree(int cellIndex, int size, bool isMine, bool isDormant)
         {
-            this.cellIndex = cellIndex;
-            this.size = size;
-            this.isMine = isMine;
-            this.isDormant = isDormant;
+            CellIndex = cellIndex;
+            Size = size;
+            IsMine = isMine;
+            IsDormant = isDormant;
         }
     }
     
@@ -355,7 +355,7 @@ namespace Spring2021Challenge
                 }
                 else if(action.type == "GROW")
                 {
-                    var tree = trees.Find(t => t.cellIndex == action.targetCellIdx);                
+                    var tree = trees.Find(t => t.CellIndex == action.targetCellIdx);                
                     
                     // Prioritise growing by richness  
                     //Console.Error.WriteLine("---------------------------------------------");
@@ -367,9 +367,9 @@ namespace Spring2021Challenge
                     var minTreeCount = Math.Min(numberOfTrees[1], Math.Min(numberOfTrees[2], numberOfTrees[3]));
                     var maxTreeCount = Math.Max(numberOfTrees[1], Math.Max(numberOfTrees[2], numberOfTrees[3]));
     
-                    var sizeGoingTo = tree.size + 1;
+                    var sizeGoingTo = tree.Size + 1;
     
-                    var amountOfThisSize =  numberOfTrees[tree.size + 1];
+                    var amountOfThisSize =  numberOfTrees[tree.Size + 1];
     
                     // Invert it because smaller is better
                     var smallestCostMultiplier = GetScaledValue(amountOfThisSize, maxTreeCount, minTreeCount, 1.0, 2.0);
@@ -419,10 +419,10 @@ namespace Spring2021Challenge
         {
             var numberOfTrees = new int[4];
     
-            numberOfTrees[0] = trees.Count(t => t.size == 0 && t.isMine);
-            numberOfTrees[1] = trees.Count(t => t.size == 1 && t.isMine);
-            numberOfTrees[2] = trees.Count(t => t.size == 2 && t.isMine);
-            numberOfTrees[3] = trees.Count(t => t.size == 3 && t.isMine); 
+            numberOfTrees[0] = trees.Count(t => t.Size == 0 && t.IsMine);
+            numberOfTrees[1] = trees.Count(t => t.Size == 1 && t.IsMine);
+            numberOfTrees[2] = trees.Count(t => t.Size == 2 && t.IsMine);
+            numberOfTrees[3] = trees.Count(t => t.Size == 3 && t.IsMine); 
     
             return numberOfTrees;
         }
@@ -433,8 +433,8 @@ namespace Spring2021Challenge
         {
             if(tree != null)
             {
-                Console.Error.WriteLine($"bestTree.cellIndex: {tree.cellIndex}");
-                Console.Error.WriteLine($"bestTree.size: {tree.size}");
+                Console.Error.WriteLine($"bestTree.cellIndex: {tree.CellIndex}");
+                Console.Error.WriteLine($"bestTree.size: {tree.Size}");
             }
         }
     

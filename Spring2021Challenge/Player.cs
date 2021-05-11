@@ -216,7 +216,6 @@ namespace Spring2021Challenge
             // SEED
             // Relax the no seed next door rule after a while. Maybe when there are a certain number of trees
             // If we have 2 points left spew seeds. It could win us a draw
- 
             var actionsWithScores = new List<Tuple<Action, double>>();
     
             var numberOfTrees = CountTreeSizes(); 

@@ -185,6 +185,9 @@ namespace Spring2021Challenge
     
         public Action GetNextAction()
         { 
+            Console.Error.WriteLine("==========================================");
+            Console.Error.WriteLine($"Round: {Round}");
+            
             // TO Do
             // Try to complete and reseed in one move *******
             // If we can't seed on the turn after a complete
@@ -196,6 +199,7 @@ namespace Spring2021Challenge
             // GROW
             // SEED
             // Try to reseed as soon as we grow
+            // If we have 2 points left spew seeds. It could win us a draw
             // Shadows
             // Do something with them
     
@@ -254,10 +258,10 @@ namespace Spring2021Challenge
             // If the number of trees that can be completed is the same as the number of rounds left just complete
             // NOTE: I'm not sure this makes much sense. We can complete multiple trees in one day. why bother with this. 
             //       Try to remove it and see what happens
-            else if(numberOfTrees[3] >= (_totalRounds - Round))
-            {
-                allOutCompleteMultiplier = 1000.0;
-            }
+            //else if(numberOfTrees[3] >= (_totalRounds - Round))
+            //{
+           //     allOutCompleteMultiplier = 1000.0;
+           // }
             
             // Score every action and then order them
             foreach(var action in PossibleActions)
@@ -297,11 +301,7 @@ namespace Spring2021Challenge
                     else if(Round > 18)
                     {
                         dayScore = 2.0;                
-                    }
-                    else
-                    {
-                        dayScore = 1.0;
-                    }   
+                    }  
     
                     actionScore *= dayScore;
                     
@@ -313,63 +313,45 @@ namespace Spring2021Challenge
                 else if(action.Type == "SEED")
                 {  
                     // Hard no rules
-                    // If there are less than 5 days left there's no point in planting new seeds
+                    //
+                    // 1. We bnever seed right nest to another tree
+                    // 2. If there are less than 5 days left there's no point in planting new seeds because they can't complete
                     //
                     // Day    | t-5 | t-4 | t-3 | t-2 | t-1 |
                     // Action |  S  |  1  |  2  |  3  |  C  |
-                    if(Round >= _totalRounds-5)
-                    {
-                        actionScore = 0;
-                    }    
-                    
-                    // We never want to seed next to ourselves
-                    // Note: this is covered by the rule below but we may want to distinguish between them
-                    // at some point so it stays
-                    if(_distanceCalculator.GetDistanceBetweenCells(action.SourceCellIdx, action.TargetCellIdx) == 1)
+
+                    if(SeedHasDirectNeighbour(targetCell) || Round >= _totalRounds-5)
                     {
                         actionScore = 0;
                     }
-                    
-                    var hasNeighbouringTree = false;
-                    
-                    foreach (var neighbourindex in targetCell.Neighbours)
+                    else
                     {
-                        if(Trees.Find(t => t.CellIndex == neighbourindex && t.IsMine) != null)
-                        {
-                            hasNeighbouringTree = true;
-                        }
+                        // The more seeds there are the less likely we are to seed
+                        // Mote: This is very crude. There should be a better way to do this (maybe scale it)               
+                        actionScore /= ((numberOfTrees[0] + 1) * numberOfSeedsWeighting);
+        
+                        //Prefer planting seeds in the centre                
+                        // The target cell can be 0-3 away. If 3 away we want a 1 * multiplier, if 0 away we want 2. 
+                        var distanceFromCentre = _distanceCalculator.GetDistanceFromCentre(action.TargetCellIdx);
+        
+                        var centreBonus = GetScaledValue(distanceFromCentre, 4.0, 0.0, 1.0, 2.0);
+                        centreBonus *= seedNearCentreWeighting;
+                        actionScore *= centreBonus;  
+        
+                        // Higher score for seeding far away from tree
+                        var distanceApart = _distanceCalculator.GetDistanceBetweenCells(action.SourceCellIdx, action.TargetCellIdx);
+                        var distanceApartScore = GetScaledValue(distanceApart, 1.0, 3.0, 1.0, 2.0);
+                        distanceApartScore *= seedDistanceApartWeighting;
+        
+                        actionScore *= distanceApartScore;
+        
+                        // Try to plant on richer soil
+                        var richnessScore = GetScaledValue(targetCell.Richness, 1.0, 3.0, 1.0, 2.0) * seedRichnessWeighting;
+                        actionScore *= richnessScore;
+        
+                        // General weighting
+                        actionScore *= generalSeedMultiplier;
                     }
-                    
-                    if(hasNeighbouringTree)
-                    {
-                        actionScore = 0;
-                    }
-                    
-                    // The more seeds there are the less likely we are to seed
-                    // Mote: This is very crude. There should be a better way to do this (maybe scale it)               
-                    actionScore /= ((numberOfTrees[0] + 1) * numberOfSeedsWeighting);
-    
-                    //Prefer planting seeds in the centre                
-                    // The target cell can be 0-3 away. If 3 away we want a 1 * multiplier, if 0 away we want 2. 
-                    var distanceFromCentre = _distanceCalculator.GetDistanceFromCentre(action.TargetCellIdx);
-    
-                    var centreBonus = GetScaledValue(distanceFromCentre, 4.0, 0.0, 1.0, 2.0);
-                    centreBonus *= seedNearCentreWeighting;
-                    actionScore *= centreBonus;  
-    
-                    // Higher score for seeding far away from tree
-                    var distanceApart = _distanceCalculator.GetDistanceBetweenCells(action.SourceCellIdx, action.TargetCellIdx);
-                    var distanceApartScore = GetScaledValue(distanceApart, 1.0, 3.0, 1.0, 2.0);
-                    distanceApartScore *= seedDistanceApartWeighting;
-    
-                    actionScore *= distanceApartScore;
-    
-                    // Try to plant on richer soil
-                    var richnessScore = GetScaledValue(targetCell.Richness, 1.0, 3.0, 1.0, 2.0) * seedRichnessWeighting;
-                    actionScore *= richnessScore;
-    
-                    // General weighting
-                    actionScore *= generalSeedMultiplier;
                 }
                 else if(action.Type == "GROW")
                 {
@@ -417,7 +399,7 @@ namespace Spring2021Challenge
             }
     
             // Output all actions with scores
-            OutputActionsAndScores(actionsWithScores.OrderBy(a => a.Item2).ToList());
+            OutputActionsAndScores(actionsWithScores.OrderBy(a => a.Item2).Reverse().ToList(), false);
     
             return actionsWithScores.OrderBy(a => a.Item2).Last().Item1;
         }
@@ -440,6 +422,19 @@ namespace Spring2021Challenge
     
             return numberOfTrees;
         }
+        
+        private bool SeedHasDirectNeighbour(Cell cell)
+        {
+            foreach (var neighbourindex in cell.Neighbours)
+            {
+                if(Trees.Find(t => t.CellIndex == neighbourindex && t.IsMine) != null)
+                {
+                    return true;
+                }
+            }
+            
+            return false;
+        }
     
         // Console error output
     
@@ -452,15 +447,17 @@ namespace Spring2021Challenge
             }
         }
     
-        private static void OutputActionsAndScores(List<Tuple<Action, double>> actionsWithScores)
+        private static void OutputActionsAndScores(List<Tuple<Action, double>> actionsWithScores, bool showZeroScoredActions = true)
         {
             foreach(var actionWithScore in actionsWithScores)
             {
+                if(!showZeroScoredActions && actionWithScore.Item2 == 0) { continue; }
+                
                 Console.Error.WriteLine($"Action type: {actionWithScore.Item1.Type}");
                 Console.Error.WriteLine($"targetCellIdx: {actionWithScore.Item1.TargetCellIdx}");
                 Console.Error.WriteLine($"sourceCellIdx: {actionWithScore.Item1.SourceCellIdx}");
                 Console.Error.WriteLine($"Score: {actionWithScore.Item2}");    
-                Console.Error.WriteLine($"-------------------------------------------------");         
+                Console.Error.WriteLine($"--------------");         
             }
         }
     

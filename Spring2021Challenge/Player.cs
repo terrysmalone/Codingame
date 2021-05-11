@@ -199,91 +199,31 @@ namespace Spring2021Challenge
             
             var calculateSunPoints = new SunPointCalculator(Board, Trees, nextSunDirection);
             
-            Console.Error.WriteLine("==============================================");
-            var sunPoints = calculateSunPoints.CalculateSunPoints();
-            Console.Error.WriteLine($"My       points: {sunPoints.Item1}");
-            Console.Error.WriteLine($"Opponent points: {sunPoints.Item2}");
-
             //------------------------------------------------------------------------
             
             //Console.Error.WriteLine("==========================================");
             //Console.Error.WriteLine($"Round: {Round}");
             
             // TO Do
-            // Try to complete and reseed in one move *******
-            // If we can't seed on the turn after a complete
+            // Try to complete and reseed in one move. If we can't, seed on the turn after a complete
             // Tidy up and refactor  
-            // Move weighting scores to class level so we can split out some methods    
-    
+            // Remove weighting scores completely
+
             // COMPLETE
-            // 
+            // Is it sensible to all out COMPLETE after 3 size 3 trees. It seems too rigid a heuristic
             // GROW
+            //
             // SEED
-            // Try to reseed as soon as we grow
+            // Relax the no seed next door rule after a while. Maybe when there are a certain number of trees
             // If we have 2 points left spew seeds. It could win us a draw
-            // Shadows
-            // Do something with them
-    
-            // Weighting parameters
-            // All scores are weighted to give multipliers between 1 and 2. They can be weighted here 
-            // COMPLETE
-            var completeMultipler = 0.8;
-            var richnessCompletionMultipier = 1.5;
-            var edgeCompletionMultiplier = 1.0;
-            // GROW
-            var generalGrowMultiplier = 1.0;
-            var smallestCostWeighting = 2.0;
-            var richnessWeighting = 1.5;
-    
-            var toSize3Multiplier = 1.0;
-            var toSize2Multiplier = 1.0;
-            var toSize1Multiplier = 1.0;        
-            
-            //SEED
-            var generalSeedMultiplier = 1.3;
-            var seedNearCentreWeighting = 1.6;
-            var seedDistanceApartWeighting = 2.0;
-            var seedRichnessWeighting = 1.0;
-            var numberOfSeedsWeighting = 1.8;           
-                
+ 
             var actionsWithScores = new List<Tuple<Action, double>>();
     
             var numberOfTrees = CountTreeSizes(); 
     
-            var allOutCompleteMultiplier = 1.0;
-    
             // If we can't get another complete before the end just wait        
             var waitScore = 1.0;
-    
-            // On the last day
-            if(Round == _totalRounds-1)
-            {
-                // If we're on the last round don't grow or seed. We can't complete
-                generalGrowMultiplier = 0;
-                generalSeedMultiplier = 0;
-            }
-    
-            // If there's 0 or 1 seeds prioritise planting more
-            if(numberOfTrees[0] < 2)
-            {
-                generalSeedMultiplier *=5;
-            }
-    
-            var completeActions = PossibleActions.Count(a => a.Type == "COMPLETE"); 
-            
-            // If we have multiple trees to complete go all out
-            if(completeActions>= 3)
-            {
-                allOutCompleteMultiplier = 100.0;
-            }
-            // If the number of trees that can be completed is the same as the number of rounds left just complete
-            // NOTE: I'm not sure this makes much sense. We can complete multiple trees in one day. why bother with this. 
-            //       Try to remove it and see what happens
-            //else if(numberOfTrees[3] >= (_totalRounds - Round))
-            //{
-           //     allOutCompleteMultiplier = 1000.0;
-           // }
-            
+
             // Score every action and then order them
             foreach(var action in PossibleActions)
             {  
@@ -297,14 +237,14 @@ namespace Spring2021Challenge
                 }
                 else if(action.Type == "COMPLETE")
                 { 
-                    // Never complete if we have 3 or fewer size 3 trees 
+                    // Until endgame Never complete if we have 3 or fewer size 3 trees 
                     if(Round <= 21 && numberOfTrees[3] <= 3)
                     {
                         actionScore = 0;
                     }
                     
                     // Higher score for completing rich soil trees
-                    var richnessScore = GetScaledValue(targetCell.Richness, 1.0, 3.0, 1.0, 2.0) * richnessCompletionMultipier;
+                    var richnessScore = GetScaledValue(targetCell.Richness, 1.0, 3.0, 1.0, 2.0);
                     actionScore *= richnessScore;
     
                     // More likely to complete near the end of the game
@@ -325,11 +265,6 @@ namespace Spring2021Challenge
                     }  
     
                     actionScore *= dayScore;
-                    
-                    // General weighting
-                    actionScore *= completeMultipler;
-                                  
-                    actionScore *= allOutCompleteMultiplier;
                 }
                 else if(action.Type == "SEED")
                 {  
@@ -340,7 +275,7 @@ namespace Spring2021Challenge
                     //
                     // Day    | t-5 | t-4 | t-3 | t-2 | t-1 |
                     // Action |  S  |  1  |  2  |  3  |  C  |
-
+                    
                     if(SeedHasDirectNeighbour(targetCell) || Round >= _totalRounds-5)
                     {
                         actionScore = 0;
@@ -349,46 +284,44 @@ namespace Spring2021Challenge
                     {
                         // The more seeds there are the less likely we are to seed
                         // Mote: This is very crude. There should be a better way to do this (maybe scale it)               
-                        actionScore /= ((numberOfTrees[0] + 1) * numberOfSeedsWeighting);
+                        actionScore /= ((numberOfTrees[0] + 1));
         
                         //Prefer planting seeds in the centre                
                         // The target cell can be 0-3 away. If 3 away we want a 1 * multiplier, if 0 away we want 2. 
                         var distanceFromCentre = _distanceCalculator.GetDistanceFromCentre(action.TargetCellIdx);
         
                         var centreBonus = GetScaledValue(distanceFromCentre, 4.0, 0.0, 1.0, 2.0);
-                        centreBonus *= seedNearCentreWeighting;
                         actionScore *= centreBonus;  
         
                         // Higher score for seeding far away from tree
                         var distanceApart = _distanceCalculator.GetDistanceBetweenCells(action.SourceCellIdx, action.TargetCellIdx);
                         var distanceApartScore = GetScaledValue(distanceApart, 1.0, 3.0, 1.0, 2.0);
-                        distanceApartScore *= seedDistanceApartWeighting;
-        
                         actionScore *= distanceApartScore;
         
                         // Try to plant on richer soil
-                        var richnessScore = GetScaledValue(targetCell.Richness, 1.0, 3.0, 1.0, 2.0) * seedRichnessWeighting;
+                        var richnessScore = GetScaledValue(targetCell.Richness, 1.0, 3.0, 1.0, 2.0);
                         actionScore *= richnessScore;
-        
-                        // General weighting
-                        actionScore *= generalSeedMultiplier;
+                        
+                        // If there's 0 or 1 seeds prioritise planting more
+                        if(numberOfTrees[0] < 2)
+                        {
+                            actionScore *=5;
+                        }
                     }
                 }
                 else if(action.Type == "GROW")
                 {
-                    Console.Error.WriteLine("--------------------------------");
-                    OutputAction(action);
-                    calculateSunPoints.DoAction(action);
-                    sunPoints = calculateSunPoints.CalculateSunPoints();
-                    Console.Error.WriteLine($"My       points: {sunPoints.Item1}");
-                    Console.Error.WriteLine($"Opponent points: {sunPoints.Item2}");
-                    calculateSunPoints.UndoAction(action);
-                    
                     var tree = Trees.Find(t => t.CellIndex == action.TargetCellIdx);    
                                         
                     // Day    | t-5 | t-4 | t-3 | t-2 | t-1 |
                     // Action |  S  |  1  |  2  |  3  |  C  |
                     //
+                    // On the last day don't grow. We won't be able to complete
+                    if (Round == _totalRounds - 1)
+                    {
+                        // If we're on the last round don't grow or seed. We can't complete
+                        actionScore = 0;
+                    }
                     // If we have only 2 rounds left we can only grow a 2 to completion by the end (since we have to wait a day to complete)
                     if(Round == _totalRounds-2 && tree.Size < 3)
                     {
@@ -402,33 +335,49 @@ namespace Spring2021Challenge
                     else if(Round == _totalRounds-4 && tree.Size < 1)
                     {
                         actionScore = 0;
-                    }        
-                    
-                    // Prioritise growing by richness                                  
-                    actionScore *= GetScaledValue(targetCell.Richness, 1.0, 3.0, 1.0, 2.0) * richnessWeighting;
-    
-                    // We prefer to grow fewer trees of the same size   
-                    // get scaling min and max
-                    var minTreeCount = Math.Min(numberOfTrees[1], Math.Min(numberOfTrees[2], numberOfTrees[3]));
-                    var maxTreeCount = Math.Max(numberOfTrees[1], Math.Max(numberOfTrees[2], numberOfTrees[3]));
-    
-                    var amountOfThisSize =  numberOfTrees[tree.Size + 1];
-    
-                    // Invert it because smaller is better
-                    var smallestCostMultiplier = GetScaledValue(amountOfThisSize, maxTreeCount, minTreeCount, 1.0, 2.0);
-                    smallestCostMultiplier *= smallestCostWeighting;
-                    actionScore *= smallestCostMultiplier;
-    
-    
-                    // General weighting
-                    actionScore *= generalGrowMultiplier; 
+                    }
+
+                    // If we've hard blocked growing by this stage don't bother scoring it
+                    if (actionScore != 0)
+                    {
+                        // Baseline is how many points we'll get if we do nothing
+                        var baseLineSunPoints = calculateSunPoints.CalculateSunPoints();
+                        var baseLineScore = baseLineSunPoints.Item1 - baseLineSunPoints.Item2;
+
+                        Console.Error.WriteLine("--------------------------------");
+                        //OutputAction(action);
+                        calculateSunPoints.DoAction(action);
+                        var sunPoints = calculateSunPoints.CalculateSunPoints();
+                        //Console.Error.WriteLine($"My       points: {sunPoints.Item1}");
+                        //Console.Error.WriteLine($"Opponent points: {sunPoints.Item2}");
+                        calculateSunPoints.UndoAction(action);
+
+                        var sunPointScore = (sunPoints.Item1 - sunPoints.Item2) - baseLineScore;
+                        
+                        // We don't want any factors other than sun score moving this up by more than 1 decimal place.
+                        // Scale all other scores between 0 and 0.99
+
+                        // Prioritise growing by richness
+                        var nonSunScore = GetScaledValue(targetCell.Richness, 1.0, 3.0, 1.0, 2.0);
+
+                        // We prefer to grow fewer trees of the same size   
+                        // get scaling min and max
+                        var minTreeCount = Math.Min(numberOfTrees[1], Math.Min(numberOfTrees[2], numberOfTrees[3]));
+                        var maxTreeCount = Math.Max(numberOfTrees[1], Math.Max(numberOfTrees[2], numberOfTrees[3]));
+                        var amountOfThisSize =  numberOfTrees[tree.Size + 1];
+
+                        // Invert it because smaller is better
+                        nonSunScore += GetScaledValue(amountOfThisSize, maxTreeCount, minTreeCount, 1.0, 2.0);
+  
+                        actionScore = sunPointScore + GetScaledValue(nonSunScore, 0, 2, 0, 0.99);
+                    }
                 }
     
                 actionsWithScores.Add(new Tuple<Action, double> ( action, actionScore));
             }
     
             // Output all actions with scores
-            //OutputActionsAndScores(actionsWithScores.OrderBy(a => a.Item2).Reverse().ToList(), false);
+            OutputActionsAndScores(actionsWithScores.OrderBy(a => a.Item2).Reverse().ToList(), false);
     
             return actionsWithScores.OrderBy(a => a.Item2).Last().Item1;
         }

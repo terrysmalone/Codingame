@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Collections.Generic;
 
@@ -172,6 +172,7 @@ namespace Spring2021Challenge
         public List<Tree> Trees { get; }
     
         private readonly DistanceCalculator _distanceCalculator;
+        private int _totalRounds = 24;
     
         public Game()
         {
@@ -186,6 +187,7 @@ namespace Spring2021Challenge
         { 
             // TO Do
             // Try to complete and reseed in one move *******
+            // If we can't seed on the turn after a complete
             // Tidy up and refactor  
             // Move weighting scores to class level so we can split out some methods    
     
@@ -223,14 +225,13 @@ namespace Spring2021Challenge
     
             var numberOfTrees = CountTreeSizes(); 
     
-            var totalRounds = 24;
             var allOutCompleteMultiplier = 1.0;
     
             // If we can't get another complete before the end just wait        
             var waitScore = 1.0;
     
             // On the last day
-            if(Round == totalRounds-1)
+            if(Round == _totalRounds-1)
             {
                 // If we're on the last round don't grow or seed. We can't complete
                 generalGrowMultiplier = 0;
@@ -253,7 +254,7 @@ namespace Spring2021Challenge
             // If the number of trees that can be completed is the same as the number of rounds left just complete
             // NOTE: I'm not sure this makes much sense. We can complete multiple trees in one day. why bother with this. 
             //       Try to remove it and see what happens
-            else if(numberOfTrees[3] >= (totalRounds - Round))
+            else if(numberOfTrees[3] >= (_totalRounds - Round))
             {
                 allOutCompleteMultiplier = 1000.0;
             }
@@ -312,8 +313,11 @@ namespace Spring2021Challenge
                 else if(action.Type == "SEED")
                 {  
                     // Hard no rules
-                    // If there are less than 4 days left there's no point in planting new seeds
-                    if(Round >= totalRounds-3)
+                    // If there are less than 5 days left there's no point in planting new seeds
+                    //
+                    // Day    | t-5 | t-4 | t-3 | t-2 | t-1 |
+                    // Action |  S  |  1  |  2  |  3  |  C  |
+                    if(Round >= _totalRounds-5)
                     {
                         actionScore = 0;
                     }    
@@ -330,7 +334,7 @@ namespace Spring2021Challenge
                     
                     foreach (var neighbourindex in targetCell.Neighbours)
                     {
-                        if(Trees.Find(t => t.CellIndex == neighbourindex) != null)
+                        if(Trees.Find(t => t.CellIndex == neighbourindex && t.IsMine) != null)
                         {
                             hasNeighbouringTree = true;
                         }
@@ -370,16 +374,21 @@ namespace Spring2021Challenge
                 else if(action.Type == "GROW")
                 {
                     var tree = Trees.Find(t => t.CellIndex == action.TargetCellIdx);    
-                    
-                    // Hard no rules
-                    
+                                        
+                    // Day    | t-5 | t-4 | t-3 | t-2 | t-1 |
+                    // Action |  S  |  1  |  2  |  3  |  C  |
+                    //
                     // If we have only 2 rounds left we can only grow a 2 to completion by the end (since we have to wait a day to complete)
-                    if(Round == totalRounds-2 && tree.Size < 2)
+                    if(Round == _totalRounds-2 && tree.Size < 3)
                     {
                         actionScore = 0;
                     }
                     // If we have only 3 rounds left we can only grow a 1 to completion by the end (since we have to wait a day to complete)
-                    else if(Round == totalRounds-3 && tree.Size < 1)
+                    else if(Round == _totalRounds-3 && tree.Size < 2)
+                    {
+                        actionScore = 0;
+                    }    
+                    else if(Round == _totalRounds-4 && tree.Size < 1)
                     {
                         actionScore = 0;
                     }        

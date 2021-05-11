@@ -90,7 +90,7 @@ namespace Spring2021Challenge
     internal sealed class Tree
     {
         public int CellIndex { get; }
-        public int Size { get; }
+        public int Size { get; set; }
         public bool IsMine { get; }
         public bool IsDormant { get; }
         
@@ -172,7 +172,9 @@ namespace Spring2021Challenge
         public List<Tree> Trees { get; }
     
         private readonly DistanceCalculator _distanceCalculator;
-        private int _totalRounds = 24;
+        private readonly int _totalRounds = 24;
+
+        private int _sunDirection = 0;
     
         public Game()
         {
@@ -184,9 +186,28 @@ namespace Spring2021Challenge
         }
     
         public Action GetNextAction()
-        { 
-            Console.Error.WriteLine("==========================================");
-            Console.Error.WriteLine($"Round: {Round}");
+        {
+            _sunDirection = Round % 6;
+            
+            //------------------------------------------------------------------------
+            var nextSunDirection = _sunDirection + 1;
+
+            if (nextSunDirection > 5)
+            {
+                nextSunDirection = 0;
+            }
+            
+            var calculateSunPoints = new SunPointCalculator(Board, Trees, nextSunDirection);
+            
+            Console.Error.WriteLine("==============================================");
+            var sunPoints = calculateSunPoints.CalculateSunPoints();
+            Console.Error.WriteLine($"My       points: {sunPoints.Item1}");
+            Console.Error.WriteLine($"Opponent points: {sunPoints.Item2}");
+
+            //------------------------------------------------------------------------
+            
+            //Console.Error.WriteLine("==========================================");
+            //Console.Error.WriteLine($"Round: {Round}");
             
             // TO Do
             // Try to complete and reseed in one move *******
@@ -314,7 +335,7 @@ namespace Spring2021Challenge
                 {  
                     // Hard no rules
                     //
-                    // 1. We bnever seed right nest to another tree
+                    // 1. We never seed right nest to another tree
                     // 2. If there are less than 5 days left there's no point in planting new seeds because they can't complete
                     //
                     // Day    | t-5 | t-4 | t-3 | t-2 | t-1 |
@@ -355,6 +376,14 @@ namespace Spring2021Challenge
                 }
                 else if(action.Type == "GROW")
                 {
+                    Console.Error.WriteLine("--------------------------------");
+                    OutputAction(action);
+                    calculateSunPoints.DoAction(action);
+                    sunPoints = calculateSunPoints.CalculateSunPoints();
+                    Console.Error.WriteLine($"My       points: {sunPoints.Item1}");
+                    Console.Error.WriteLine($"Opponent points: {sunPoints.Item2}");
+                    calculateSunPoints.UndoAction(action);
+                    
                     var tree = Trees.Find(t => t.CellIndex == action.TargetCellIdx);    
                                         
                     // Day    | t-5 | t-4 | t-3 | t-2 | t-1 |
@@ -399,7 +428,7 @@ namespace Spring2021Challenge
             }
     
             // Output all actions with scores
-            OutputActionsAndScores(actionsWithScores.OrderBy(a => a.Item2).Reverse().ToList(), false);
+            //OutputActionsAndScores(actionsWithScores.OrderBy(a => a.Item2).Reverse().ToList(), false);
     
             return actionsWithScores.OrderBy(a => a.Item2).Last().Item1;
         }
@@ -459,6 +488,14 @@ namespace Spring2021Challenge
                 Console.Error.WriteLine($"Score: {actionWithScore.Item2}");    
                 Console.Error.WriteLine($"--------------");         
             }
+        }
+        
+        private static void OutputAction(Action action)
+        { 
+            Console.Error.WriteLine($"Action type: {action.Type}");
+            Console.Error.WriteLine($"targetCellIdx: {action.TargetCellIdx}");
+            Console.Error.WriteLine($"sourceCellIdx: {action.SourceCellIdx}");
+            Console.Error.WriteLine("");
         }
     
         private void OutputIndexes(List<int> indexes)
@@ -556,6 +593,142 @@ namespace Spring2021Challenge
             }
     
             return neighbouringIndexes;
+        }
+    }
+    
+    // PLAN
+    //
+    // 1. As a first pass take the necessary parameters and calculate the sun points
+    //      * Consideration: we'll need to deep copy something
+    // 2. Pass in a next move and calculate the sun points. 
+    // 3. Pass in an opponent move and see the sun points
+    // 4. Pass in multiple moves and calculate sun points
+    internal sealed class SunPointCalculator
+    {
+        private readonly List<Cell> _boardCells;
+        private readonly List<Tree> _trees;
+        private readonly int _sunDirection;
+
+        private bool[] _inSpookyShadow;
+
+        internal SunPointCalculator(List<Cell> boardCells, List<Tree> trees, int sunDirection)
+        {
+            _boardCells = boardCells;
+            _trees = trees;
+            _sunDirection = sunDirection;
+
+            _inSpookyShadow = new bool[37];
+        }
+
+        internal Tuple<int, int> CalculateSunPoints()
+        {
+            CalculateShadowedCells();
+
+            return CalculatePoints();
+        }
+
+        private bool IsTreeInSpookyShadow(int castingTreeSize, int shadowedTreeIndex)
+        {
+            // If the tree casts a shadow on a tree that's smaller than or equal to it, then it's spooky
+            if (_trees.Find(t => t.CellIndex == shadowedTreeIndex) != null
+                && _trees.Find(t => t.CellIndex == shadowedTreeIndex).Size <= castingTreeSize)
+            {
+                return true;
+            }
+
+            return false;
+        }
+        
+        private void CalculateShadowedCells()
+        {
+            // foreach tree calculate it's shadow
+            foreach (var tree in _trees)
+            {
+                if (tree.Size > 0)
+                {
+                    // Calculate first shadow
+                    var treeCell = _boardCells.Find(c => c.Index == tree.CellIndex);
+                    
+                    if (treeCell == null) { continue; }
+                    
+                    var shadowIndex = treeCell.Neighbours[_sunDirection];
+
+                    if (IsTreeInSpookyShadow(tree.Size, shadowIndex))
+                    {
+                        _inSpookyShadow[shadowIndex] = true;
+                    }
+
+                    // If size is 2 calculate 2nd shadow
+                    if (tree.Size > 1)
+                    {
+                        var shadowCell = _boardCells.Find(c => c.Index == shadowIndex);
+
+                        if (shadowCell == null) { continue; }
+                        
+                        shadowIndex = shadowCell.Neighbours[_sunDirection];
+
+                        if (IsTreeInSpookyShadow(tree.Size, shadowIndex))
+                        {
+                            _inSpookyShadow[shadowIndex] = true;
+                        }
+                    }
+
+                    // If size is 3 calculate 3rd shadow
+                    if (tree.Size > 2)
+                    {
+                        var shadowCell = _boardCells.Find(c => c.Index == shadowIndex);
+                        
+                        if (shadowCell == null) { continue; }
+                        
+                        shadowIndex = shadowCell.Neighbours[_sunDirection];
+
+                        if (IsTreeInSpookyShadow(tree.Size, shadowIndex))
+                        {
+                            _inSpookyShadow[shadowIndex] = true;
+                        }
+                    }
+                }
+            }
+        }
+        
+        private Tuple<int, int> CalculatePoints()
+        {
+            var mySunPoints = 0;
+            var opponentSunPoints = 0;
+            
+            foreach (var tree in _trees.Where(tree => !_inSpookyShadow[tree.CellIndex]))
+            {
+                if (tree.IsMine)
+                {
+                    mySunPoints += tree.Size;
+                }
+                else
+                {
+                    opponentSunPoints += tree.Size;
+                }
+            }
+
+            return new Tuple<int, int>(mySunPoints, opponentSunPoints);
+        }
+
+        internal void DoAction(Action action)
+        {
+            if (action.Type == "GROW")
+            {
+                var tree = _trees.Find(t => t.CellIndex == action.TargetCellIdx);
+
+                tree.Size++;
+            }
+        }
+        
+        internal void UndoAction(Action action)
+        {
+            if (action.Type == "GROW")
+            {
+                var tree = _trees.Find(t => t.CellIndex == action.TargetCellIdx);
+
+                tree.Size--;
+            }
         }
     }
 }

@@ -217,36 +217,13 @@ namespace Spring2021Challenge
             // Relax the no seed next door rule after a while. Maybe when there are a certain number of trees
             // If we have 2 points left spew seeds. It could win us a draw
 
-            // COMPLETE
-            var completeMultipler = 0.8;
-            var richnessCompletionMultipier = 1.5;
-
-            //SEED
-            var generalSeedMultiplier = 1.3;
-            var seedNearCentreWeighting = 1.6;
-            var seedDistanceApartWeighting = 2.0;
-            var numberOfSeedsWeighting = 1.8;           
-                
-            var actionsWithScores = new List<Tuple<Action, double>>();
+          var actionsWithScores = new List<Tuple<Action, double>>();
     
             var numberOfTrees = CountTreeSizes(); 
     
             // If we can't get another complete before the end just wait        
             var waitScore = 1.0;
-    
-            // On the last day
-            if(Round == _totalRounds-1)
-            {
-                // If we're on the last round don't seed. We can't complete
-                generalSeedMultiplier = 0;
-            }
-    
-            // If there's 0 or 1 seeds prioritise planting more
-            if(numberOfTrees[0] < 2)
-            {
-                generalSeedMultiplier *=5;
-            }
-    
+
             // Score every action and then order them
             foreach(var action in PossibleActions)
             {  
@@ -267,7 +244,7 @@ namespace Spring2021Challenge
                     }
                     
                     // Higher score for completing rich soil trees
-                    var richnessScore = GetScaledValue(targetCell.Richness, 1.0, 3.0, 1.0, 2.0) * richnessCompletionMultipier;
+                    var richnessScore = GetScaledValue(targetCell.Richness, 1.0, 3.0, 1.0, 2.0);
                     actionScore *= richnessScore;
     
                     // More likely to complete near the end of the game
@@ -288,9 +265,6 @@ namespace Spring2021Challenge
                     }  
     
                     actionScore *= dayScore;
-                    
-                    // General weighting
-                    actionScore *= completeMultipler;
                 }
                 else if(action.Type == "SEED")
                 {  
@@ -301,7 +275,7 @@ namespace Spring2021Challenge
                     //
                     // Day    | t-5 | t-4 | t-3 | t-2 | t-1 |
                     // Action |  S  |  1  |  2  |  3  |  C  |
-
+                    
                     if(SeedHasDirectNeighbour(targetCell) || Round >= _totalRounds-5)
                     {
                         actionScore = 0;
@@ -310,29 +284,29 @@ namespace Spring2021Challenge
                     {
                         // The more seeds there are the less likely we are to seed
                         // Mote: This is very crude. There should be a better way to do this (maybe scale it)               
-                        actionScore /= ((numberOfTrees[0] + 1) * numberOfSeedsWeighting);
+                        actionScore /= ((numberOfTrees[0] + 1));
         
                         //Prefer planting seeds in the centre                
                         // The target cell can be 0-3 away. If 3 away we want a 1 * multiplier, if 0 away we want 2. 
                         var distanceFromCentre = _distanceCalculator.GetDistanceFromCentre(action.TargetCellIdx);
         
                         var centreBonus = GetScaledValue(distanceFromCentre, 4.0, 0.0, 1.0, 2.0);
-                        centreBonus *= seedNearCentreWeighting;
                         actionScore *= centreBonus;  
         
                         // Higher score for seeding far away from tree
                         var distanceApart = _distanceCalculator.GetDistanceBetweenCells(action.SourceCellIdx, action.TargetCellIdx);
                         var distanceApartScore = GetScaledValue(distanceApart, 1.0, 3.0, 1.0, 2.0);
-                        distanceApartScore *= seedDistanceApartWeighting;
-        
                         actionScore *= distanceApartScore;
         
                         // Try to plant on richer soil
                         var richnessScore = GetScaledValue(targetCell.Richness, 1.0, 3.0, 1.0, 2.0);
                         actionScore *= richnessScore;
-        
-                        // General weighting
-                        actionScore *= generalSeedMultiplier;
+                        
+                        // If there's 0 or 1 seeds prioritise planting more
+                        if(numberOfTrees[0] < 2)
+                        {
+                            actionScore *=5;
+                        }
                     }
                 }
                 else if(action.Type == "GROW")

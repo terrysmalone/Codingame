@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Collections.Generic;
 
@@ -172,6 +172,7 @@ namespace Spring2021Challenge
         public List<Tree> Trees { get; }
     
         private readonly DistanceCalculator _distanceCalculator;
+        private int _totalRounds = 24;
     
         public Game()
         {
@@ -186,13 +187,15 @@ namespace Spring2021Challenge
         { 
             // TO Do
             // Try to complete and reseed in one move *******
+            // If we can't seed on the turn after a complete
             // Tidy up and refactor  
-            // Move weighting scores to class level sso we can split out some methods    
+            // Move weighting scores to class level so we can split out some methods    
     
             // COMPLETE
             // 
             // GROW
-    
+            // SEED
+            // Try to reseed as soon as we grow
             // Shadows
             // Do something with them
     
@@ -222,29 +225,17 @@ namespace Spring2021Challenge
     
             var numberOfTrees = CountTreeSizes(); 
     
-            var totalRounds = 24;
             var allOutCompleteMultiplier = 1.0;
-    
-            var completeActions = PossibleActions.Count(a => a.Type == "COMPLETE");
     
             // If we can't get another complete before the end just wait        
             var waitScore = 1.0;
     
-            if(Round == totalRounds-1)
+            // On the last day
+            if(Round == _totalRounds-1)
             {
-                // Work out if we can get a complete. Otherwise just wait
-                // Can we complete?
-                    // If so do it
-                // If not can we grow one to 3 then complete
-                    // If so do it
-                // If not can we grow one to 2 then 3 then complete
-                    // If so do it
-                // If not can we grow one to 1 then 2 then 3 then complete
-            
-                //if(completeActions < 1)
-                //{
-                    //waitScore = 100000.0;
-                //}
+                // If we're on the last round don't grow or seed. We can't complete
+                generalGrowMultiplier = 0;
+                generalSeedMultiplier = 0;
             }
     
             // If there's 0 or 1 seeds prioritise planting more
@@ -253,47 +244,43 @@ namespace Spring2021Challenge
                 generalSeedMultiplier *=5;
             }
     
-            // Grow and seed
-            // Try to reseed as soon as we grow
-            {
+            var completeActions = PossibleActions.Count(a => a.Type == "COMPLETE"); 
             
-    
-            }
-    
             // If we have multiple trees to complete go all out
             if(completeActions>= 3)
             {
                 allOutCompleteMultiplier = 100.0;
             }
             // If the number of trees that can be completed is the same as the number of rounds left just complete
-            else if(numberOfTrees[3] >= (totalRounds - Round))
+            // NOTE: I'm not sure this makes much sense. We can complete multiple trees in one day. why bother with this. 
+            //       Try to remove it and see what happens
+            else if(numberOfTrees[3] >= (_totalRounds - Round))
             {
                 allOutCompleteMultiplier = 1000.0;
             }
-    
-            //Console.Error.WriteLine($"numberOfSeeds:{numberOfSeeds}"); 
-            Console.Error.WriteLine($"Day: {Round}");
+            
             // Score every action and then order them
             foreach(var action in PossibleActions)
             {  
                 var actionScore = 1.0;
     
-                var treeCell = Board.Find(b => b.Index == action.TargetCellIdx);
-    
+                var targetCell = Board.Find(b => b.Index == action.TargetCellIdx);
+                
                 if(action.Type == "WAIT")
                 { 
                     actionScore *= waitScore;
                 }
                 else if(action.Type == "COMPLETE")
                 { 
+                    // Never complete if we have 3 or fewer size 3 trees 
+                    if(Round <= 21 && numberOfTrees[3] <= 3)
+                    {
+                        actionScore = 0;
+                    }
+                    
                     // Higher score for completing rich soil trees
-                    var richnessScore = GetScaledValue((double)treeCell.Richness, 1.0, 3.0, 1.0, 2.0) * richnessCompletionMultipier;
+                    var richnessScore = GetScaledValue(targetCell.Richness, 1.0, 3.0, 1.0, 2.0) * richnessCompletionMultipier;
                     actionScore *= richnessScore;
-    
-                    // Higher score for completing near the edges
-                    //var distanceFromCentre = _distanceCalculator.GetDistanceFromCentre(action.targetCellIdx);
-                    //var edgeBonus = GetScaledValue((double)distanceFromCentre, 1.0, 4.0, 1.0, 2.0) * edgeCompletionMultiplier;
-                    //actionScore *= edgeBonus;
     
                     // More likely to complete near the end of the game
                     // We don't want to scale this because it should be heavily biased towards completing at the end of the game
@@ -322,15 +309,42 @@ namespace Spring2021Challenge
                     actionScore *= completeMultipler;
                                   
                     actionScore *= allOutCompleteMultiplier;
-                    
-                    if(Round <= 21 && numberOfTrees[3] <= 3)
-                    {
-                        actionScore = 0;
-                    }
-    
                 }
                 else if(action.Type == "SEED")
                 {  
+                    // Hard no rules
+                    // If there are less than 5 days left there's no point in planting new seeds
+                    //
+                    // Day    | t-5 | t-4 | t-3 | t-2 | t-1 |
+                    // Action |  S  |  1  |  2  |  3  |  C  |
+                    if(Round >= _totalRounds-5)
+                    {
+                        actionScore = 0;
+                    }    
+                    
+                    // We never want to seed next to ourselves
+                    // Note: this is covered by the rule below but we may want to distinguish between them
+                    // at some point so it stays
+                    if(_distanceCalculator.GetDistanceBetweenCells(action.SourceCellIdx, action.TargetCellIdx) == 1)
+                    {
+                        actionScore = 0;
+                    }
+                    
+                    var hasNeighbouringTree = false;
+                    
+                    foreach (var neighbourindex in targetCell.Neighbours)
+                    {
+                        if(Trees.Find(t => t.CellIndex == neighbourindex && t.IsMine) != null)
+                        {
+                            hasNeighbouringTree = true;
+                        }
+                    }
+                    
+                    if(hasNeighbouringTree)
+                    {
+                        actionScore = 0;
+                    }
+                    
                     // The more seeds there are the less likely we are to seed
                     // Mote: This is very crude. There should be a better way to do this (maybe scale it)               
                     actionScore /= ((numberOfTrees[0] + 1) * numberOfSeedsWeighting);
@@ -351,46 +365,36 @@ namespace Spring2021Challenge
                     actionScore *= distanceApartScore;
     
                     // Try to plant on richer soil
-                    var richnessScore = GetScaledValue(treeCell.Richness, 1.0, 3.0, 1.0, 2.0) * seedRichnessWeighting;
+                    var richnessScore = GetScaledValue(targetCell.Richness, 1.0, 3.0, 1.0, 2.0) * seedRichnessWeighting;
                     actionScore *= richnessScore;
     
                     // General weighting
-                    actionScore *= generalSeedMultiplier; 
-                    
-                    // We never want to seed next to ourselves
-                    // Note: this is covered by the rule below but we may want to distinguish between them
-                    // at some point so it stays
-                    if(_distanceCalculator.GetDistanceBetweenCells(action.SourceCellIdx, action.TargetCellIdx) == 1)
-                    {
-                        actionScore = 0;
-                    }
-                    
-                    // We never want to seed next to a cell that has another tree
-                    var targetCell = Board.Find(c => c.Index == action.TargetCellIdx);
-                    
-                    var hasNeighbouringTree = false;
-                    
-                    foreach (var neighbourindex in targetCell.Neighbours)
-                    {
-                        if(Trees.Find(t => t.CellIndex == neighbourindex) != null)
-                        {
-                            hasNeighbouringTree = true;
-                        }
-                    }
-                    
-                    if(hasNeighbouringTree)
-                    {
-                        actionScore = 0;
-                    }
+                    actionScore *= generalSeedMultiplier;
                 }
                 else if(action.Type == "GROW")
                 {
-                    var tree = Trees.Find(t => t.CellIndex == action.TargetCellIdx);                
+                    var tree = Trees.Find(t => t.CellIndex == action.TargetCellIdx);    
+                                        
+                    // Day    | t-5 | t-4 | t-3 | t-2 | t-1 |
+                    // Action |  S  |  1  |  2  |  3  |  C  |
+                    //
+                    // If we have only 2 rounds left we can only grow a 2 to completion by the end (since we have to wait a day to complete)
+                    if(Round == _totalRounds-2 && tree.Size < 3)
+                    {
+                        actionScore = 0;
+                    }
+                    // If we have only 3 rounds left we can only grow a 1 to completion by the end (since we have to wait a day to complete)
+                    else if(Round == _totalRounds-3 && tree.Size < 2)
+                    {
+                        actionScore = 0;
+                    }    
+                    else if(Round == _totalRounds-4 && tree.Size < 1)
+                    {
+                        actionScore = 0;
+                    }        
                     
-                    // Prioritise growing by richness  
-                    //Console.Error.WriteLine("---------------------------------------------");
-                    //Console.Error.WriteLine($"Richness score: {GetScaledValue(treeCell.richness, 1.0, 3.0, 1.0, 2.0) * richnessWeighting}");                                    
-                    actionScore *= GetScaledValue(treeCell.Richness, 1.0, 3.0, 1.0, 2.0) * richnessWeighting;
+                    // Prioritise growing by richness                                  
+                    actionScore *= GetScaledValue(targetCell.Richness, 1.0, 3.0, 1.0, 2.0) * richnessWeighting;
     
                     // We prefer to grow fewer trees of the same size   
                     // get scaling min and max
@@ -402,36 +406,18 @@ namespace Spring2021Challenge
                     // Invert it because smaller is better
                     var smallestCostMultiplier = GetScaledValue(amountOfThisSize, maxTreeCount, minTreeCount, 1.0, 2.0);
                     smallestCostMultiplier *= smallestCostWeighting;
-                    Console.Error.WriteLine($"smallestCostMultiplier: {smallestCostMultiplier}");
                     actionScore *= smallestCostMultiplier;
-                    Console.Error.WriteLine($"generalGrowMultiplier: {generalGrowMultiplier}");
     
-                    // If this is a sizeTo3 add the final grow multiplier. This'll do nothing unless growing will take it to 3 for the last move
-                    //if (sizeGoingTo == 3)
-                    //{
-                    //    actionScore *= toSize3Multiplier;
-                    //}
-                    //else if (sizeGoingTo == 2)
-                    //{
-                    // *= toSize2Multiplier;
-                    //
-    
-                    //ingTo == 1)
-                    //
-                    // *= toSize1Multiplier;
-                    //
     
                     // General weighting
-                    actionScore *= generalGrowMultiplier;                  
+                    actionScore *= generalGrowMultiplier; 
                 }
     
                 actionsWithScores.Add(new Tuple<Action, double> ( action, actionScore));
             }
     
             // Output all actions with scores
-            OutputActionsAndScores(actionsWithScores);
-    
-            Console.Error.WriteLine($"{actionsWithScores.OrderBy(a => a.Item2).Last().Item1.Type}");
+            OutputActionsAndScores(actionsWithScores.OrderBy(a => a.Item2).ToList());
     
             return actionsWithScores.OrderBy(a => a.Item2).Last().Item1;
         }
@@ -577,5 +563,5 @@ namespace Spring2021Challenge
     }
 }
 
-// Previous Rank: 1,249
-// Current Rank: 930
+// Previous Rank: 993
+// Current Rank: 

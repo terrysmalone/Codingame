@@ -207,7 +207,6 @@ namespace Spring2021Challenge
             // TO Do
             // Try to complete and reseed in one move. If we can't, seed on the turn after a complete
             // Tidy up and refactor  
-            // Remove weighting scores completely
 
             // COMPLETE
             // Is it sensible to all out COMPLETE after 3 size 3 trees. It seems too rigid a heuristic
@@ -216,7 +215,8 @@ namespace Spring2021Challenge
             // SEED
             // Relax the no seed next door rule after a while. Maybe when there are a certain number of trees
             // If we have 2 points left spew seeds. It could win us a draw
-            var actionsWithScores = new List<Tuple<Action, double>>();
+
+          var actionsWithScores = new List<Tuple<Action, double>>();
     
             var numberOfTrees = CountTreeSizes(); 
     
@@ -274,6 +274,15 @@ namespace Spring2021Challenge
                     //
                     // Day    | t-5 | t-4 | t-3 | t-2 | t-1 |
                     // Action |  S  |  1  |  2  |  3  |  C  |
+
+                    // We never want to seed next to ourselves
+                    // Note: this is covered by the rule below but we may want to distinguish between them
+                    // at some point so it stays
+                    if(_distanceCalculator.GetDistanceBetweenCells(action.SourceCellIdx, action.TargetCellIdx) == 1)
+                    {
+                        actionScore = 0;
+                    }
+                    
                     
                     if(SeedHasDirectNeighbour(targetCell) || Round >= _totalRounds-5)
                     {
@@ -349,7 +358,7 @@ namespace Spring2021Challenge
                         var sunPoints = calculateSunPoints.CalculateSunPoints();
                         //Console.Error.WriteLine($"My       points: {sunPoints.Item1}");
                         //Console.Error.WriteLine($"Opponent points: {sunPoints.Item2}");
-                        calculateSunPoints.UndoAction(action);
+                        calculateSunPoints.UndoLastAction();
 
                         var sunPointScore = (sunPoints.Item1 - sunPoints.Item2) - baseLineScore;
                         
@@ -658,10 +667,21 @@ namespace Spring2021Challenge
 
             return new Tuple<int, int>(mySunPoints, opponentSunPoints);
         }
+        
+        Action _lastAction;
+        Tree _lastRemovedTree;
 
         internal void DoAction(Action action)
         {
-            if (action.Type == "GROW")
+            _lastAction = action;
+            
+            if(action.Type == "COMPLETE")
+            {
+                _lastRemovedTree = _trees.Find(t => t.CellIndex == action.TargetCellIdx);        // We probably need to deep copy here
+                
+                _trees.Remove(_lastRemovedTree);
+            }
+            else if (action.Type == "GROW")
             {
                 var tree = _trees.Find(t => t.CellIndex == action.TargetCellIdx);
 
@@ -669,11 +689,15 @@ namespace Spring2021Challenge
             }
         }
         
-        internal void UndoAction(Action action)
+        internal void UndoLastAction()
         {
-            if (action.Type == "GROW")
+            if(_lastAction.Type == "COMPLETE")
             {
-                var tree = _trees.Find(t => t.CellIndex == action.TargetCellIdx);
+                _trees.Add(_lastRemovedTree);
+            }
+            else if (_lastAction.Type == "GROW")
+            {
+                var tree = _trees.Find(t => t.CellIndex == _lastAction.TargetCellIdx);
 
                 tree.Size--;
             }

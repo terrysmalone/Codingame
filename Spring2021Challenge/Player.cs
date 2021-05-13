@@ -294,10 +294,11 @@ namespace Spring2021Challenge
                     // Trees <= 6 && direct neighbour
                     // Trees >6 && Trees <= 8 && >1 neighbour
                     // Trees > 8 && direct neighbour
-                    if(   (Trees.Count(t => t.IsMine) <= 6 && SeedHasDirectNeighbour(targetCell))
+                    /** if(   (Trees.Count(t => t.IsMine) <= 6 && SeedHasDirectNeighbour(targetCell))
                           || (Trees.Count(t => t.IsMine) > 6 && Trees.Count(t => t.IsMine) <= 8 && NumberOfSurroundingTrees(targetCell) > 1) 
                           || (Trees.Count(t => t.IsMine) > 8 && SeedHasDirectNeighbour(targetCell)) 
-                          || Round >= _totalRounds-5)
+                          || Round >= _totalRounds-5) **/
+                    if(SeedHasDirectNeighbour(targetCell) || Round >= _totalRounds-5) 
                     {
                         actionScore = 0;
                     }

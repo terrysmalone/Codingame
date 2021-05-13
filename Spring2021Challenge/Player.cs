@@ -236,36 +236,41 @@ namespace Spring2021Challenge
                 }
                 else if(action.Type == "COMPLETE")
                 {
-                    var sunPointScore = CalculateSunPointScore(sunPointCalculator, action, false);
-                    
                     // Until endgame Never complete if we have 3 or fewer size 3 trees 
                     if(Round <= 21 && numberOfTrees[3] <= 3)
                     {
                         actionScore = 0;
                     }
-                    
-                    // Higher score for completing rich soil trees
-                    var richnessScore = GetScaledValue(targetCell.Richness, 1.0, 3.0, 1.0, 2.0);
-                    actionScore *= richnessScore;
-    
-                    // More likely to complete near the end of the game
-                    // We don't want to scale this because it should be heavily biased towards completing at the end of the game
-                    var dayScore = 1.0;
-                    
-                    if(Round > 22)
+                    else
                     {
-                        dayScore = 4.0;                 
+                        // Higher score for completing rich soil trees
+                        var richnessScore = GetScaledValue(targetCell.Richness, 1.0, 3.0, 1.0, 2.0);
+                        actionScore *= richnessScore;
+                        
+                        // Adding plus 3 is a simple way to scale it to 0, since completing seems like a loss. 
+                        //var sunPointScore = CalculateSunPointScore(sunPointCalculator, action, false) + 3;
+
+                        //actionScore *= sunPointScore;
+
+                        // More likely to complete near the end of the game
+                        // We don't want to scale this because it should be heavily biased towards completing at the end of the game
+                        var dayScore = 1.0;
+
+                        if (Round > 22)
+                        {
+                            dayScore = 8.0;
+                        }
+                        else if (Round > 20)
+                        {
+                            dayScore = 6.0;
+                        }
+                        else if (Round > 18)
+                        {
+                            dayScore = 4.0;
+                        }
+
+                        actionScore *= dayScore;
                     }
-                    else if(Round > 20)
-                    {
-                        dayScore = 3.0;                
-                    }
-                    else if(Round > 18)
-                    {
-                        dayScore = 2.0;                
-                    }  
-    
-                    actionScore *= dayScore;
                 }
                 else if(action.Type == "SEED")
                 {  
@@ -716,6 +721,7 @@ namespace Spring2021Challenge
         
         Action _lastAction;
         Tree _lastRemovedTree;
+        Tree _lastSeededTree;
 
         internal void DoAction(Action action)
         {
@@ -723,9 +729,16 @@ namespace Spring2021Challenge
             
             if(action.Type == "COMPLETE")
             {
-                //_lastRemovedTree = _trees.Find(t => t.CellIndex == action.TargetCellIdx);        // We probably need to deep copy here
+                _lastRemovedTree = _trees.Find(t => t.CellIndex == action.TargetCellIdx);        // We probably need to deep copy here
                 
-                //_trees.Remove(_lastRemovedTree);
+                _trees.Remove(_lastRemovedTree);
+            }
+            if(action.Type == "SEED")
+            {
+                // We have to assume it's not
+                _lastSeededTree = new Tree(action.TargetCellIdx, 0, true, false);
+                   
+                _trees.Add(_lastSeededTree);
             }
             else if (action.Type == "GROW")
             {
@@ -739,7 +752,11 @@ namespace Spring2021Challenge
         {
             if(_lastAction.Type == "COMPLETE")
             {
-                //_trees.Add(_lastRemovedTree);
+                _trees.Add(_lastRemovedTree);
+            }
+            if(_lastAction.Type == "SEED")
+            {
+                _trees.Remove(_lastSeededTree);
             }
             else if (_lastAction.Type == "GROW")
             {

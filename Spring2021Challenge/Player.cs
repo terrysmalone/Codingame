@@ -365,13 +365,6 @@ namespace Spring2021Challenge
                     {
                         var sunPointScore = 1.0;
 
-                        // Don't calculate sun score on round 22 or 23. It's a minor optimisation but I've lost
-                        // because of it before
-                        if (Round < _totalRounds - 2)
-                        {
-                            sunPointScore = CalculateSunPointScore(sunPointCalculator, action, false);
-                        }
-
                         // We don't want any factors other than sun score moving this up by more than 1 decimal place.
                         // Scale all other scores between 0 and 0.99
 

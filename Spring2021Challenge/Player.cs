@@ -363,7 +363,7 @@ namespace Spring2021Challenge
                     // If we've hard blocked growing by this stage don't bother scoring it
                     if (actionScore != 0)
                     {
-                        var sunPointScore = 1.0;
+                        var sunPointScore = CalculateSunPointScore(sunPointCalculator, action, false);
 
                         // We don't want any factors other than sun score moving this up by more than 1 decimal place.
                         // Scale all other scores between 0 and 0.99

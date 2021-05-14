@@ -184,6 +184,8 @@ namespace Spring2021Challenge
     
             _distanceCalculator = new DistanceCalculator(Board);
         }
+        int _lastPlantedOnRound = 0;
+        
     
         public Action GetNextAction()
         {
@@ -237,7 +239,7 @@ namespace Spring2021Challenge
                 else if(action.Type == "COMPLETE")
                 {
                     // Until endgame Never complete if we have 3 or fewer size 3 trees 
-                    if(Round <= 21 && numberOfTrees[3] <= 3)
+                    if(Round < 18 && numberOfTrees[3] <= 3)
                     {
                         actionScore = 0;
                     }
@@ -264,10 +266,15 @@ namespace Spring2021Challenge
                         {
                             dayScore = 6.0;
                         }
-                        else if (Round > 18)
+                        else if (Round > 19)
                         {
                             dayScore = 4.0;
                         }
+                        else if (Round == 18 || Round == 19)
+                        {
+                            dayScore = 100.0;
+                        }
+                        
 
                         actionScore *= dayScore;
                     }
@@ -294,11 +301,9 @@ namespace Spring2021Challenge
                     // Trees <= 6 && direct neighbour
                     // Trees >6 && Trees <= 8 && >1 neighbour
                     // Trees > 8 && direct neighbour
-                    /** if(   (Trees.Count(t => t.IsMine) <= 6 && SeedHasDirectNeighbour(targetCell))
-                          || (Trees.Count(t => t.IsMine) > 6 && Trees.Count(t => t.IsMine) <= 8 && NumberOfSurroundingTrees(targetCell) > 1) 
-                          || (Trees.Count(t => t.IsMine) > 8 && SeedHasDirectNeighbour(targetCell)) 
-                          || Round >= _totalRounds-5) **/
-                    if(Round >= _totalRounds-5 || SeedHasDirectNeighbour(targetCell)) 
+                    if(   Round >= _totalRounds-5 
+                       || Round == _lastPlantedOnRound
+                       || SeedHasDirectNeighbour(targetCell))
                     {
                         actionScore = 0;
                     }
@@ -383,9 +388,16 @@ namespace Spring2021Challenge
             }
     
             // Output all actions with scores
-            OutputActionsAndScores(actionsWithScores.OrderBy(a => a.Item2).ToList(), false);
+            OutputActionsAndScores(actionsWithScores.OrderBy(a => a.Item2).ToList(), true);
     
-            return actionsWithScores.OrderBy(a => a.Item2).Last().Item1;
+            var highestScoringAction = actionsWithScores.OrderBy(a => a.Item2).Last().Item1;
+
+            if(highestScoringAction.Type == "SEED")
+            {
+                _lastPlantedOnRound = Round;
+            }
+
+            return highestScoringAction;
         }
         
         private static int CalculateSunPointScore(SunPointCalculator sunPointCalculator, Action action, bool outputDebugging)

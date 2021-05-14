@@ -197,7 +197,7 @@ namespace Spring2021Challenge
                 nextSunDirection = 0;
             }
             
-            var calculateSunPoints = new SunPointCalculator(Board, Trees, nextSunDirection);
+            var sunPointCalculator = new SunPointCalculator(Board, Trees, nextSunDirection);
             
             //------------------------------------------------------------------------
             
@@ -207,7 +207,6 @@ namespace Spring2021Challenge
             // TO Do
             // Try to complete and reseed in one move. If we can't, seed on the turn after a complete
             // Tidy up and refactor  
-            // Remove weighting scores completely
 
             // COMPLETE
             // Is it sensible to all out COMPLETE after 3 size 3 trees. It seems too rigid a heuristic
@@ -216,13 +215,14 @@ namespace Spring2021Challenge
             // SEED
             // Relax the no seed next door rule after a while. Maybe when there are a certain number of trees
             // If we have 2 points left spew seeds. It could win us a draw
-            var actionsWithScores = new List<Tuple<Action, double>>();
+
+          var actionsWithScores = new List<Tuple<Action, double>>();
     
             var numberOfTrees = CountTreeSizes(); 
     
             // If we can't get another complete before the end just wait        
             var waitScore = 1.0;
-
+            
             // Score every action and then order them
             foreach(var action in PossibleActions)
             {  
@@ -235,35 +235,42 @@ namespace Spring2021Challenge
                     actionScore *= waitScore;
                 }
                 else if(action.Type == "COMPLETE")
-                { 
+                {
                     // Until endgame Never complete if we have 3 or fewer size 3 trees 
                     if(Round <= 21 && numberOfTrees[3] <= 3)
                     {
                         actionScore = 0;
                     }
-                    
-                    // Higher score for completing rich soil trees
-                    var richnessScore = GetScaledValue(targetCell.Richness, 1.0, 3.0, 1.0, 2.0);
-                    actionScore *= richnessScore;
-    
-                    // More likely to complete near the end of the game
-                    // We don't want to scale this because it should be heavily biased towards completing at the end of the game
-                    var dayScore = 1.0;
-                    
-                    if(Round > 22)
+                    else
                     {
-                        dayScore = 4.0;                 
+                        // Higher score for completing rich soil trees
+                        var richnessScore = GetScaledValue(targetCell.Richness, 1.0, 3.0, 1.0, 2.0);
+                        actionScore *= richnessScore;
+                        
+                        // Adding plus 3 is a simple way to scale it to 0, since completing seems like a loss. 
+                        //var sunPointScore = CalculateSunPointScore(sunPointCalculator, action, false) + 3;
+
+                        //actionScore *= sunPointScore;
+
+                        // More likely to complete near the end of the game
+                        // We don't want to scale this because it should be heavily biased towards completing at the end of the game
+                        var dayScore = 1.0;
+
+                        if (Round > 22)
+                        {
+                            dayScore = 8.0;
+                        }
+                        else if (Round > 20)
+                        {
+                            dayScore = 6.0;
+                        }
+                        else if (Round > 18)
+                        {
+                            dayScore = 4.0;
+                        }
+
+                        actionScore *= dayScore;
                     }
-                    else if(Round > 20)
-                    {
-                        dayScore = 3.0;                
-                    }
-                    else if(Round > 18)
-                    {
-                        dayScore = 2.0;                
-                    }  
-    
-                    actionScore *= dayScore;
                 }
                 else if(action.Type == "SEED")
                 {  
@@ -274,8 +281,24 @@ namespace Spring2021Challenge
                     //
                     // Day    | t-5 | t-4 | t-3 | t-2 | t-1 |
                     // Action |  S  |  1  |  2  |  3  |  C  |
+
+                    // We never want to seed next to ourselves
+                    // Note: this is covered by the rule below but we may want to distinguish between them
+                    // at some point so it stays
+                    //if(_distanceCalculator.GetDistanceBetweenCells(action.SourceCellIdx, action.TargetCellIdx) == 1)
+                    //{
+                    //    actionScore = 0;
+                    //}
                     
-                    if(SeedHasDirectNeighbour(targetCell) || Round >= _totalRounds-5)
+                    // Change to 
+                    // Trees <= 6 && direct neighbour
+                    // Trees >6 && Trees <= 8 && >1 neighbour
+                    // Trees > 8 && direct neighbour
+                    /** if(   (Trees.Count(t => t.IsMine) <= 6 && SeedHasDirectNeighbour(targetCell))
+                          || (Trees.Count(t => t.IsMine) > 6 && Trees.Count(t => t.IsMine) <= 8 && NumberOfSurroundingTrees(targetCell) > 1) 
+                          || (Trees.Count(t => t.IsMine) > 8 && SeedHasDirectNeighbour(targetCell)) 
+                          || Round >= _totalRounds-5) **/
+                    if(SeedHasDirectNeighbour(targetCell) || Round >= _totalRounds-5) 
                     {
                         actionScore = 0;
                     }
@@ -339,20 +362,8 @@ namespace Spring2021Challenge
                     // If we've hard blocked growing by this stage don't bother scoring it
                     if (actionScore != 0)
                     {
-                        // Baseline is how many points we'll get if we do nothing
-                        var baseLineSunPoints = calculateSunPoints.CalculateSunPoints();
-                        var baseLineScore = baseLineSunPoints.Item1 - baseLineSunPoints.Item2;
+                        var sunPointScore = CalculateSunPointScore(sunPointCalculator, action, false);
 
-                        Console.Error.WriteLine("--------------------------------");
-                        //OutputAction(action);
-                        calculateSunPoints.DoAction(action);
-                        var sunPoints = calculateSunPoints.CalculateSunPoints();
-                        //Console.Error.WriteLine($"My       points: {sunPoints.Item1}");
-                        //Console.Error.WriteLine($"Opponent points: {sunPoints.Item2}");
-                        calculateSunPoints.UndoAction(action);
-
-                        var sunPointScore = (sunPoints.Item1 - sunPoints.Item2) - baseLineScore;
-                        
                         // We don't want any factors other than sun score moving this up by more than 1 decimal place.
                         // Scale all other scores between 0 and 0.99
 
@@ -376,11 +387,37 @@ namespace Spring2021Challenge
             }
     
             // Output all actions with scores
-            OutputActionsAndScores(actionsWithScores.OrderBy(a => a.Item2).Reverse().ToList(), false);
+            OutputActionsAndScores(actionsWithScores.OrderBy(a => a.Item2).ToList(), false);
     
             return actionsWithScores.OrderBy(a => a.Item2).Last().Item1;
         }
-    
+        
+        private static int CalculateSunPointScore(SunPointCalculator sunPointCalculator, Action action, bool outputDebugging)
+        {
+            // Baseline is how many points we'll get if we do nothing
+            var baseLineSunPoints = sunPointCalculator.CalculateSunPoints();
+            var baseLineScore = baseLineSunPoints.Item1 - baseLineSunPoints.Item2;
+
+            if (outputDebugging)
+            {
+                Console.Error.WriteLine("--------------------------------");
+                OutputAction(action);
+            }
+
+            sunPointCalculator.DoAction(action);
+            var sunPoints = sunPointCalculator.CalculateSunPoints();
+
+            if (outputDebugging)
+            {
+                Console.Error.WriteLine($"My       points: {sunPoints.Item1}");
+                Console.Error.WriteLine($"Opponent points: {sunPoints.Item2}");
+            }
+
+            sunPointCalculator.UndoLastAction();
+
+            return (sunPoints.Item1 - sunPoints.Item2) - baseLineScore;
+        }
+        
         private static double GetScaledValue(double valueToScale, double inputMin, double inputMax, double outputMin, double outputMax)
         {
             if(inputMax == inputMin) { return 1.0; }
@@ -412,6 +449,21 @@ namespace Spring2021Challenge
             
             return false;
         }
+        
+        private int NumberOfSurroundingTrees(Cell cell)
+        {
+            var count = 0;
+            
+            foreach (var neighbourindex in cell.Neighbours)
+            {
+                if(Trees.Find(t => t.CellIndex == neighbourindex && t.IsMine) != null)
+                {
+                    count++;
+                }
+            }
+            
+            return count;
+        }
     
         // Console error output
     
@@ -423,7 +475,7 @@ namespace Spring2021Challenge
                 Console.Error.WriteLine($"bestTree.size: {tree.Size}");
             }
         }
-    
+
         private static void OutputActionsAndScores(List<Tuple<Action, double>> actionsWithScores, bool showZeroScoredActions = true)
         {
             foreach(var actionWithScore in actionsWithScores)
@@ -574,18 +626,6 @@ namespace Spring2021Challenge
 
             return CalculatePoints();
         }
-
-        private bool IsTreeInSpookyShadow(int castingTreeSize, int shadowedTreeIndex)
-        {
-            // If the tree casts a shadow on a tree that's smaller than or equal to it, then it's spooky
-            if (_trees.Find(t => t.CellIndex == shadowedTreeIndex) != null
-                && _trees.Find(t => t.CellIndex == shadowedTreeIndex).Size <= castingTreeSize)
-            {
-                return true;
-            }
-
-            return false;
-        }
         
         private void CalculateShadowedCells()
         {
@@ -639,6 +679,18 @@ namespace Spring2021Challenge
             }
         }
         
+        private bool IsTreeInSpookyShadow(int castingTreeSize, int shadowedTreeIndex)
+        {
+            // If the tree casts a shadow on a tree that's smaller than or equal to it, then it's spooky
+            if (_trees.Find(t => t.CellIndex == shadowedTreeIndex) != null
+                && _trees.Find(t => t.CellIndex == shadowedTreeIndex).Size <= castingTreeSize)
+            {
+                return true;
+            }
+
+            return false;
+        }
+        
         private Tuple<int, int> CalculatePoints()
         {
             var mySunPoints = 0;
@@ -646,22 +698,50 @@ namespace Spring2021Challenge
             
             foreach (var tree in _trees.Where(tree => !_inSpookyShadow[tree.CellIndex]))
             {
+                //Console.Error.WriteLine("============================================");
+                
                 if (tree.IsMine)
                 {
+                    //Console.Error.WriteLine("My tree");
+                    //Console.Error.WriteLine($"tree.CellIndex: {tree.CellIndex}");
+                    //Console.Error.WriteLine($"tree.Size: {tree.Size}");
+
                     mySunPoints += tree.Size;
                 }
                 else
                 {
+                    //Console.Error.WriteLine("Opponents tree");
+                    //Console.Error.WriteLine($"tree.CellIndex: {tree.CellIndex}");
+                    //Console.Error.WriteLine($"tree.Size: {tree.Size}"); 
                     opponentSunPoints += tree.Size;
                 }
             }
 
             return new Tuple<int, int>(mySunPoints, opponentSunPoints);
         }
+        
+        Action _lastAction;
+        Tree _lastRemovedTree;
+        Tree _lastSeededTree;
 
         internal void DoAction(Action action)
         {
-            if (action.Type == "GROW")
+            _lastAction = action;
+            
+            if(action.Type == "COMPLETE")
+            {
+                _lastRemovedTree = _trees.Find(t => t.CellIndex == action.TargetCellIdx);        // We probably need to deep copy here
+                
+                _trees.Remove(_lastRemovedTree);
+            }
+            if(action.Type == "SEED")
+            {
+                // We have to assume it's not
+                _lastSeededTree = new Tree(action.TargetCellIdx, 0, true, false);
+                   
+                _trees.Add(_lastSeededTree);
+            }
+            else if (action.Type == "GROW")
             {
                 var tree = _trees.Find(t => t.CellIndex == action.TargetCellIdx);
 
@@ -669,11 +749,19 @@ namespace Spring2021Challenge
             }
         }
         
-        internal void UndoAction(Action action)
+        internal void UndoLastAction()
         {
-            if (action.Type == "GROW")
+            if(_lastAction.Type == "COMPLETE")
             {
-                var tree = _trees.Find(t => t.CellIndex == action.TargetCellIdx);
+                _trees.Add(_lastRemovedTree);
+            }
+            if(_lastAction.Type == "SEED")
+            {
+                _trees.Remove(_lastSeededTree);
+            }
+            else if (_lastAction.Type == "GROW")
+            {
+                var tree = _trees.Find(t => t.CellIndex == _lastAction.TargetCellIdx);
 
                 tree.Size--;
             }

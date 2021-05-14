@@ -298,7 +298,7 @@ namespace Spring2021Challenge
                           || (Trees.Count(t => t.IsMine) > 6 && Trees.Count(t => t.IsMine) <= 8 && NumberOfSurroundingTrees(targetCell) > 1) 
                           || (Trees.Count(t => t.IsMine) > 8 && SeedHasDirectNeighbour(targetCell)) 
                           || Round >= _totalRounds-5) **/
-                    if(SeedHasDirectNeighbour(targetCell) || Round >= _totalRounds-5) 
+                    if(Round >= _totalRounds-5 || SeedHasDirectNeighbour(targetCell)) 
                     {
                         actionScore = 0;
                     }
@@ -325,10 +325,10 @@ namespace Spring2021Challenge
                         actionScore *= richnessScore;
                         
                         // If there's 0 or 1 seeds prioritise planting more
-                        if(numberOfTrees[0] < 2)
-                        {
-                            actionScore *=5;
-                        }
+                        //if(numberOfTrees[0] < 2)
+                        //{
+                        //    actionScore *=5;
+                        //}
                     }
                 }
                 else if(action.Type == "GROW")
@@ -362,6 +362,12 @@ namespace Spring2021Challenge
                     // If we've hard blocked growing by this stage don't bother scoring it
                     if (actionScore != 0)
                     {
+                        // If there's a level 0 seed that can be grown, prioirtise growing it. 
+                        if(tree.Size == 0)
+                        {
+                            actionScore *= 10;
+                        }
+
                         var sunPointScore = CalculateSunPointScore(sunPointCalculator, action, false);
 
                         // We don't want any factors other than sun score moving this up by more than 1 decimal place.

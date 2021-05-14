@@ -345,29 +345,19 @@ namespace Spring2021Challenge
                         actionScore = 0;
                     }
                     // If we have only 2 rounds left we can only grow a 2 to completion by the end (since we have to wait a day to complete)
-                    if(Round == _totalRounds-2 && tree.Size < 3)
+                    if(Round == _totalRounds-2 && tree.Size <= 1)
                     {
                         actionScore = 0;
                     }
                     // If we have only 3 rounds left we can only grow a 1 to completion by the end (since we have to wait a day to complete)
-                    else if(Round == _totalRounds-3 && tree.Size < 2)
+                    else if(Round == _totalRounds-3 && tree.Size <= 0)
                     {
                         actionScore = 0;
-                    }    
-                    else if(Round == _totalRounds-4 && tree.Size < 1)
-                    {
-                        actionScore = 0;
-                    }
+                    }  
 
                     // If we've hard blocked growing by this stage don't bother scoring it
                     if (actionScore != 0)
                     {
-                        // If there's a level 0 seed that can be grown, prioirtise growing it. 
-                        if(tree.Size == 0)
-                        {
-                            actionScore *= 10;
-                        }
-
                         var sunPointScore = CalculateSunPointScore(sunPointCalculator, action, false);
 
                         // We don't want any factors other than sun score moving this up by more than 1 decimal place.

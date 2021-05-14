@@ -363,7 +363,14 @@ namespace Spring2021Challenge
                     // If we've hard blocked growing by this stage don't bother scoring it
                     if (actionScore != 0)
                     {
-                        var sunPointScore = CalculateSunPointScore(sunPointCalculator, action, false);
+                        var sunPointScore = 1.0;
+
+                        // Don't calculate sun score on round 22 or 23. It's a minor optimisation but I've lost
+                        // because of it before
+                        if (Round < _totalRounds - 2)
+                        {
+                            sunPointScore = CalculateSunPointScore(sunPointCalculator, action, false);
+                        }
 
                         // We don't want any factors other than sun score moving this up by more than 1 decimal place.
                         // Scale all other scores between 0 and 0.99
@@ -381,6 +388,21 @@ namespace Spring2021Challenge
                         nonSunScore += GetScaledValue(amountOfThisSize, maxTreeCount, minTreeCount, 1.0, 2.0);
   
                         actionScore = sunPointScore + GetScaledValue(nonSunScore, 0, 2, 0, 0.99);
+                        
+                        // If we have only 2 rounds left prioritise getting size 2 trees to size 3
+                        if(Round == _totalRounds-2 && tree.Size == 2)
+                        {
+                            actionScore *= 10; 
+                        }
+                        // If we have only 3 rounds left prioritise getting size 1 trees to size 2
+                        else if(Round == _totalRounds-3 && tree.Size == 1)
+                        {
+                            actionScore *= 10;
+                        }
+                        else if(Round == _totalRounds-4 && tree.Size == 0)
+                        {
+                            actionScore *= 10;
+                        }
                     }
                 }
     

@@ -239,7 +239,7 @@ namespace Spring2021Challenge
                 else if(action.Type == "COMPLETE")
                 {
                     // Until endgame Never complete if we have 3 or fewer size 3 trees 
-                    if(Round <= 21 && numberOfTrees[3] <= 3)
+                    if(Round < 18 && numberOfTrees[3] <= 3)
                     {
                         actionScore = 0;
                     }
@@ -266,10 +266,15 @@ namespace Spring2021Challenge
                         {
                             dayScore = 6.0;
                         }
-                        else if (Round > 18)
+                        else if (Round > 19)
                         {
                             dayScore = 4.0;
                         }
+                        else if (Round == 18 || Round == 19)
+                        {
+                            dayScore = 100.0;
+                        }
+                        
 
                         actionScore *= dayScore;
                     }
@@ -383,7 +388,7 @@ namespace Spring2021Challenge
             }
     
             // Output all actions with scores
-            OutputActionsAndScores(actionsWithScores.OrderBy(a => a.Item2).ToList(), false);
+            OutputActionsAndScores(actionsWithScores.OrderBy(a => a.Item2).ToList(), true);
     
             var highestScoringAction = actionsWithScores.OrderBy(a => a.Item2).Last().Item1;
 

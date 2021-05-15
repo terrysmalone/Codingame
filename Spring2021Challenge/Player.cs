@@ -175,20 +175,21 @@ namespace Spring2021Challenge
         private readonly int _totalRounds = 24;
 
         private int _sunDirection = 0;
-    
+
         public Game()
         {
             Board = new List<Cell>();
             PossibleActions = new List<Action>();
             Trees = new List<Tree>();
-    
+
             _distanceCalculator = new DistanceCalculator(Board);
         }
-        int _lastPlantedOnRound = 0;
-        
+
+        private int _moveNum = 0;
     
         public Action GetNextAction()
         {
+            Console.Error.WriteLine($"_moveNum: {_moveNum}");
             _sunDirection = Round % 6;
             
             //------------------------------------------------------------------------
@@ -292,27 +293,14 @@ namespace Spring2021Challenge
                     // We never want to seed next to ourselves
                     // Note: this is covered by the rule below but we may want to distinguish between them
                     // at some point so it stays
-                    //if(_distanceCalculator.GetDistanceBetweenCells(action.SourceCellIdx, action.TargetCellIdx) == 1)
-                    //{
-                    //    actionScore = 0;
-                    //}
-                    
-                    // Change to 
-                    // Trees <= 6 && direct neighbour
-                    // Trees >6 && Trees <= 8 && >1 neighbour
-                    // Trees > 8 && direct neighbour
                     if(   Round >= _totalRounds-5 
-                       || Round == _lastPlantedOnRound
+                       || numberOfTrees[0] > 0
                        || SeedHasDirectNeighbour(targetCell))
                     {
                         actionScore = 0;
                     }
                     else
                     {
-                        // The more seeds there are the less likely we are to seed
-                        // Mote: This is very crude. There should be a better way to do this (maybe scale it)               
-                        actionScore /= ((numberOfTrees[0] + 1));
-        
                         //Prefer planting seeds in the centre                
                         // The target cell can be 0-3 away. If 3 away we want a 1 * multiplier, if 0 away we want 2. 
                         var distanceFromCentre = _distanceCalculator.GetDistanceFromCentre(action.TargetCellIdx);
@@ -328,12 +316,6 @@ namespace Spring2021Challenge
                         // Try to plant on richer soil
                         var richnessScore = GetScaledValue(targetCell.Richness, 1.0, 3.0, 1.0, 2.0);
                         actionScore *= richnessScore;
-                        
-                        // If there's 0 or 1 seeds prioritise planting more
-                        //if(numberOfTrees[0] < 2)
-                        //{
-                        //    actionScore *=5;
-                        //}
                     }
                 }
                 else if(action.Type == "GROW")
@@ -407,10 +389,7 @@ namespace Spring2021Challenge
     
             var highestScoringAction = actionsWithScores.OrderBy(a => a.Item2).Last().Item1;
 
-            if(highestScoringAction.Type == "SEED")
-            {
-                _lastPlantedOnRound = Round;
-            }
+            _moveNum++;
 
             return highestScoringAction;
         }

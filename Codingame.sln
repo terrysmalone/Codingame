@@ -2,6 +2,8 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Spring2021Challenge", "Spring2021Challenge\Spring2021Challenge.csproj", "{36D7CAE0-AF95-4085-84E9-186EF6958D87}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Fall2020Challenge", "Fall2020Challenge\Fall2020Challenge.csproj", "{D229852D-BDED-49F2-9F9E-C68276AB723C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -12,5 +14,9 @@ Global
 		{36D7CAE0-AF95-4085-84E9-186EF6958D87}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{36D7CAE0-AF95-4085-84E9-186EF6958D87}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{36D7CAE0-AF95-4085-84E9-186EF6958D87}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D229852D-BDED-49F2-9F9E-C68276AB723C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D229852D-BDED-49F2-9F9E-C68276AB723C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D229852D-BDED-49F2-9F9E-C68276AB723C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D229852D-BDED-49F2-9F9E-C68276AB723C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

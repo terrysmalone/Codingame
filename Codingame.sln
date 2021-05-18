@@ -4,6 +4,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Spring2021Challenge", "Spri
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Fall2020Challenge", "Fall2020Challenge\Fall2020Challenge.csproj", "{D229852D-BDED-49F2-9F9E-C68276AB723C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UltimateTicTacToe", "UltimateTicTacToe\UltimateTicTacToe.csproj", "{346C88E6-EA74-4874-A334-8D7A200B9F10}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -18,5 +20,9 @@ Global
 		{D229852D-BDED-49F2-9F9E-C68276AB723C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D229852D-BDED-49F2-9F9E-C68276AB723C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D229852D-BDED-49F2-9F9E-C68276AB723C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{346C88E6-EA74-4874-A334-8D7A200B9F10}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{346C88E6-EA74-4874-A334-8D7A200B9F10}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{346C88E6-EA74-4874-A334-8D7A200B9F10}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{346C88E6-EA74-4874-A334-8D7A200B9F10}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

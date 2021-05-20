@@ -139,7 +139,30 @@ namespace UltimateTicTacToe
 
         public Move GetBestMove(int depth, char startingPlayer)
         {
-            return CalculateMove(depth, startingPlayer);
+            return GetMoveScores(depth, startingPlayer).OrderByDescending((m => m.Item2)).First().Item1;
+        }
+        
+        private List<Tuple<Move, int>> GetMoveScores(int depth, char player)
+        {
+            var moveScores = new List<Tuple<Move, int>>();
+            
+            var validMoves = CalculateValidMoves();
+
+            foreach (var validAction in validMoves) 
+            {
+                var maximisingPlayer = player == 'X';
+                
+                AddMove(validAction.Column, validAction.Row, maximisingPlayer);
+                
+                var score = -Calculate(depth-1, !maximisingPlayer);
+                
+                moveScores.Add(new Tuple<Move, int>(new Move(validAction.Column, validAction.Row), score));
+                
+                UndoMove(validAction.Column, validAction.Row);
+
+            }
+            
+            return moveScores;
         }
 
         private Move CalculateMove(int depth, char player)

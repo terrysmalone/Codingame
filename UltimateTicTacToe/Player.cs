@@ -110,12 +110,10 @@ namespace UltimateTicTacToe
     
     public sealed class TicTacToe
     {
-        private int _startingDepth = 10;
         private char[,] _board;
 
         public Tuple<int, int> GetBestMove(char[,] board, int depth, char startingPlayer)
         {
-            _startingDepth = depth;
             _board = board;
 
             return CalculateMove(depth, startingPlayer);

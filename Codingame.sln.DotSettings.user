@@ -4,6 +4,11 @@
     &lt;TestId&gt;NUnit3x::D1DED8DE-1D5E-4ED7-901C-160C776FF7AD::net5.0::UltimateTicTacToeTest.TicTacToeTests.OneMoveWinEvaluatesProperly_ForPlayerO_Depth1&lt;/TestId&gt;&#xD;
   &lt;/TestAncestor&gt;&#xD;
 &lt;/SessionState&gt;</s:String>
+	<s:String x:Key="/Default/Environment/UnitTesting/UnitTestSessionStore/Sessions/=4f916508_002Dbedb_002D4272_002Da54e_002De770138d4050/@EntryIndexedValue">&lt;SessionState ContinuousTestingMode="0" Name="TicTacToeTests #3" xmlns="urn:schemas-jetbrains-com:jetbrains-ut-session"&gt;&#xD;
+  &lt;TestAncestor&gt;&#xD;
+    &lt;TestId&gt;NUnit3x::D1DED8DE-1D5E-4ED7-901C-160C776FF7AD::net5.0::UltimateTicTacToeTest.TicTacToeTests&lt;/TestId&gt;&#xD;
+  &lt;/TestAncestor&gt;&#xD;
+&lt;/SessionState&gt;</s:String>
 	<s:String x:Key="/Default/Environment/UnitTesting/UnitTestSessionStore/Sessions/=7facd516_002D9550_002D4a09_002D8691_002Dbda7edbe2b7c/@EntryIndexedValue">&lt;SessionState ContinuousTestingMode="0" Name="EmptyBoardWithOneDepthIsAsExpected" xmlns="urn:schemas-jetbrains-com:jetbrains-ut-session"&gt;&#xD;
   &lt;TestAncestor&gt;&#xD;
     &lt;TestId&gt;NUnit3x::D1DED8DE-1D5E-4ED7-901C-160C776FF7AD::net5.0::UltimateTicTacToeTest.TicTacToeTests&lt;/TestId&gt;&#xD;

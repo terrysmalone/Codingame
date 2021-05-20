@@ -8,6 +8,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UltimateTicTacToe", "Ultima
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PowerOfThor_CodeGolf", "PowerOfThor_CodeGolf\PowerOfThor_CodeGolf.csproj", "{C51F05E8-40B3-459E-9CEB-92DDF84A449A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UltimateTicTacToeTest", "UltimateTicTacToeTest\UltimateTicTacToeTest.csproj", "{D1DED8DE-1D5E-4ED7-901C-160C776FF7AD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -30,5 +32,9 @@ Global
 		{C51F05E8-40B3-459E-9CEB-92DDF84A449A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C51F05E8-40B3-459E-9CEB-92DDF84A449A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C51F05E8-40B3-459E-9CEB-92DDF84A449A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D1DED8DE-1D5E-4ED7-901C-160C776FF7AD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D1DED8DE-1D5E-4ED7-901C-160C776FF7AD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D1DED8DE-1D5E-4ED7-901C-160C776FF7AD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D1DED8DE-1D5E-4ED7-901C-160C776FF7AD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

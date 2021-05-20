@@ -23,7 +23,7 @@ namespace UltimateTicTacToe
                 var opponentRow = int.Parse(inputs[0]);
                 var opponentCol = int.Parse(inputs[1]);
                 
-                Console.Error.WriteLine($"opponentRow:{opponentRow}, opponentCol:{opponentCol}");
+                //Console.Error.WriteLine($"opponentRow:{opponentRow}, opponentCol:{opponentCol}");
                 
                 if(opponentRow != -1)
                 {
@@ -43,13 +43,10 @@ namespace UltimateTicTacToe
                     var row = int.Parse(inputs[0]);
                     var column = int.Parse(inputs[1]);
                     validActions.Add(new Tuple<int, int>(column, row));
-                    Console.Error.WriteLine($"i:{i}, row:{row}, column:{column}");
+                    //Console.Error.WriteLine($"i:{i}, row:{row}, column:{column}");
                 }
                 
                 game.ValidActions = validActions;
-
-                // Write an action using Console.WriteLine()
-                // To debug: Console.Error.WriteLine("Debug messages...");
                 
                 // If we're first might as well pick a corner
                 if(game.MoveNum == 0)
@@ -71,6 +68,8 @@ namespace UltimateTicTacToe
     {
         internal List<Tuple<int,int>> ValidActions { get; set; }
         
+        
+        
         // '' Empty
         // 'O' Noughts
         // 'X' Crosses
@@ -87,9 +86,13 @@ namespace UltimateTicTacToe
 
         public Tuple<int,int> GetAction()
         {
+            
+            // Identify which board we're playing on (it could be them all)
+                
+            // Make a move on that board
+
             var bestMove = _ticTacToe.GetBestMove(_board, 10, 'O');
-            
-            
+
             if(!ValidActions.Any(a => a.Item1 == bestMove.Item1 && a.Item2 == bestMove.Item2))
             {
                 return ValidActions.First();
@@ -109,12 +112,12 @@ namespace UltimateTicTacToe
     {
         private int _startingDepth = 10;
         private char[,] _board;
-        
+
         public Tuple<int, int> GetBestMove(char[,] board, int depth, char startingPlayer)
         {
             _startingDepth = depth;
             _board = board;
-            
+
             return CalculateMove(depth, startingPlayer);
         }
         
@@ -206,18 +209,6 @@ namespace UltimateTicTacToe
             {
                 score = -EvaluateBoard(currentDepth);
             }
-
-            //if(score != 0)
-            //{
-            //    if(playerPerspective == 'O')
-            //    {
-            //        score += currentDepth;
-            //    }
-            //    else
-            //    {
-            //        score -= currentDepth;
-           //    }
-           // }
             
             return score;
         }

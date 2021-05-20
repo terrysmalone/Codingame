@@ -25,7 +25,7 @@ namespace UltimateTicTacToe
                 
                 if(opponentRow != -1)
                 {
-                    game.AddMove(opponentRow, opponentCol, false);
+                    game.AddMove(opponentCol, opponentRow, false);
                 }
                 
                 //DisplayBoard();
@@ -40,7 +40,7 @@ namespace UltimateTicTacToe
                     
                     var row = int.Parse(inputs[0]);
                     var column = int.Parse(inputs[1]);
-                    validActions.Add(new Tuple<int, int>(row, column));
+                    validActions.Add(new Tuple<int, int>(column, row));
                 }
                 
                 game.ValidActions = validActions;
@@ -68,36 +68,66 @@ namespace UltimateTicTacToe
     {
         internal List<Tuple<int,int>> ValidActions { get; set; }
         
-        // 0 Empty
-        // 1 mine
-        // 2 opponents
-        private int[,] _board = new int[3,3];
+        // '' Empty
+        // 'O' Noughts
+        // 'X' Crosses
+        private char[,] _board = new char[3,3];
+        
+        private TicTacToe _ticTacToe;
         
         internal int MoveNum { get; private set;}
+        
+        public Game()
+        {
+            _ticTacToe = new TicTacToe();
+        }
 
-        private int _startingDepth = 10;
         public Tuple<int,int> GetAction()
         {
-            var bestMove = CalculateMove(_startingDepth);
+            var bestMove = _ticTacToe.GetBestMove(_board, 10, 'O');
+            
             
             if(!ValidActions.Any(a => a.Item1 == bestMove.Item1 && a.Item2 == bestMove.Item2))
             {
-                //Console.Error.WriteLine($"{bestMove.Item1}, {bestMove.Item1}");
                 return ValidActions.First();
             }
             
             return bestMove;
         }
-        private Tuple<int, int> CalculateMove(int startingDepth)
+        
+        internal void AddMove(int column, int row, bool mine)
         {
-            var bestMove = new Tuple<int, int>(-1,-1);
+            _board[column, row] = mine ? 'O' : 'X';
+            MoveNum++;
+        }
+    }
+    
+    public sealed class TicTacToe
+    {
+        private int _startingDepth = 10;
+        private char[,] _board;
+        
+        public Tuple<int, int> GetBestMove(char[,] board, int depth, char startingPlayer)
+        {
+            _startingDepth = depth;
+            _board = board;
+            
+            return CalculateMove(depth, startingPlayer);
+        }
+        
+        private Tuple<int, int> CalculateMove(int depth, char player)
+        {
             var maxScore = int.MinValue;
-
-            foreach (var validAction in ValidActions)
+            
+            var validMoves = CalculateValidMoves();
+            var bestMove = validMoves.First();
+            
+            foreach (var validAction in validMoves) 
             {
-                AddMove(validAction.Item1, validAction.Item2, true);
+                var maximisingPlayer = player == 'O';
+                AddMove(validAction.Item1, validAction.Item2, maximisingPlayer);
                 
-                var score = -Calculate(startingDepth-1, false);
+                var score = -Calculate(depth-1, !maximisingPlayer);
                 
                 UndoMove(validAction.Item1, validAction.Item2);
 
@@ -112,16 +142,16 @@ namespace UltimateTicTacToe
         }
         private int Calculate(int depth, bool maximisingPlayer)
         {
+            if (depth == 0)
+            {
+                return Evaluate(maximisingPlayer, depth);
+            }
+            
             var evaluation = Evaluate(maximisingPlayer, depth);
             
             if(evaluation != 0)
             {
                 return evaluation;
-            }
-        
-            if (depth == 0)
-            {
-                return Evaluate(maximisingPlayer, depth);
             }
             
             var maxScore = int.MinValue;
@@ -147,13 +177,13 @@ namespace UltimateTicTacToe
         {
             var moves = new List<Tuple<int, int>>();
             
-            for(var row = 0; row < _board.GetLength(0); row++)
+            for(var column = 0; column < _board.GetLength(0); column++)
             {
-                for(var column = 0; column < _board.GetLength(1); column++)
+                for(var row = 0; row < _board.GetLength(1); row++)
                 {
-                    if(_board[row, column] == 0)
+                    if(_board[column, row] == '\0')
                     {
-                        moves.Add(new Tuple<int, int>(row, column));
+                        moves.Add(new Tuple<int, int>(column, row));
                     }
                 }
             }
@@ -163,67 +193,80 @@ namespace UltimateTicTacToe
 
         private int Evaluate(bool maximisingPlayer, int currentDepth)
         {
-            var score = EvaluateBoard();
+            int score;
             
-            if(score != 0)
+            if(maximisingPlayer)
             {
-                score += currentDepth;
+                score = EvaluateBoard(currentDepth);
             }
-        
-            if(!maximisingPlayer)
+            else
             {
-                score = -score;
+                score = -EvaluateBoard(currentDepth);
             }
+
+            //if(score != 0)
+            //{
+            //    if(playerPerspective == 'O')
+            //    {
+            //        score += currentDepth;
+            //    }
+            //    else
+            //    {
+            //        score -= currentDepth;
+           //    }
+           // }
             
             return score;
         }
 
         private List<Tuple<int, int>[]> _lines = new List<Tuple<int, int>[]>
         {
-                new[] { new Tuple<int, int>(0,0), new Tuple<int, int>(0,1), new Tuple<int, int>(0,2) },
-                new[] { new Tuple<int, int>(1,0), new Tuple<int, int>(1,1), new Tuple<int, int>(1,2) },
-                new[] { new Tuple<int, int>(2,0), new Tuple<int, int>(2,1), new Tuple<int, int>(2,2) },
+                new[] { new Tuple<int, int>(0,0), new Tuple<int, int>(0,1), new Tuple<int, int>(0,2) }, // Left column
+                new[] { new Tuple<int, int>(1,0), new Tuple<int, int>(1,1), new Tuple<int, int>(1,2) }, // Middle column
+                new[] { new Tuple<int, int>(2,0), new Tuple<int, int>(2,1), new Tuple<int, int>(2,2) }, // Right column
                     
-                new[] { new Tuple<int, int>(0,0), new Tuple<int, int>(1,0), new Tuple<int, int>(2,0) },
-                new[] { new Tuple<int, int>(0,1), new Tuple<int, int>(1,1), new Tuple<int, int>(2,1) },
-                new[] { new Tuple<int, int>(0,2), new Tuple<int, int>(1,2), new Tuple<int, int>(2,2) },
+                new[] { new Tuple<int, int>(0,0), new Tuple<int, int>(1,0), new Tuple<int, int>(2,0) }, // Top row
+                new[] { new Tuple<int, int>(0,1), new Tuple<int, int>(1,1), new Tuple<int, int>(2,1) }, // middle row
+                new[] { new Tuple<int, int>(0,2), new Tuple<int, int>(1,2), new Tuple<int, int>(2,2) }, // Bottom row
                     
-                new[] { new Tuple<int, int>(0,0), new Tuple<int, int>(1,1), new Tuple<int, int>(2,2) },
-                new[] { new Tuple<int, int>(2,0), new Tuple<int, int>(1,1), new Tuple<int, int>(0,2) }
-            };
+                new[] { new Tuple<int, int>(0,0), new Tuple<int, int>(1,1), new Tuple<int, int>(2,2) }, // top left to bottom right diagonal
+                new[] { new Tuple<int, int>(2,0), new Tuple<int, int>(1,1), new Tuple<int, int>(0,2) }  // bottom left to top right diagonal
+        };
+       
         
-        private int EvaluateBoard()
+        private int EvaluateBoard(int currentDepth)
         {
             foreach (var line in _lines)
             {
                 var playerWithLine = PlayerWithLine(line);
                 
-                if(playerWithLine == 1)
+                if(playerWithLine == 'O')
                 {
-                    return 10;
+                    return 10 + currentDepth;
                 }
-                else if(playerWithLine == 2)
+                
+                if(playerWithLine == 'X')
                 {
-                    return -10;
+                    return -10 - currentDepth;
                 }
             }
             
             return 0;
         }
-        private int PlayerWithLine(Tuple<int, int>[] line)
+        private char PlayerWithLine(Tuple<int, int>[] line)
         {
-            if (DoesPlayerHaveLine(line, 1))
+            if (DoesPlayerHaveLine(line, 'O'))
             {
-                return 1;
+                return 'O';
             }
-            else if (DoesPlayerHaveLine(line, 2))
+            else if (DoesPlayerHaveLine(line, 'X'))
             {
-                return 2;
+                return 'X';
             }
             
-            return 0;
+            return '\0';
         }
-        private bool DoesPlayerHaveLine(Tuple<int, int>[] line, int player)
+        private bool DoesPlayerHaveLine(Tuple<int, int>[] line, char player)
         {
             if(   _board[line[0].Item1, line[0].Item2] == player 
                && _board[line[1].Item1, line[1].Item2] == player
@@ -234,17 +277,57 @@ namespace UltimateTicTacToe
             
             return false;
         }
-
-        internal void AddMove(int row, int column, bool mine)
+        
+        internal void AddMove(int row, int column, bool maximisingPlayer)
         {
-            _board[row, column] = mine ? 1 : 2;
-            MoveNum++;
+            if(maximisingPlayer)
+            {
+                _board[row, column] = 'O';
+            }
+            else
+            {
+                _board[row, column] = 'X';
+            }
+            
+            var oCount = 0;
+            var xCount = 0;
+            var emptyCount = 0;
+            
+            for(var x = 0; x < _board.GetLength(0); x++)
+            {
+                for(var y = 0; y < _board.GetLength(1); y++)
+                {
+                    switch (_board[x, y])
+                    {
+                        case '\0':
+                            emptyCount++;
+                            break;
+                        case 'O':
+                            oCount++;
+                            break;
+                        case 'X':
+                            xCount++;
+                            break;
+                    }
+                }
+            }
+            
+            if(oCount + xCount + emptyCount != 9)
+            {
+                throw new NotImplementedException("Wrong total");
+            }
+            
+            if(Math.Abs(oCount - xCount) > 1)
+            {
+                throw new NotImplementedException("Too many of one argument");
+            }
+            
+            
         }
         
         internal void UndoMove(int row, int column)
         {
-            _board[row, column] = 0;
-            MoveNum--;
+            _board[row, column] = '\0';
         }
     }
 }

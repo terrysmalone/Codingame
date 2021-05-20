@@ -15,7 +15,8 @@ namespace UltimateTicTacToe
             var game = new Game();
 
             string[] inputs;
-
+            var moveNum = 0;
+            
             // game loop
             while (true)
             {
@@ -23,14 +24,20 @@ namespace UltimateTicTacToe
                 var opponentRow = int.Parse(inputs[0]);
                 var opponentCol = int.Parse(inputs[1]);
                 
-                Console.Error.WriteLine($"opponentRow:{opponentRow}, opponentCol:{opponentCol}");
-                
                 if(opponentRow != -1)
                 {
                     game.AddMove(opponentCol, opponentRow, false);
+                    moveNum++;
                 }
                 
-                //DisplayBoard();
+                if(moveNum == 0 && opponentCol == -1)
+                {
+                    game.SetPlayer('X');
+                }
+                else if(moveNum == 1)
+                {
+                    game.SetPlayer('O');
+                }
 
                 var validActionCount = int.Parse(Console.ReadLine());
                 
@@ -43,26 +50,17 @@ namespace UltimateTicTacToe
                     var row = int.Parse(inputs[0]);
                     var column = int.Parse(inputs[1]);
                     validActions.Add(new Tuple<int, int>(column, row));
-                    Console.Error.WriteLine($"i:{i}, row:{row}, column:{column}");
                 }
-                
-                game.ValidActions = validActions;
 
-                // Write an action using Console.WriteLine()
-                // To debug: Console.Error.WriteLine("Debug messages...");
+                game.ValidActions = validActions;
                 
                 // If we're first might as well pick a corner
-                if(game.MoveNum == 0)
-                {
-                    game.AddMove(0, 0, true);
-                    Console.WriteLine($"{0} {0}");
-                }
-                else
-                {
-                    var action = game.GetAction();
-                    game.AddMove(action.Item1, action.Item2, true);
-                    Console.WriteLine($"{action.Item1} {action.Item2}");
-                }
+                var action = game.GetAction();
+                
+                game.AddMove(action.Item1, action.Item2, true);
+                Console.WriteLine($"{action.Item2} {action.Item1}");
+                
+                moveNum++;
             }
         }
     }
@@ -71,50 +69,76 @@ namespace UltimateTicTacToe
     {
         internal List<Tuple<int,int>> ValidActions { get; set; }
         
-        // '' Empty
-        // 'O' Noughts
-        // 'X' Crosses
-        private char[,] _board = new char[3,3];
+        private TicTacToe[,] _boards = new TicTacToe[3,3];
+        private TicTacToe _overArchingTicTacToe;
+        private char _player = '\0';
         
-        private TicTacToe _ticTacToe;
-        
-        internal int MoveNum { get; private set;}
+        private int _depth = 6;
         
         public Game()
         {
-            _ticTacToe = new TicTacToe();
+            _boards[0,0] = new TicTacToe();
+            _boards[0,1] = new TicTacToe();
+            _boards[0,2] = new TicTacToe();
+            _boards[1,0] = new TicTacToe();
+            _boards[1,1] = new TicTacToe();
+            _boards[1,2] = new TicTacToe();
+            _boards[2,0] = new TicTacToe();
+            _boards[2,1] = new TicTacToe();
+            _boards[2,2] = new TicTacToe();
+        
+            _overArchingTicTacToe = new TicTacToe();
         }
 
         public Tuple<int,int> GetAction()
         {
-            var bestMove = _ticTacToe.GetBestMove(_board, 10, 'O');
+            TicTacToe boardInPlay = null;
+            
+            var boardInPlayColumn = 0;
+            var boardInPlayRow = 0;
             
             
-            if(!ValidActions.Any(a => a.Item1 == bestMove.Item1 && a.Item2 == bestMove.Item2))
+            // Identify which board we're playing on (it could be them all)
+            
+            // If the range between either row or column is 3 or more we're being given a choice from multiple boards
+            if(   ValidActions.Max(a => a.Item1) - ValidActions.Min(a => a.Item1) >= 3
+               || ValidActions.Max(a => a.Item2) - ValidActions.Min(a => a.Item2) >= 3)
             {
-                return ValidActions.First();
+                // We get to choose which board to play
+                // We're testing. Just play the first one
+                boardInPlayColumn = ValidActions.First().Item1/3;
+                boardInPlayRow = ValidActions.First().Item2/3;
+                boardInPlay = _boards[boardInPlayColumn,boardInPlayRow];
+            }
+            else
+            {
+                boardInPlayColumn = ValidActions.First().Item1/3;
+                boardInPlayRow = ValidActions.First().Item2/3;
+                boardInPlay = _boards[boardInPlayColumn, boardInPlayRow];
             }
             
-            return bestMove;
+            // Make a move on that board
+            var bestMove = boardInPlay.GetBestMove(_depth, _player);
+            
+            return new Tuple<int, int>(boardInPlayColumn * 3 + bestMove.Item1, boardInPlayRow * 3 + bestMove.Item2);
         }
         
         internal void AddMove(int column, int row, bool mine)
         {
-            _board[column, row] = mine ? 'O' : 'X';
-            MoveNum++;
+            _boards[column / 3, row / 3].AddMove(column % 3, row % 3, mine);
+        }
+        public void SetPlayer(char player)
+        {
+            _player = player;
         }
     }
     
     public sealed class TicTacToe
     {
-        private int _startingDepth = 10;
-        private char[,] _board;
-        
-        public Tuple<int, int> GetBestMove(char[,] board, int depth, char startingPlayer)
+        private char[,] _board = new char[3,3];
+
+        public Tuple<int, int> GetBestMove(int depth, char startingPlayer)
         {
-            _startingDepth = depth;
-            _board = board;
-            
             return CalculateMove(depth, startingPlayer);
         }
         
@@ -127,7 +151,8 @@ namespace UltimateTicTacToe
             
             foreach (var validAction in validMoves) 
             {
-                var maximisingPlayer = player == 'O';
+                var maximisingPlayer = player == 'X';
+                
                 AddMove(validAction.Item1, validAction.Item2, maximisingPlayer);
                 
                 var score = -Calculate(depth-1, !maximisingPlayer);
@@ -206,18 +231,6 @@ namespace UltimateTicTacToe
             {
                 score = -EvaluateBoard(currentDepth);
             }
-
-            //if(score != 0)
-            //{
-            //    if(playerPerspective == 'O')
-            //    {
-            //        score += currentDepth;
-            //    }
-            //    else
-            //    {
-            //        score -= currentDepth;
-           //    }
-           // }
             
             return score;
         }
@@ -243,12 +256,12 @@ namespace UltimateTicTacToe
             {
                 var playerWithLine = PlayerWithLine(line);
                 
-                if(playerWithLine == 'O')
+                if(playerWithLine == 'X')
                 {
                     return 1 + currentDepth;
                 }
                 
-                if(playerWithLine == 'X')
+                if(playerWithLine == 'O')
                 {
                     return -1 - currentDepth;
                 }
@@ -258,13 +271,13 @@ namespace UltimateTicTacToe
         }
         private char PlayerWithLine(Tuple<int, int>[] line)
         {
-            if (DoesPlayerHaveLine(line, 'O'))
-            {
-                return 'O';
-            }
-            else if (DoesPlayerHaveLine(line, 'X'))
+            if (DoesPlayerHaveLine(line, 'X'))
             {
                 return 'X';
+            }
+            else if (DoesPlayerHaveLine(line, 'O'))
+            {
+                return 'O';
             }
             
             return '\0';
@@ -285,52 +298,22 @@ namespace UltimateTicTacToe
         {
             if(maximisingPlayer)
             {
-                _board[row, column] = 'O';
+                _board[row, column] = 'X';
             }
             else
             {
-                _board[row, column] = 'X';
+                _board[row, column] = 'O';
             }
-            
-            var oCount = 0;
-            var xCount = 0;
-            var emptyCount = 0;
-            
-            for(var x = 0; x < _board.GetLength(0); x++)
-            {
-                for(var y = 0; y < _board.GetLength(1); y++)
-                {
-                    switch (_board[x, y])
-                    {
-                        case '\0':
-                            emptyCount++;
-                            break;
-                        case 'O':
-                            oCount++;
-                            break;
-                        case 'X':
-                            xCount++;
-                            break;
-                    }
-                }
-            }
-            
-            if(oCount + xCount + emptyCount != 9)
-            {
-                throw new NotImplementedException("Wrong total");
-            }
-            
-            if(Math.Abs(oCount - xCount) > 1)
-            {
-                throw new NotImplementedException("Too many of one argument");
-            }
-            
-            
         }
         
-        internal void UndoMove(int row, int column)
+        private void UndoMove(int row, int column)
         {
             _board[row, column] = '\0';
+        }
+
+        public  void SetBoard(char[,] board)
+        {
+            _board = (char[,])board.Clone();
         }
     }
 }

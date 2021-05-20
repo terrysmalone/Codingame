@@ -20,8 +20,9 @@ namespace UltimateTicTacToeTest
             board[2,1] = 'O';
 
             var ticTacToe = new TicTacToe();
+            ticTacToe.SetBoard(board);
             
-            var bestMove = ticTacToe.GetBestMove(board, depth, 'O');
+            var bestMove = ticTacToe.GetBestMove(depth, 'O');
             
             Assert.That(bestMove, Is.EqualTo(new Tuple<int, int>(2, 2)));
         }
@@ -39,8 +40,9 @@ namespace UltimateTicTacToeTest
             board[2,1] = 'X';
 
             var ticTacToe = new TicTacToe();
+            ticTacToe.SetBoard(board);
             
-            var bestMove = ticTacToe.GetBestMove(board, depth, 'X');
+            var bestMove = ticTacToe.GetBestMove(depth, 'X');
             
             Assert.That(bestMove, Is.EqualTo(new Tuple<int, int>(2, 2)));
         }
@@ -61,8 +63,9 @@ namespace UltimateTicTacToeTest
             
 
             var ticTacToe = new TicTacToe();
+            ticTacToe.SetBoard(board);
             
-            var bestMove = ticTacToe.GetBestMove(board, depth, 'O');
+            var bestMove = ticTacToe.GetBestMove(depth, 'O');
             
             Assert.That(bestMove, Is.EqualTo(new Tuple<int, int>(1, 1)));
         }
@@ -80,8 +83,9 @@ namespace UltimateTicTacToeTest
             board[0,2] = 'O';
 
             var ticTacToe = new TicTacToe();
+            ticTacToe.SetBoard(board);
             
-            var bestMove = ticTacToe.GetBestMove(board, depth, 'X');
+            var bestMove = ticTacToe.GetBestMove(depth, 'X');
             
             Assert.That(bestMove, Is.EqualTo(new Tuple<int, int>(1, 2)));
         }
@@ -99,8 +103,9 @@ namespace UltimateTicTacToeTest
             board[0,2] = 'O';
 
             var ticTacToe = new TicTacToe();
+            ticTacToe.SetBoard(board);
             
-            var bestMove = ticTacToe.GetBestMove(board, depth, 'X');
+            var bestMove = ticTacToe.GetBestMove(depth, 'X');
             
             Assert.That(bestMove, Is.EqualTo(new Tuple<int, int>(2, 1)));
         }
@@ -118,8 +123,9 @@ namespace UltimateTicTacToeTest
             board[2,2] = 'X';
 
             var ticTacToe = new TicTacToe();
+            ticTacToe.SetBoard(board);
             
-            var bestMove = ticTacToe.GetBestMove(board, depth, 'O');
+            var bestMove = ticTacToe.GetBestMove(depth, 'O');
             
             Assert.That(bestMove, Is.EqualTo(new Tuple<int, int>(2, 0)));
         }
@@ -138,8 +144,9 @@ namespace UltimateTicTacToeTest
             board[2,2] = 'X';
 
             var ticTacToe = new TicTacToe();
+            ticTacToe.SetBoard(board);
             
-            var bestMove = ticTacToe.GetBestMove(board, depth, 'O');
+            var bestMove = ticTacToe.GetBestMove(depth, 'O');
             
             Assert.That(bestMove, Is.EqualTo(new Tuple<int, int>(2, 0)));
         }
@@ -158,8 +165,9 @@ namespace UltimateTicTacToeTest
             board[2,2] = 'O';
 
             var ticTacToe = new TicTacToe();
+            ticTacToe.SetBoard(board);
             
-            var bestMove = ticTacToe.GetBestMove(board, depth, 'X');
+            var bestMove = ticTacToe.GetBestMove(depth, 'X');
             
             Assert.That(bestMove, Is.EqualTo(new Tuple<int, int>(2, 0)));
         }
@@ -187,8 +195,9 @@ namespace UltimateTicTacToeTest
             board[2,2] = 'O';
 
             var ticTacToe = new TicTacToe();
+            ticTacToe.SetBoard(board);
             
-            var bestMove = ticTacToe.GetBestMove(board, depth, 'X');
+            var bestMove = ticTacToe.GetBestMove(depth, 'X');
             
             Assert.That(bestMove, Is.EqualTo(new Tuple<int, int>(1, 0)));
         }
@@ -210,8 +219,9 @@ namespace UltimateTicTacToeTest
             board[2,2] = 'X';
 
             var ticTacToe = new TicTacToe();
+            ticTacToe.SetBoard(board);
             
-            var bestMove = ticTacToe.GetBestMove(board, depth, 'O');
+            var bestMove = ticTacToe.GetBestMove(depth, 'O');
             
             Assert.That(bestMove, Is.EqualTo(new Tuple<int, int>(1, 0)));
         }

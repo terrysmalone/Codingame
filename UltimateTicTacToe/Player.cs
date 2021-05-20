@@ -118,8 +118,26 @@ namespace UltimateTicTacToe
             }
             
             // Make a move on that board
-            var bestMove = boardInPlay.GetBestMove(_depth, _player);
+            var moveScores = boardInPlay.GetMoveScores(_depth, _player);
             
+            // Get all the best scores
+            var highest = moveScores.OrderByDescending(m => m.Item2).First().Item2;
+            var highestMoves = moveScores.Where(m => m.Item2 == highest).Select(m => m.Item1).ToList();
+            
+            var max = int.MinValue;
+            var currentMax = max;
+            Move bestMove = null;
+            
+            // Out of those, which one does my opponent have less of
+            foreach (var highestMove in highestMoves)
+            {
+                
+            }
+            
+            // randomly select one - Later on we'll actually choose
+            //var rand = new Random();
+            //var bestMove = highestMoves[rand.Next(highestMoves.Count)];
+
             return new Move(boardInPlayColumn * 3 + bestMove.Column, boardInPlayRow * 3 + bestMove.Row);
         }
         
@@ -142,7 +160,7 @@ namespace UltimateTicTacToe
             return GetMoveScores(depth, startingPlayer).OrderByDescending((m => m.Item2)).First().Item1;
         }
         
-        private List<Tuple<Move, int>> GetMoveScores(int depth, char player)
+        public List<Tuple<Move, int>> GetMoveScores(int depth, char player)
         {
             var moveScores = new List<Tuple<Move, int>>();
             
@@ -163,33 +181,6 @@ namespace UltimateTicTacToe
             }
             
             return moveScores;
-        }
-
-        private Move CalculateMove(int depth, char player)
-        {
-            var maxScore = int.MinValue;
-            
-            var validMoves = CalculateValidMoves();
-            var bestMove = validMoves.First();
-            
-            foreach (var validAction in validMoves) 
-            {
-                var maximisingPlayer = player == 'X';
-                
-                AddMove(validAction.Column, validAction.Row, maximisingPlayer);
-                
-                var score = -Calculate(depth-1, !maximisingPlayer);
-                
-                UndoMove(validAction.Column, validAction.Row);
-
-                if (score > maxScore)
-                {
-                    maxScore = score;
-                    bestMove = validAction;
-                }
-            }
-            
-            return bestMove;
         }
         
         private int Calculate(int depth, bool maximisingPlayer)
@@ -338,6 +329,30 @@ namespace UltimateTicTacToe
         public  void SetBoard(char[,] board)
         {
             _board = (char[,])board.Clone();
+        }
+    
+        // Returns my placed pieces - opponent placed pieces
+        public int getNumberOfPiecesScore(char player)
+        {
+            var playerPieces = 0;
+            var opponentPieces = 0;
+            
+            for(var column = 0; column < _board.GetLength(0); column++)
+            {
+                for(var row = 0; row < _board.GetLength(1); row++)
+                {
+                   if(_board[column, row] == player)
+                   {
+                       playerPieces++;
+                   }
+                   else if(_board[column, row] != '\0')
+                   {
+                       opponentPieces++;
+                   }
+                }
+            }
+            
+            return playerPieces - opponentPieces;
         }
     }
 

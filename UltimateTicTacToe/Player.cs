@@ -23,6 +23,8 @@ namespace UltimateTicTacToe
                 var opponentRow = int.Parse(inputs[0]);
                 var opponentCol = int.Parse(inputs[1]);
                 
+                Console.Error.WriteLine($"opponentRow:{opponentRow}, opponentCol:{opponentCol}");
+                
                 if(opponentRow != -1)
                 {
                     game.AddMove(opponentCol, opponentRow, false);
@@ -41,6 +43,7 @@ namespace UltimateTicTacToe
                     var row = int.Parse(inputs[0]);
                     var column = int.Parse(inputs[1]);
                     validActions.Add(new Tuple<int, int>(column, row));
+                    Console.Error.WriteLine($"i:{i}, row:{row}, column:{column}");
                 }
                 
                 game.ValidActions = validActions;
@@ -242,12 +245,12 @@ namespace UltimateTicTacToe
                 
                 if(playerWithLine == 'O')
                 {
-                    return 10 + currentDepth;
+                    return 1 + currentDepth;
                 }
                 
                 if(playerWithLine == 'X')
                 {
-                    return -10 - currentDepth;
+                    return -1 - currentDepth;
                 }
             }
             

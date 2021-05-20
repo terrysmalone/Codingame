@@ -41,7 +41,7 @@ namespace UltimateTicTacToe
 
                 var validActionCount = int.Parse(Console.ReadLine());
                 
-                var validActions = new List<Tuple<int, int>>();
+                var validActions = new List<Move>();
                 
                 for (var i = 0; i < validActionCount; i++)
                 {
@@ -49,7 +49,7 @@ namespace UltimateTicTacToe
                     
                     var row = int.Parse(inputs[0]);
                     var column = int.Parse(inputs[1]);
-                    validActions.Add(new Tuple<int, int>(column, row));
+                    validActions.Add(new Move(column, row));
                 }
 
                 game.ValidActions = validActions;
@@ -57,8 +57,8 @@ namespace UltimateTicTacToe
                 // If we're first might as well pick a corner
                 var action = game.GetAction();
                 
-                game.AddMove(action.Item1, action.Item2, true);
-                Console.WriteLine($"{action.Item2} {action.Item1}");
+                game.AddMove(action.Column, action.Row, true);
+                Console.WriteLine($"{action.Row} {action.Column}");
                 
                 moveNum++;
             }
@@ -67,7 +67,7 @@ namespace UltimateTicTacToe
 
     internal sealed class Game
     {
-        internal List<Tuple<int,int>> ValidActions { get; set; }
+        internal List<Move> ValidActions { get; set; }
         
         private TicTacToe[,] _boards = new TicTacToe[3,3];
         private TicTacToe _overArchingTicTacToe;
@@ -90,7 +90,7 @@ namespace UltimateTicTacToe
             _overArchingTicTacToe = new TicTacToe();
         }
 
-        public Tuple<int,int> GetAction()
+        public Move GetAction()
         {
             TicTacToe boardInPlay = null;
             
@@ -101,26 +101,26 @@ namespace UltimateTicTacToe
             // Identify which board we're playing on (it could be them all)
             
             // If the range between either row or column is 3 or more we're being given a choice from multiple boards
-            if(   ValidActions.Max(a => a.Item1) - ValidActions.Min(a => a.Item1) >= 3
-               || ValidActions.Max(a => a.Item2) - ValidActions.Min(a => a.Item2) >= 3)
+            if(   ValidActions.Max(a => a.Column) - ValidActions.Min(a => a.Column) >= 3
+               || ValidActions.Max(a => a.Row) - ValidActions.Min(a => a.Row) >= 3)
             {
                 // We get to choose which board to play
                 // We're testing. Just play the first one
-                boardInPlayColumn = ValidActions.First().Item1/3;
-                boardInPlayRow = ValidActions.First().Item2/3;
+                boardInPlayColumn = ValidActions.First().Column/3;
+                boardInPlayRow = ValidActions.First().Row/3;
                 boardInPlay = _boards[boardInPlayColumn,boardInPlayRow];
             }
             else
             {
-                boardInPlayColumn = ValidActions.First().Item1/3;
-                boardInPlayRow = ValidActions.First().Item2/3;
+                boardInPlayColumn = ValidActions.First().Column/3;
+                boardInPlayRow = ValidActions.First().Row/3;
                 boardInPlay = _boards[boardInPlayColumn, boardInPlayRow];
             }
             
             // Make a move on that board
             var bestMove = boardInPlay.GetBestMove(_depth, _player);
             
-            return new Tuple<int, int>(boardInPlayColumn * 3 + bestMove.Item1, boardInPlayRow * 3 + bestMove.Item2);
+            return new Move(boardInPlayColumn * 3 + bestMove.Column, boardInPlayRow * 3 + bestMove.Row);
         }
         
         internal void AddMove(int column, int row, bool mine)
@@ -137,12 +137,12 @@ namespace UltimateTicTacToe
     {
         private char[,] _board = new char[3,3];
 
-        public Tuple<int, int> GetBestMove(int depth, char startingPlayer)
+        public Move GetBestMove(int depth, char startingPlayer)
         {
             return CalculateMove(depth, startingPlayer);
         }
-        
-        private Tuple<int, int> CalculateMove(int depth, char player)
+
+        private Move CalculateMove(int depth, char player)
         {
             var maxScore = int.MinValue;
             
@@ -153,11 +153,11 @@ namespace UltimateTicTacToe
             {
                 var maximisingPlayer = player == 'X';
                 
-                AddMove(validAction.Item1, validAction.Item2, maximisingPlayer);
+                AddMove(validAction.Column, validAction.Row, maximisingPlayer);
                 
                 var score = -Calculate(depth-1, !maximisingPlayer);
                 
-                UndoMove(validAction.Item1, validAction.Item2);
+                UndoMove(validAction.Column, validAction.Row);
 
                 if (score > maxScore)
                 {
@@ -168,6 +168,7 @@ namespace UltimateTicTacToe
             
             return bestMove;
         }
+        
         private int Calculate(int depth, bool maximisingPlayer)
         {
             if (depth == 0)
@@ -186,11 +187,11 @@ namespace UltimateTicTacToe
             
             foreach (var move in CalculateValidMoves())
             {
-                AddMove(move.Item1, move.Item2, maximisingPlayer);
+                AddMove(move.Column, move.Row, maximisingPlayer);
                 
                 var score = -Calculate(depth-1, !maximisingPlayer);
                 
-                UndoMove(move.Item1, move.Item2);
+                UndoMove(move.Column, move.Row);
                 
                 if (score > maxScore)
                 {
@@ -201,9 +202,9 @@ namespace UltimateTicTacToe
             return maxScore;
         }
         
-        private List<Tuple<int, int>> CalculateValidMoves()
+        private List<Move> CalculateValidMoves()
         {
-            var moves = new List<Tuple<int, int>>();
+            var moves = new List<Move>();
             
             for(var column = 0; column < _board.GetLength(0); column++)
             {
@@ -211,7 +212,7 @@ namespace UltimateTicTacToe
                 {
                     if(_board[column, row] == '\0')
                     {
-                        moves.Add(new Tuple<int, int>(column, row));
+                        moves.Add(new Move(column, row));
                     }
                 }
             }
@@ -235,18 +236,18 @@ namespace UltimateTicTacToe
             return score;
         }
 
-        private List<Tuple<int, int>[]> _lines = new List<Tuple<int, int>[]>
+        private List<Move[]> _lines = new List<Move[]>
         {
-                new[] { new Tuple<int, int>(0,0), new Tuple<int, int>(0,1), new Tuple<int, int>(0,2) }, // Left column
-                new[] { new Tuple<int, int>(1,0), new Tuple<int, int>(1,1), new Tuple<int, int>(1,2) }, // Middle column
-                new[] { new Tuple<int, int>(2,0), new Tuple<int, int>(2,1), new Tuple<int, int>(2,2) }, // Right column
+                new[] { new Move(0,0), new Move(0,1), new Move(0,2) }, // Left column
+                new[] { new Move(1,0), new Move(1,1), new Move(1,2) }, // Middle column
+                new[] { new Move(2,0), new Move(2,1), new Move(2,2) }, // Right column
                     
-                new[] { new Tuple<int, int>(0,0), new Tuple<int, int>(1,0), new Tuple<int, int>(2,0) }, // Top row
-                new[] { new Tuple<int, int>(0,1), new Tuple<int, int>(1,1), new Tuple<int, int>(2,1) }, // middle row
-                new[] { new Tuple<int, int>(0,2), new Tuple<int, int>(1,2), new Tuple<int, int>(2,2) }, // Bottom row
+                new[] { new Move(0,0), new Move(1,0), new Move(2,0) }, // Top row
+                new[] { new Move(0,1), new Move(1,1), new Move(2,1) }, // middle row
+                new[] { new Move(0,2), new Move(1,2), new Move(2,2) }, // Bottom row
                     
-                new[] { new Tuple<int, int>(0,0), new Tuple<int, int>(1,1), new Tuple<int, int>(2,2) }, // top left to bottom right diagonal
-                new[] { new Tuple<int, int>(2,0), new Tuple<int, int>(1,1), new Tuple<int, int>(0,2) }  // bottom left to top right diagonal
+                new[] { new Move(0,0), new Move(1,1), new Move(2,2) }, // top left to bottom right diagonal
+                new[] { new Move(2,0), new Move(1,1), new Move(0,2) }  // bottom left to top right diagonal
         };
        
         
@@ -269,7 +270,7 @@ namespace UltimateTicTacToe
             
             return 0;
         }
-        private char PlayerWithLine(Tuple<int, int>[] line)
+        private char PlayerWithLine(Move[] line)
         {
             if (DoesPlayerHaveLine(line, 'X'))
             {
@@ -282,11 +283,11 @@ namespace UltimateTicTacToe
             
             return '\0';
         }
-        private bool DoesPlayerHaveLine(Tuple<int, int>[] line, char player)
+        private bool DoesPlayerHaveLine(Move[] line, char player)
         {
-            if(   _board[line[0].Item1, line[0].Item2] == player 
-               && _board[line[1].Item1, line[1].Item2] == player
-               && _board[line[2].Item1, line[2].Item2] == player)
+            if(   _board[line[0].Column, line[0].Row] == player 
+               && _board[line[1].Column, line[1].Row] == player
+               && _board[line[2].Column, line[2].Row] == player)
             {
                 return true;
             }
@@ -314,6 +315,18 @@ namespace UltimateTicTacToe
         public  void SetBoard(char[,] board)
         {
             _board = (char[,])board.Clone();
+        }
+    }
+
+    public sealed class Move
+    {
+        public int Row { get; }
+        public int Column { get; }
+
+        public Move(int column, int row)
+        {
+            Column = column;
+            Row = row;
         }
     }
 }

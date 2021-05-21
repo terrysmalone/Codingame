@@ -103,7 +103,6 @@ namespace UltimateTicTacToe
         {
             // Update overall board
             UpdateOverallBoard();
-            UpdateNeedsBoards();
             
             _overallBoard.PrintBoard();
 

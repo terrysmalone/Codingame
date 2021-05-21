@@ -74,18 +74,14 @@ namespace UltimateTicTacToe
     internal sealed class Game
     {
         internal List<Move> ValidActions { get; set; }
-        
-        private char _playerPiece; 
-        public char PlayerPiece => _playerPiece;   
-        
-        public char _enemyPiece;
-        public char EnemyPiece => _enemyPiece;
-        
+
+        public char PlayerPiece { get; private set; }
+        public char EnemyPiece { get; private set; }
+
 
         private TicTacToe[,] _boards = new TicTacToe[3,3];
         private TicTacToe _overArchingTicTacToe;
-        private char _player = '\0';
-        
+
         private int _depth = 6;
         
         public Game()
@@ -110,28 +106,44 @@ namespace UltimateTicTacToe
             var boardInPlayColumn = 0;
             var boardInPlayRow = 0;
             
-            
+            var shortSearchDepth = 3;
+
             // Identify which board we're playing on (it could be them all)
             
             // If the range between either row or column is 3 or more we're being given a choice from multiple boards
             if(   ValidActions.Max(a => a.Column) - ValidActions.Min(a => a.Column) >= 3
                || ValidActions.Max(a => a.Row) - ValidActions.Min(a => a.Row) >= 3)
             {
-                // We get to choose which board to play
-                // We're testing. Just play the first one
-                boardInPlayColumn = ValidActions.First().Column/3;
-                boardInPlayRow = ValidActions.First().Row/3;
-                boardInPlay = _boards[boardInPlayColumn,boardInPlayRow];
+                // We have a choice. Choose the best!
+                
+                // PRIORITIES
+                // 
+                // 1. If there is one move that can win me the game do that 
+                // 2. If there is one move that can win it for my opponent go there and block it
+                // 3. If I can win one of the boards that are important to a win pick that 
+                // 4. If I can block an opponent that's important to a win for them pick that
+                // 5. If I can block an opponent that's important to a win for me pick that
+                // 6. If I can win a block do that
+                // 7. If I can block my opponent do that
+                // 8. Pick the board where I have the highest score
+                
+                // 8. Pick the board where I have the highest score
+                // Shallow search all boards and pick the best
+                var bestBoardPoints =  PickBestOverallBoard(shortSearchDepth);
+
+                boardInPlayColumn = bestBoardPoints.Column;
+                boardInPlayRow = bestBoardPoints.Row;
             }
             else
             {
                 boardInPlayColumn = ValidActions.First().Column/3;
                 boardInPlayRow = ValidActions.First().Row/3;
-                boardInPlay = _boards[boardInPlayColumn, boardInPlayRow];
             }
             
+            boardInPlay = _boards[boardInPlayColumn, boardInPlayRow];
+            
             // Make a move on that board
-            var moveScores = boardInPlay.GetMoveScores(_depth, _player);
+            var moveScores = boardInPlay.GetMoveScores(_depth, PlayerPiece);
             //PrintMovesAndScoresList(moveScores);
             
             // Get all the best scores
@@ -148,7 +160,7 @@ namespace UltimateTicTacToe
                 
                 //currentBoard.PrintBoard();
                 
-                var pieceScore = currentBoard.GetNumberOfPiecesScore(_player);
+                var pieceScore = currentBoard.GetNumberOfPiecesScore(PlayerPiece);
                 
                 // To Do: Don't include finished games. If we try to send them their they get free reign
                 if(!currentBoard.IsGameOver() && pieceScore > currentMax)
@@ -167,6 +179,52 @@ namespace UltimateTicTacToe
 
             return new Move(boardInPlayColumn * 3 + bestMove.Column, boardInPlayRow * 3 + bestMove.Row);
         }
+        
+        // Shallow search all boards and pick the one with the highest score
+        private Move PickBestOverallBoard(int searchDepth)
+        {
+            var boardScore = new int[3,3];
+            
+            for(var column = 0; column < 3; column++)
+            {
+                for(var row = 0; row < 3; row++)
+                {
+                    var board = _boards[column, row];
+                    
+                    if(board.IsGameOver())
+                    {
+                        boardScore[column, row] = int.MinValue;
+                    }
+                    else
+                    {
+                        boardScore[column, row] = board.GetMoveScores(searchDepth, PlayerPiece).Max(m => m.Item2);
+                    }
+                }
+            }
+            
+            // If they're the same use a different heuristic i.e. Can I block someone?
+            
+            var maxColumn = 0;
+            var maxRow = 0;
+            var highestScore = int.MinValue;
+            
+            for(var column = 0; column < 3; column++)
+            {
+                for(var row = 0; row < 3; row++)
+                {
+                    var score = boardScore[column, row];
+                    
+                    if(score > highestScore)
+                    {
+                        highestScore = score;
+                        maxColumn = column;
+                        maxRow = row;
+                    }
+                } 
+            }
+            
+            return new Move(maxColumn, maxRow);
+        }
 
         internal void AddMove(int column, int row, char piece)
         {
@@ -175,10 +233,10 @@ namespace UltimateTicTacToe
         
         internal void SetPlayer(char playerPiece)
         {
-            _player = playerPiece;
+            PlayerPiece = playerPiece;
             
-            _playerPiece = playerPiece;
-            _enemyPiece = playerPiece == 'O' ? 'X' : 'O';
+            PlayerPiece = playerPiece;
+            EnemyPiece = playerPiece == 'O' ? 'X' : 'O';
         }
         
         private static void PrintMovesAndScoresList(List<Tuple<Move, int>> moveScores)
@@ -394,7 +452,7 @@ namespace UltimateTicTacToe
         internal bool IsGameOver()
         {
             if(   EvaluateBoard(0) != 0
-               || AvailableSpacesOnBoard() > 0)
+               || AvailableSpacesOnBoard() == 0)
             {
                 return true;
             }
@@ -408,7 +466,7 @@ namespace UltimateTicTacToe
 
             foreach (var cell in _board)
             {
-                if(cell != '\0')
+                if(cell == '\0')
                 {
                     availableSpaces++;
                 }

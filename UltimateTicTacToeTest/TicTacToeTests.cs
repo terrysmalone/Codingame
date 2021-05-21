@@ -1,4 +1,3 @@
-using System;
 using System.Linq;
 using NUnit.Framework;
 using UltimateTicTacToe;
@@ -227,18 +226,7 @@ namespace UltimateTicTacToeTest
             Assert.That(ticTacToe.GetNumberOfPiecesScore('X'), Is.EqualTo(1));
             Assert.That(ticTacToe.GetNumberOfPiecesScore('O'), Is.EqualTo(-1));
         }
-        
-        [Test]
-        public void IsGameOVer_FalseIfEmpty()
-        {
-            var  board = new char[3,3];
-            
-            var ticTacToe = new TicTacToe();
-            ticTacToe.SetBoard(board);
-            
-            Assert.That(ticTacToe.IsGameOver(), Is.False);
-        }
-        
+
         [Test]
         public void IsGameOVer_IfOWins()
         {
@@ -301,6 +289,29 @@ namespace UltimateTicTacToeTest
             ticTacToe.SetBoard(SetBoard("XOOOXXXOO"));
             
             Assert.That(ticTacToe.IsGameOver());
+        }
+        
+        [Test]
+        public void IsGameOVer_FalseIfEmpty()
+        {
+            var  board = new char[3,3];
+            
+            var ticTacToe = new TicTacToe();
+            ticTacToe.SetBoard(board);
+            
+            Assert.That(ticTacToe.IsGameOver(), Is.False);
+        }
+        
+        [Test]
+        public void IsGameOver_FalseForPartiallyPlayedBoard()
+        {
+            // | | |O|
+            // | | | |
+            // |X|X| |
+            var ticTacToe = new TicTacToe();
+            ticTacToe.SetBoard(SetBoard("--O---XX-"));
+            
+            Assert.That(ticTacToe.IsGameOver(), Is.False);
         }
         
         // 

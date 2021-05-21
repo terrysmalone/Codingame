@@ -9,3 +9,6 @@
 ### Move choice
 [ ] Don't let enemy move to a board that'll give them an instant win
 [ ] Don't let enemy move to a board that'll block my instant win
+
+### Testing
+[ ] Add test for DrawnGamePlaysForTheTie

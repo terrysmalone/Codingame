@@ -187,12 +187,6 @@ namespace UltimateTicTacToeTest
             Assert.That(bestMove.Column, Is.EqualTo(expectedBestMove.Column));
             Assert.That(bestMove.Row, Is.EqualTo(expectedBestMove.Row));
         }
-
-        [Test]
-        public void DrawnGamePlaysForTheTie()
-        {
-            throw new NotImplementedException();
-        }
         
         [Test]
         public void WinningGameGoesForFastestWin_ForPlayerX([Range(3,10)] int depth)

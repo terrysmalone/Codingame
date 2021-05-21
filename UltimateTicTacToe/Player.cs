@@ -374,29 +374,47 @@ namespace UltimateTicTacToe
             var playerPieces = 0;
             var opponentPieces = 0;
             
-            for(var column = 0; column < _board.GetLength(0); column++)
+            foreach (var cell in _board)
             {
-                for(var row = 0; row < _board.GetLength(1); row++)
+                if(cell  == player)
                 {
-                   if(_board[column, row] == player)
-                   {
-                       playerPieces++;
-                   }
-                   else if(_board[column, row] != '\0')
-                   {
-                       opponentPieces++;
-                   }
+                    playerPieces++;
+                }
+                else if(cell != '\0')
+                {
+                    opponentPieces++;
                 }
             }
-            
+
             return playerPieces - opponentPieces;
         }
         
         public bool IsGameOver()
         {
-            return EvaluateBoard(0) != 0;
+            if(   EvaluateBoard(0) != 0
+               || AvailableSpacesOnBoard() > 0)
+            {
+                return true;
+            }
+            
+            return false;
         }
         
+        private int AvailableSpacesOnBoard()
+        {
+            var availableSpaces = 0;
+
+            foreach (var cell in _board)
+            {
+                if(cell != '\0')
+                {
+                    availableSpaces++;
+                }
+            }
+            
+            return availableSpaces;
+        }
+
         public void PrintBoard()
         {
             

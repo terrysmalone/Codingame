@@ -24,19 +24,23 @@ namespace UltimateTicTacToe
                 var opponentRow = int.Parse(inputs[0]);
                 var opponentCol = int.Parse(inputs[1]);
                 
-                if(opponentRow != -1)
+                if(moveNum == 0)
                 {
-                    game.AddMove(opponentCol, opponentRow, false);
+                    if(opponentRow != -1)
+                    {
+                        game.SetPlayer('X');
+                        game.AddMove(opponentCol, opponentRow, game.EnemyPiece);
+                        moveNum++;
+                    }
+                    else
+                    {
+                        game.SetPlayer('O');
+                    }
+                }
+                else
+                {
+                    game.AddMove(opponentCol, opponentRow, game.EnemyPiece);
                     moveNum++;
-                }
-                
-                if(moveNum == 0 && opponentCol == -1)
-                {
-                    game.SetPlayer('X');
-                }
-                else if(moveNum == 1)
-                {
-                    game.SetPlayer('O');
                 }
 
                 var validActionCount = int.Parse(Console.ReadLine());
@@ -57,7 +61,7 @@ namespace UltimateTicTacToe
                 // If we're first might as well pick a corner
                 var action = game.GetAction();
                 
-                game.AddMove(action.Column, action.Row, true);
+                game.AddMove(action.Column, action.Row, game.PlayerPiece);
                 Console.WriteLine($"{action.Row} {action.Column}");
                 
                 moveNum++;
@@ -69,6 +73,13 @@ namespace UltimateTicTacToe
     {
         internal List<Move> ValidActions { get; set; }
         
+        private char _playerPiece; 
+        public char PlayerPiece => _playerPiece;   
+        
+        public char _enemyPiece;
+        public char EnemyPiece => _enemyPiece;
+        
+
         private TicTacToe[,] _boards = new TicTacToe[3,3];
         private TicTacToe _overArchingTicTacToe;
         private char _player = '\0';
@@ -119,35 +130,63 @@ namespace UltimateTicTacToe
             
             // Make a move on that board
             var moveScores = boardInPlay.GetMoveScores(_depth, _player);
+            //PrintMovesAndScoresList(moveScores);
             
             // Get all the best scores
             var highest = moveScores.OrderByDescending(m => m.Item2).First().Item2;
             var highestMoves = moveScores.Where(m => m.Item2 == highest).Select(m => m.Item1).ToList();
             
-            var max = int.MinValue;
-            var currentMax = max;
+            var currentMax = int.MinValue;
             Move bestMove = null;
             
-            // Out of those, which one does my opponent have less of
-            foreach (var highestMove in highestMoves)
+            // I wnt to move my opponent onto the game where I have the most pieces relative to him
+            foreach (var highMove in highestMoves)
             {
+                var currentBoard = _boards[highMove.Column, highMove.Row];
                 
+                //currentBoard.PrintBoard();
+                
+                var pieceScore = currentBoard.GetNumberOfPiecesScore(_player);
+                
+                // To Do: Don't include finished games. If we try to send them their they get free reign
+                if(!currentBoard.IsGameOver() && pieceScore > currentMax)
+                {
+                    currentMax = pieceScore;
+                    bestMove = highMove;
+                }
             }
             
-            // randomly select one - Later on we'll actually choose
-            //var rand = new Random();
-            //var bestMove = highestMoves[rand.Next(highestMoves.Count)];
+            if(bestMove == null)
+            {
+                // Go back to random for now
+                var rand = new Random();
+                bestMove = highestMoves[rand.Next(highestMoves.Count)];
+            }
 
             return new Move(boardInPlayColumn * 3 + bestMove.Column, boardInPlayRow * 3 + bestMove.Row);
         }
-        
-        internal void AddMove(int column, int row, bool mine)
+
+        internal void AddMove(int column, int row, char piece)
         {
-            _boards[column / 3, row / 3].AddMove(column % 3, row % 3, mine);
+            _boards[column / 3, row / 3].AddMove(column % 3, row % 3, piece);
         }
-        public void SetPlayer(char player)
+        
+        internal void SetPlayer(char playerPiece)
         {
-            _player = player;
+            _player = playerPiece;
+            
+            _playerPiece = playerPiece;
+            _enemyPiece = playerPiece == 'O' ? 'X' : 'O';
+        }
+        
+        private static void PrintMovesAndScoresList(List<Tuple<Move, int>> moveScores)
+        {
+            Console.Error.WriteLine("======================");
+            
+            foreach (var moveScore in moveScores)
+            {
+                Console.Error.WriteLine($"Move:{moveScore.Item1.Column}, {moveScore.Item1.Row} - Score:{moveScore.Item2}");
+            }
         }
     }
     
@@ -170,9 +209,9 @@ namespace UltimateTicTacToe
             {
                 var maximisingPlayer = player == 'X';
                 
-                AddMove(validAction.Column, validAction.Row, maximisingPlayer);
+                AddMove(validAction.Column, validAction.Row, player);
                 
-                var score = -Calculate(depth-1, !maximisingPlayer);
+                var score = -Calculate(depth-1, !maximisingPlayer, SwapPieces(player));
                 
                 moveScores.Add(new Tuple<Move, int>(new Move(validAction.Column, validAction.Row), score));
                 
@@ -183,7 +222,7 @@ namespace UltimateTicTacToe
             return moveScores;
         }
         
-        private int Calculate(int depth, bool maximisingPlayer)
+        private int Calculate(int depth, bool maximisingPlayer, char piece)
         {
             if (depth == 0)
             {
@@ -201,9 +240,9 @@ namespace UltimateTicTacToe
             
             foreach (var move in CalculateValidMoves())
             {
-                AddMove(move.Column, move.Row, maximisingPlayer);
+                AddMove(move.Column, move.Row, piece);
                 
-                var score = -Calculate(depth-1, !maximisingPlayer);
+                var score = -Calculate(depth-1, !maximisingPlayer, SwapPieces(piece));
                 
                 UndoMove(move.Column, move.Row);
                 
@@ -309,30 +348,28 @@ namespace UltimateTicTacToe
             return false;
         }
         
-        internal void AddMove(int row, int column, bool maximisingPlayer)
+        internal void AddMove(int column, int row, char piece)
         {
-            if(maximisingPlayer)
-            {
-                _board[row, column] = 'X';
-            }
-            else
-            {
-                _board[row, column] = 'O';
-            }
+            _board[column, row] = piece;
         }
         
-        private void UndoMove(int row, int column)
+        private void UndoMove(int column, int row)
         {
-            _board[row, column] = '\0';
+            _board[column, row] = '\0';
         }
 
         public  void SetBoard(char[,] board)
         {
             _board = (char[,])board.Clone();
         }
+        
+        private static char SwapPieces(char piece)
+        {
+            return piece == 'O' ? 'X' : 'O';
+        }
     
         // Returns my placed pieces - opponent placed pieces
-        public int getNumberOfPiecesScore(char player)
+        public int GetNumberOfPiecesScore(char player)
         {
             var playerPieces = 0;
             var opponentPieces = 0;
@@ -353,6 +390,39 @@ namespace UltimateTicTacToe
             }
             
             return playerPieces - opponentPieces;
+        }
+        
+        public bool IsGameOver()
+        {
+            return EvaluateBoard(0) != 0;
+        }
+        
+        public void PrintBoard()
+        {
+            
+            for(var row = 0; row < _board.GetLength(1); row++)
+            {
+                for(var column = 0; column < _board.GetLength(0); column++)
+                {
+                    if(_board[column, row] == 'X')
+                    {
+                        Console.Error.Write("X");
+                    }
+                    else if(_board[column, row] == 'O')
+                    {
+                        Console.Error.Write("O");
+                    }
+                    else
+                    {
+                        Console.Error.Write(" ");
+                    }
+                    
+                    Console.Error.Write("|");
+                }
+                
+                Console.Error.WriteLine();
+                Console.Error.WriteLine("------------");
+            }
         }
     }
 

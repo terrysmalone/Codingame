@@ -14,5 +14,9 @@
 [ ] If I can block my opponent do that
 [X] Pick the board where I have the highest score
 
+### Moving
+[ ] Try not to pick a move that will put the enemy where they can win a block in one move
+[ ] Try not to pick a move that will put the enemy where they can block our winning a block in one move
+
 ### Testing
 [ ] Add test for DrawnGamePlaysForTheTie

@@ -24,7 +24,9 @@ namespace UltimateTicTacToeTest
             
             var bestMove = ticTacToe.GetBestMove(depth, 'O');
             
-            Assert.That(bestMove, Is.EqualTo(new Tuple<int, int>(2, 2)));
+            var expectedBestMove = new Move(2, 2);
+            Assert.That(bestMove.Column, Is.EqualTo(expectedBestMove.Column));
+            Assert.That(bestMove.Row, Is.EqualTo(expectedBestMove.Row));
         }
         
         [Test]
@@ -44,7 +46,9 @@ namespace UltimateTicTacToeTest
             
             var bestMove = ticTacToe.GetBestMove(depth, 'X');
             
-            Assert.That(bestMove, Is.EqualTo(new Tuple<int, int>(2, 2)));
+            var expectedBestMove = new Move(2, 2);
+            Assert.That(bestMove.Column, Is.EqualTo(expectedBestMove.Column));
+            Assert.That(bestMove.Row, Is.EqualTo(expectedBestMove.Row));
         }
         
         [Test]
@@ -67,7 +71,9 @@ namespace UltimateTicTacToeTest
             
             var bestMove = ticTacToe.GetBestMove(depth, 'O');
             
-            Assert.That(bestMove, Is.EqualTo(new Tuple<int, int>(1, 1)));
+            var expectedBestMove = new Move(1, 1);
+            Assert.That(bestMove.Column, Is.EqualTo(expectedBestMove.Column));
+            Assert.That(bestMove.Row, Is.EqualTo(expectedBestMove.Row));
         }
         
         [Test]
@@ -87,7 +93,9 @@ namespace UltimateTicTacToeTest
             
             var bestMove = ticTacToe.GetBestMove(depth, 'X');
             
-            Assert.That(bestMove, Is.EqualTo(new Tuple<int, int>(1, 2)));
+            var expectedBestMove = new Move(1, 2);
+            Assert.That(bestMove.Column, Is.EqualTo(expectedBestMove.Column));
+            Assert.That(bestMove.Row, Is.EqualTo(expectedBestMove.Row));
         }
         
         [Test]
@@ -107,7 +115,9 @@ namespace UltimateTicTacToeTest
             
             var bestMove = ticTacToe.GetBestMove(depth, 'X');
             
-            Assert.That(bestMove, Is.EqualTo(new Tuple<int, int>(2, 1)));
+            var expectedBestMove = new Move(2, 1);
+            Assert.That(bestMove.Column, Is.EqualTo(expectedBestMove.Column));
+            Assert.That(bestMove.Row, Is.EqualTo(expectedBestMove.Row));
         }
         
         [Test]
@@ -127,7 +137,9 @@ namespace UltimateTicTacToeTest
             
             var bestMove = ticTacToe.GetBestMove(depth, 'O');
             
-            Assert.That(bestMove, Is.EqualTo(new Tuple<int, int>(2, 0)));
+            var expectedBestMove = new Move(2, 0);
+            Assert.That(bestMove.Column, Is.EqualTo(expectedBestMove.Column));
+            Assert.That(bestMove.Row, Is.EqualTo(expectedBestMove.Row));
         }
         
         [Test]
@@ -148,7 +160,9 @@ namespace UltimateTicTacToeTest
             
             var bestMove = ticTacToe.GetBestMove(depth, 'O');
             
-            Assert.That(bestMove, Is.EqualTo(new Tuple<int, int>(2, 0)));
+            var expectedBestMove = new Move(2, 0);
+            Assert.That(bestMove.Column, Is.EqualTo(expectedBestMove.Column));
+            Assert.That(bestMove.Row, Is.EqualTo(expectedBestMove.Row));
         }
         
         [Test]
@@ -169,7 +183,9 @@ namespace UltimateTicTacToeTest
             
             var bestMove = ticTacToe.GetBestMove(depth, 'X');
             
-            Assert.That(bestMove, Is.EqualTo(new Tuple<int, int>(2, 0)));
+            var expectedBestMove = new Move(2, 0);
+            Assert.That(bestMove.Column, Is.EqualTo(expectedBestMove.Column));
+            Assert.That(bestMove.Row, Is.EqualTo(expectedBestMove.Row));
         }
 
         [Test]
@@ -199,7 +215,9 @@ namespace UltimateTicTacToeTest
             
             var bestMove = ticTacToe.GetBestMove(depth, 'X');
             
-            Assert.That(bestMove, Is.EqualTo(new Tuple<int, int>(1, 0)));
+            var expectedBestMove = new Move(1, 0);
+            Assert.That(bestMove.Column, Is.EqualTo(expectedBestMove.Column));
+            Assert.That(bestMove.Row, Is.EqualTo(expectedBestMove.Row));
         }
         
         [Test]
@@ -223,7 +241,9 @@ namespace UltimateTicTacToeTest
             
             var bestMove = ticTacToe.GetBestMove(depth, 'O');
             
-            Assert.That(bestMove, Is.EqualTo(new Tuple<int, int>(1, 0)));
+            var expectedBestMove = new Move(1, 0);
+            Assert.That(bestMove.Column, Is.EqualTo(expectedBestMove.Column));
+            Assert.That(bestMove.Row, Is.EqualTo(expectedBestMove.Row));
         }
     }
 }

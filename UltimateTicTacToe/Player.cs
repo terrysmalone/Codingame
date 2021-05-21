@@ -106,80 +106,33 @@ namespace UltimateTicTacToe
             var boardInPlayColumn = 0;
             var boardInPlayRow = 0;
             
-            
+            var shortSearchDepth = 3;
+
             // Identify which board we're playing on (it could be them all)
             
             // If the range between either row or column is 3 or more we're being given a choice from multiple boards
             if(   ValidActions.Max(a => a.Column) - ValidActions.Min(a => a.Column) >= 3
                || ValidActions.Max(a => a.Row) - ValidActions.Min(a => a.Row) >= 3)
             {
-                // We have a choice. Choose the best 
+                // We have a choice. Choose the best!
+                
+                // PRIORITIES
+                // 
+                // 1. If there is one move that can win me the game do that 
+                // 2. If there is one move that can win it for my opponent go there and block it
+                // 3. If I can win one of the boards that are important to a win pick that 
+                // 4. If I can block an opponent that's important to a win for them pick that
+                // 5. If I can block an opponent that's important to a win for me pick that
+                // 6. If I can win a block do that
+                // 7. If I can block my opponent do that
+                // 8. Pick the board where I have the highest score
+                
+                // 8. Pick the board where I have the highest score
                 // Shallow search all boards and pick the best
-                var boardScore = new int[3,3];
-                
-                var searchDepth = 3;
-                
-                for(var column = 0; column < 3; column++)
-                {
-                    for(var row = 0; row < 3; row++)
-                    {
-                        var board = _boards[column, row];
-                        
-                        if(board.IsGameOver())
-                        {
-                            boardScore[column, row] = int.MinValue;
-                            Console.Error.WriteLine($"Board at {column},{row} is done");
-                            Console.Error.WriteLine($"-------------------------------------");
-                        }
-                        else
-                        {
-                            Console.Error.WriteLine($"Column:{column}, Row:{row}");
-                            
-                            foreach (var moveScore in board.GetMoveScores(searchDepth, PlayerPiece))
-                            {
-                                Console.Error.WriteLine($"Move:{moveScore.Item1.Column},{moveScore.Item1.Row} Score:{moveScore.Item2}");   
-                            }
-                            
-                            Console.Error.WriteLine($"-------------------------------------");
+                var bestBoardPoints =  PickBestOverallBoard(shortSearchDepth);
 
-                            boardScore[column, row] = board.GetMoveScores(searchDepth, PlayerPiece).Max(m => m.Item2);
-                        }
-                    }
-                }
-                Console.Error.WriteLine($"=============================================");
-                // If they're the same use a different heuristic i.e. Can I block someone?
-                
-                var maxColumn = 0;
-                var maxRow = 0;
-                var highestScore = int.MinValue;
-                
-                for(var column = 0; column < 3; column++)
-                {
-                    for(var row = 0; row < 3; row++)
-                    {
-                        var score = boardScore[column, row];
-                        
-                        Console.Error.WriteLine($"Column:{column}, Row:{row}, Score:{score}");
-                        
-                        if(score > highestScore)
-                        {
-                            highestScore = score;
-                            maxColumn = column;
-                            maxRow = row;
-                        }
-                    } 
-                }
-                
-                Console.Error.WriteLine($"maxColumn:{maxColumn}, maxRow:{maxRow}");
-                
-                boardInPlayColumn = maxColumn;
-                boardInPlayRow = maxRow;
-
-                // We get to choose which board to play
-                // We're testing. Just play the first one
-                //boardInPlayColumn = ValidActions.First().Column/3;
-                //boardInPlayRow = ValidActions.First().Row/3;
-                //boardInPlay = _boards[boardInPlayColumn,boardInPlayRow];
+                boardInPlayColumn = bestBoardPoints.Column;
+                boardInPlayRow = bestBoardPoints.Row;
             }
             else
             {
@@ -225,6 +178,52 @@ namespace UltimateTicTacToe
             }
 
             return new Move(boardInPlayColumn * 3 + bestMove.Column, boardInPlayRow * 3 + bestMove.Row);
+        }
+        
+        // Shallow search all boards and pick the one with the highest score
+        private Move PickBestOverallBoard(int searchDepth)
+        {
+            var boardScore = new int[3,3];
+            
+            for(var column = 0; column < 3; column++)
+            {
+                for(var row = 0; row < 3; row++)
+                {
+                    var board = _boards[column, row];
+                    
+                    if(board.IsGameOver())
+                    {
+                        boardScore[column, row] = int.MinValue;
+                    }
+                    else
+                    {
+                        boardScore[column, row] = board.GetMoveScores(searchDepth, PlayerPiece).Max(m => m.Item2);
+                    }
+                }
+            }
+            
+            // If they're the same use a different heuristic i.e. Can I block someone?
+            
+            var maxColumn = 0;
+            var maxRow = 0;
+            var highestScore = int.MinValue;
+            
+            for(var column = 0; column < 3; column++)
+            {
+                for(var row = 0; row < 3; row++)
+                {
+                    var score = boardScore[column, row];
+                    
+                    if(score > highestScore)
+                    {
+                        highestScore = score;
+                        maxColumn = column;
+                        maxRow = row;
+                    }
+                } 
+            }
+            
+            return new Move(maxColumn, maxRow);
         }
 
         internal void AddMove(int column, int row, char piece)

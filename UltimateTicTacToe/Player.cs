@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 
+[assembly: InternalsVisibleToAttribute("UltimateTicTacToeTest")]
 namespace UltimateTicTacToe
 {
     /**
@@ -190,16 +192,16 @@ namespace UltimateTicTacToe
         }
     }
     
-    public sealed class TicTacToe
+    internal sealed class TicTacToe
     {
         private char[,] _board = new char[3,3];
 
-        public Move GetBestMove(int depth, char startingPlayer)
+        internal Move GetBestMove(int depth, char startingPlayer)
         {
             return GetMoveScores(depth, startingPlayer).OrderByDescending((m => m.Item2)).First().Item1;
         }
         
-        public List<Tuple<Move, int>> GetMoveScores(int depth, char player)
+        internal List<Tuple<Move, int>> GetMoveScores(int depth, char player)
         {
             var moveScores = new List<Tuple<Move, int>>();
             
@@ -358,7 +360,7 @@ namespace UltimateTicTacToe
             _board[column, row] = '\0';
         }
 
-        public  void SetBoard(char[,] board)
+        internal void SetBoard(char[,] board)
         {
             _board = (char[,])board.Clone();
         }
@@ -369,7 +371,7 @@ namespace UltimateTicTacToe
         }
     
         // Returns my placed pieces - opponent placed pieces
-        public int GetNumberOfPiecesScore(char player)
+        internal int GetNumberOfPiecesScore(char player)
         {
             var playerPieces = 0;
             var opponentPieces = 0;
@@ -389,7 +391,7 @@ namespace UltimateTicTacToe
             return playerPieces - opponentPieces;
         }
         
-        public bool IsGameOver()
+        internal bool IsGameOver()
         {
             if(   EvaluateBoard(0) != 0
                || AvailableSpacesOnBoard() > 0)
@@ -415,7 +417,7 @@ namespace UltimateTicTacToe
             return availableSpaces;
         }
 
-        public void PrintBoard()
+        internal void PrintBoard()
         {
             
             for(var row = 0; row < _board.GetLength(1); row++)
@@ -444,7 +446,7 @@ namespace UltimateTicTacToe
         }
     }
 
-    public sealed class Move
+    internal sealed class Move
     {
         public int Row { get; }
         public int Column { get; }

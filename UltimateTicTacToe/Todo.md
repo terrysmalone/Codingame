@@ -20,3 +20,10 @@
 
 ### Testing
 [ ] Add test for DrawnGamePlaysForTheTie
+
+### Plan
+
+1. Move calculation out of tic tac toe class
+2. Implement alpha beta pruning
+3. Move ultimate tic tac toe out of game
+4. Run calculation on ultimate tic tac toe

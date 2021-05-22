@@ -103,8 +103,8 @@ namespace UltimateTicTacToe
         {
             // Update overall board
             UpdateOverallBoard();
-            
-            _overallBoard.PrintBoard();
+
+            //_overallBoard.PrintBoard();
 
             TicTacToe boardInPlay = null;
             
@@ -120,7 +120,7 @@ namespace UltimateTicTacToe
                || ValidActions.Max(a => a.Row) - ValidActions.Min(a => a.Row) >= 3)
             {
                 // We have a choice. Choose the best!
-                
+
                 // PRIORITIES
                 // 
                 // 1. If there is one move that can win me the game do that 
@@ -132,9 +132,37 @@ namespace UltimateTicTacToe
                 // 7. If I can block my opponent do that
                 // 8. Pick the board where I have the highest score
                 
+                var canChoose = GetChoiceBoard();
+                
+                PrintChoiceBoard(canChoose);
+
+
+                // 1. If there is one move that can win me the game do that 
+                var instantWinMove = CheckForInstantWinMove(PlayerPiece);
+                
+                if(instantWinMove != null)
+                {
+                    Console.Error.WriteLine("INSTANT WIN MOVE!!!!!!!!!!!!!!");
+                    return instantWinMove;
+                }
+
+                // 2. If there is one move that can win it for my opponent go there and block it
+                var instantWinBlock = CheckForInstantWinMove(EnemyPiece);
+                
+                if(instantWinBlock != null)
+                {
+                    Console.Error.WriteLine("INSTANT WIN BLOCK!!!!!!!!!!!!!!");
+                    return instantWinBlock;
+                }
+
+                //foreach (var instantWinMove in opponentInstantWinMoves)
+                //{
+                //    Console.Error.WriteLine($"Opponent instant win move:({instantWinMove.Item1.Column},{instantWinMove.Item1.Row}): {instantWinMove.Item2}");
+                //}
+                
                 // 8. Pick the board where I have the highest score
                 // Shallow search all boards and pick the best
-                var bestBoardPoints =  PickBestOverallBoard(shortSearchDepth);
+                var bestBoardPoints =  PickBestOverallBoard(shortSearchDepth, canChoose);
 
                 boardInPlayColumn = bestBoardPoints.Column;
                 boardInPlayRow = bestBoardPoints.Row;
@@ -146,20 +174,70 @@ namespace UltimateTicTacToe
             }
             
             boardInPlay = _boards[boardInPlayColumn, boardInPlayRow];
+            Console.Error.WriteLine($"Board in play:{boardInPlayColumn},{boardInPlayRow}");
             
             // Make a move on that board
             var moveScores = boardInPlay.GetMoveScores(_depth, PlayerPiece);
-            //PrintMovesAndScoresList(moveScores);
+            
+            var approvedMoveScores = new List<Tuple<Move, int>>();
+            
+            // Don't give them a free reign
+            // foreach (var moveScore in moveScores)
+            // {
+            //     var boardEnemyWillPlayNext = _boards[moveScore.Item1.Column, moveScore.Item1.Row];
+            //     
+            //     if(!boardEnemyWillPlayNext.IsGameOver())
+            //     {
+            //         approvedMoveScores.Add(new Tuple<Move, int>(new Move(moveScore.Item1.Column, moveScore.Item1.Row), moveScore.Item2));
+            //     }
+            // }
+            
+            // foreach move exclude any that gives the enemy a win
+            // foreach (var moveScore in moveScores)
+            // {
+            //     var boardEnemyWillPlayNext = _boards[moveScore.Item1.Column, moveScore.Item1.Row];
+            //     
+            //     var nextEnemyBoardMoveScores = boardEnemyWillPlayNext.GetMoveScores(1, EnemyPiece);
+            //     var subBoardMoveScoreWins = nextEnemyBoardMoveScores.Where(m => m.Item2 > 0).ToList();
+            //     
+            //     var nextEnemyBoardMyMoveScores = boardEnemyWillPlayNext.GetMoveScores(1, PlayerPiece);
+            //     var subBoardMyMoveScoreWins = nextEnemyBoardMyMoveScores.Where(m => m.Item2 > 0).ToList();
+            //     
+            //     // Only keep it if enemy can't win a board, or can't stop me from winning a board
+            //     if(subBoardMoveScoreWins.Count == 0 && subBoardMyMoveScoreWins.Count == 0)
+            //     {
+            //         approvedMoveScores.Add(new Tuple<Move, int>(new Move(moveScore.Item1.Column, moveScore.Item1.Row), moveScore.Item2));
+            //     }
+            // }
+            
+            List<Tuple<Move, int>> highestMoves;
+            
+            // If we ended up filtering too much fall back to the original move scores
+            if(approvedMoveScores.Count > 0)
+            {
+                var highest = approvedMoveScores.OrderByDescending(m => m.Item2).First().Item2;
+                
+                Console.Error.WriteLine($"Highest:{highest}");
+                highestMoves = approvedMoveScores.Where(m => m.Item2 == highest).ToList();
+            }
+            else
+            {
+                var highest = moveScores.OrderByDescending(m => m.Item2).First().Item2;
+                highestMoves = moveScores.Where(m => m.Item2 == highest).ToList();
+            }
+
+            PrintMovesAndScoresList(highestMoves);
+            
+            //var bestMove = highestMoves.OrderByDescending(m => m.Item2).First().Item1;
             
             // Get all the best scores
-            var highest = moveScores.OrderByDescending(m => m.Item2).First().Item2;
-            var highestMoves = moveScores.Where(m => m.Item2 == highest).Select(m => m.Item1).ToList();
+            //var highest = moveScores.OrderByDescending(m => m.Item2).First().Item2;
+            //var highestMoves = moveScores.Where(m => m.Item2 == highest).ToList();
             
             var currentMax = int.MinValue;
             Move bestMove = null;
             
-            // I wnt to move my opponent onto the game where I have the most pieces relative to him
-            foreach (var highMove in highestMoves)
+            foreach (var highMove in highestMoves.Select(m => m.Item1))
             {
                 var currentBoard = _boards[highMove.Column, highMove.Row];
                 
@@ -179,12 +257,56 @@ namespace UltimateTicTacToe
             {
                 // Go back to random for now
                 var rand = new Random();
-                bestMove = highestMoves[rand.Next(highestMoves.Count)];
+                bestMove = highestMoves[rand.Next(highestMoves.Count)].Item1;
             }
-
-            return new Move(boardInPlayColumn * 3 + bestMove.Column, boardInPlayRow * 3 + bestMove.Row);
+            
+            return TranslateMoveToFullBoard(boardInPlayColumn, boardInPlayRow, bestMove);
         }
-        
+        private Move CheckForInstantWinMove(char piece)
+        {
+            var overallMoveScores = _overallBoard.GetMoveScores(1, piece);
+            var overallWinMoves = overallMoveScores.Where(m => m.Item2 > 0);
+
+            foreach (var overallWinMove in overallWinMoves)
+            {
+                var subBoard = _boards[overallWinMove.Item1.Column, overallWinMove.Item1.Row];
+                    
+                var subBoardMoveScores = subBoard.GetMoveScores(1, piece);
+                var subBoardMoveScoreWins = subBoardMoveScores.Where(m => m.Item2 > 0).ToList();
+                    
+                if(subBoardMoveScoreWins.Any())
+                {
+                    var winningMove = subBoardMoveScoreWins.First().Item1;
+
+                    return TranslateMoveToFullBoard(overallWinMove.Item1.Column, overallWinMove.Item1.Row, winningMove);
+                }
+            }
+            
+            return null;
+        }
+        private static Move TranslateMoveToFullBoard(int overallBoardColumn, int overallBoardRow, Move move)
+        {
+            return new Move(overallBoardColumn * 3 + move.Column, overallBoardRow * 3 + move.Row);
+        }
+
+        private bool[,] GetChoiceBoard()
+        {
+            var canChoose = new bool[3,3];
+            
+            for(var column = 0; column < 3; column++)
+            {
+                for(var row = 0; row < 3; row++)
+                {
+                    if(!_boards[column, row].IsGameOver())
+                    {
+                        canChoose[column, row] = true;
+                    }
+                }
+            }
+            
+            return canChoose;
+        }
+
         private void UpdateOverallBoard()
         {
             for(var column = 0; column < 3; column++)
@@ -206,7 +328,7 @@ namespace UltimateTicTacToe
         }
 
         // Shallow search all boards and pick the one with the highest score
-        private Move PickBestOverallBoard(int searchDepth)
+        private Move PickBestOverallBoard(int searchDepth, bool[,] canChoose)
         {
             var boardScore = new int[3,3];
             
@@ -214,15 +336,21 @@ namespace UltimateTicTacToe
             {
                 for(var row = 0; row < 3; row++)
                 {
+                    Console.Error.WriteLine($"----------------------");
+                    Console.Error.WriteLine($"Board ({column},{row})");
                     var board = _boards[column, row];
                     
-                    if(board.IsGameOver())
+                    if(!canChoose[column, row])
                     {
+                        Console.Error.WriteLine("Can't choose");
                         boardScore[column, row] = int.MinValue;
                     }
                     else
                     {
+                        Console.Error.WriteLine("Can choose");
+                        Console.Error.WriteLine($"Score:{board.GetMoveScores(searchDepth, PlayerPiece).Max(m => m.Item2)}");
                         boardScore[column, row] = board.GetMoveScores(searchDepth, PlayerPiece).Max(m => m.Item2);
+                        
                     }
                 }
             }
@@ -273,6 +401,31 @@ namespace UltimateTicTacToe
                 Console.Error.WriteLine($"Move:{moveScore.Item1.Column}, {moveScore.Item1.Row} - Score:{moveScore.Item2}");
             }
         }
+        
+        private void PrintChoiceBoard(bool[,] canChoose)
+        {
+            Console.Error.WriteLine("------");
+            
+            for(var row = 0; row < canChoose.GetLength(1); row++)
+            {
+                for(var column = 0; column < canChoose.GetLength(0); column++)
+                {
+                    if(canChoose[column, row])
+                    {
+                        Console.Error.Write("T");
+                    }
+                    else 
+                    {
+                        Console.Error.Write("F");
+                    }
+                    
+                    Console.Error.Write("|");
+                }
+                
+                Console.Error.WriteLine();
+                Console.Error.WriteLine("------");
+            }
+        }
     }
     
     internal sealed class TicTacToe
@@ -314,6 +467,13 @@ namespace UltimateTicTacToe
                 return Evaluate(maximisingPlayer, depth);
             }
             
+            var validMoves = CalculateValidMoves();
+            
+            if(validMoves.Count == 0)
+            {
+                return Evaluate(maximisingPlayer, depth);
+            }
+            
             var evaluation = Evaluate(maximisingPlayer, depth);
             
             if(evaluation != 0)
@@ -323,7 +483,7 @@ namespace UltimateTicTacToe
             
             var maxScore = int.MinValue;
             
-            foreach (var move in CalculateValidMoves())
+            foreach (var move in validMoves)
             {
                 AddMove(move.Column, move.Row, piece);
                 

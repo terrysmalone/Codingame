@@ -259,7 +259,7 @@ namespace UltimateTicTacToeTest
         [TestCase("--X--X--X")]
         [TestCase("X---X---X")]
         [TestCase("--X-X-X--")]
-        public void IsGameOVer_CheckAllLines(string boardPieces)
+        public void IsGameOver_CheckAllLines(string boardPieces)
         {
             var ticTacToe = new TicTacToe();
             ticTacToe.SetBoard(SetBoard(boardPieces));
@@ -268,7 +268,7 @@ namespace UltimateTicTacToeTest
         }
         
         [Test]
-        public void IsGameOer_IfWonBoardIsFull()
+        public void IsGameOver_IfWonBoardIsFull()
         {
             // |X|X|O|
             // |X|O|O|
@@ -280,7 +280,7 @@ namespace UltimateTicTacToeTest
         }
         
         [Test]
-        public void IsGameOer_IfNonWonBoardIsFull()
+        public void IsGameOver_IfNonWonBoardIsFull()
         {
             // |X|O|O|
             // |O|X|X|
@@ -292,7 +292,7 @@ namespace UltimateTicTacToeTest
         }
         
         [Test]
-        public void IsGameOVer_FalseIfEmpty()
+        public void IsGameOver_FalseIfEmpty()
         {
             var  board = new char[3,3];
             
@@ -312,6 +312,22 @@ namespace UltimateTicTacToeTest
             ticTacToe.SetBoard(SetBoard("--O---XX-"));
             
             Assert.That(ticTacToe.IsGameOver(), Is.False);
+        }
+        
+        [Test]
+        public void GetScores([Range(1,10)] int depth)
+        {
+            // |O|X|X|
+            // |X|O|O|
+            // | |O|X|
+            var ticTacToe = new TicTacToe();
+            ticTacToe.SetBoard(SetBoard("OXXXOO-OX"));
+            
+            var bestMove = ticTacToe.GetMoveScores(depth, 'X');
+            
+            var expectedBestMove = new Move(2, 2);
+            //Assert.That(bestMove.Column, Is.EqualTo(expectedBestMove.Column));
+            //Assert.That(bestMove.Row, Is.EqualTo(expectedBestMove.Row));
         }
         
         // 

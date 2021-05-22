@@ -458,7 +458,7 @@ namespace UltimateTicTacToe
                 
                 _board.AddMove(validAction.Column, validAction.Row, player);
                 
-                var score = -Calculate(int.MinValue, int.MaxValue, depth-1, !maximisingPlayer, SwapPieces(player));
+                var score = -Calculate(int.MinValue+1, int.MaxValue, depth-1, !maximisingPlayer, SwapPieces(player));
                 
                 moveScores.Add(new Tuple<Move, int>(new Move(validAction.Column, validAction.Row), score));
                 

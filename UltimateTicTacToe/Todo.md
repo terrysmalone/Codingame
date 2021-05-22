@@ -29,5 +29,5 @@
 [ ] Add test for DrawnGamePlaysForTheTie
 
 ### Bugs
-[ ] Scoring thinks that 0,0 is the best for an empty game. All corners should be equal
+[X] Scoring thinks that 0,0 is the best for an empty game. All corners should be equal
 

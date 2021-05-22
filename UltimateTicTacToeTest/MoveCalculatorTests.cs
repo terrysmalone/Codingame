@@ -158,10 +158,6 @@ namespace UltimateTicTacToeTest
         [Test]
         public void WinningGameGoesForFastestWin_ForPlayerO([Range(3,10)] int depth)
         {
-            // The only non winning move is 1, 2
-            // All other moves win in 3 except 1,0 
-            // which wins in 1. We expect it to pick that
-            // 
             // |O| |O|
             // | | |X|
             // | | |X|
@@ -173,6 +169,19 @@ namespace UltimateTicTacToeTest
             var expectedBestMove = new Move(1, 0);
             Assert.That(bestMove.Column, Is.EqualTo(expectedBestMove.Column));
             Assert.That(bestMove.Row, Is.EqualTo(expectedBestMove.Row));
+        }
+
+        [Test]
+        public void BestMoves()
+        {
+            // |O| |O|
+            // | | |X|
+            // | | |X|
+            var ticTacToe = TicTacToeBoardFactory.GetTicTacToeBoard("O-O--X--X");
+
+            var calculator = new MoveCalculator();
+            var bestMoves = calculator.GetMoveScoresUsingAlphaBeta(ticTacToe, 9, 'O');
+            
         }
 
         [Test]

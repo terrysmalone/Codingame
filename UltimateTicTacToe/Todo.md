@@ -5,8 +5,8 @@
 
 ### Searching
 
-[ ] Move calculation out of tic tac toe class
-[ ] Implement alpha beta pruning
+[x] Move calculation out of tic tac toe class
+[X] Implement alpha beta pruning
 [ ] Move ultimate tic tac toe out of game
 [ ] Run calculation on ultimate tic tac toe
 
@@ -27,3 +27,7 @@
 
 ### Testing
 [ ] Add test for DrawnGamePlaysForTheTie
+
+### Bugs
+[ ] Scoring thinks that 0,0 is the best for an empty game. All corners should be equal
+

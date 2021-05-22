@@ -3,10 +3,17 @@
 ### General
 [ ] Read up on Monte Carlo tree search
 
+### Searching
+
+[ ] Move calculation out of tic tac toe class
+[ ] Implement alpha beta pruning
+[ ] Move ultimate tic tac toe out of game
+[ ] Run calculation on ultimate tic tac toe
+
 ### Overall Board
-[ ] Actually start tracking the overall game
-[ ] If there is one move that can win me the game do that
-[ ] If there is one move that can win it for my opponent go there and block it
+[x] Actually start tracking the overall game
+[x] If there is one move that can win me the game do that
+[x] If there is one move that can win it for my opponent go there and block it
 [ ] If I can win one of the boards that are important to a win pick that
 [ ] If I can block an opponent that's important to a win for them pick that
 [ ] If I can block an opponent that's important to a win for me pick that
@@ -20,10 +27,3 @@
 
 ### Testing
 [ ] Add test for DrawnGamePlaysForTheTie
-
-### Plan
-
-1. Move calculation out of tic tac toe class
-2. Implement alpha beta pruning
-3. Move ultimate tic tac toe out of game
-4. Run calculation on ultimate tic tac toe

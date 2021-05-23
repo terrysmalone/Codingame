@@ -82,7 +82,7 @@ namespace UltimateTicTacToe
         private readonly UltimateTicTacToe _ultimateTicTacToe;
         private readonly MoveCalculator _moveCalculator;
         
-        private readonly int _depth = 5;
+        private readonly int _depth = 4;
         
         public Game()
         {
@@ -180,19 +180,20 @@ namespace UltimateTicTacToe
         {
             _board = ticTacToeBoard;
             
-            Console.Error.WriteLine($"ActiveBoard:{_board.ActiveBoard.Column}, {_board.ActiveBoard.Row}");
+            //Console.Error.WriteLine($"ActiveBoard:{_board.ActiveBoard.Column}, {_board.ActiveBoard.Row}");
 
             var moveScores = new List<Tuple<Move, int>>();
             
             var validMoves = _board.CalculateValidMoves();
 
-            PrintMovesList(validMoves);
-            Console.Error.WriteLine("Before check");
-            PrintAllBoards(_board);
+            //PrintMovesList(validMoves);
+            //Console.Error.WriteLine("Before check");
+            //PrintAllBoards(_board);
 
             foreach (var validAction in validMoves) 
             {
                 var maximisingPlayer = player == 'X';
+                //Console.Error.WriteLine("======================================");
                 
                 _board.AddMove(validAction.Column, validAction.Row, player);
                 
@@ -201,10 +202,11 @@ namespace UltimateTicTacToe
                 moveScores.Add(new Tuple<Move, int>(new Move(validAction.Column, validAction.Row), score));
                 
                 _board.UndoMove(validAction.Column, validAction.Row);
+                //Console.Error.WriteLine("======================================");
             }
             
-            Console.Error.WriteLine("After check");
-            PrintAllBoards(_board);
+            //Console.Error.WriteLine("After check");
+            //PrintAllBoards(_board);
             
             return moveScores;
         }
@@ -371,10 +373,11 @@ namespace UltimateTicTacToe
 
         internal void AddMove(int column, int row, char piece)
         {
+            //Console.Error.WriteLine($"Adding move:{column},{row}");
             _previousActiveBoard = ActiveBoard;
             
             var localColumn = column % 3;
-            var localRow = column % 3;
+            var localRow = row % 3;
             
             SubBoards[column / 3, row / 3].AddMove(localColumn, localRow, piece);
             
@@ -393,6 +396,7 @@ namespace UltimateTicTacToe
         
         internal void UndoMove(int column, int row)
         {
+            //Console.Error.WriteLine($"Undoing move:{column},{row}");
             SubBoards[column / 3, row / 3].UndoMove(column % 3, row % 3);
             
             // Set active board back

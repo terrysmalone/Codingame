@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -94,29 +93,6 @@ namespace UltimateTicTacToe
         {
             return _moveCalculator.GetBestMoveUsingAlphaBeta(_ultimateTicTacToe, _depth, PlayerPiece);
         }
-        
-        private static Move TranslateMoveToFullBoard(int overallBoardColumn, int overallBoardRow, Move move)
-        {
-            return new Move(overallBoardColumn * 3 + move.Column, overallBoardRow * 3 + move.Row);
-        }
-
-        private bool[,] GetChoiceBoard()
-        {
-            var canChoose = new bool[3,3];
-            
-            for(var column = 0; column < 3; column++)
-            {
-                for(var row = 0; row < 3; row++)
-                {
-                    if(! _ultimateTicTacToe.SubBoards[column, row].IsGameOver())
-                    {
-                        canChoose[column, row] = true;
-                    }
-                }
-            }
-            
-            return canChoose;
-        }
 
         internal void AddMove(int column, int row, char piece)
         {
@@ -130,70 +106,28 @@ namespace UltimateTicTacToe
             PlayerPiece = playerPiece;
             EnemyPiece = playerPiece == 'O' ? 'X' : 'O';
         }
-        
-        private static void PrintMovesAndScoresList(List<Tuple<Move, int>> moveScores)
-        {
-            Console.Error.WriteLine("======================");
-            
-            foreach (var moveScore in moveScores)
-            {
-                Console.Error.WriteLine($"Move:{moveScore.Item1.Column}, {moveScore.Item1.Row} - Score:{moveScore.Item2}");
-            }
-        }
-        
-        private void PrintChoiceBoard(bool[,] canChoose)
-        {
-            Console.Error.WriteLine("------");
-            
-            for(var row = 0; row < canChoose.GetLength(1); row++)
-            {
-                for(var column = 0; column < canChoose.GetLength(0); column++)
-                {
-                    if(canChoose[column, row])
-                    {
-                        Console.Error.Write("T");
-                    }
-                    else 
-                    {
-                        Console.Error.Write("F");
-                    }
-                    
-                    Console.Error.Write("|");
-                }
-                
-                Console.Error.WriteLine();
-                Console.Error.WriteLine("------");
-            }
-        }
     }
 
     internal sealed class MoveCalculator
     {
-        private UltimateTicTacToe _board;
+        private ITicTacToe _board;
         
-        internal Move GetBestMoveUsingAlphaBeta(UltimateTicTacToe ticTacToeBoard, int depth, char startingPlayer)
+        internal Move GetBestMoveUsingAlphaBeta(ITicTacToe ticTacToeBoard, int depth, char startingPlayer)
         {
             return GetMoveScoresUsingAlphaBeta(ticTacToeBoard, depth, startingPlayer).OrderByDescending((m => m.Item2)).First().Item1;
         }
         
-        internal List<Tuple<Move, int>> GetMoveScoresUsingAlphaBeta(UltimateTicTacToe ticTacToeBoard, int depth, char player)
+        internal List<Tuple<Move, int>> GetMoveScoresUsingAlphaBeta(ITicTacToe ticTacToeBoard, int depth, char player)
         {
             _board = ticTacToeBoard;
             
-            //Console.Error.WriteLine($"ActiveBoard:{_board.ActiveBoard.Column}, {_board.ActiveBoard.Row}");
-
             var moveScores = new List<Tuple<Move, int>>();
             
             var validMoves = _board.CalculateValidMoves();
 
-            //PrintMovesList(validMoves);
-            //Console.Error.WriteLine("Before check");
-            //PrintAllBoards(_board);
-
             foreach (var validAction in validMoves) 
             {
                 var maximisingPlayer = player == 'X';
-                //Console.Error.WriteLine("======================================");
                 
                 _board.AddMove(validAction.Column, validAction.Row, player);
                 
@@ -202,24 +136,12 @@ namespace UltimateTicTacToe
                 moveScores.Add(new Tuple<Move, int>(new Move(validAction.Column, validAction.Row), score));
                 
                 _board.UndoMove(validAction.Column, validAction.Row);
-                //Console.Error.WriteLine("======================================");
             }
-            
-            //Console.Error.WriteLine("After check");
-            //PrintAllBoards(_board);
             
             return moveScores;
         }
 
-        private void PrintAllBoards(UltimateTicTacToe ultimateBoard)
-        {
-            foreach (var board in ultimateBoard.SubBoards)
-            {
-                board.PrintBoard();
-            }
-        }
-
-        internal int Calculate(int alpha, int beta, int depth, bool maximisingPlayer, char piece)
+        private int Calculate(int alpha, int beta, int depth, bool maximisingPlayer, char piece)
         {
             if (depth == 0)
             {
@@ -262,12 +184,12 @@ namespace UltimateTicTacToe
         }
         
         //------------------------------------------------------------------
-        internal Move GetBestMove(UltimateTicTacToe ticTacToeBoard, int depth, char startingPlayer)
+        internal Move GetBestMove(ITicTacToe ticTacToeBoard, int depth, char startingPlayer)
         {
             return GetMoveScores(ticTacToeBoard, depth, startingPlayer).OrderByDescending((m => m.Item2)).First().Item1;
         }
-        
-        internal List<Tuple<Move, int>> GetMoveScores(UltimateTicTacToe ticTacToeBoard, int depth, char player)
+
+        private List<Tuple<Move, int>> GetMoveScores(ITicTacToe ticTacToeBoard, int depth, char player)
         {
             _board = ticTacToeBoard;
             
@@ -290,8 +212,8 @@ namespace UltimateTicTacToe
             
             return moveScores;
         }
-        
-        internal int Calculate(int depth, bool maximisingPlayer, char piece)
+
+        private int Calculate(int depth, bool maximisingPlayer, char piece)
         {
             if (depth == 0)
             {
@@ -330,8 +252,8 @@ namespace UltimateTicTacToe
             
             return maxScore;
         }
-        
-        public static char SwapPieces(char piece)
+
+        private static char SwapPieces(char piece)
         {
             return piece == 'O' ? 'X' : 'O';
         }
@@ -348,10 +270,10 @@ namespace UltimateTicTacToe
         }
     }
 
-    internal sealed class UltimateTicTacToe
+    internal sealed class UltimateTicTacToe : ITicTacToe
     {
         private Move _previousActiveBoard;
-        internal Move ActiveBoard { get; private set; } = new Move(-1, -1);
+        private Move ActiveBoard { get; set; } = new Move(-1, -1);
         public TicTacToe[,] SubBoards { get; }
         public TicTacToe Board { get;  }
 
@@ -371,9 +293,8 @@ namespace UltimateTicTacToe
             SubBoards[2,2] = new TicTacToe();
         }
 
-        internal void AddMove(int column, int row, char piece)
+        public void AddMove(int column, int row, char piece)
         {
-            //Console.Error.WriteLine($"Adding move:{column},{row}");
             _previousActiveBoard = ActiveBoard;
             
             var localColumn = column % 3;
@@ -393,10 +314,9 @@ namespace UltimateTicTacToe
                 ActiveBoard = new Move(-1, -1);
             }
         }
-        
-        internal void UndoMove(int column, int row)
+
+        public void UndoMove(int column, int row)
         {
-            //Console.Error.WriteLine($"Undoing move:{column},{row}");
             SubBoards[column / 3, row / 3].UndoMove(column % 3, row % 3);
             
             // Set active board back
@@ -473,11 +393,20 @@ namespace UltimateTicTacToe
         }
     }
     
-    internal sealed class TicTacToe
+    internal interface ITicTacToe
+    {
+        List<Move> CalculateValidMoves();
+        int Evaluate(bool maximisingPlayer, int currentDepth);
+        void AddMove(int column, int row, char piece);
+        void UndoMove(int column, int row);
+
+    }
+    
+    internal sealed class TicTacToe : ITicTacToe
     {
         private char[,] _board = new char[3,3];
 
-        internal List<Move> CalculateValidMoves()
+        public List<Move> CalculateValidMoves()
         {
             var moves = new List<Move>();
             
@@ -568,8 +497,8 @@ namespace UltimateTicTacToe
             
             return false;
         }
-        
-        internal void AddMove(int column, int row, char piece)
+
+        public void AddMove(int column, int row, char piece)
         {
             _board[column, row] = piece;
         }

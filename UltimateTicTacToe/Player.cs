@@ -78,29 +78,15 @@ namespace UltimateTicTacToe
         public char PlayerPiece { get; private set; }
         public char EnemyPiece { get; private set; }
 
-
-        private readonly TicTacToe[,] _boards = new TicTacToe[3,3];
-        private readonly TicTacToe _overallBoard;
-
+        private readonly UltimateTicTacToe _ultimateTicTacToe;
         private readonly MoveCalculator _moveCalculator;
         
         private readonly int _depth = 10;
         
         public Game()
         {
-            _overallBoard = new TicTacToe();
-            
-            _boards[0,0] = new TicTacToe();
-            _boards[0,1] = new TicTacToe();
-            _boards[0,2] = new TicTacToe();
-            _boards[1,0] = new TicTacToe();
-            _boards[1,1] = new TicTacToe();
-            _boards[1,2] = new TicTacToe();
-            _boards[2,0] = new TicTacToe();
-            _boards[2,1] = new TicTacToe();
-            _boards[2,2] = new TicTacToe();
-            
             _moveCalculator = new MoveCalculator();
+            _ultimateTicTacToe = new UltimateTicTacToe();
         }
 
         public Move GetAction()
@@ -177,7 +163,7 @@ namespace UltimateTicTacToe
                 boardInPlayRow = ValidActions.First().Row/3;
             }
             
-            boardInPlay = _boards[boardInPlayColumn, boardInPlayRow];
+            boardInPlay = _ultimateTicTacToe.SubBoards[boardInPlayColumn, boardInPlayRow];
             
             //Console.Error.WriteLine($"Board in play:{boardInPlayColumn},{boardInPlayRow}");
             
@@ -246,7 +232,7 @@ namespace UltimateTicTacToe
             
             foreach (var highMove in highestMoves.Select(m => m.Item1))
             {
-                var currentBoard = _boards[highMove.Column, highMove.Row];
+                var currentBoard = _ultimateTicTacToe.SubBoards[highMove.Column, highMove.Row];
                 
                 //currentBoard.PrintBoard();
                 
@@ -271,12 +257,12 @@ namespace UltimateTicTacToe
         }
         private Move CheckForInstantWinMove(char piece)
         {
-            var overallMoveScores = _moveCalculator.GetMoveScoresUsingAlphaBeta(_overallBoard, 1, piece);
+            var overallMoveScores = _moveCalculator.GetMoveScoresUsingAlphaBeta(_ultimateTicTacToe.Board, 1, piece);
             var overallWinMoves = overallMoveScores.Where(m => m.Item2 > 0);
 
             foreach (var overallWinMove in overallWinMoves)
             {
-                var subBoard = _boards[overallWinMove.Item1.Column, overallWinMove.Item1.Row];
+                var subBoard = _ultimateTicTacToe.SubBoards[overallWinMove.Item1.Column, overallWinMove.Item1.Row];
                     
                 var subBoardMoveScores = _moveCalculator.GetMoveScoresUsingAlphaBeta(subBoard, 1, piece);
                 var subBoardMoveScoreWins = subBoardMoveScores.Where(m => m.Item2 > 0).ToList();
@@ -304,7 +290,7 @@ namespace UltimateTicTacToe
             {
                 for(var row = 0; row < 3; row++)
                 {
-                    if(!_boards[column, row].IsGameOver())
+                    if(! _ultimateTicTacToe.SubBoards[column, row].IsGameOver())
                     {
                         canChoose[column, row] = true;
                     }
@@ -320,15 +306,15 @@ namespace UltimateTicTacToe
             {
                 for(var row = 0; row < 3; row++)
                 {
-                    var evaluation = _boards[column, row].EvaluateBoard();
+                    var evaluation = _ultimateTicTacToe.SubBoards[column, row].EvaluateBoard();
                     
                     if(evaluation > 0)
                     {
-                        _overallBoard.AddMove(column, row, 'O');
+                        _ultimateTicTacToe.Board.AddMove(column, row, 'O');
                     }
                     else if(evaluation < 0)
                     {
-                        _overallBoard.AddMove(column, row, 'X');
+                        _ultimateTicTacToe.Board.AddMove(column, row, 'X');
                     }
                 }
             }
@@ -345,7 +331,7 @@ namespace UltimateTicTacToe
                 {
                     //Console.Error.WriteLine($"----------------------");
                     //Console.Error.WriteLine($"Board ({column},{row})");
-                    var board = _boards[column, row];
+                    var board = _ultimateTicTacToe.SubBoards[column, row];
                     
                     if(!canChoose[column, row])
                     {
@@ -388,7 +374,7 @@ namespace UltimateTicTacToe
 
         internal void AddMove(int column, int row, char piece)
         {
-            _boards[column / 3, row / 3].AddMove(column % 3, row % 3, piece);
+            _ultimateTicTacToe.SubBoards[column / 3, row / 3].AddMove(column % 3, row % 3, piece);
         }
         
         internal void SetPlayer(char playerPiece)
@@ -590,6 +576,28 @@ namespace UltimateTicTacToe
         public static char SwapPieces(char piece)
         {
             return piece == 'O' ? 'X' : 'O';
+        }
+    }
+
+    internal sealed class UltimateTicTacToe
+    {
+        public TicTacToe[,] SubBoards { get; }
+        public TicTacToe Board { get;  }
+
+        internal UltimateTicTacToe()
+        {
+            Board = new TicTacToe();
+            
+            SubBoards = new TicTacToe[3,3];
+            SubBoards[0,0] = new TicTacToe();
+            SubBoards[0,1] = new TicTacToe();
+            SubBoards[0,2] = new TicTacToe();
+            SubBoards[1,0] = new TicTacToe();
+            SubBoards[1,1] = new TicTacToe();
+            SubBoards[1,2] = new TicTacToe();
+            SubBoards[2,0] = new TicTacToe();
+            SubBoards[2,1] = new TicTacToe();
+            SubBoards[2,2] = new TicTacToe();
         }
     }
     

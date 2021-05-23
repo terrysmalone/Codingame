@@ -91,9 +91,6 @@ namespace UltimateTicTacToe
 
         public Move GetAction()
         {
-            // Update overall board
-            UpdateOverallBoard();
-            
             //_overallBoard.PrintBoard();
 
             TicTacToe boardInPlay = null;
@@ -300,26 +297,6 @@ namespace UltimateTicTacToe
             return canChoose;
         }
 
-        private void UpdateOverallBoard()
-        {
-            for(var column = 0; column < 3; column++)
-            {
-                for(var row = 0; row < 3; row++)
-                {
-                    var evaluation = _ultimateTicTacToe.SubBoards[column, row].EvaluateBoard();
-                    
-                    if(evaluation > 0)
-                    {
-                        _ultimateTicTacToe.Board.AddMove(column, row, 'O');
-                    }
-                    else if(evaluation < 0)
-                    {
-                        _ultimateTicTacToe.Board.AddMove(column, row, 'X');
-                    }
-                }
-            }
-        }
-
         // Shallow search all boards and pick the one with the highest score
         private Move PickBestOverallBoard(int searchDepth, bool[,] canChoose)
         {
@@ -374,7 +351,7 @@ namespace UltimateTicTacToe
 
         internal void AddMove(int column, int row, char piece)
         {
-            _ultimateTicTacToe.SubBoards[column / 3, row / 3].AddMove(column % 3, row % 3, piece);
+            _ultimateTicTacToe.AddMove(column, row, piece);
         }
         
         internal void SetPlayer(char playerPiece)
@@ -598,6 +575,36 @@ namespace UltimateTicTacToe
             SubBoards[2,0] = new TicTacToe();
             SubBoards[2,1] = new TicTacToe();
             SubBoards[2,2] = new TicTacToe();
+        }
+
+        internal void AddMove(int column, int row, char piece)
+        {
+            SubBoards[column / 3, row / 3].AddMove(column % 3, row % 3, piece);
+        }
+        
+        internal void UndoMove(int column, int row)
+        {
+            SubBoards[column / 3, row / 3].UndoMove(column % 3, row % 3);
+        }
+
+        private void UpdateOverallBoard()
+        {
+            for(var column = 0; column < 3; column++)
+            {
+                for(var row = 0; row < 3; row++)
+                {
+                    var evaluation = SubBoards[column, row].EvaluateBoard();
+                    
+                    if(evaluation > 0)
+                    {
+                        Board.AddMove(column, row, 'O');
+                    }
+                    else if(evaluation < 0)
+                    {
+                        Board.AddMove(column, row, 'X');
+                    }
+                }
+            }
         }
     }
     

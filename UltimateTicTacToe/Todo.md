@@ -1,6 +1,11 @@
 ﻿# To DO
 
+### Up next
+
+Check that alpha beta is still quicker than negamax
+Use main branch. As long as minalue plus one is in use
 ### General
+
 [ ] Read up on Monte Carlo tree search
 
 ### Searching

@@ -191,7 +191,7 @@ namespace UltimateTicTacToeTest
             var negaTime = MeasureNegaMaxTime(1000);
         }
 
-        private long MeasureNegaMaxTime(int times)
+        private static long MeasureNegaMaxTime(int times)
         {
             var watch = new System.Diagnostics.Stopwatch();
             watch.Start();
@@ -219,7 +219,7 @@ namespace UltimateTicTacToeTest
             return negaMaxTime;
         }
         
-        private long MeasureAlphaBetaTime(int times)
+        private static long MeasureAlphaBetaTime(int times)
         {
             var watch = new System.Diagnostics.Stopwatch();
             watch.Start();

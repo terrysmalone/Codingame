@@ -71,70 +71,36 @@ internal sealed class Game
     
     internal Point GetAction()
     {
-        var moveToPoint = _playerPosition;
+        var closestZombieDistance = double.MaxValue;
+        var closestHumanPoint = new Point(0,0);
         
-        // If I at a person 
-            // How many turns until a different person needs me
-            // Kill nearby zombies until I have to move
-            // Go to a new person
-        // else
-            // Who is in the most danger
-            // Go to them 
-        
-        // Am I at a person
-        if(_humans.Any(h => h.Position.X == _playerPosition.X && h.Position.Y == _playerPosition.Y))
+        // Find the player with the closest Zombie
+        foreach (var human in _humans)
         {
-            var currentHuman = _humans.First(h => h.Position.X == _playerPosition.X && h.Position.Y == _playerPosition.Y);
-            var closestZombie = GetClosestZombie(currentHuman);
-            
-            var currentClosestDistance = CalculateDistance(currentHuman, closestZombie);
-            
-            Human mostInDangerHuman = null;
-            
-            foreach (var human in _humans)
+            foreach (var zombie in _zombies)
             {
-                var closest = GetClosestZombie(currentHuman);
-                
-                var distance = CalculateDistance(human, closest);
-                
-                if(distance < currentClosestDistance)
+                var distance = CalculateDistance(human.Position, zombie.Position);
+            
+                if(distance < closestZombieDistance)
                 {
-                    currentClosestDistance = distance;
-                    mostInDangerHuman = human;
-                }
-            }
-            
-            if(mostInDangerHuman != null)
-            {
-                return mostInDangerHuman.Position;
-            }
-            else
-            {
-                return currentHuman.Position;
-            }
-        }
-        else
-        {
-            var closestZombieDistance = double.MaxValue;
-            var closestHumanPoint = new Point(0,0);
-        
-            // Find the player with the closest Zombie
-            foreach (var human in _humans)
-            {
-                foreach (var zombie in _zombies)
-                {
-                    var distance = CalculateDistance(human, zombie);
-                
-                    if(distance < closestZombieDistance)
+                    if(CanHumanBeSaved(human,zombie))
                     {
                         closestZombieDistance = distance;
-                        moveToPoint = human.Position;
+                        closestHumanPoint = human.Position;
                     }
                 }
             }
         }
         
-        return moveToPoint;
+        return closestHumanPoint;
+    }
+    private bool CanHumanBeSaved(Human human, Zombie zombie)
+    {
+        var myTurnsToTarget = CalculateDistance(_playerPosition, human.Position) / 1000;
+
+        var zombieTurnsToTarget = CalculateDistance(human.Position, zombie.Position) / 400;
+        
+        return myTurnsToTarget <= zombieTurnsToTarget;
     }
     private Zombie GetClosestZombie(Human human)
     {
@@ -143,7 +109,7 @@ internal sealed class Game
 
         foreach (var zombie in _zombies)
         {
-            var distance = CalculateDistance(human, zombie);
+            var distance = CalculateDistance(human.Position, zombie.Position);
             
             if(distance < closestZombieDistance)
             {
@@ -155,10 +121,10 @@ internal sealed class Game
         return closestZombie;
     }
 
-    private static double CalculateDistance(Human human, Zombie zombie)
+    private static double CalculateDistance(Point point1, Point point2)
     { 
-        return Math.Sqrt(  Math.Pow(Math.Abs(human.Position.X - zombie.Position.X), 2) 
-                         + Math.Pow(Math.Abs(human.Position.Y - zombie.Position.Y), 2));
+        return Math.Sqrt(  Math.Pow(Math.Abs(point1.X - point2.X), 2) 
+                         + Math.Pow(Math.Abs(point1.Y - point2.Y), 2));
     }
 
     public void SetPlayerCoordinates(int xPosition, int yPosition)

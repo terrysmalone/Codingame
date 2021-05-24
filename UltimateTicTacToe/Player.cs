@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -82,7 +83,7 @@ namespace UltimateTicTacToe
         private readonly UltimateTicTacToe _ultimateTicTacToe;
         private readonly MoveCalculator _moveCalculator;
         
-        private readonly int _depth = 5;
+        private readonly int _depth = 4;
         
         public Game()
         {
@@ -111,6 +112,8 @@ namespace UltimateTicTacToe
 
     internal sealed class MoveCalculator
     {
+        public int NodesVisited = 0;
+        
         private ITicTacToe _board;
         
         //private List<Tuple<Move, int>> _initialDepthMoveIterativeDeepening = new List<Tuple<Move, int>>();
@@ -121,23 +124,24 @@ namespace UltimateTicTacToe
         }
         
         internal List<Tuple<Move, int>> GetMoveScoresUsingAlphaBeta(ITicTacToe ticTacToeBoard, int depth, char player)
-        {
+        {   
+            NodesVisited = 0;
             _board = ticTacToeBoard;
 
             var moveScores = new List<Tuple<Move, int>>();
             
-            for (var i = depth; i <= depth; i++)
-            {
+            //for (var i = depth; i <= depth; i++)
+            //{
                 moveScores = CalculateBestMoveScores(depth, player);
-            }
+            //}
             
             return moveScores;
         }
         
         private List<Tuple<Move, int>> CalculateBestMoveScores(int depth, char player)
         {
-            var validMoves = new List<Move>();
-            
+            // var validMoves = new List<Move>();
+            //
             // if(_initialDepthMoveIterativeDeepening.Count > 0)
             // {
             //     validMoves = _initialDepthMoveIterativeDeepening.OrderByDescending(m => m.Item2).Select(m => m.Item1).ToList();
@@ -145,8 +149,10 @@ namespace UltimateTicTacToe
             // }
             // else
             // {
-                validMoves = _board.CalculateValidMoves();
-            //}
+            //   validMoves = _board.CalculateValidMoves();
+            // }
+            
+            var validMoves = _board.CalculateValidMoves();
 
             var moveScores = new List<Tuple<Move, int>>();
             
@@ -156,10 +162,10 @@ namespace UltimateTicTacToe
                 
                 _board.AddMove(validAction.Column, validAction.Row, player);
                 
-                var score = -Calculate(int.MinValue+1, int.MaxValue, depth-1, !maximisingPlayer, SwapPieces(player));
+                var score = -Calculate(int.MinValue, int.MaxValue, depth-1, !maximisingPlayer, SwapPieces(player));
                 
                 moveScores.Add(new Tuple<Move, int>(new Move(validAction.Column, validAction.Row), score));
-                
+                NodesVisited++;
                 //_initialDepthMoveIterativeDeepening.Add(new Tuple<Move, int>(new Move(validAction.Column, validAction.Row), score));
                 
                 _board.UndoMove(validAction.Column, validAction.Row);
@@ -194,7 +200,7 @@ namespace UltimateTicTacToe
             foreach (var move in validMoves)
             {
                 _board.AddMove(move.Column, move.Row, piece);
-                
+                NodesVisited++;
                 score = Math.Max(score, -Calculate(-beta, -alpha,depth-1, !maximisingPlayer, SwapPieces(piece)));
 
                 _board.UndoMove(move.Column, move.Row);
@@ -229,7 +235,7 @@ namespace UltimateTicTacToe
                 var maximisingPlayer = player == 'X';
                 
                 _board.AddMove(validAction.Column, validAction.Row, player);
-                
+                NodesVisited++;
                 var score = -Calculate(depth-1, !maximisingPlayer, SwapPieces(player));
                 
                 moveScores.Add(new Tuple<Move, int>(new Move(validAction.Column, validAction.Row), score));
@@ -266,7 +272,7 @@ namespace UltimateTicTacToe
             foreach (var move in validMoves)
             {
                 _board.AddMove(move.Column, move.Row, piece);
-                
+                NodesVisited++;
                 var score = -Calculate(depth-1, !maximisingPlayer, SwapPieces(piece));
                 
                 _board.UndoMove(move.Column, move.Row);

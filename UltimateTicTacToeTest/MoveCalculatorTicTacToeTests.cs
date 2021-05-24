@@ -187,6 +187,22 @@ namespace UltimateTicTacToeTest
         [Test]
         public void CompareTimes()
         {
+         
+            var ticTacToe = TicTacToeBoardFactory.GetTicTacToeBoard("O-O--X--X");
+
+            var calculator = new MoveCalculator();
+            calculator.GetBestMove(ticTacToe, 10, 'O');
+            
+            var negaMaxNodes = calculator.NodesVisited;
+            
+            //--------------
+            var ticTacToe2 = TicTacToeBoardFactory.GetTicTacToeBoard("O-O--X--X");
+
+            var calculator2 = new MoveCalculator();
+            calculator2.GetBestMoveUsingAlphaBeta(ticTacToe2, 10, 'O');
+            
+            var alphaBetaNodes = calculator2.NodesVisited;
+
             var alphaBetaTime = MeasureAlphaBetaTime(10000);
             var negaTime = MeasureNegaMaxTime(10000);
         }

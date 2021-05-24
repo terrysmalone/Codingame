@@ -4,7 +4,7 @@ using UltimateTicTacToe;
 namespace UltimateTicTacToeTest
 {
     [TestFixture]
-    public class MoveCalculatorTests
+    public class MoveCalculatorTicTacToeTests
     {
         [Test]
         public void OneMoveWinEvaluatesProperly_ForPlayerO_1([Range(1,10)] int depth)

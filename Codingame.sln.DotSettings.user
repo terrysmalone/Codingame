@@ -1,4 +1,5 @@
 ﻿<wpf:ResourceDictionary xml:space="preserve" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:s="clr-namespace:System;assembly=mscorlib" xmlns:ss="urn:shemas-jetbrains-com:settings-storage-xaml" xmlns:wpf="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
+	<s:String x:Key="/Default/Environment/Highlighting/HighlightingSourceSnapshotLocation/@EntryValue">C:\Users\terry.malone\AppData\Local\JetBrains\Rider2020.3\resharper-host\temp\Rider\vAny\CoverageData\_Codingame.1145212630\Snapshot\snapshot.utdcvr</s:String>
 	
 	<s:String x:Key="/Default/Environment/UnitTesting/UnitTestSessionStore/Sessions/=0e291833_002D6574_002D460f_002D8db6_002Db3cf5f4ea7bb/@EntryIndexedValue">&lt;SessionState ContinuousTestingMode="0" Name="OneMoveWinEvaluatesProperly_ForPlayerO_Depth1" xmlns="urn:schemas-jetbrains-com:jetbrains-ut-session"&gt;&#xD;
   &lt;TestAncestor&gt;&#xD;
@@ -20,7 +21,7 @@
     &lt;TestId&gt;NUnit3x::D1DED8DE-1D5E-4ED7-901C-160C776FF7AD::net5.0::UltimateTicTacToeTest.TicTacToeTests&lt;/TestId&gt;&#xD;
   &lt;/TestAncestor&gt;&#xD;
 &lt;/SessionState&gt;</s:String>
-	<s:String x:Key="/Default/Environment/UnitTesting/UnitTestSessionStore/Sessions/=c829e820_002Df712_002D4293_002Da442_002D8eaeee46bfd6/@EntryIndexedValue">&lt;SessionState ContinuousTestingMode="0" IsActive="True" Name="TicTacToeTests" xmlns="urn:schemas-jetbrains-com:jetbrains-ut-session"&gt;&#xD;
+	<s:String x:Key="/Default/Environment/UnitTesting/UnitTestSessionStore/Sessions/=c829e820_002Df712_002D4293_002Da442_002D8eaeee46bfd6/@EntryIndexedValue">&lt;SessionState ContinuousTestingMode="0" Name="TicTacToeTests" xmlns="urn:schemas-jetbrains-com:jetbrains-ut-session"&gt;&#xD;
   &lt;TestAncestor&gt;&#xD;
     &lt;TestId&gt;NUnit3x::D1DED8DE-1D5E-4ED7-901C-160C776FF7AD::net5.0::UltimateTicTacToeTest.TicTacToeTests&lt;/TestId&gt;&#xD;
     &lt;TestId&gt;NUnit3x::D1DED8DE-1D5E-4ED7-901C-160C776FF7AD::net5.0::UltimateTicTacToeTest.MoveCalculatorTests&lt;/TestId&gt;&#xD;
@@ -31,5 +32,6 @@
     &lt;TestId&gt;NUnit3x::D1DED8DE-1D5E-4ED7-901C-160C776FF7AD::net5.0::UltimateTicTacToeTest.TicTacToeTests&lt;/TestId&gt;&#xD;
     &lt;TestId&gt;NUnit3x::D1DED8DE-1D5E-4ED7-901C-160C776FF7AD::net5.0::UltimateTicTacToeTest.MoveCalculatorTests.CompareTimes&lt;/TestId&gt;&#xD;
     &lt;TestId&gt;NUnit3x::D1DED8DE-1D5E-4ED7-901C-160C776FF7AD::net5.0::UltimateTicTacToeTest.MoveCalculatorTests&lt;/TestId&gt;&#xD;
+    &lt;TestId&gt;NUnit3x::D1DED8DE-1D5E-4ED7-901C-160C776FF7AD::net5.0::UltimateTicTacToeTest.MoveCalculatorTicTacToeTests&lt;/TestId&gt;&#xD;
   &lt;/TestAncestor&gt;&#xD;
 &lt;/SessionState&gt;</s:String></wpf:ResourceDictionary>

@@ -10,6 +10,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PowerOfThor_CodeGolf", "Pow
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UltimateTicTacToeTest", "UltimateTicTacToeTest\UltimateTicTacToeTest.csproj", "{D1DED8DE-1D5E-4ED7-901C-160C776FF7AD}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodersStrikeBack", "CodersStrikeBack\CodersStrikeBack.csproj", "{18DA8468-B968-4517-8E00-B7038DBBCCC4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -36,5 +38,9 @@ Global
 		{D1DED8DE-1D5E-4ED7-901C-160C776FF7AD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D1DED8DE-1D5E-4ED7-901C-160C776FF7AD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D1DED8DE-1D5E-4ED7-901C-160C776FF7AD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{18DA8468-B968-4517-8E00-B7038DBBCCC4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{18DA8468-B968-4517-8E00-B7038DBBCCC4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{18DA8468-B968-4517-8E00-B7038DBBCCC4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{18DA8468-B968-4517-8E00-B7038DBBCCC4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

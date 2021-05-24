@@ -187,8 +187,8 @@ namespace UltimateTicTacToeTest
         [Test]
         public void CompareTimes()
         {
-            var alphaBetaTime = MeasureAlphaBetaTime(1000);
-            var negaTime = MeasureNegaMaxTime(1000);
+            var alphaBetaTime = MeasureAlphaBetaTime(10000);
+            var negaTime = MeasureNegaMaxTime(10000);
         }
 
         private static long MeasureNegaMaxTime(int times)

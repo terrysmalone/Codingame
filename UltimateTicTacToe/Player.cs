@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 [assembly: InternalsVisibleToAttribute("UltimateTicTacToeTest")]
 namespace UltimateTicTacToe
@@ -81,7 +82,7 @@ namespace UltimateTicTacToe
         private readonly UltimateTicTacToe _ultimateTicTacToe;
         private readonly MoveCalculator _moveCalculator;
         
-        private readonly int _depth = 4;
+        private readonly int _depth = 5;
         
         public Game()
         {
@@ -112,19 +113,43 @@ namespace UltimateTicTacToe
     {
         private ITicTacToe _board;
         
+        //private List<Tuple<Move, int>> _initialDepthMoveIterativeDeepening = new List<Tuple<Move, int>>();
+        
         internal Move GetBestMoveUsingAlphaBeta(ITicTacToe ticTacToeBoard, int depth, char startingPlayer)
         {
-            return GetMoveScoresUsingAlphaBeta(ticTacToeBoard, depth, startingPlayer).OrderByDescending((m => m.Item2)).First().Item1;
+            return GetMoveScoresUsingAlphaBeta(ticTacToeBoard, depth, startingPlayer).OrderByDescending(m => m.Item2).First().Item1;
         }
         
         internal List<Tuple<Move, int>> GetMoveScoresUsingAlphaBeta(ITicTacToe ticTacToeBoard, int depth, char player)
         {
             _board = ticTacToeBoard;
-            
+
             var moveScores = new List<Tuple<Move, int>>();
             
-            var validMoves = _board.CalculateValidMoves();
+            for (var i = depth; i <= depth; i++)
+            {
+                moveScores = CalculateBestMoveScores(depth, player);
+            }
+            
+            return moveScores;
+        }
+        
+        private List<Tuple<Move, int>> CalculateBestMoveScores(int depth, char player)
+        {
+            var validMoves = new List<Move>();
+            
+            // if(_initialDepthMoveIterativeDeepening.Count > 0)
+            // {
+            //     validMoves = _initialDepthMoveIterativeDeepening.OrderByDescending(m => m.Item2).Select(m => m.Item1).ToList();
+            //     _initialDepthMoveIterativeDeepening.Clear();
+            // }
+            // else
+            // {
+                validMoves = _board.CalculateValidMoves();
+            //}
 
+            var moveScores = new List<Tuple<Move, int>>();
+            
             foreach (var validAction in validMoves) 
             {
                 var maximisingPlayer = player == 'X';
@@ -134,6 +159,8 @@ namespace UltimateTicTacToe
                 var score = -Calculate(int.MinValue+1, int.MaxValue, depth-1, !maximisingPlayer, SwapPieces(player));
                 
                 moveScores.Add(new Tuple<Move, int>(new Move(validAction.Column, validAction.Row), score));
+                
+                //_initialDepthMoveIterativeDeepening.Add(new Tuple<Move, int>(new Move(validAction.Column, validAction.Row), score));
                 
                 _board.UndoMove(validAction.Column, validAction.Row);
             }
@@ -389,7 +416,16 @@ namespace UltimateTicTacToe
 
         public int Evaluate(bool maximisingPlayer, int depth)
         {
-            return Board.Evaluate(maximisingPlayer, depth);
+            var score = 0;
+
+            foreach (var board in SubBoards)
+            {
+                score += board.Evaluate(maximisingPlayer, depth);
+            }
+            
+            score += (Board.Evaluate(maximisingPlayer, depth) * 10);
+        
+            return score;
         }
     }
     

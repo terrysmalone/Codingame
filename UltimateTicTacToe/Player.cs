@@ -169,7 +169,6 @@ namespace UltimateTicTacToe
             foreach (var move in validMoves)
             {
                 _board.AddMove(move.Column, move.Row, piece);
-                NodesVisited++;
                 score = Math.Max(score, -Calculate(-beta, -alpha,depth-1, !isX, SwapPieces(piece)));
 
                 _board.UndoMove(move.Column, move.Row);
@@ -385,7 +384,7 @@ namespace UltimateTicTacToe
             return moves;
         }
 
-        private List<Move> TranslateToGlobalMoves(List<Move> moves, Move activeBoard)
+        private static IEnumerable<Move> TranslateToGlobalMoves(List<Move> moves, Move activeBoard)
         {
             var translatedMoves = new List<Move>();
 
@@ -397,7 +396,7 @@ namespace UltimateTicTacToe
             return translatedMoves;
         }
 
-        private Move TranslateToGlobalMove(Move move, Move activeBoard)
+        private static Move TranslateToGlobalMove(Move move, Move activeBoard)
         {
             return new Move(activeBoard.Column * 3 + move.Column, activeBoard.Row * 3 + move.Row);
         }

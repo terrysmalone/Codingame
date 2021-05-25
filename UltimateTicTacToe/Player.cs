@@ -138,6 +138,8 @@ namespace UltimateTicTacToe
                 _board.UndoMove(validAction.Column, validAction.Row);
             }
             
+            //PrintMovesList(moveScores);
+            
             return moveScores;
         }
 
@@ -266,7 +268,16 @@ namespace UltimateTicTacToe
             {
                 Console.Error.WriteLine($"Move:{move.Column}, {move.Row}");
             }
-            
+        }
+        
+        private void PrintMovesList(List<Tuple<Move, int>> moveScores)
+        {
+            Console.Error.WriteLine("======================");
+        
+            foreach (var moveScore in moveScores)
+            {
+                Console.Error.WriteLine($"Move:{moveScore.Item1.Column}, {moveScore.Item1.Row} - {moveScore.Item2}");
+            }
         }
     }
 
@@ -313,6 +324,8 @@ namespace UltimateTicTacToe
             {
                 ActiveBoard = new Move(-1, -1);
             }
+            
+            UpdateOverallBoard();
         }
 
         public void UndoMove(int column, int row)
@@ -321,6 +334,8 @@ namespace UltimateTicTacToe
             
             // Set active board back
             ActiveBoard = _previousActiveBoard;
+            
+            UpdateOverallBoard();
         }
 
         private void UpdateOverallBoard()
@@ -389,7 +404,16 @@ namespace UltimateTicTacToe
 
         public int Evaluate(bool maximisingPlayer, int depth)
         {
-            return Board.Evaluate(maximisingPlayer, depth);
+            var score = 0;
+
+            foreach (var board in SubBoards)
+            {
+                score += board.Evaluate(maximisingPlayer, depth);
+            }
+            
+            score += Board.Evaluate(maximisingPlayer, depth) * 10;
+            
+            return score;
         }
     }
     

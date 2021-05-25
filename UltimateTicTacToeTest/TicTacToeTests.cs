@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using UltimateTicTacToe;
@@ -144,6 +146,225 @@ namespace UltimateTicTacToeTest
             ticTacToe.SetBoard(SetBoard("--O---XX-"));
             
             Assert.That(ticTacToe.IsGameOver(), Is.False);
+        }
+        
+        [Test]
+        public void TestCalculateValidMovesOnEmptyBoard()
+        {
+            var ticTacToe = new TicTacToe();
+            
+            var moves = ticTacToe.CalculateValidMoves();
+            
+            var expectedMoves = new List<Move>
+            {
+                new(0, 0),
+                new(0, 1),
+                new(0, 2),
+                new(1, 0),
+                new(1, 1),
+                new(1, 2),
+                new(2, 0),
+                new(2, 1),
+                new(2, 2)
+            };
+            
+            CollectionAssert.AreEquivalent(expectedMoves, moves);
+        }
+        
+        [Test]
+        public void TestAddMoveO()
+        {
+            var ticTacToe = new TicTacToe();
+            
+            ticTacToe.AddMove(0, 2, 'O');
+            
+            var board = ticTacToe.GetBoard();
+            var expectedBoard = SetBoard("------O--");
+
+
+            CollectionAssert.AreEqual(expectedBoard, board);
+        }
+        
+        [Test]
+        public void TestAddMoveX()
+        {
+            var ticTacToe = new TicTacToe();
+            
+            ticTacToe.AddMove(1, 1, 'X');
+            
+            var board = ticTacToe.GetBoard();
+            var expectedBoard = SetBoard("----X----");
+
+            CollectionAssert.AreEqual(expectedBoard, board);
+        }
+        
+        [Test]
+        public void TestAddMoveFull()
+        {
+            var ticTacToe = new TicTacToe();
+            
+            ticTacToe.AddMove(0, 0, 'O');
+            ticTacToe.AddMove(0, 1, 'X');
+            ticTacToe.AddMove(0, 2, 'O');
+            ticTacToe.AddMove(1, 0, 'X');
+            ticTacToe.AddMove(1, 1, 'O');
+            ticTacToe.AddMove(1, 2, 'X');
+            ticTacToe.AddMove(2, 0, 'O');
+            ticTacToe.AddMove(2, 1, 'X');
+            ticTacToe.AddMove(2, 2, 'O');
+            
+            var board = ticTacToe.GetBoard();
+            var expectedBoard = SetBoard("OXOXOXOXO");
+
+            CollectionAssert.AreEqual(expectedBoard, board);
+        }
+        
+        [Test]
+        public void TestUndoMoveO()
+        {
+            var ticTacToe = new TicTacToe();
+            ticTacToe.SetBoard(SetBoard("X--O--XO-"));
+            
+            ticTacToe.UndoMove(1, 2);
+            
+            var board = ticTacToe.GetBoard();
+            
+            var expectedBoard = SetBoard("X--O--X--");
+
+            CollectionAssert.AreEqual(expectedBoard, board);
+        }
+        
+        [Test]
+        public void TestUndoMoveX()
+        {
+            var ticTacToe = new TicTacToe();
+            ticTacToe.SetBoard(SetBoard("XOOOX-X--"));
+            
+            ticTacToe.UndoMove(0, 2);
+            
+            var board = ticTacToe.GetBoard();
+            
+            var expectedBoard = SetBoard("XOOOX----");
+
+            CollectionAssert.AreEqual(expectedBoard, board);
+        }
+        
+        [Test]
+        public void FullBoard()
+        {
+            var ticTacToe = new TicTacToe();
+            ticTacToe.SetBoard(SetBoard("OXOXOXOXO"));
+            
+            ticTacToe.UndoMove(0, 0);
+            ticTacToe.UndoMove(0, 1);
+            ticTacToe.UndoMove(0, 2);
+            ticTacToe.UndoMove(1, 0);
+            ticTacToe.UndoMove(1, 1);
+            ticTacToe.UndoMove(1, 2);
+            ticTacToe.UndoMove(2, 0);
+            ticTacToe.UndoMove(2, 1);
+            ticTacToe.UndoMove(2, 2);
+            
+            var board = ticTacToe.GetBoard();
+            
+            var expectedBoard = SetBoard("---------");
+
+            CollectionAssert.AreEqual(expectedBoard, board);
+        }
+
+        [Test]
+        public void TestCalculateValidMoves()
+        {
+            // | |O|X|
+            // | | | |
+            // |O|X| |
+            var ticTacToe = new TicTacToe();
+            ticTacToe.SetBoard(SetBoard("-OX---OX-"));
+            
+            var moves = ticTacToe.CalculateValidMoves();
+            
+            var expectedMoves = new List<Move>
+            {
+                new(0, 0),
+                new(0, 1),
+                new(1, 1),
+                new(2, 1),
+                new(2, 2)
+            };
+            
+            CollectionAssert.AreEquivalent(expectedMoves, moves);
+        }
+
+        [Test]
+        public void TestEvaluateWinningFromOPointOfView()
+        {
+            // | |O|X|
+            // |X|O| |
+            // |O|O|X|
+            var ticTacToe = new TicTacToe();
+            ticTacToe.SetBoard(SetBoard("-OXXO-OOX"));
+            
+            Assert.That(ticTacToe.Evaluate(isX:false, currentDepth:5), Is.EqualTo(6));    // Score should be equal to 1 + depth
+        }
+        
+        [Test]
+        public void TestEvaluateLosingFromOPointOfView()
+        {
+            // | |O|X|
+            // |X|O|O|
+            // |X|X|X|
+            var ticTacToe = new TicTacToe();
+            ticTacToe.SetBoard(SetBoard("-OXXOOXXX"));
+            
+            Assert.That(ticTacToe.Evaluate(isX:false, currentDepth:0), Is.EqualTo(-1));    // Score should be equal to 1 + depth
+        }
+        
+        [Test]
+        public void TestEvaluateDrawingFromOPointOfView()
+        {
+            // |X|O|O|
+            // |X|X|O|
+            // | |O| |
+            var ticTacToe = new TicTacToe();
+            ticTacToe.SetBoard(SetBoard("XOOXXO-O-"));
+            
+            Assert.That(ticTacToe.Evaluate(isX:false, currentDepth:3), Is.EqualTo(0)); 
+        }
+        
+        [Test]
+        public void TestEvaluateWinningFromXPointOfView()
+        {
+            // |X|O|O|
+            // |X|X| |
+            // |O|O|X|
+            var ticTacToe = new TicTacToe();
+            ticTacToe.SetBoard(SetBoard("XOOXX-OOX"));
+            
+            Assert.That(ticTacToe.Evaluate(isX:true, currentDepth:9), Is.EqualTo(10));    // Score should be equal to 1 + depth
+        }
+        
+        [Test]
+        public void TestEvaluateLosingFromXPointOfView()
+        {
+            // |X|O|O|
+            // |X|O|O|
+            // |O|X|X|
+            var ticTacToe = new TicTacToe();
+            ticTacToe.SetBoard(SetBoard("XOOXOOOXX"));
+            
+            Assert.That(ticTacToe.Evaluate(isX:true, currentDepth:3), Is.EqualTo(-4));    // Score should be equal to  - 1 - depth
+        }
+        
+        [Test]
+        public void TestEvaluateDrawingFromXPointOfView()
+        {
+            // |X|O|O|
+            // |X|X| |
+            // |O| |O|
+            var ticTacToe = new TicTacToe();
+            ticTacToe.SetBoard(SetBoard("XOOXX-O-O"));
+            
+            Assert.That(ticTacToe.Evaluate(isX:true, currentDepth:453), Is.EqualTo(0));   
         }
         
         // 

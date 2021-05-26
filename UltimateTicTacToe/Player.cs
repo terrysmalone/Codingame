@@ -81,7 +81,7 @@ namespace UltimateTicTacToe
         private readonly UltimateTicTacToe _ultimateTicTacToe;
         private readonly MoveCalculator _moveCalculator;
 
-        private readonly int _depth = 4;
+        private readonly int _depth = 3;
 
         public Game()
         {
@@ -91,6 +91,8 @@ namespace UltimateTicTacToe
 
         public Move GetAction()
         {
+            //_ultimateTicTacToe.PrintBoard();
+        
             return _moveCalculator.GetBestMoveUsingAlphaBeta(_ultimateTicTacToe, _depth, PlayerPiece);
         }
 
@@ -131,7 +133,7 @@ namespace UltimateTicTacToe
 
                 _board.AddMove(validAction.Column, validAction.Row, player);
 
-                var score = -Calculate(int.MinValue, int.MaxValue, depth-1, !isX, SwapPieces(player));
+                var score = -Calculate(int.MinValue+1, int.MaxValue, depth-1, !isX, SwapPieces(player));
 
                 moveScores.Add(new Tuple<Move, int>(new Move(validAction.Column, validAction.Row), score));
 
@@ -152,16 +154,10 @@ namespace UltimateTicTacToe
 
             var validMoves = _board.CalculateValidMoves();
 
-            if(validMoves.Count == 0)
+            if(validMoves.Count == 0
+               || _board.IsGameOver())
             {
                 return _board.Evaluate(isX, depth);
-            }
-
-            var evaluation = _board.Evaluate(isX, depth);
-
-            if(evaluation != 0)
-            {
-                return evaluation;
             }
 
             var score = int.MinValue;
@@ -169,7 +165,6 @@ namespace UltimateTicTacToe
             foreach (var move in validMoves)
             {
                 _board.AddMove(move.Column, move.Row, piece);
-                NodesVisited++;
                 score = Math.Max(score, -Calculate(-beta, -alpha,depth-1, !isX, SwapPieces(piece)));
 
                 _board.UndoMove(move.Column, move.Row);
@@ -337,9 +332,34 @@ namespace UltimateTicTacToe
 
             UpdateOverallBoard();
         }
+        
+        public bool IsGameOver()
+        {
+            if(  Board.EvaluateBoard() != 0
+               || AvailableSpacesOnBoard() == 0)
+            {
+                return true;
+            }
+
+            return false;
+        }
+        
+        private int AvailableSpacesOnBoard()
+        {
+            var availableSpaces = Board.AvailableSpacesOnBoard();
+
+            foreach (var board in SubBoards)
+            {
+                availableSpaces += board.AvailableSpacesOnBoard();
+            }
+
+            return availableSpaces;
+        }
 
         private void UpdateOverallBoard()
         {
+            Board.ClearBoard();
+            
             for(var column = 0; column < 3; column++)
             {
                 for(var row = 0; row < 3; row++)
@@ -385,7 +405,7 @@ namespace UltimateTicTacToe
             return moves;
         }
 
-        private List<Move> TranslateToGlobalMoves(List<Move> moves, Move activeBoard)
+        private static IEnumerable<Move> TranslateToGlobalMoves(List<Move> moves, Move activeBoard)
         {
             var translatedMoves = new List<Move>();
 
@@ -397,7 +417,7 @@ namespace UltimateTicTacToe
             return translatedMoves;
         }
 
-        private Move TranslateToGlobalMove(Move move, Move activeBoard)
+        private static Move TranslateToGlobalMove(Move move, Move activeBoard)
         {
             return new Move(activeBoard.Column * 3 + move.Column, activeBoard.Row * 3 + move.Row);
         }
@@ -415,6 +435,17 @@ namespace UltimateTicTacToe
 
             return score;
         }
+        public void PrintBoard()
+        {
+            for (var i = 0; i < 3; i++)
+            {
+                for (var j = 0; j < 3; j++)
+                {
+                    Console.Error.WriteLine($"Board {i+j}");
+                    SubBoards[j, i].PrintBoard();
+                }
+            }
+        }
     }
 
     internal interface ITicTacToe
@@ -423,7 +454,7 @@ namespace UltimateTicTacToe
         int Evaluate(bool isX, int currentDepth);
         void AddMove(int column, int row, char piece);
         void UndoMove(int column, int row);
-
+        bool IsGameOver();
     }
 
     internal sealed class TicTacToe : ITicTacToe
@@ -497,6 +528,7 @@ namespace UltimateTicTacToe
 
             return 0;
         }
+        
         private char PlayerWithLine(Move[] line)
         {
             if (DoesPlayerHaveLine(line, 'X'))
@@ -541,8 +573,11 @@ namespace UltimateTicTacToe
         {
             return (char[,])_board.Clone();
         }
-
-
+        
+        internal void ClearBoard()
+        {
+            _board = new char[3,3];
+        }
 
         // Returns my placed pieces - opponent placed pieces
         internal int GetNumberOfPiecesScore(char player)
@@ -565,7 +600,7 @@ namespace UltimateTicTacToe
             return playerPieces - opponentPieces;
         }
 
-        internal bool IsGameOver()
+        public bool IsGameOver()
         {
             if(   EvaluateBoard() != 0
                || AvailableSpacesOnBoard() == 0)
@@ -576,7 +611,7 @@ namespace UltimateTicTacToe
             return false;
         }
 
-        private int AvailableSpacesOnBoard()
+        public int AvailableSpacesOnBoard()
         {
             var availableSpaces = 0;
 

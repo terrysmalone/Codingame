@@ -14,7 +14,17 @@ namespace UltimateTicTacToeTest
         {
             TicTacToe ticTacToe = new TicTacToe();
             
+            var board = GetBoard(boardString);
+            
+            ticTacToe.SetBoard(board);
+            
+            return ticTacToe;
+        }
+        
+        internal static char[,] GetBoard(string boardString)
+        {
             var board = new char[3,3];
+            
             var position = 0;
             
             for(var row = 0; row < board.GetLength(1); row++)
@@ -31,9 +41,7 @@ namespace UltimateTicTacToeTest
                 }
             }
             
-            ticTacToe.SetBoard(board);
-            
-            return ticTacToe;
+            return board;
         }
     }
 }

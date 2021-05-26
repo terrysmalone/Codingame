@@ -81,7 +81,7 @@ namespace UltimateTicTacToe
         private readonly UltimateTicTacToe _ultimateTicTacToe;
         private readonly MoveCalculator _moveCalculator;
 
-        private readonly int _depth = 5;
+        private readonly int _depth = 3;
 
         public Game()
         {
@@ -91,6 +91,8 @@ namespace UltimateTicTacToe
 
         public Move GetAction()
         {
+            //_ultimateTicTacToe.PrintBoard();
+        
             return _moveCalculator.GetBestMoveUsingAlphaBeta(_ultimateTicTacToe, _depth, PlayerPiece);
         }
 
@@ -131,7 +133,7 @@ namespace UltimateTicTacToe
 
                 _board.AddMove(validAction.Column, validAction.Row, player);
 
-                var score = -Calculate(int.MinValue, int.MaxValue, depth-1, !isX, SwapPieces(player));
+                var score = -Calculate(int.MinValue+1, int.MaxValue, depth-1, !isX, SwapPieces(player));
 
                 moveScores.Add(new Tuple<Move, int>(new Move(validAction.Column, validAction.Row), score));
 
@@ -432,6 +434,17 @@ namespace UltimateTicTacToe
             score += Board.Evaluate(isX, depth) * 10;
 
             return score;
+        }
+        public void PrintBoard()
+        {
+            for (var i = 0; i < 3; i++)
+            {
+                for (var j = 0; j < 3; j++)
+                {
+                    Console.Error.WriteLine($"Board {i+j}");
+                    SubBoards[j, i].PrintBoard();
+                }
+            }
         }
     }
 

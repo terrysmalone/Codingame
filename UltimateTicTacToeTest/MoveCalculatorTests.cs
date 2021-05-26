@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using UltimateTicTacToe;
@@ -254,16 +255,18 @@ namespace UltimateTicTacToeTest
             
             var bestMove = calculator.GetBestMoveUsingAlphaBeta(ticTacToe, depth, 'X');
             
-            var goodMoves = new List<Move>
-            {
-                new(4, 0),
-                new(4, 1),
-                new(4, 2),
-                new(5, 1),
-                new(5, 2)
-            };
-
-            Assert.That(goodMoves.Any(m => m.Column == bestMove.Column && m.Row == bestMove.Row));
+            throw new NotImplementedException();
+            // var goodMoves = new List<Move>
+            // {
+            //     new(4, 0),
+            //     new(4, 1),
+            //     new(4, 2),
+            //     new(5, 1),
+            //     new(5, 2)
+            // };
+            //
+            //
+            // Assert.That(goodMoves.Any(m => m.Column == bestMove.Column && m.Row == bestMove.Row));
         }
 
         [Test]

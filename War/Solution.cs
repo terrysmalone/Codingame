@@ -84,7 +84,6 @@ class Solution
                     if(player1Cards.Count <= 3 || player2Cards.Count <= 3)
                     {
                         Console.WriteLine("PAT");
-                        roundOver = true;
                         gameOver = true;
                         break;
                     }

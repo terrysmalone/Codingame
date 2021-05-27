@@ -116,7 +116,17 @@ namespace UltimateTicTacToe
 
         internal Move GetBestMoveUsingAlphaBeta(ITicTacToe ticTacToeBoard, int depth, char startingPlayer)
         {
-            return GetMoveScoresUsingAlphaBeta(ticTacToeBoard, depth, startingPlayer).OrderByDescending((m => m.Item2)).First().Item1;
+            var moves = GetMoveScoresUsingAlphaBeta(ticTacToeBoard, depth, startingPlayer).OrderByDescending(m => m.Item2).ToList();
+            
+            var max = moves.Max(m => m.Item2);
+            
+            var highest = moves.Where(m => m.Item2 == max).ToList();
+            
+            var rand = new Random();
+            
+            return highest[rand.Next(highest.Count)].Item1;
+        
+            //return GetMoveScoresUsingAlphaBeta(ticTacToeBoard, depth, startingPlayer).OrderByDescending((m => m.Item2)).First().Item1;
         }
 
         internal List<Tuple<Move, int>> GetMoveScoresUsingAlphaBeta(ITicTacToe ticTacToeBoard, int depth, char player)

@@ -14,6 +14,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodersStrikeBack", "CodersS
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeVsZombies", "CodeVsZombies\CodeVsZombies.csproj", "{BE615E3F-5074-45AA-9A14-321AF30F11C2}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DontPanic_Episode1", "DontPanic_Episode1\DontPanic_Episode1.csproj", "{A6E19732-C260-4009-AF4A-2748C0128243}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -48,5 +50,9 @@ Global
 		{BE615E3F-5074-45AA-9A14-321AF30F11C2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BE615E3F-5074-45AA-9A14-321AF30F11C2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BE615E3F-5074-45AA-9A14-321AF30F11C2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A6E19732-C260-4009-AF4A-2748C0128243}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A6E19732-C260-4009-AF4A-2748C0128243}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A6E19732-C260-4009-AF4A-2748C0128243}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A6E19732-C260-4009-AF4A-2748C0128243}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

@@ -41,6 +41,17 @@
     &lt;TestId&gt;NUnit3x::D1DED8DE-1D5E-4ED7-901C-160C776FF7AD::net5.0::UltimateTicTacToeTest.TicTacToeTests&lt;/TestId&gt;&#xD;
   &lt;/TestAncestor&gt;&#xD;
 &lt;/SessionState&gt;</s:String>
+	<s:String x:Key="/Default/Environment/UnitTesting/UnitTestSessionStore/Sessions/=698ae8b7_002De129_002D4aaf_002D98ef_002D248704083959/@EntryIndexedValue">&lt;SessionState ContinuousTestingMode="0" Name="TestAddMove" xmlns="urn:schemas-jetbrains-com:jetbrains-ut-session"&gt;&#xD;
+  &lt;TestAncestor&gt;&#xD;
+    &lt;TestId&gt;NUnit3x::D1DED8DE-1D5E-4ED7-901C-160C776FF7AD::net5.0::UltimateTicTacToeTest.UltimateTicTacToeTests.TestAddMove&lt;/TestId&gt;&#xD;
+  &lt;/TestAncestor&gt;&#xD;
+&lt;/SessionState&gt;</s:String>
+	<s:String x:Key="/Default/Environment/UnitTesting/UnitTestSessionStore/Sessions/=7c24a869_002D135d_002D4992_002D80cc_002D0c0f12b3b8ce/@EntryIndexedValue">&lt;SessionState ContinuousTestingMode="0" IsActive="True" Name="TestAddMove #3" xmlns="urn:schemas-jetbrains-com:jetbrains-ut-session"&gt;&#xD;
+  &lt;TestAncestor&gt;&#xD;
+    &lt;TestId&gt;NUnit3x::D1DED8DE-1D5E-4ED7-901C-160C776FF7AD::net5.0::UltimateTicTacToeTest.UltimateTicTacToeTests.TestAddMove&lt;/TestId&gt;&#xD;
+    &lt;TestId&gt;NUnit3x::D1DED8DE-1D5E-4ED7-901C-160C776FF7AD::net5.0::UltimateTicTacToeTest.UltimateTicTacToeTests.TestAddingAndUndoing&lt;/TestId&gt;&#xD;
+  &lt;/TestAncestor&gt;&#xD;
+&lt;/SessionState&gt;</s:String>
 	<s:String x:Key="/Default/Environment/UnitTesting/UnitTestSessionStore/Sessions/=7facd516_002D9550_002D4a09_002D8691_002Dbda7edbe2b7c/@EntryIndexedValue">&lt;SessionState ContinuousTestingMode="0" Name="EmptyBoardWithOneDepthIsAsExpected" xmlns="urn:schemas-jetbrains-com:jetbrains-ut-session"&gt;&#xD;
   &lt;TestAncestor&gt;&#xD;
     &lt;TestId&gt;NUnit3x::D1DED8DE-1D5E-4ED7-901C-160C776FF7AD::net5.0::UltimateTicTacToeTest.TicTacToeTests&lt;/TestId&gt;&#xD;
@@ -49,6 +60,11 @@
 	<s:String x:Key="/Default/Environment/UnitTesting/UnitTestSessionStore/Sessions/=9c00f0d7_002D97e8_002D40df_002Dbd89_002D59bc4a01023f/@EntryIndexedValue">&lt;SessionState ContinuousTestingMode="0" Name="MoveCalculatorTests #5" xmlns="urn:schemas-jetbrains-com:jetbrains-ut-session"&gt;&#xD;
   &lt;TestAncestor&gt;&#xD;
     &lt;TestId&gt;NUnit3x::D1DED8DE-1D5E-4ED7-901C-160C776FF7AD::net5.0::UltimateTicTacToeTest.MoveCalculatorTests&lt;/TestId&gt;&#xD;
+  &lt;/TestAncestor&gt;&#xD;
+&lt;/SessionState&gt;</s:String>
+	<s:String x:Key="/Default/Environment/UnitTesting/UnitTestSessionStore/Sessions/=ac9d552e_002Db27d_002D420f_002Da80c_002Dbe454c4f4a99/@EntryIndexedValue">&lt;SessionState ContinuousTestingMode="0" Name="TestAddMove #2" xmlns="urn:schemas-jetbrains-com:jetbrains-ut-session"&gt;&#xD;
+  &lt;TestAncestor&gt;&#xD;
+    &lt;TestId&gt;NUnit3x::D1DED8DE-1D5E-4ED7-901C-160C776FF7AD::net5.0::UltimateTicTacToeTest.UltimateTicTacToeTests.TestAddMove&lt;/TestId&gt;&#xD;
   &lt;/TestAncestor&gt;&#xD;
 &lt;/SessionState&gt;</s:String>
 	<s:String x:Key="/Default/Environment/UnitTesting/UnitTestSessionStore/Sessions/=b0ed27f0_002De84c_002D4e5e_002D90b0_002D4f18ff65f1e8/@EntryIndexedValue">&lt;SessionState ContinuousTestingMode="0" Name="CompareTimes #8" xmlns="urn:schemas-jetbrains-com:jetbrains-ut-session"&gt;&#xD;
@@ -80,7 +96,7 @@
     &lt;TestId&gt;NUnit3x::D1DED8DE-1D5E-4ED7-901C-160C776FF7AD::net5.0::UltimateTicTacToeTest.MoveCalculatorTicTacToeTests&lt;/TestId&gt;&#xD;
   &lt;/TestAncestor&gt;&#xD;
 &lt;/SessionState&gt;</s:String>
-	<s:String x:Key="/Default/Environment/UnitTesting/UnitTestSessionStore/Sessions/=ff3e0138_002Ddda2_002D4f1b_002D8525_002Df3e4708ef225/@EntryIndexedValue">&lt;SessionState ContinuousTestingMode="0" IsActive="True" Name="MoveCalculatorTicTacToeTests" xmlns="urn:schemas-jetbrains-com:jetbrains-ut-session"&gt;&#xD;
+	<s:String x:Key="/Default/Environment/UnitTesting/UnitTestSessionStore/Sessions/=ff3e0138_002Ddda2_002D4f1b_002D8525_002Df3e4708ef225/@EntryIndexedValue">&lt;SessionState ContinuousTestingMode="0" Name="MoveCalculatorTicTacToeTests" xmlns="urn:schemas-jetbrains-com:jetbrains-ut-session"&gt;&#xD;
   &lt;Or&gt;&#xD;
     &lt;TestAncestor&gt;&#xD;
       &lt;TestId&gt;NUnit3x::D1DED8DE-1D5E-4ED7-901C-160C776FF7AD::net5.0::UltimateTicTacToeTest.MoveCalculatorTicTacToeTests&lt;/TestId&gt;&#xD;

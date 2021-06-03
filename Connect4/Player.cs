@@ -168,7 +168,7 @@ class Player
                 {
                     //Console.Error.WriteLine($"Column: {i} - height:{columnHeight}");
                     
-                    for (var j = 0; j < columnHeight-4; j++)
+                    for (var j = 0; j < columnHeight; j++)
                     {
                         var currentPiece = currentColumn[j];
                         if(currentPiece == last)
@@ -176,23 +176,23 @@ class Player
                             if(currentPiece == 0)
                             {
                                 run0++;
-                                run1 = 0;
+                                run1 = 1;
                             }
                             else if (currentPiece == 1)
                             {
                                 run1++;
-                                run0 = 0;
+                                run0 = 1;
                             }
                             else
                             {
-                                run0 = 0;
-                                run1 = 0;
+                                run0 = 1;
+                                run1 = 1;
                             }
                         }
                         else
                         {
-                            run0 = 0;
-                            run1 = 0;
+                            run0 = 1;
+                            run1 = 1;
                         }
                         
                         last = currentPiece;
@@ -206,7 +206,6 @@ class Player
                 
                 if(run1 >= 4)
                 {
-                    Console.Error.WriteLine("Opponent WON");
                     return -1;
                 }
 
@@ -215,7 +214,7 @@ class Player
                     
                 }
                 
-                
+                //Check diagonal
             }
         
             // for each point 

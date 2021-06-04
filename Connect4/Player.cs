@@ -4,54 +4,60 @@ using System.IO;
 using System.Text;
 using System.Collections;
 using System.Collections.Generic;
+using System.ComponentModel.Design;
+using System.Runtime.CompilerServices;
 
-/**
- * Drop chips in the columns.
- * Connect at least 4 of your chips in any direction to win.
- **/
-class Player
+[assembly: InternalsVisibleToAttribute("Connect4Tests")]
+namespace Connect4
 {
-    static void Main(string[] args)
+    /**
+     * Drop chips in the columns.
+     * Connect at least 4 of your chips in any direction to win.
+     **/
+    class Player
     {
-        var inputs = Console.ReadLine().Split(' ');
-        var myId = int.Parse(inputs[0]); // 0 or 1 (Player 0 plays first)
-        var oppId = int.Parse(inputs[1]); // if your index is 0, this will be 1, and vice versa
-
-        var game = new Game(myId);
-        
-        // game loop
-        while (true)
+        static void Main(string[] args)
         {
-            var turnIndex = int.Parse(Console.ReadLine()); // starts from 0; As the game progresses, first player gets [0,2,4,...] and second player gets [1,3,5,...]
-            for (var i = 0; i < 7; i++)
+            var inputs = Console.ReadLine().Split(' ');
+            var myId = int.Parse(inputs[0]); // 0 or 1 (Player 0 plays first)
+            var oppId = int.Parse(inputs[1]); // if your index is 0, this will be 1, and vice versa
+
+            var game = new Game(myId);
+            
+            // game loop
+            while (true)
             {
-                var boardRow = Console.ReadLine(); // one row of the board (from top to bottom)
+                var turnIndex = int.Parse(Console.ReadLine()); // starts from 0; As the game progresses, first player gets [0,2,4,...] and second player gets [1,3,5,...]
+                for (var i = 0; i < 7; i++)
+                {
+                    var boardRow = Console.ReadLine(); // one row of the board (from top to bottom)
+                }
+
+                var numValidActions = int.Parse(Console.ReadLine()); // number of unfilled columns in the board
+                for (var i = 0; i < numValidActions; i++)
+                {
+                    var action = int.Parse(Console.ReadLine()); // a valid column index into which a chip can be dropped
+                }
+                var oppPreviousAction = int.Parse(Console.ReadLine()); // opponent's previous chosen column index (will be -1 for first player in the first turn)
+
+                if (oppPreviousAction != -1)
+                {
+                    game.AddOpponentMove(oppPreviousAction);
+                }
+                // Write an action using Console.WriteLine()
+                // To debug: Console.Error.WriteLine("Debug messages...");
+
+
+                // Output a column index to drop the chip in. Append message to show in the viewer.
+                var move = game.GetMove();
+                Console.WriteLine(move);
             }
-
-            var numValidActions = int.Parse(Console.ReadLine()); // number of unfilled columns in the board
-            for (var i = 0; i < numValidActions; i++)
-            {
-                var action = int.Parse(Console.ReadLine()); // a valid column index into which a chip can be dropped
-            }
-            var oppPreviousAction = int.Parse(Console.ReadLine()); // opponent's previous chosen column index (will be -1 for first player in the first turn)
-
-            if (oppPreviousAction != -1)
-            {
-                game.AddOpponentMove(oppPreviousAction);
-            }
-            // Write an action using Console.WriteLine()
-            // To debug: Console.Error.WriteLine("Debug messages...");
-
-
-            // Output a column index to drop the chip in. Append message to show in the viewer.
-            var move = game.GetMove();
-            Console.WriteLine(move);
         }
     }
-
+    
     internal sealed class Game
     {
-        private int _depth = 5;
+        private int _depth = 6;
         
         private int _myId;
         private int _oppId;
@@ -59,8 +65,6 @@ class Player
         private ConnectFour _connectFour;
         private MoveCalculator _calculator;
         
-        private int _turn = 0;
-
         internal Game(int myId)
         {
             _myId = myId;
@@ -84,11 +88,6 @@ class Player
         internal void AddOpponentMove(int column)
         {
             _connectFour.AddMove(column, _oppId);
-        }
-        
-        internal void AddMyMove(int column)
-        {
-            _connectFour.AddMove(column, _myId);
         }
     }
     
@@ -115,7 +114,7 @@ class Player
 
             for (var i = 0; i < _board.Length; i++)
             {
-                if(_board[i].Count < _boardMax)
+                if(_board[i].Count <= _boardMax)
                 {
                     validMoves.Add(i);
                 }
@@ -136,17 +135,17 @@ class Player
             _board[column].RemoveAt(_board[column].Count-1);
         }
         
-        public int Evaluate(bool isX, int depth)
+        public int Evaluate(bool is0, int depth = 0)
         {
             int score;
 
-            if(isX)
+            if(is0)
             {
-                score = -EvaluateBoard() - depth;
+                score = EvaluateBoard() * depth;
             }
             else
             {
-                score = EvaluateBoard() + depth;
+                score = -EvaluateBoard() * depth;
             }
 
             return score;
@@ -154,76 +153,173 @@ class Player
         
         private int EvaluateBoard()
         {
+            // foreach cell
+                // check up
+                // Check right
+                // check diagonal up
+                // check diagonal down
+                // 
+            
             for (var i = 0; i < _board.Length; i++)
             {
                 var currentColumn = _board[i];
-                var columnHeight = currentColumn.Count;
-
-                var run0 = 0;
-                var run1 = 0;
                 
-                var last = -1;
-
-                if(columnHeight >= 4)
+                for (var j = 0; j < currentColumn.Count; j++)
                 {
-                    //Console.Error.WriteLine($"Column: {i} - height:{columnHeight}");
+                    var currentPiece = currentColumn[j];
                     
-                    for (var j = 0; j < columnHeight; j++)
+                    if(currentPiece == -1)
                     {
-                        var currentPiece = currentColumn[j];
-                        if(currentPiece == last)
+                        continue;
+                    }
+                    
+                    // Check up
+                    if(   j < currentColumn.Count-3 
+                       && CheckUp(currentColumn, j, currentPiece))
+                    {
+                        if(currentPiece == 0)
                         {
-                            if(currentPiece == 0)
-                            {
-                                run0++;
-                                run1 = 1;
-                            }
-                            else if (currentPiece == 1)
-                            {
-                                run1++;
-                                run0 = 1;
-                            }
-                            else
-                            {
-                                run0 = 1;
-                                run1 = 1;
-                            }
-                        }
-                        else
+                            return +1;
+                        } 
+                        else if(currentPiece == 1)
                         {
-                            run0 = 1;
-                            run1 = 1;
+                            return -1;
                         }
-                        
-                        last = currentPiece;
+                    }
+                    
+                    // Check right
+                    if(    i <= 5
+                       &&  CheckRight(i, j, currentPiece))
+                    {
+                        if(currentPiece == 0)
+                        {
+                            return +1;
+                        } 
+                        else if(currentPiece == 1)
+                        {
+                            return -1;
+                        }
+                    }
+                    
+                    // Check diagonal up
+                    if(   i <= 5 
+                       && j <= 3
+                       && CheckDiagonalUp(i, j, currentPiece))
+                    {
+                        if(currentPiece == 0)
+                        {
+                            return +1;
+                        } 
+                        else if(currentPiece == 1)
+                        {
+                            return -1;
+                        }
+                    }
+                    
+                    if(   i <= 5 
+                       && j >= 3
+                       && CheckDiagonalDown(i, j, currentPiece))
+                    {
+                        if(currentPiece == 0)
+                        {
+                            return +1;
+                        } 
+                        else if(currentPiece == 1)
+                        {
+                            return -1;
+                        }
                     }
                 }
-                
-                if(run0 >= 4)
-                {
-                    return +1;
-                } 
-                
-                if(run1 >= 4)
-                {
-                    return -1;
-                }
-
-                if(i <= 5)  // check right
-                {
-                    
-                }
-                
-                //Check diagonal
             }
-        
-            // for each point 
-                // Is it within 4 up
-                    // check 4 up
-                // Is it within 4 to the right
-                    // check 4 to the right
-            
+
             return 0;
+        }
+
+        private static bool CheckUp(List<int> column, int startPoisiton, int piece)
+        {
+            var matchCount = 0;
+            
+            for (var i = 1; i <= 3; i++)
+            {
+                if(column[startPoisiton+i] == piece)
+                {
+                    matchCount++;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            
+            // if(matchCount == 3)
+            // {
+            //     Console.Error.WriteLine($"UP");
+            // }
+            
+            return matchCount == 3;
+        }
+        
+        private bool CheckRight(int startColumn, int row, int piece)
+        {
+            var matchCount = 0;
+            
+            for (var i = 1; i <= 3; i++)
+            {
+                var nextColumn = _board[startColumn+i];
+                
+                if(nextColumn.Count >= row+1 && nextColumn[row] == piece)
+                {
+                    matchCount++;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            
+            return matchCount == 3;
+        }
+        
+        private bool CheckDiagonalUp(int startColumn, int startRow, int piece)
+        {
+            var matchCount = 0;
+            
+            for (var i = 1; i <= 3; i++)
+            {
+                var nextColumn = _board[startColumn+i];
+                
+                if(nextColumn.Count >= startRow+i+1 && nextColumn[startRow+i] == piece)
+                {
+                    matchCount++;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            
+            return matchCount == 3;
+        }
+        
+        private bool CheckDiagonalDown(int startColumn, int startRow, int piece)
+        {
+            var matchCount = 0;
+            
+            for (var i = 1; i <= 3; i++)
+            {
+                var nextColumn = _board[startColumn+i];
+                
+                if(nextColumn.Count >= startRow-i+1 && nextColumn[startRow-i] == piece)
+                {
+                    matchCount++;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            
+            return matchCount == 3;
         }
 
         public bool IsGameOver()
@@ -269,13 +365,24 @@ class Player
             
             var max = moves.Max(m => m.Item2);
             
-            var highest = moves.Where(m => m.Item2 == max).ToList();
+            PrintMoveScores(moves);
             
+            var highest = moves.Where(m => m.Item2 == max).ToList();
+
             var rand = new Random();
             
             return highest[rand.Next(highest.Count)].Item1;
         
             //return GetMoveScoresUsingAlphaBeta(ticTacToeBoard, depth, startingPlayer).OrderByDescending((m => m.Item2)).First().Item1;
+        }
+        private void PrintMoveScores(List<Tuple<int, int>> moves)
+        {
+            Console.Error.WriteLine($"---------------------------------------");
+
+            foreach (var move in moves)
+            {
+                Console.Error.WriteLine($"Move:{move.Item1}, score:{move.Item2}");
+            }
         }
 
         internal List<Tuple<int, int>> GetMoveScoresUsingAlphaBeta(ConnectFour connectFour, int depth, int player)
@@ -302,11 +409,11 @@ class Player
             return moveScores;
         }
 
-        private int Calculate(int alpha, int beta, int depth, bool isX, int piece)
+        private int Calculate(int alpha, int beta, int depth, bool is0, int piece)
         {
             if (depth == 0)
             {
-                return _connectFour.Evaluate(isX, depth);
+                return _connectFour.Evaluate(is0, depth);
             }
 
             var validMoves = _connectFour.CalculateValidMoves();
@@ -314,7 +421,7 @@ class Player
             if(validMoves.Count == 0
                || _connectFour.IsGameOver())
             {
-                return _connectFour.Evaluate(isX, depth);
+                return _connectFour.Evaluate(is0, depth);
             }
 
             var score = int.MinValue;
@@ -322,7 +429,7 @@ class Player
             foreach (var move in validMoves)
             {
                 _connectFour.AddMove(move, piece);
-                score = Math.Max(score, -Calculate(-beta, -alpha,depth-1, !isX, SwapPieces(piece)));
+                score = Math.Max(score, -Calculate(-beta, -alpha,depth-1, !is0, SwapPieces(piece)));
 
                 _connectFour.UndoMove(move);
 

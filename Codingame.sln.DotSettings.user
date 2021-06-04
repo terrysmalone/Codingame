@@ -113,6 +113,8 @@
       &lt;TestId&gt;NUnit3x::D1DED8DE-1D5E-4ED7-901C-160C776FF7AD::net5.0::UltimateTicTacToeTest.UltimateTicTacToeTests.TestEvaluate_OverallWinFromXPointOfView&lt;/TestId&gt;&#xD;
       &lt;TestId&gt;NUnit3x::D1DED8DE-1D5E-4ED7-901C-160C776FF7AD::net5.0::UltimateTicTacToeTest.UltimateTicTacToeTests.TestEvaluate_OverallWinFromYPointOfView&lt;/TestId&gt;&#xD;
       &lt;TestId&gt;NUnit3x::D1DED8DE-1D5E-4ED7-901C-160C776FF7AD::net5.0::UltimateTicTacToeTest.UltimateTicTacToeTests&lt;/TestId&gt;&#xD;
+      &lt;TestId&gt;NUnit3x::64A2935D-4027-4EFF-98FA-476FE23264B6::net5.0::Connect4Tests.ConnectFourTests.TestEvaluate&lt;/TestId&gt;&#xD;
+      &lt;TestId&gt;NUnit3x::64A2935D-4027-4EFF-98FA-476FE23264B6::net5.0::Connect4Tests.ConnectFourTests&lt;/TestId&gt;&#xD;
     &lt;/TestAncestor&gt;&#xD;
     &lt;ProjectFile&gt;D1DED8DE-1D5E-4ED7-901C-160C776FF7AD/f:MoveCalculatorTests.cs&lt;/ProjectFile&gt;&#xD;
   &lt;/Or&gt;&#xD;

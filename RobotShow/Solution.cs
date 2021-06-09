@@ -8,59 +8,94 @@ namespace RobotShow
     {
         static void Main(string[] args)
         {
-            var L = int.Parse(Console.ReadLine());
-            var N = int.Parse(Console.ReadLine());
+            var ductLength = int.Parse(Console.ReadLine())+1;
+            var numberOfBots = int.Parse(Console.ReadLine());
             var inputs = Console.ReadLine().Split(' ');
-
-            var duct = new char[L];
             
-            List<int> botPositions = new List<int>();
+            var ducts = new List<char[]>();
+            
+            var botPositions = new List<int>();
 
-            for (var i = 0; i < N; i++)
+            for (var i = 0; i < numberOfBots; i++)
             {
+                //Console.Error.WriteLine($"inputs[i]: {inputs[i]}");
                 botPositions.Add(int.Parse(inputs[i]));   
             }
+            Console.Error.WriteLine($"duct length: {ductLength}");
+            //Console.Error.WriteLine($"botPositions.Count: {botPositions.Count}");
             
-            var matrix = new List<char[]>();
+            //var matrix = new List<char[]>();
             var count = Math.Pow(2, botPositions.Count);
+            Console.Error.WriteLine($"Combos:{count}");
             
             for (var i = 0; i < count; i++)
             {
                 var str = Convert.ToString(i, 2).PadLeft(botPositions.Count, '0');
+                //Console.Error.WriteLine($"str: {str}");
+                
                 var charArray = str.Select(x => x == '1' ? '>' : '<').ToArray();
                 
                 //Convert char array to add in empty spaces
-                
+                var added = 0;
+                var duct = new char[ductLength];
 
-
-                matrix.Add(charArray);
-            }
-            
-            
-            for(var i=0; i<botPositions.Count; i++)
-            {
-                for(var j=0; j<botPositions.Count; j++)
+                for (var j=0; j<ductLength; j++)
                 {
-                    if (i != j)
+                    if(added < botPositions.Count && botPositions.Contains(j))
                     {
+                        //Console.Error.WriteLine($"Adding {botPositions[added]} to duct position ");
+                        duct[botPositions[added]] = charArray[added];
+                        added++;
                         
+                        //Console.Error.WriteLine($"Added:{added}");
                     }
                 }
+                
+                ducts.Add(duct);
+
+                //matrix.Add(charArray);
             }
             
+            PrintDucts(ducts);
             
+            var longest = int.MinValue;
 
-            duct[2] = '>';
-            duct[6] = '<'; 
-            
-            var time = GetTime(duct);
+            foreach (var duct in ducts)
+            {
+                var time = GetTime(duct);
+                
+                if(time > longest)
+                {
+                    longest = time;
+                }
+            }
 
             // Write an answer using Console.WriteLine()
             // To debug: Console.Error.WriteLine("Debug messages...");
 
-            Console.WriteLine(time);
+            Console.WriteLine(longest);
         }
-        private static object GetTime(char[] duct)
+        private static void PrintDucts(List<char[]> ducts)
+        {
+            foreach (var duct in ducts)
+            {
+                foreach(var cell in duct)
+                {
+                    if(cell == '\0')
+                    {
+                        Console.Error.Write('-');
+                    }
+                    else
+                    {
+                        Console.Error.Write(cell);
+                    }
+                   
+                }
+                
+                Console.Error.WriteLine();
+            }
+        }
+        private static int GetTime(char[] duct)
         {
             var seconds = 0;
             
@@ -126,10 +161,22 @@ namespace RobotShow
                     }
                 }
                 
+                if(nextDuct[0] == '<')
+                {
+                    nextDuct[0] = '\0';
+                }
+                
+                if(nextDuct[nextDuct.Length-1] == '>')
+                {
+                    nextDuct[nextDuct.Length-1] = '\0';
+                }
+                
                 if(!nextDuct.Contains('>') && !nextDuct.Contains('<') && !nextDuct.Contains('X'))
                 {
                     botInDuct = false;
                 }
+                
+                
                 
                 seconds++;
                 

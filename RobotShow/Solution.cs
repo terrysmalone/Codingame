@@ -22,87 +22,111 @@ namespace RobotShow
                 botPositions.Add(int.Parse(inputs[i]));   
             }
             Console.Error.WriteLine($"duct length: {ductLength}");
-            //Console.Error.WriteLine($"botPositions.Count: {botPositions.Count}");
+            Console.Error.WriteLine($"botPositions.Count: {botPositions.Count}");
+            
+            var leftMost = botPositions.Min();
+            
+            var leftOne = ductLength - leftMost - 1;
+            
+            var rightMost = botPositions.Max();
+            
+            Console.Error.WriteLine($"Left one: {leftOne}");
+            Console.Error.WriteLine($"Right one: {rightMost}");
+            
+            var longest = Math.Max(leftOne, rightMost);
+            
+            
             
             //var matrix = new List<char[]>();
-            var count = Math.Pow(2, botPositions.Count);
-            Console.Error.WriteLine($"Combos:{count}");
+            //var count = Math.Pow(2, botPositions.Count);
+            //Console.Error.WriteLine($"Combos:{count}");
             
-            for (var i = 0; i < count; i++)
-            {
-                var str = Convert.ToString(i, 2).PadLeft(botPositions.Count, '0');
-                //Console.Error.WriteLine($"str: {str}");
-                
-                var charArray = str.Select(x => x == '1' ? '>' : '<').ToArray();
-                
-                //Convert char array to add in empty spaces
-                var added = 0;
-                var duct = new char[ductLength];
-
-                for (var j=0; j<ductLength; j++)
-                {
-                    if(added < botPositions.Count && botPositions.Contains(j))
-                    {
-                        //Console.Error.WriteLine($"Adding {botPositions[added]} to duct position ");
-                        duct[botPositions[added]] = charArray[added];
-                        added++;
-                        
-                        //Console.Error.WriteLine($"Added:{added}");
-                    }
-                }
-                
-                ducts.Add(duct);
-
-                //matrix.Add(charArray);
-            }
+            // for (var i = 0; i < count; i++)
+            // {
+            //     var str = Convert.ToString(i, 2).PadLeft(botPositions.Count, '0');
+            //     //Console.Error.WriteLine($"str: {str}");
+            //     
+            //     var charArray = str.Select(x => x == '1' ? '>' : '<').ToArray();
+            //     
+            //     //Convert char array to add in empty spaces
+            //     var added = 0;
+            //     var duct = new char[ductLength];
+            //
+            //     for (var j=0; j<ductLength; j++)
+            //     {
+            //         if(added < botPositions.Count && botPositions.Contains(j))
+            //         {
+            //             //Console.Error.WriteLine($"Adding {botPositions[added]} to duct position ");
+            //             duct[botPositions[added]] = charArray[added];
+            //             added++;
+            //             
+            //             //Console.Error.WriteLine($"Added:{added}");
+            //         }
+            //     }
+            //     
+            //     ducts.Add(duct);
+            //
+            //     //matrix.Add(charArray);
+            // }
             
-            PrintDucts(ducts);
+            //PrintDucts(ducts);
             
-            var longest = int.MinValue;
+            //var longest = int.MinValue;
+            
+            
 
-            foreach (var duct in ducts)
-            {
-                var time = GetTime(duct);
-                
-                if(time > longest)
-                {
-                    longest = time;
-                }
-            }
+            // foreach (var duct in ducts)
+            // {
+            //     var time = GetTime(duct);
+            //     
+            //     if(time > longest)
+            //     {
+            //         longest = time;
+            //     }
+            // }
 
             // Write an answer using Console.WriteLine()
             // To debug: Console.Error.WriteLine("Debug messages...");
 
             Console.WriteLine(longest);
         }
+        
         private static void PrintDucts(List<char[]> ducts)
         {
             foreach (var duct in ducts)
             {
-                foreach(var cell in duct)
-                {
-                    if(cell == '\0')
-                    {
-                        Console.Error.Write('-');
-                    }
-                    else
-                    {
-                        Console.Error.Write(cell);
-                    }
-                   
-                }
-                
-                Console.Error.WriteLine();
+                PrintDuct(duct);
             }
+        }
+        
+        private static void PrintDuct(char[] duct)
+        {
+            foreach(var cell in duct)
+            {
+                if(cell == '\0')
+                {
+                    Console.Error.Write('-');
+                }
+                else
+                {
+                    Console.Error.Write(cell);
+                }
+                   
+            }
+                
+            Console.Error.WriteLine();
         }
         private static int GetTime(char[] duct)
         {
             var seconds = 0;
             
             var botInDuct = true;
+            
+            Console.Error.WriteLine();
 
             while(botInDuct)
             {
+                PrintDuct(duct);
                 var nextDuct = new char[duct.Length];
 
                 // Move bots

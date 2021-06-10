@@ -99,7 +99,11 @@ namespace Connect4
         
         internal ConnectFour()
         {
-            
+            ClearBoard();
+        }
+        
+        private void ClearBoard()
+        {
             _board = new List<int>[9];
 
             for (var i = 0; i < _board.Length; i++)
@@ -331,6 +335,19 @@ namespace Connect4
             
             return false;
         }
+        
+        internal void SetMoveSequence(string moves)
+        {
+            var isPlayer0 = true;
+            
+            foreach (var move in moves)
+            {
+                AddMove(int.Parse(move.ToString()), isPlayer0 ? 0 : 1);
+                
+                isPlayer0 = !isPlayer0;
+            }
+        }
+        
         
         internal void PrintBoard()
         {

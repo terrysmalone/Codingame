@@ -97,25 +97,7 @@
   &lt;/TestAncestor&gt;&#xD;
 &lt;/SessionState&gt;</s:String>
 	<s:String x:Key="/Default/Environment/UnitTesting/UnitTestSessionStore/Sessions/=ff3e0138_002Ddda2_002D4f1b_002D8525_002Df3e4708ef225/@EntryIndexedValue">&lt;SessionState ContinuousTestingMode="0" IsActive="True" Name="MoveCalculatorTicTacToeTests" xmlns="urn:schemas-jetbrains-com:jetbrains-ut-session"&gt;&#xD;
-  &lt;Or&gt;&#xD;
-    &lt;TestAncestor&gt;&#xD;
-      &lt;TestId&gt;NUnit3x::D1DED8DE-1D5E-4ED7-901C-160C776FF7AD::net5.0::UltimateTicTacToeTest.MoveCalculatorTicTacToeTests&lt;/TestId&gt;&#xD;
-      &lt;TestId&gt;NUnit3x::D1DED8DE-1D5E-4ED7-901C-160C776FF7AD::net5.0::UltimateTicTacToeTest.TicTacToeTests.IsGameOver_FalseIfEmpty&lt;/TestId&gt;&#xD;
-      &lt;TestId&gt;NUnit3x::D1DED8DE-1D5E-4ED7-901C-160C776FF7AD::net5.0::UltimateTicTacToeTest.TicTacToeTests.IsGameOVer_IfOWins&lt;/TestId&gt;&#xD;
-      &lt;TestId&gt;NUnit3x::D1DED8DE-1D5E-4ED7-901C-160C776FF7AD::net5.0::UltimateTicTacToeTest.TicTacToeTests.TestCalculateValidMoves&lt;/TestId&gt;&#xD;
-      &lt;TestId&gt;NUnit3x::D1DED8DE-1D5E-4ED7-901C-160C776FF7AD::net5.0::UltimateTicTacToeTest.TicTacToeTests.TestCalculateValidMovesOnEmptyBoard&lt;/TestId&gt;&#xD;
-      &lt;TestId&gt;NUnit3x::D1DED8DE-1D5E-4ED7-901C-160C776FF7AD::net5.0::UltimateTicTacToeTest.TicTacToeTests.TestAddMove&lt;/TestId&gt;&#xD;
-      &lt;TestId&gt;NUnit3x::D1DED8DE-1D5E-4ED7-901C-160C776FF7AD::net5.0::UltimateTicTacToeTest.TicTacToeTests&lt;/TestId&gt;&#xD;
-      &lt;TestId&gt;NUnit3x::D1DED8DE-1D5E-4ED7-901C-160C776FF7AD::net5.0::UltimateTicTacToeTest.UltimateTicTacToeTests.TestEvaluate_OneSubBoardWinFromXPointOfView&lt;/TestId&gt;&#xD;
-      &lt;TestId&gt;NUnit3x::D1DED8DE-1D5E-4ED7-901C-160C776FF7AD::net5.0::UltimateTicTacToeTest.UltimateTicTacToeTests.TestEvaluate_OneSubBoardWinFromOPointOfView&lt;/TestId&gt;&#xD;
-      &lt;TestId&gt;NUnit3x::D1DED8DE-1D5E-4ED7-901C-160C776FF7AD::net5.0::UltimateTicTacToeTest.UltimateTicTacToeTests.TestEvaluate_OneSubBoardLossFromXPointOfView&lt;/TestId&gt;&#xD;
-      &lt;TestId&gt;NUnit3x::D1DED8DE-1D5E-4ED7-901C-160C776FF7AD::net5.0::UltimateTicTacToeTest.UltimateTicTacToeTests.TestEvaluate_MoreSubBoardWinFromXPointOfView&lt;/TestId&gt;&#xD;
-      &lt;TestId&gt;NUnit3x::D1DED8DE-1D5E-4ED7-901C-160C776FF7AD::net5.0::UltimateTicTacToeTest.UltimateTicTacToeTests.TestEvaluate_OverallWinFromXPointOfView&lt;/TestId&gt;&#xD;
-      &lt;TestId&gt;NUnit3x::D1DED8DE-1D5E-4ED7-901C-160C776FF7AD::net5.0::UltimateTicTacToeTest.UltimateTicTacToeTests.TestEvaluate_OverallWinFromYPointOfView&lt;/TestId&gt;&#xD;
-      &lt;TestId&gt;NUnit3x::D1DED8DE-1D5E-4ED7-901C-160C776FF7AD::net5.0::UltimateTicTacToeTest.UltimateTicTacToeTests&lt;/TestId&gt;&#xD;
-      &lt;TestId&gt;NUnit3x::64A2935D-4027-4EFF-98FA-476FE23264B6::net5.0::Connect4Tests.ConnectFourTests.TestEvaluate&lt;/TestId&gt;&#xD;
-      &lt;TestId&gt;NUnit3x::64A2935D-4027-4EFF-98FA-476FE23264B6::net5.0::Connect4Tests.ConnectFourTests&lt;/TestId&gt;&#xD;
-    &lt;/TestAncestor&gt;&#xD;
-    &lt;ProjectFile&gt;D1DED8DE-1D5E-4ED7-901C-160C776FF7AD/f:MoveCalculatorTests.cs&lt;/ProjectFile&gt;&#xD;
-  &lt;/Or&gt;&#xD;
+  &lt;Not&gt;&#xD;
+    &lt;Project Location="C:\Development\Codingame\UltimateTicTacToeTest" Presentation="&amp;lt;UltimateTicTacToeTest&amp;gt;" /&gt;&#xD;
+  &lt;/Not&gt;&#xD;
 &lt;/SessionState&gt;</s:String></wpf:ResourceDictionary>

@@ -14,7 +14,7 @@ namespace Connect4Tests
 
             var result = connect4.Evaluate(is0: true, depth);
             
-            Assert.That(result, Is.EqualTo(depth));
+            Assert.That(result, Is.EqualTo(depth + 1));
         }
         
         [Test]
@@ -26,7 +26,7 @@ namespace Connect4Tests
             
             var result = connect4.Evaluate(is0: false, depth);
             
-            Assert.That(result, Is.EqualTo(-depth));
+            Assert.That(result, Is.EqualTo(-depth - 1));
         }
         
         [Test]
@@ -38,7 +38,7 @@ namespace Connect4Tests
             
             var result = connect4.Evaluate(is0: false, depth);
             
-            Assert.That(result, Is.EqualTo(depth));
+            Assert.That(result, Is.EqualTo(depth + 1));
         }
         
         [Test]
@@ -50,7 +50,7 @@ namespace Connect4Tests
 
             var result = connect4.Evaluate(is0: false, depth);
             
-            Assert.That(result, Is.EqualTo(-depth));
+            Assert.That(result, Is.EqualTo(-depth - 1));
         }
         
         [Test]
@@ -68,7 +68,7 @@ namespace Connect4Tests
             
             var result = connect4.Evaluate(is0: true, depth);
             
-            Assert.That(result, Is.EqualTo(depth));
+            Assert.That(result, Is.EqualTo(depth + 1));
         }
         
         [Test]
@@ -86,7 +86,18 @@ namespace Connect4Tests
             
             var result = connect4.Evaluate(is0: true, depth);
             
-            Assert.That(result, Is.EqualTo(depth));
+            Assert.That(result, Is.EqualTo(depth + 1));
+        }
+
+        [Test]
+        public void TestEvaluate_BugWin()
+        {
+            var connect4 = new ConnectFour();
+            connect4.SetMoveSequence("11230122627252");
+
+            var result = connect4.Evaluate(is0: true);
+            
+            Assert.That(result, Is.EqualTo(-1));
         }
     }
 }

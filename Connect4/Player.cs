@@ -42,7 +42,14 @@ namespace Connect4
 
                 if (oppPreviousAction != -1)
                 {
-                    game.AddOpponentMove(oppPreviousAction);
+                    if(oppPreviousAction == -2)
+                    {
+                        game.AddOpponentSteal();
+                    }
+                    else
+                    {
+                        game.AddOpponentMove(oppPreviousAction);
+                    }
                 }
                 // Write an action using Console.WriteLine()
                 // To debug: Console.Error.WriteLine("Debug messages...");
@@ -57,7 +64,7 @@ namespace Connect4
     
     internal sealed class Game
     {
-        private int _depth = 6;
+        private int _depth = 5;
         
         private int _myId;
         private int _oppId;
@@ -88,6 +95,11 @@ namespace Connect4
         internal void AddOpponentMove(int column)
         {
             _connectFour.AddMove(column, _oppId);
+        }
+        
+        public void AddOpponentSteal()
+        {
+            _connectFour.Steal(_oppId);
         }
     }
     
@@ -137,6 +149,23 @@ namespace Connect4
         public void UndoMove(int column)
         {
             _board[column].RemoveAt(_board[column].Count-1);
+        }
+        
+        public void Steal(int playerId)
+        {
+            var column = -1;
+            
+            for (var i = 0; i < _board.Length; i++)
+            {
+                if(_board[i].Count > 0)
+                {
+                    column = i;
+                    break;
+                }
+            }
+            
+            UndoMove(column);
+            AddMove(column, playerId);
         }
         
         public int Evaluate(bool is0, int depth = 0)

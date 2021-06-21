@@ -171,10 +171,13 @@ namespace Connect4
         public int Evaluate(bool is0, int depth = 0)
         {
             const int winWeighting = 1000;
-            const int threeWeighting = 50;
+            const int potentialWinsWeighting = 100;
+            const int threeWeighting = 10;
 
-            var score = CountSequences(4) * (depth + 1) * winWeighting;
+            var score = CountSequences(4) * (depth + 1) * winWeighting;     // Can we just cut off here? A win is probably trumps any other score
+            score += CountPotentialWins() * (depth + 1) * potentialWinsWeighting;
             score += CountSequences(3) * (depth + 1) * threeWeighting;
+            
             
             if(!is0)
             {
@@ -183,6 +186,131 @@ namespace Connect4
             
 
             return score;
+        }
+        
+        // Counts potential sequences
+        // if sequenceLength is 4 finds all sequences of 3 where there is a free space for a 4th
+        private int CountPotentialWins()
+        {
+            const int maxRow = 6;
+            const int maxColumn = 8;
+            
+            var numberOfSequences = 0;
+            var sequenceLength = 4;
+
+            for (var column = 0; column < _board.Length; column++)
+            {
+                var currentColumn = _board[column];
+                
+                for (var row = 0; row < currentColumn.Count; row++)
+                {
+                    var currentPiece = currentColumn[row];
+                    
+                    var increment = 0;
+                    
+                    if(currentPiece == 0)
+                    {
+                        increment = 1;
+                    }
+                    else if (currentPiece == 1)
+                    {
+                        increment = -1;
+                    }
+
+                    // Check up
+                    if(   row < currentColumn.Count-3 
+                       && CheckUp(currentColumn, row, currentPiece, sequenceLength - 1))
+                    {
+                        if(row+(sequenceLength-1) <= maxRow && currentColumn.Count <= maxRow - (sequenceLength-1))
+                        {
+                            numberOfSequences += increment;
+                        }
+                    }
+                    
+                    // Check right
+                    if(    column <= 6
+                       &&  CheckRight(column, row, currentPiece, sequenceLength - 1))
+                    {
+                        if(column > 0)
+                        {
+                            var previousColumn = _board[column-1];
+                            
+                            if(previousColumn.Count < row)
+                            {
+                                numberOfSequences += increment;
+                            }
+                        }
+                        
+                        if(column <= maxColumn - (sequenceLength-1))
+                        {
+                            var endColumn = _board[column+(sequenceLength-1)];
+                            
+                            if(endColumn.Count < row)
+                            {
+                                numberOfSequences += increment;
+                            }
+                        }
+                    }
+                    
+                    // Check diagonal up
+                    if(   column <= 6 
+                       && row <= 4
+                       && CheckDiagonalUp(column, row, currentPiece, sequenceLength - 1))
+                    {
+                        // Check down left for empty space
+                        if(column > 0 && row > 0)
+                        {
+                            var previousColumn = _board[column-1];
+                            
+                            if(previousColumn.Count < row-1)
+                            {
+                                numberOfSequences += increment;
+                            }
+                        }
+                        
+                        // Check up right for empty space
+                        if(row+(sequenceLength-1) <= maxRow && column <= maxColumn - (sequenceLength-1))
+                        {
+                            var endColumn = _board[column+(sequenceLength-1)];
+                            
+                            if(endColumn.Count < row + (sequenceLength-1))
+                            {
+                                numberOfSequences += increment;
+                            }
+                        }
+                    }
+                    
+                    if(   column <= 6 
+                       && row >= 2
+                       && CheckDiagonalDown(column, row, currentPiece, sequenceLength - 1))
+                    {
+                        // Check up left for empty spaces
+                        if(column > 0 && row+(sequenceLength-1) <= maxRow)
+                        {
+                            var previousColumn = _board[column-1];
+                            
+                            if(previousColumn.Count < row - 1)
+                            {
+                                numberOfSequences += increment;
+                            }
+                        }
+                        
+                        // Check down right
+                        if(column <= maxColumn - (sequenceLength-1))
+                        {
+                            var endColumn = _board[column+(sequenceLength-1)];
+                            
+                            if(endColumn.Count < row - (sequenceLength-1))
+                            {
+                                numberOfSequences += increment;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return numberOfSequences;
+            
         }
         
         private int CountSequences(int sequenceLength)

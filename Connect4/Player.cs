@@ -172,22 +172,108 @@ namespace Connect4
         {
             const int winWeighting = 1000;
             const int potentialWinsWeighting = 100;
-            const int threeWeighting = 10;
+            const int threeWeighting = 15; 
 
-            var score = CountSequences(4) * (depth + 1) * winWeighting;     // Can we just cut off here? A win is probably trumps any other score
-            score += CountPotentialWins() * (depth + 1) * potentialWinsWeighting;
-            score += CountSequences(3) * (depth + 1) * threeWeighting;
+
+            //var score = CountSequences(4) * (depth + 1) * winWeighting;     // Can we just cut off here? A win is probably trumps any other score
             
+            var score = FindWin() * (depth + 1) * winWeighting;
             
+            if(score == 0)
+            {
+                score += CountPotentialWins() * (depth + 1) * potentialWinsWeighting;
+            }
+           
             if(!is0)
             {
                 score = -score;
             }
-            
 
             return score;
         }
         
+        // Returns as soon as there's a win
+        private int FindWin()
+        {
+            var sequenceLength = 4;
+            var numberOfSequences = 0;
+            
+            for (var column = 0; column < _board.Length; column++)
+            {
+                var currentColumn = _board[column];
+                
+                for (var row = 0; row < currentColumn.Count; row++)
+                {
+                    var currentPiece = currentColumn[row];
+                    
+                    if(currentPiece == -1)
+                    {
+                        continue;
+                    }
+                    
+                    // Check up
+                    if(   row < currentColumn.Count-3 
+                       && CheckUp(currentColumn, row, currentPiece, sequenceLength))
+                    {
+                        if(currentPiece == 0)
+                        {
+                            return 1;
+                        } 
+                        else if(currentPiece == 1)
+                        {
+                            return -1;
+                        }
+                    }
+                    
+                    // Check right
+                    if(    column <= 5
+                       &&  CheckRight(column, row, currentPiece, sequenceLength))
+                    {
+                        if(currentPiece == 0)
+                        {
+                            return 1;
+                        } 
+                        else if(currentPiece == 1)
+                        {
+                            return -1;
+                        }
+                    }
+                    
+                    // Check diagonal up
+                    if(   column <= 5 
+                       && row <= 3
+                       && CheckDiagonalUp(column, row, currentPiece, sequenceLength))
+                    {
+                        if(currentPiece == 0)
+                        {
+                            return 1;
+                        } 
+                        else if(currentPiece == 1)
+                        {
+                            return -1;
+                        }
+                    }
+                    
+                    if(   column <= 5 
+                       && row >= 3
+                       && CheckDiagonalDown(column, row, currentPiece, sequenceLength))
+                    {
+                        if(currentPiece == 0)
+                        {
+                            return 1;
+                        } 
+                        else if(currentPiece == 1)
+                        {
+                            return -1;
+                        }
+                    }
+                }
+            }
+
+            return 0;
+        }
+        
+
         // Counts potential sequences
         // if sequenceLength is 4 finds all sequences of 3 where there is a free space for a 4th
         private int CountPotentialWins()

@@ -42,7 +42,14 @@ namespace Connect4
 
                 if (oppPreviousAction != -1)
                 {
-                    game.AddOpponentMove(oppPreviousAction);
+                    if(oppPreviousAction == -2)
+                    {
+                        game.AddOpponentSteal();
+                    }
+                    else
+                    {
+                        game.AddOpponentMove(oppPreviousAction);
+                    }
                 }
                 // Write an action using Console.WriteLine()
                 // To debug: Console.Error.WriteLine("Debug messages...");
@@ -57,7 +64,7 @@ namespace Connect4
     
     internal sealed class Game
     {
-        private int _depth = 6;
+        private int _depth = 5;
         
         private int _myId;
         private int _oppId;
@@ -88,6 +95,11 @@ namespace Connect4
         internal void AddOpponentMove(int column)
         {
             _connectFour.AddMove(column, _oppId);
+        }
+        
+        public void AddOpponentSteal()
+        {
+            _connectFour.Steal(_oppId);
         }
     }
     
@@ -139,38 +151,60 @@ namespace Connect4
             _board[column].RemoveAt(_board[column].Count-1);
         }
         
+        public void Steal(int playerId)
+        {
+            var column = -1;
+            
+            for (var i = 0; i < _board.Length; i++)
+            {
+                if(_board[i].Count > 0)
+                {
+                    column = i;
+                    break;
+                }
+            }
+            
+            UndoMove(column);
+            AddMove(column, playerId);
+        }
+        
         public int Evaluate(bool is0, int depth = 0)
         {
-            int score;
+            const int winWeighting = 1000;
+            const int potentialWinsWeighting = 100;
+            const int threeWeighting = 15; 
 
-            if(is0)
+
+            //var score = CountSequences(4) * (depth + 1) * winWeighting;     // Can we just cut off here? A win is probably trumps any other score
+            
+            var score = FindWin() * (depth + 1) * winWeighting;
+            
+            if(score == 0)
             {
-                score = EvaluateBoard() * depth;
+                score += CountPotentialWins() * (depth + 1) * potentialWinsWeighting;
             }
-            else
+           
+            if(!is0)
             {
-                score = -EvaluateBoard() * depth;
+                score = -score;
             }
 
             return score;
         }
         
-        private int EvaluateBoard()
+        // Returns as soon as there's a win
+        private int FindWin()
         {
-            // foreach cell
-                // check up
-                // Check right
-                // check diagonal up
-                // check diagonal down
-                // 
+            var sequenceLength = 4;
+            var numberOfSequences = 0;
             
-            for (var i = 0; i < _board.Length; i++)
+            for (var column = 0; column < _board.Length; column++)
             {
-                var currentColumn = _board[i];
+                var currentColumn = _board[column];
                 
-                for (var j = 0; j < currentColumn.Count; j++)
+                for (var row = 0; row < currentColumn.Count; row++)
                 {
-                    var currentPiece = currentColumn[j];
+                    var currentPiece = currentColumn[row];
                     
                     if(currentPiece == -1)
                     {
@@ -178,12 +212,12 @@ namespace Connect4
                     }
                     
                     // Check up
-                    if(   j < currentColumn.Count-3 
-                       && CheckUp(currentColumn, j, currentPiece))
+                    if(   row < currentColumn.Count-3 
+                       && CheckUp(currentColumn, row, currentPiece, sequenceLength))
                     {
                         if(currentPiece == 0)
                         {
-                            return +1;
+                            return 1;
                         } 
                         else if(currentPiece == 1)
                         {
@@ -192,12 +226,12 @@ namespace Connect4
                     }
                     
                     // Check right
-                    if(    i <= 5
-                       &&  CheckRight(i, j, currentPiece))
+                    if(    column <= 5
+                       &&  CheckRight(column, row, currentPiece, sequenceLength))
                     {
                         if(currentPiece == 0)
                         {
-                            return +1;
+                            return 1;
                         } 
                         else if(currentPiece == 1)
                         {
@@ -206,13 +240,13 @@ namespace Connect4
                     }
                     
                     // Check diagonal up
-                    if(   i <= 5 
-                       && j <= 3
-                       && CheckDiagonalUp(i, j, currentPiece))
+                    if(   column <= 5 
+                       && row <= 3
+                       && CheckDiagonalUp(column, row, currentPiece, sequenceLength))
                     {
                         if(currentPiece == 0)
                         {
-                            return +1;
+                            return 1;
                         } 
                         else if(currentPiece == 1)
                         {
@@ -220,13 +254,13 @@ namespace Connect4
                         }
                     }
                     
-                    if(   i <= 5 
-                       && j >= 3
-                       && CheckDiagonalDown(i, j, currentPiece))
+                    if(   column <= 5 
+                       && row >= 3
+                       && CheckDiagonalDown(column, row, currentPiece, sequenceLength))
                     {
                         if(currentPiece == 0)
                         {
-                            return +1;
+                            return 1;
                         } 
                         else if(currentPiece == 1)
                         {
@@ -238,12 +272,217 @@ namespace Connect4
 
             return 0;
         }
+        
 
-        private static bool CheckUp(List<int> column, int startPoisiton, int piece)
+        // Counts potential sequences
+        // if sequenceLength is 4 finds all sequences of 3 where there is a free space for a 4th
+        private int CountPotentialWins()
+        {
+            const int maxRow = 6;
+            const int maxColumn = 8;
+            
+            var numberOfSequences = 0;
+            var sequenceLength = 4;
+
+            for (var column = 0; column < _board.Length; column++)
+            {
+                var currentColumn = _board[column];
+                
+                for (var row = 0; row < currentColumn.Count; row++)
+                {
+                    var currentPiece = currentColumn[row];
+                    
+                    var increment = 0;
+                    
+                    if(currentPiece == 0)
+                    {
+                        increment = 1;
+                    }
+                    else if (currentPiece == 1)
+                    {
+                        increment = -1;
+                    }
+
+                    // Check up
+                    if(   row < currentColumn.Count-3 
+                       && CheckUp(currentColumn, row, currentPiece, sequenceLength - 1))
+                    {
+                        if(row+(sequenceLength-1) <= maxRow && currentColumn.Count <= maxRow - (sequenceLength-1))
+                        {
+                            numberOfSequences += increment;
+                        }
+                    }
+                    
+                    // Check right
+                    if(    column <= 6
+                       &&  CheckRight(column, row, currentPiece, sequenceLength - 1))
+                    {
+                        if(column > 0)
+                        {
+                            var previousColumn = _board[column-1];
+                            
+                            if(previousColumn.Count < row)
+                            {
+                                numberOfSequences += increment;
+                            }
+                        }
+                        
+                        if(column <= maxColumn - (sequenceLength-1))
+                        {
+                            var endColumn = _board[column+(sequenceLength-1)];
+                            
+                            if(endColumn.Count < row)
+                            {
+                                numberOfSequences += increment;
+                            }
+                        }
+                    }
+                    
+                    // Check diagonal up
+                    if(   column <= 6 
+                       && row <= 4
+                       && CheckDiagonalUp(column, row, currentPiece, sequenceLength - 1))
+                    {
+                        // Check down left for empty space
+                        if(column > 0 && row > 0)
+                        {
+                            var previousColumn = _board[column-1];
+                            
+                            if(previousColumn.Count < row-1)
+                            {
+                                numberOfSequences += increment;
+                            }
+                        }
+                        
+                        // Check up right for empty space
+                        if(row+(sequenceLength-1) <= maxRow && column <= maxColumn - (sequenceLength-1))
+                        {
+                            var endColumn = _board[column+(sequenceLength-1)];
+                            
+                            if(endColumn.Count < row + (sequenceLength-1))
+                            {
+                                numberOfSequences += increment;
+                            }
+                        }
+                    }
+                    
+                    if(   column <= 6 
+                       && row >= 2
+                       && CheckDiagonalDown(column, row, currentPiece, sequenceLength - 1))
+                    {
+                        // Check up left for empty spaces
+                        if(column > 0 && row+(sequenceLength-1) <= maxRow)
+                        {
+                            var previousColumn = _board[column-1];
+                            
+                            if(previousColumn.Count < row - 1)
+                            {
+                                numberOfSequences += increment;
+                            }
+                        }
+                        
+                        // Check down right
+                        if(column <= maxColumn - (sequenceLength-1))
+                        {
+                            var endColumn = _board[column+(sequenceLength-1)];
+                            
+                            if(endColumn.Count < row - (sequenceLength-1))
+                            {
+                                numberOfSequences += increment;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return numberOfSequences;
+            
+        }
+        
+        private int CountSequences(int sequenceLength)
+        {
+            var numberOfSequences = 0;
+            
+            for (var column = 0; column < _board.Length; column++)
+            {
+                var currentColumn = _board[column];
+                
+                for (var row = 0; row < currentColumn.Count; row++)
+                {
+                    var currentPiece = currentColumn[row];
+                    
+                    if(currentPiece == -1)
+                    {
+                        continue;
+                    }
+                    
+                    // Check up
+                    if(   row < currentColumn.Count-3 
+                       && CheckUp(currentColumn, row, currentPiece, sequenceLength))
+                    {
+                        if(currentPiece == 0)
+                        {
+                            numberOfSequences++;
+                        } 
+                        else if(currentPiece == 1)
+                        {
+                            numberOfSequences--;
+                        }
+                    }
+                    
+                    // Check right
+                    if(    column <= 5
+                       &&  CheckRight(column, row, currentPiece, sequenceLength))
+                    {
+                        if(currentPiece == 0)
+                        {
+                            numberOfSequences++;
+                        } 
+                        else if(currentPiece == 1)
+                        {
+                            numberOfSequences--;
+                        }
+                    }
+                    
+                    // Check diagonal up
+                    if(   column <= 5 
+                       && row <= 3
+                       && CheckDiagonalUp(column, row, currentPiece, sequenceLength))
+                    {
+                        if(currentPiece == 0)
+                        {
+                            numberOfSequences++;
+                        } 
+                        else if(currentPiece == 1)
+                        {
+                            numberOfSequences--;
+                        }
+                    }
+                    
+                    if(   column <= 5 
+                       && row >= 3
+                       && CheckDiagonalDown(column, row, currentPiece, sequenceLength))
+                    {
+                        if(currentPiece == 0)
+                        {
+                            numberOfSequences++;
+                        } 
+                        else if(currentPiece == 1)
+                        {
+                            numberOfSequences--;
+                        }
+                    }
+                }
+            }
+
+            return numberOfSequences;
+        }
+
+        private static bool CheckUp(List<int> column, int startPoisiton, int piece, int sequenceLength)
         {
             var matchCount = 0;
             
-            for (var i = 1; i <= 3; i++)
+            for (var i = 1; i <= sequenceLength-1; i++)
             {
                 if(column[startPoisiton+i] == piece)
                 {
@@ -260,14 +499,14 @@ namespace Connect4
             //     Console.Error.WriteLine($"UP");
             // }
             
-            return matchCount == 3;
+            return matchCount == sequenceLength-1;
         }
         
-        private bool CheckRight(int startColumn, int row, int piece)
+        private bool CheckRight(int startColumn, int row, int piece, int sequenceLength)
         {
             var matchCount = 0;
             
-            for (var i = 1; i <= 3; i++)
+            for (var i = 1; i <= sequenceLength-1; i++)
             {
                 var nextColumn = _board[startColumn+i];
                 
@@ -281,14 +520,14 @@ namespace Connect4
                 }
             }
             
-            return matchCount == 3;
+            return matchCount == sequenceLength-1;
         }
         
-        private bool CheckDiagonalUp(int startColumn, int startRow, int piece)
+        private bool CheckDiagonalUp(int startColumn, int startRow, int piece, int sequenceLength)
         {
             var matchCount = 0;
             
-            for (var i = 1; i <= 3; i++)
+            for (var i = 1; i <= sequenceLength-1; i++)
             {
                 var nextColumn = _board[startColumn+i];
                 
@@ -302,14 +541,14 @@ namespace Connect4
                 }
             }
             
-            return matchCount == 3;
+            return matchCount == sequenceLength-1;
         }
         
-        private bool CheckDiagonalDown(int startColumn, int startRow, int piece)
+        private bool CheckDiagonalDown(int startColumn, int startRow, int piece, int sequenceLength)
         {
             var matchCount = 0;
             
-            for (var i = 1; i <= 3; i++)
+            for (var i = 1; i <= sequenceLength-1; i++)
             {
                 var nextColumn = _board[startColumn+i];
                 
@@ -323,12 +562,12 @@ namespace Connect4
                 }
             }
             
-            return matchCount == 3;
+            return matchCount == sequenceLength-1;
         }
 
         public bool IsGameOver()
         {
-            if(Evaluate(true, 0) != 0)  // Add || board is full
+            if(CountSequences(4) != 0)  // Add || board is full
             {
                 return true;
             }
@@ -369,6 +608,31 @@ namespace Connect4
 
                 Console.Error.WriteLine(rowText);
             }
+        }
+        public string DisplayBoard()
+        {
+            var board = string.Empty;
+            
+            for (var i = 6; i >= 0; i--)            
+            {
+                var rowText = string.Empty;
+                
+                for (var j = 0; j < 9; j++)
+                {
+                    if (_board[j].Count >= i+1)
+                    {
+                        rowText += _board[j][i];
+                    }
+                    else
+                    {
+                        rowText += "-";
+                    }
+                }
+
+                board += rowText + "\n";
+            }
+            
+            return board;
         }
     }
     
@@ -413,6 +677,8 @@ namespace Connect4
             foreach (var validAction in validMoves)
             {
                 var is0 = player == 0;
+                
+                //var board = _connectFour.DisplayBoard();
 
                 _connectFour.AddMove(validAction, player);
 
@@ -429,7 +695,7 @@ namespace Connect4
         private int Calculate(int alpha, int beta, int depth, bool is0, int piece)
         {
             if (depth == 0)
-            {
+            {                                      
                 return _connectFour.Evaluate(is0, depth);
             }
 
@@ -445,7 +711,9 @@ namespace Connect4
 
             foreach (var move in validMoves)
             {
+                //var board = _connectFour.DisplayBoard();
                 _connectFour.AddMove(move, piece);
+                
                 score = Math.Max(score, -Calculate(-beta, -alpha,depth-1, !is0, SwapPieces(piece)));
 
                 _connectFour.UndoMove(move);

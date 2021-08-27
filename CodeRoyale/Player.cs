@@ -62,10 +62,7 @@ namespace CodeRoyale
         {
             for (var i = 0; i < game.NumberOfSites; i++)
             {
-                var input = Console.ReadLine();
-
-                Console.Error.WriteLine(input);
-                var inputs = input.Split(' ');
+                var inputs = Console.ReadLine().Split(' ');
                 var siteId = int.Parse(inputs[0]);
                 var ignore1 = int.Parse(inputs[1]); // used in future leagues
                 var ignore2 = int.Parse(inputs[2]); // used in future leagues

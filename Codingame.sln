@@ -26,7 +26,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Connect4Tests", "Connect4Te
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RobotShow", "RobotShow\RobotShow.csproj", "{A843951A-1447-410E-9652-1CE1E9A8A555}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeRoyale", "CodeRoyale\CodeRoyale.csproj", "{94A5AA0C-23EF-4F97-BEFC-F546E491606C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeRoyale", "CodeRoyale\CodeRoyale.csproj", "{7215FDEC-2287-40AD-87BA-DA0A59684B7A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -86,9 +86,9 @@ Global
 		{A843951A-1447-410E-9652-1CE1E9A8A555}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A843951A-1447-410E-9652-1CE1E9A8A555}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A843951A-1447-410E-9652-1CE1E9A8A555}.Release|Any CPU.Build.0 = Release|Any CPU
-		{94A5AA0C-23EF-4F97-BEFC-F546E491606C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{94A5AA0C-23EF-4F97-BEFC-F546E491606C}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{94A5AA0C-23EF-4F97-BEFC-F546E491606C}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{94A5AA0C-23EF-4F97-BEFC-F546E491606C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7215FDEC-2287-40AD-87BA-DA0A59684B7A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7215FDEC-2287-40AD-87BA-DA0A59684B7A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7215FDEC-2287-40AD-87BA-DA0A59684B7A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7215FDEC-2287-40AD-87BA-DA0A59684B7A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

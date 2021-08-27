@@ -185,7 +185,7 @@ namespace CodeRoyale
         public Tuple<string, string> GetAction()
         {
             //DebugAll();
-            DebugSites(false);
+            //DebugSites(false);
 
             var queen = _playerUnits.Single(u => u.Type == UnitType.Queen);
             var enemyQueen = _enemyUnits.Single(u => u.Type == UnitType.Queen);
@@ -197,11 +197,20 @@ namespace CodeRoyale
             var closestEmptySiteId = GetClosestEmptySite(queen.Position);
 
             // Build a barracks
+            var playerKnightBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksKnights).ToList();
+            var playerArcherBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksArchers).ToList();
+
+            Console.Error.WriteLine($"playerKnightBarracks.Count:{playerKnightBarracks.Count}");
+            Console.Error.WriteLine($"playerArcherBarracks.Count:{playerArcherBarracks.Count}");
+
+            Console.Error.WriteLine($"knightBarracks.Count:{knightBarracks.Count}");
+            Console.Error.WriteLine($"archeryBarracks.Count:{archeryBarracks.Count}");
+
             string barracksType;
 
-            if(knightBarracks.Count + archeryBarracks.Count <= 3)
+            if(playerKnightBarracks.Count + playerArcherBarracks.Count <= 3)
             {
-                if(knightBarracks.Count <= 2)
+                if(playerKnightBarracks.Count < 2)
                 {
                     barracksType = "KNIGHT";
                     knightBarracks.Add(closestEmptySiteId);
@@ -222,32 +231,8 @@ namespace CodeRoyale
             var numberOfKnights = _playerUnits.Count(u => u.Type == UnitType.Knight);
             var numberOfArchers = _playerUnits.Count(u => u.Type == UnitType.Archer);
 
-            if((double)numberOfKnights/(double)numberOfArchers <= 2)
+            if(numberOfKnights - numberOfArchers > 4)
             {
-                // Train knights units
-                var playerKnightBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksKnights).ToList();
-
-                //Order barracks by closest to enemies queen
-                playerKnightBarracks = playerKnightBarracks.OrderBy(b => Distance(enemyQueen.Position, b.Position)).ToList();
-
-                var goldLeft = Gold;
-
-                foreach (var barrack in playerKnightBarracks)
-                {
-                    if(goldLeft < _knightCost)
-                    {
-                        break;
-                    }
-
-                    trainAction += $" {barrack.Id}";
-                    goldLeft -= _knightCost;
-                }
-            }
-            else
-            {
-                // Train archers units
-                var playerArcherBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksArchers).ToList();
-
                 //Order barracks by closest to enemies queen
                 playerArcherBarracks = playerArcherBarracks.OrderBy(b => Distance(enemyQueen.Position, b.Position)).ToList();
 
@@ -262,6 +247,24 @@ namespace CodeRoyale
 
                     trainAction += $" {barrack.Id}";
                     goldLeft -= _archerCost;
+                }
+            }
+            else
+            {
+                //Order barracks by closest to enemies queen
+                playerKnightBarracks = playerKnightBarracks.OrderBy(b => Distance(enemyQueen.Position, b.Position)).ToList();
+
+                var goldLeft = Gold;
+
+                foreach (var barrack in playerKnightBarracks)
+                {
+                    if(goldLeft < _knightCost)
+                    {
+                        break;
+                    }
+
+                    trainAction += $" {barrack.Id}";
+                    goldLeft -= _knightCost;
                 }
             }
 

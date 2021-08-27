@@ -170,6 +170,8 @@ namespace CodeRoyale
             //DebugSites(false);
 
             var queen = _playerUnits.Single(u => u.Type == UnitType.Queen);
+            var enemyQueen = _enemyUnits.Single(u => u.Type == UnitType.Queen);
+
 
             var queenAction = "WAIT";
             var trainAction = "TRAIN";
@@ -181,7 +183,8 @@ namespace CodeRoyale
             // Train units
             var playerBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.Barracks).ToList();
 
-            Console.Error.WriteLine($"playerBarracks:{playerBarracks.Count}");
+            //Order barracks by closest to enemies queen
+            playerBarracks = playerBarracks.OrderBy(b => Distance(enemyQueen.Position, b.Position)).ToList();
 
             var goldLeft = Gold;
 

@@ -35,8 +35,8 @@ namespace CodeRoyale
 
                 // First line: A valid queen action
                 // Second line: A set of training instructions
-                Console.WriteLine("WAIT");
-                Console.WriteLine("TRAIN");
+                Console.WriteLine(actions.Item1);
+                Console.WriteLine(actions.Item2);
             }
         }
 
@@ -62,7 +62,10 @@ namespace CodeRoyale
         {
             for (var i = 0; i < game.NumberOfSites; i++)
             {
-                var inputs = Console.ReadLine().Split(' ');
+                var input = Console.ReadLine();
+
+                Console.Error.WriteLine(input);
+                var inputs = input.Split(' ');
                 var siteId = int.Parse(inputs[0]);
                 var ignore1 = int.Parse(inputs[1]); // used in future leagues
                 var ignore2 = int.Parse(inputs[2]); // used in future leagues
@@ -133,7 +136,7 @@ namespace CodeRoyale
 
         internal void UpdateSite(int siteId, int owner, int structureType)
         {
-            var site = _sites.Single(s => s.SiteId == siteId);
+            var site = _sites.Single(s => s.Id == siteId);
 
             site.Owner = owner;
 
@@ -163,9 +166,66 @@ namespace CodeRoyale
 
         public Tuple<string, string> GetAction()
         {
-            DebugAll();
+            //DebugAll();
+            //DebugSites(false);
 
-            return new Tuple<string, string>("WAIT", "TRAIN");
+            var queen = _playerUnits.Single(u => u.Type == UnitType.Queen);
+
+            var queenAction = "WAIT";
+            var trainAction = "TRAIN";
+
+            // Build a barracks
+            var closestEmptySiteId = GetClosestEmptySite(queen.Position);
+            queenAction = $"BUILD {closestEmptySiteId} BARRACKS-KNIGHT";
+
+            // Train units
+            var playerBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.Barracks).ToList();
+
+            Console.Error.WriteLine($"playerBarracks:{playerBarracks.Count}");
+
+            var goldLeft = Gold;
+
+            foreach (var barrack in playerBarracks)
+            {
+                if(goldLeft < 80)
+                {
+                    break;
+                }
+
+                trainAction += $" {barrack.Id}";
+                goldLeft -= 80;
+            }
+
+            return new Tuple<string, string>(queenAction, trainAction);
+        }
+
+        private int GetClosestEmptySite(Point queenPosition)
+        {
+            var closestId = -1;
+            var closestDistance = double.MaxValue;
+
+            foreach (var site in _sites)
+            {
+                if(site.Structure != StructureType.Empty)
+                {
+                    continue;
+                }
+
+                var distance = Distance(queenPosition, site.Position);
+
+                if(distance < closestDistance)
+                {
+                    closestDistance = distance;
+                    closestId = site.Id;
+                }
+            }
+
+            return closestId;
+        }
+
+        private static double Distance(Point queenPosition, Point sitePosition)
+        {
+            return Math.Sqrt(Math.Pow(sitePosition.X - queenPosition.X, 2) + Math.Pow(sitePosition.Y - queenPosition.Y, 2)) ;
         }
 
         private void DebugAll()
@@ -187,7 +247,7 @@ namespace CodeRoyale
                     continue;
                 }
 
-                Console.Error.WriteLine($"SiteId:{site.SiteId}");
+                Console.Error.WriteLine($"SiteId:{site.Id}");
                 Console.Error.WriteLine($"Structure:{site.Structure}");
                 Console.Error.WriteLine($"Owner:{site.Owner}");
                 Console.Error.WriteLine($"Position:{site.Position}");
@@ -233,7 +293,7 @@ namespace CodeRoyale
 
     internal sealed class Site
     {
-        internal int SiteId { get; }
+        internal int Id { get; }
         internal Point Position { get; }
         internal int Radius { get; }
 
@@ -241,9 +301,9 @@ namespace CodeRoyale
 
         internal int Owner { get; set; }
 
-        internal Site(int siteId, Point position, int radius)
+        internal Site(int id, Point position, int radius)
         {
-            SiteId = siteId;
+            Id = id;
             Position = position;
             Radius = radius;
 

@@ -196,7 +196,7 @@ namespace CodeRoyale
         public Tuple<string, string> GetAction()
         {
             //DebugAll();
-            //DebugSites(false);
+            DebugSites(false);
 
             var playerQueen = _playerUnits.Single(u => u.Type == UnitType.Queen);
             var enemyQueen = _enemyUnits.Single(u => u.Type == UnitType.Queen);
@@ -266,16 +266,15 @@ namespace CodeRoyale
             var queen = _playerUnits.Single(u => u.Type == UnitType.Queen);
             var closestEmptySiteId = GetClosestEmptySite(queen.Position);
 
-            var knightBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksKnights)
-                .ToList();
-            var archerBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksArchers)
-                .ToList();
+            var knightBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksKnights).ToList();
+            var archerBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksArchers).ToList();
             var giantBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksGiant).ToList();
             var towers = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.Tower).ToList();
 
             if (closestEmptySiteId != -1)
             {
                 var buildingType = string.Empty;
+                var enemyHasTowers = giantBarracks.Count < 1 && _sites.Any(s => s.Owner != 0 && s.Structure == StructureType.Tower);
 
                 if (knightBarracks.Count < 1)
                 {
@@ -287,7 +286,7 @@ namespace CodeRoyale
                     buildingType = "BARRACKS-ARCHER";
                     _archeryBarracksIds.Add(closestEmptySiteId);
                 }
-                else if (giantBarracks.Count < 1)
+                else if (giantBarracks.Count < 1 && enemyHasTowers)
                 {
                     buildingType = "BARRACKS-GIANT";
                     giantBarracksIds.Add(closestEmptySiteId);
@@ -305,7 +304,8 @@ namespace CodeRoyale
 
             //queenAction = $"MOVE 0 0";
             
-            Console.Error.WriteLine($"Queen move to {towers.First().Position.X},{towers.First().Position.Y}");
+            //Console.Error.WriteLine($"Queen move to {towers.First().Position.X},{towers.First().Position.Y}");
+            
             return $"MOVE {towers.First().Position.X} {towers.First().Position.Y}";
         }
 
@@ -375,19 +375,19 @@ namespace CodeRoyale
 
                 if (numberOfKnights <= 2)
                 {
-                    Console.Error.WriteLine($"Knight chosen-Counts:{numberOfKnights},{numberOfArchers},{numberOfGiants}");
+                    //Console.Error.WriteLine($"Knight chosen-Counts:{numberOfKnights},{numberOfArchers},{numberOfGiants}");
                     return UnitType.Knight;
                 }
 
                 if (numberOfArchers <= 1)
                 {
-                    Console.Error.WriteLine($"Archer chosen-Counts:{numberOfKnights},{numberOfArchers},{numberOfGiants}");
+                    //Console.Error.WriteLine($"Archer chosen-Counts:{numberOfKnights},{numberOfArchers},{numberOfGiants}");
                     return UnitType.Archer;
                 }
 
                 if (numberOfGiants <= 0)
                 {
-                    Console.Error.WriteLine($"Giant chosen-Counts:{numberOfKnights},{numberOfArchers},{numberOfGiants}");
+                    //Console.Error.WriteLine($"Giant chosen-Counts:{numberOfKnights},{numberOfArchers},{numberOfGiants}");
                     return UnitType.Giant;
                 }
             }

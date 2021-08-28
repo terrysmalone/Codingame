@@ -196,7 +196,7 @@ namespace CodeRoyale
         public Tuple<string, string> GetAction()
         {
             //DebugAll();
-            DebugSites(false);
+            //DebugSites(false);
 
             var playerQueen = _playerUnits.Single(u => u.Type == UnitType.Queen);
             var enemyQueen = _enemyUnits.Single(u => u.Type == UnitType.Queen);
@@ -259,7 +259,7 @@ namespace CodeRoyale
         {
             var idealTowerCount = (_sites.Count - 6) / 2; 
             
-            Console.Error.WriteLine($"idealTowerCount:{idealTowerCount}");
+            //Console.Error.WriteLine($"idealTowerCount:{idealTowerCount}");
                 
             var queenAction = "WAIT";
 
@@ -270,6 +270,17 @@ namespace CodeRoyale
             var archerBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksArchers).ToList();
             var giantBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksGiant).ToList();
             var towers = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.Tower).ToList();
+            
+            // Prioritise running away
+            var closestUnitToQueen = ClosestUnitToQueen(queen.Position);
+
+            var distanceThreshold = 200;
+            
+            if (closestUnitToQueen != null && Distance(queen.Position, closestUnitToQueen.Position) < distanceThreshold)
+            {
+                Console.Error.WriteLine($"Too close. Moving to :{queen.Position.X - (closestUnitToQueen.Position.X - queen.Position.X)}, {queen.Position.Y - (closestUnitToQueen.Position.Y - queen.Position.Y)}");
+                return $"MOVE {queen.Position.X - (closestUnitToQueen.Position.X - queen.Position.X)} {queen.Position.Y - (closestUnitToQueen.Position.Y - queen.Position.Y)}";
+            }
 
             if (closestEmptySiteId != -1)
             {
@@ -307,6 +318,25 @@ namespace CodeRoyale
             //Console.Error.WriteLine($"Queen move to {towers.First().Position.X},{towers.First().Position.Y}");
             
             return $"MOVE {towers.First().Position.X} {towers.First().Position.Y}";
+        }
+
+        private Unit ClosestUnitToQueen(Point queenPosition)
+        {
+            Unit closestUnit = null;
+            var closestDistance = double.MaxValue;
+
+            foreach (var knight in _enemyUnits.Where(u => u.Type == UnitType.Knight))
+            {
+                var distance = Distance(queenPosition, knight.Position);
+
+                if (distance < closestDistance)
+                {
+                    closestDistance = distance;
+                    closestUnit = knight;
+                }
+            }
+
+            return closestUnit;
         }
 
         private int GetClosestEmptySite(Point queenPosition)

@@ -5,6 +5,7 @@ using System.Text;
 using System.Collections;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Runtime.CompilerServices;
 
 namespace CodeRoyale
 {
@@ -90,11 +91,12 @@ namespace CodeRoyale
                 var position = new Point(int.Parse(inputs[0]), int.Parse(inputs[1]));
                 var owner = int.Parse(inputs[2]);
 
-                UnitType unitType = int.Parse(inputs[3]) switch
+                var unitType = int.Parse(inputs[3]) switch
                 {
                     -1 => UnitType.Queen,
                     0 => UnitType.Knight,
                     1 => UnitType.Archer,
+                    2 => UnitType.Giant,
                     _ => throw new ArgumentException()
                 };
 
@@ -120,6 +122,8 @@ namespace CodeRoyale
     {
         private const int _archerCost = 100;
         private const int _knightCost = 80;
+        private const int _giantCost = 140;
+        
 
         private List<Site> _sites;
         private List<Unit> _playerUnits;
@@ -127,6 +131,7 @@ namespace CodeRoyale
 
         private List<int> _archeryBarracksIds;
         private List<int> knightBarracksIds;
+        private List<int> giantBarracksIds;
 
         internal int Gold { get; set; }
         internal int TouchedSite { get; set; }
@@ -138,6 +143,7 @@ namespace CodeRoyale
 
             _archeryBarracksIds = new List<int>();
             knightBarracksIds = new List<int>();
+            giantBarracksIds = new List<int>();
         }
 
         internal void UpdateSite(int siteId, int owner, int structureType)
@@ -164,6 +170,10 @@ namespace CodeRoyale
                 {
                     site.Structure = StructureType.BarracksKnights;
                 }
+                else if(giantBarracksIds.Contains(site.Id))
+                {
+                    site.Structure = StructureType.BarracksGiant;
+                }
             }
         }
 
@@ -188,28 +198,27 @@ namespace CodeRoyale
             //DebugAll();
             //DebugSites(false);
 
-            
+            var playerQueen = _playerUnits.Single(u => u.Type == UnitType.Queen);
             var enemyQueen = _enemyUnits.Single(u => u.Type == UnitType.Queen);
             
             var trainAction = "TRAIN";
 
-            // Build a barracks
-            var playerKnightBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksKnights).ToList();
-            var playerArcherBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksArchers).ToList();
+            var knightBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksKnights).ToList();
+            var archerBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksArchers).ToList();
+            var giantBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksGiant).ToList();
             
             var queenAction = DecideQueenAction();
             
-            var numberOfKnights = _playerUnits.Count(u => u.Type == UnitType.Knight);
-            var numberOfArchers = _playerUnits.Count(u => u.Type == UnitType.Archer);
-
-            if(numberOfKnights - numberOfArchers > 4)
+            var idealUnit = GetIdealUnit();
+            
+            if(idealUnit == UnitType.Archer)
             {
-                //Order barracks by closest to enemies queen
-                playerArcherBarracks = playerArcherBarracks.OrderBy(b => Distance(enemyQueen.Position, b.Position)).ToList();
+                //Order barracks by closest to player queen
+                archerBarracks = archerBarracks.OrderBy(b => Distance(playerQueen.Position, b.Position)).ToList();
 
                 var goldLeft = Gold;
 
-                foreach (var barrack in playerArcherBarracks)
+                foreach (var barrack in archerBarracks)
                 {
                     if(goldLeft < _archerCost)
                     {
@@ -220,14 +229,14 @@ namespace CodeRoyale
                     goldLeft -= _archerCost;
                 }
             }
-            else
+            else if (idealUnit == UnitType.Knight)
             {
                 //Order barracks by closest to enemies queen
-                playerKnightBarracks = playerKnightBarracks.OrderBy(b => Distance(enemyQueen.Position, b.Position)).ToList();
+                knightBarracks = knightBarracks.OrderBy(b => Distance(enemyQueen.Position, b.Position)).ToList();
 
                 var goldLeft = Gold;
 
-                foreach (var barrack in playerKnightBarracks)
+                foreach (var barrack in knightBarracks)
                 {
                     if(goldLeft < _knightCost)
                     {
@@ -238,8 +247,10 @@ namespace CodeRoyale
                     goldLeft -= _knightCost;
                 }
             }
-
-
+            else if(giantBarracks.Any())
+            {
+                trainAction += $" {giantBarracks.First().Id}";
+            }
 
             return new Tuple<string, string>(queenAction, trainAction);
         }
@@ -251,38 +262,42 @@ namespace CodeRoyale
             var queen = _playerUnits.Single(u => u.Type == UnitType.Queen);
             var closestEmptySiteId = GetClosestEmptySite(queen.Position);
             
-            var playerKnightBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksKnights).ToList();
-            var playerArcherBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksArchers).ToList();
+            var knightBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksKnights).ToList();
+            var archerBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksArchers).ToList();
+            var giantBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksGiant).ToList();
+            var towers = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.Tower).ToList();
             
-            Console.Error.WriteLine($"playerKnightBarracks:{playerKnightBarracks}");
-
             if (closestEmptySiteId != -1)
             {
+                var buildingType = string.Empty;
 
-                string buildingType;
-
-                if (playerKnightBarracks.Count < 1)
+                if (knightBarracks.Count < 1)
                 {
                     buildingType = "BARRACKS-KNIGHT";
                     knightBarracksIds.Add(closestEmptySiteId);
                 }
-                else if (playerArcherBarracks.Count < 1)
+                else if (archerBarracks.Count < 1)
                 {
                     buildingType = "BARRACKS-ARCHER";
                     _archeryBarracksIds.Add(closestEmptySiteId);
                 }
-                else
+                else if (giantBarracks.Count < 1)
+                {
+                    buildingType = "BARRACKS-GIANT";
+                    giantBarracksIds.Add(closestEmptySiteId);
+                }
+                else if (towers.Count < 4)
                 {
                     buildingType = "TOWER";
-
                 }
 
-                queenAction = $"BUILD {closestEmptySiteId} {buildingType}";
+                if (!string.IsNullOrEmpty(buildingType))
+                {
+                    return $"BUILD {closestEmptySiteId} {buildingType}";
+                }
             }
-            else
-            {
-                queenAction = $"MOVE 0 0";
-            }
+
+            queenAction = $"MOVE 0 0";
 
             return queenAction;
         }
@@ -314,6 +329,61 @@ namespace CodeRoyale
         private static double Distance(Point queenPosition, Point sitePosition)
         {
             return Math.Sqrt(Math.Pow(sitePosition.X - queenPosition.X, 2) + Math.Pow(sitePosition.Y - queenPosition.Y, 2)) ;
+        }
+        
+        private UnitType GetIdealUnit()
+        {
+            // We want a proportion of
+            // 4 knights to
+            // 2 archers to
+            // 1 giant
+            var idealKnightProportion = 4;
+            var idealArcherProportion = 2;
+            var idealGiantProportion = 1;
+            
+            var numberOfKnights = _playerUnits.Count(u => u.Type == UnitType.Knight);
+            var numberOfArchers = _playerUnits.Count(u => u.Type == UnitType.Archer);
+            var numberOfGiants = _playerUnits.Count(u => u.Type == UnitType.Giant);
+
+            if (numberOfKnights <= 2)
+            {
+                return UnitType.Knight;
+            }
+            
+            if (numberOfArchers <= 1)
+            {
+                return UnitType.Archer;
+            }
+
+            if (numberOfGiants <= 0)
+            {
+                return UnitType.Giant;
+            }
+
+            while (true)
+            {
+                numberOfKnights -= idealKnightProportion;
+                numberOfArchers -= idealArcherProportion;
+                numberOfGiants -= idealGiantProportion;
+
+                if (numberOfKnights <= 2)
+                {
+                    Console.Error.WriteLine($"Knight chosen-Counts:{numberOfKnights},{numberOfArchers},{numberOfGiants}");
+                    return UnitType.Knight;
+                }
+
+                if (numberOfArchers <= 1)
+                {
+                    Console.Error.WriteLine($"Archer chosen-Counts:{numberOfKnights},{numberOfArchers},{numberOfGiants}");
+                    return UnitType.Archer;
+                }
+
+                if (numberOfGiants <= 0)
+                {
+                    Console.Error.WriteLine($"Giant chosen-Counts:{numberOfKnights},{numberOfArchers},{numberOfGiants}");
+                    return UnitType.Giant;
+                }
+            }
         }
 
         private void DebugAll()
@@ -416,10 +486,11 @@ namespace CodeRoyale
 
     internal enum StructureType
     {
-        Empty,
-        BarracksUnknown,
-        BarracksKnights,
         BarracksArchers,
+        BarracksKnights,
+        BarracksGiant,
+        BarracksUnknown,
+        Empty,
         Tower
     }
 
@@ -427,6 +498,7 @@ namespace CodeRoyale
     {
         Queen,
         Knight,
-        Archer
+        Archer,
+        Giant
     }
 }

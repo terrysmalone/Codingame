@@ -257,16 +257,22 @@ namespace CodeRoyale
 
         private string DecideQueenAction()
         {
-            var queenAction = "WAIT";
+            var idealTowerCount = (_sites.Count - 6) / 2; 
             
+            Console.Error.WriteLine($"idealTowerCount:{idealTowerCount}");
+                
+            var queenAction = "WAIT";
+
             var queen = _playerUnits.Single(u => u.Type == UnitType.Queen);
             var closestEmptySiteId = GetClosestEmptySite(queen.Position);
-            
-            var knightBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksKnights).ToList();
-            var archerBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksArchers).ToList();
+
+            var knightBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksKnights)
+                .ToList();
+            var archerBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksArchers)
+                .ToList();
             var giantBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksGiant).ToList();
             var towers = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.Tower).ToList();
-            
+
             if (closestEmptySiteId != -1)
             {
                 var buildingType = string.Empty;
@@ -286,7 +292,7 @@ namespace CodeRoyale
                     buildingType = "BARRACKS-GIANT";
                     giantBarracksIds.Add(closestEmptySiteId);
                 }
-                else if (towers.Count < 4)
+                else if (towers.Count < idealTowerCount)
                 {
                     buildingType = "TOWER";
                 }
@@ -297,9 +303,10 @@ namespace CodeRoyale
                 }
             }
 
-            queenAction = $"MOVE 0 0";
-
-            return queenAction;
+            //queenAction = $"MOVE 0 0";
+            
+            Console.Error.WriteLine($"Queen move to {towers.First().Position.X},{towers.First().Position.Y}");
+            return $"MOVE {towers.First().Position.X} {towers.First().Position.Y}";
         }
 
         private int GetClosestEmptySite(Point queenPosition)

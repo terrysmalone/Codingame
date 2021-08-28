@@ -287,15 +287,16 @@ namespace CodeRoyale
                 var buildingType = string.Empty;
                 var enemyHasTowers = giantBarracks.Count < 1 && _sites.Any(s => s.Owner != 0 && s.Structure == StructureType.Tower);
 
-                if (knightBarracks.Count < 1)
-                {
-                    buildingType = "BARRACKS-KNIGHT";
-                    knightBarracksIds.Add(closestEmptySiteId);
-                }
-                else if (archerBarracks.Count < 1)
+                
+                if (archerBarracks.Count < 1)
                 {
                     buildingType = "BARRACKS-ARCHER";
                     _archeryBarracksIds.Add(closestEmptySiteId);
+                }
+                else if (knightBarracks.Count < 1)
+                {
+                    buildingType = "BARRACKS-KNIGHT";
+                    knightBarracksIds.Add(closestEmptySiteId);
                 }
                 else if (giantBarracks.Count < 1 && enemyHasTowers)
                 {
@@ -316,8 +317,15 @@ namespace CodeRoyale
             //queenAction = $"MOVE 0 0";
             
             //Console.Error.WriteLine($"Queen move to {towers.First().Position.X},{towers.First().Position.Y}");
-            
-            return $"MOVE {towers.First().Position.X} {towers.First().Position.Y}";
+
+            if (towers.Count > 0)
+            {
+                return $"MOVE {towers.First().Position.X} {towers.First().Position.Y}";
+            }
+            else
+            {
+                return $"WAIT";
+            }
         }
 
         private Unit ClosestUnitToQueen(Point queenPosition)
@@ -374,22 +382,22 @@ namespace CodeRoyale
             // 4 knights to
             // 2 archers to
             // 1 giant
-            var idealKnightProportion = 4;
-            var idealArcherProportion = 2;
+            var idealKnightProportion = 2;
+            var idealArcherProportion = 4;
             var idealGiantProportion = 1;
             
             var numberOfKnights = _playerUnits.Count(u => u.Type == UnitType.Knight);
             var numberOfArchers = _playerUnits.Count(u => u.Type == UnitType.Archer);
             var numberOfGiants = _playerUnits.Count(u => u.Type == UnitType.Giant);
 
-            if (numberOfKnights <= 2)
-            {
-                return UnitType.Knight;
-            }
-            
-            if (numberOfArchers <= 1)
+            if (numberOfArchers <= 2)
             {
                 return UnitType.Archer;
+            }
+            
+            if (numberOfKnights <= 1)
+            {
+                return UnitType.Knight;
             }
 
             if (numberOfGiants <= 0)
@@ -402,17 +410,17 @@ namespace CodeRoyale
                 numberOfKnights -= idealKnightProportion;
                 numberOfArchers -= idealArcherProportion;
                 numberOfGiants -= idealGiantProportion;
-
-                if (numberOfKnights <= 2)
-                {
-                    //Console.Error.WriteLine($"Knight chosen-Counts:{numberOfKnights},{numberOfArchers},{numberOfGiants}");
-                    return UnitType.Knight;
-                }
-
-                if (numberOfArchers <= 1)
+              
+                if (numberOfArchers <= 2)
                 {
                     //Console.Error.WriteLine($"Archer chosen-Counts:{numberOfKnights},{numberOfArchers},{numberOfGiants}");
                     return UnitType.Archer;
+                }
+                
+                if (numberOfKnights <= 1)
+                {
+                    //Console.Error.WriteLine($"Knight chosen-Counts:{numberOfKnights},{numberOfArchers},{numberOfGiants}");
+                    return UnitType.Knight;
                 }
 
                 if (numberOfGiants <= 0)

@@ -180,6 +180,11 @@ namespace CodeRoyale
                 }
             }
 
+            if (site.Structure == StructureType.Mine)
+            {
+                site.IncrementMineSize();
+            }
+
             site.Gold = gold;
             site.MaxMineSize = maxMineSize;
         }
@@ -291,8 +296,21 @@ namespace CodeRoyale
                 return $"MOVE {queen.Position.X - (closestUnitToQueen.Position.X - queen.Position.X)} {queen.Position.Y - (closestUnitToQueen.Position.Y - queen.Position.Y)}";
             }
 
+            // If the queen is touching a mine that can be levelled up
+            if (_sites.Where(s => s.Owner == 0 && s.Structure == StructureType.Mine).Select(s => s.Id).Contains(TouchedSite))
+            {
+                var touchedMine = _sites.Single(s => s.Id == TouchedSite);
+
+                if (touchedMine.MaxMineSize > touchedMine.MineSize)
+                {
+                    return $"BUILD {touchedMine.Id} MINE";
+                }
+            }
+
             if (closestEmptySiteId != -1)
             {
+                var closestSite = _sites.Single(s => s.Id == closestEmptySiteId);
+                
                 var buildingType = string.Empty;
                 var enemyHasTowers = giantBarracks.Count < 1 && _sites.Any(s => s.Owner != 0 && s.Structure == StructureType.Tower);
                 
@@ -301,7 +319,7 @@ namespace CodeRoyale
                     buildingType = "BARRACKS-ARCHER";
                     _archeryBarracksIds.Add(closestEmptySiteId);
                 }
-                else if (mines.Count < idealMineCount)
+                else if (mines.Count < idealMineCount && closestSite.Gold > 0)
                 {
                     buildingType = "MINE";
                 }
@@ -523,6 +541,8 @@ namespace CodeRoyale
         internal int Owner { get; set; }
         public int Gold { get; set; }
         public int MaxMineSize { get; set; }
+        
+        public int MineSize { get; private set; }
 
         internal Site(int id, Point position, int radius)
         {
@@ -531,6 +551,11 @@ namespace CodeRoyale
             Radius = radius;
 
             Structure = StructureType.Empty;
+        }
+
+        public void IncrementMineSize()
+        {
+            MineSize++;
         }
     }
 

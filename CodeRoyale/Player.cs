@@ -266,7 +266,7 @@ namespace CodeRoyale
         private string DecideQueenAction()
         {
             var idealTowerCount = (_sites.Count - 9) / 2; 
-            var idealMineCount = 4; 
+            var idealMineCount = 3; 
             
             //Console.Error.WriteLine($"idealTowerCount:{idealTowerCount}");
                 

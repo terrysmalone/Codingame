@@ -155,6 +155,7 @@ namespace CodeRoyale
             site.Structure = structureType switch
             {
                 -1 => StructureType.Empty,
+                0 => StructureType.Mine,
                 1 => StructureType.Tower,
                 2 => StructureType.BarracksUnknown,
                 _ => StructureType.Empty
@@ -257,7 +258,8 @@ namespace CodeRoyale
 
         private string DecideQueenAction()
         {
-            var idealTowerCount = (_sites.Count - 6) / 2; 
+            var idealTowerCount = (_sites.Count - 9) / 2; 
+            var idealMineCount = 4; 
             
             //Console.Error.WriteLine($"idealTowerCount:{idealTowerCount}");
                 
@@ -270,6 +272,7 @@ namespace CodeRoyale
             var archerBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksArchers).ToList();
             var giantBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksGiant).ToList();
             var towers = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.Tower).ToList();
+            var mines = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.Mine).ToList();
             
             // Prioritise running away
             var closestUnitToQueen = ClosestUnitToQueen(queen.Position);
@@ -286,12 +289,15 @@ namespace CodeRoyale
             {
                 var buildingType = string.Empty;
                 var enemyHasTowers = giantBarracks.Count < 1 && _sites.Any(s => s.Owner != 0 && s.Structure == StructureType.Tower);
-
                 
                 if (archerBarracks.Count < 1)
                 {
                     buildingType = "BARRACKS-ARCHER";
                     _archeryBarracksIds.Add(closestEmptySiteId);
+                }
+                else if (mines.Count < idealMineCount)
+                {
+                    buildingType = "MINE";
                 }
                 else if (knightBarracks.Count < 1)
                 {
@@ -306,6 +312,14 @@ namespace CodeRoyale
                 else if (towers.Count < idealTowerCount)
                 {
                     buildingType = "TOWER";
+                }
+                else
+                {
+                    // Find closest mine
+                    buildingType = "MINE";
+                    
+                    // Upgrade it
+                    closestEmptySiteId = mines.First().Id;
                 }
 
                 if (!string.IsNullOrEmpty(buildingType))
@@ -536,7 +550,8 @@ namespace CodeRoyale
         BarracksGiant,
         BarracksUnknown,
         Empty,
-        Tower
+        Tower,
+        Mine
     }
 
     internal enum UnitType

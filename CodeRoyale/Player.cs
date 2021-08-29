@@ -131,6 +131,7 @@ namespace CodeRoyale
         private List<int> _archeryBarracksIds;
         private List<int> knightBarracksIds;
         private List<int> giantBarracksIds;
+        private double distance;
 
         internal int Gold { get; set; }
         internal int TouchedSite { get; set; }
@@ -222,7 +223,7 @@ namespace CodeRoyale
             if(idealUnit == UnitType.Archer)
             {
                 //Order barracks by closest to player queen
-                archerBarracks = archerBarracks.OrderBy(b => Distance(playerQueen.Position, b.Position)).ToList();
+                archerBarracks = archerBarracks.OrderBy(b => CalculateDistance(playerQueen.Position, b.Position)).ToList();
 
                 var goldLeft = Gold;
 
@@ -240,7 +241,7 @@ namespace CodeRoyale
             else if (idealUnit == UnitType.Knight)
             {
                 //Order barracks by closest to enemies queen
-                knightBarracks = knightBarracks.OrderBy(b => Distance(enemyQueen.Position, b.Position)).ToList();
+                knightBarracks = knightBarracks.OrderBy(b => CalculateDistance(enemyQueen.Position, b.Position)).ToList();
 
                 var goldLeft = Gold;
 
@@ -281,14 +282,30 @@ namespace CodeRoyale
             var towers = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.Tower).ToList();
             var mines = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.Mine).ToList();
             
-            // Prioritise running away
-            var closestUnitToQueen = ClosestUnitToQueen(queen.Position);
-
+            var closestUnitToQueen = ClosestEnemyUnitToQueen(queen.Position);
+            
+            // Prioritise running away  
             var distanceThreshold = 200;
             
-            if (closestUnitToQueen != null && Distance(queen.Position, closestUnitToQueen.Position) < distanceThreshold)
+            if (closestUnitToQueen != null && CalculateDistance(queen.Position, closestUnitToQueen.Position) < distanceThreshold)
             {
-                Console.Error.WriteLine($"Too close. Moving to :{queen.Position.X - (closestUnitToQueen.Position.X - queen.Position.X)}, {queen.Position.Y - (closestUnitToQueen.Position.Y - queen.Position.Y)}");
+                // Try to move towards archers
+                if (_playerUnits.Any(u => u.Type == UnitType.Archer))
+                {
+                    var closestArcher = GetClosestUnit(queen, UnitType.Archer);
+                    
+                    return $"MOVE {closestArcher.X} {closestArcher.Y}";
+                }
+                
+                if (_sites.Any(u => u.Structure == StructureType.Tower))
+                {
+                    // Go to nearest tower
+                    var closestTower = GetClosestStructure(queen, StructureType.Tower, 0);
+                    
+                    return $"MOVE {closestTower.X} {closestTower.Y}";
+                }
+                
+                // Just run away
                 return $"MOVE {queen.Position.X - (closestUnitToQueen.Position.X - queen.Position.X)} {queen.Position.Y - (closestUnitToQueen.Position.Y - queen.Position.Y)}";
             }
 
@@ -362,14 +379,55 @@ namespace CodeRoyale
             }
         }
 
-        private Unit ClosestUnitToQueen(Point queenPosition)
+        private Point GetClosestUnit(Unit sourceUnit, UnitType unitType)
+        {
+            var closestUnitPosition = new Point();
+            var closestDistance = double.MaxValue;
+
+            // Find closest unit
+            foreach (var unit in _playerUnits.Where(u => u.Type == unitType))
+            {
+                distance = CalculateDistance(sourceUnit.Position, unit.Position);
+
+                if (distance < closestDistance)
+                {
+                    closestUnitPosition = unit.Position;
+                    closestDistance = distance;
+                }
+            }
+
+            return closestUnitPosition;
+        }
+        
+        private Point GetClosestStructure(Unit sourceUnit, StructureType structureType, int player)
+        {
+            var closestStructurePosition = new Point();
+            var closestDistance = double.MaxValue;
+
+            var sites = _sites.Where(s => s.Owner == player && s.Structure == structureType);
+            
+            foreach (var site in sites)
+            {
+                distance = CalculateDistance(sourceUnit.Position, site.Position);
+
+                if (distance < closestDistance)
+                {
+                    closestStructurePosition = site.Position;
+                    closestDistance = distance;
+                }
+            }
+
+            return closestStructurePosition;
+        }
+
+        private Unit ClosestEnemyUnitToQueen(Point queenPosition)
         {
             Unit closestUnit = null;
             var closestDistance = double.MaxValue;
 
             foreach (var knight in _enemyUnits.Where(u => u.Type == UnitType.Knight))
             {
-                var distance = Distance(queenPosition, knight.Position);
+                var distance = CalculateDistance(queenPosition, knight.Position);
 
                 if (distance < closestDistance)
                 {
@@ -393,7 +451,7 @@ namespace CodeRoyale
                     continue;
                 }
 
-                var distance = Distance(queenPosition, site.Position);
+                var distance = CalculateDistance(queenPosition, site.Position);
 
                 if(distance < closestDistance)
                 {
@@ -405,7 +463,7 @@ namespace CodeRoyale
             return closestId;
         }
 
-        private static double Distance(Point queenPosition, Point sitePosition)
+        private static double CalculateDistance(Point queenPosition, Point sitePosition)
         {
             return Math.Sqrt(Math.Pow(sitePosition.X - queenPosition.X, 2) + Math.Pow(sitePosition.Y - queenPosition.Y, 2)) ;
         }

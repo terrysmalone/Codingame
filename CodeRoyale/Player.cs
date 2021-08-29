@@ -1,12 +1,7 @@
 ﻿using System;
 using System.Linq;
-using System.IO;
-using System.Text;
-using System.Collections;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Runtime.CompilerServices;
-using System.Transactions;
 
 namespace CodeRoyale
 {
@@ -20,25 +15,21 @@ namespace CodeRoyale
             // game loop
             while (true)
             {
+                // ReSharper disable once PossibleNullReferenceException
                 var inputs = Console.ReadLine().Split(' ');
 
                 game.Gold = int.Parse(inputs[0]);
                 game.TouchedSite = int.Parse(inputs[1]); // -1 if none
 
                 UpdateSites(game);
-
                 UpdateUnits(game);
 
-                var actions = game.GetAction();
-
-                // Write an action using Console.WriteLine()
-                // To debug: Console.Error.WriteLine("Debug messages...");
-
+                var (queenAction, trainingAction) = game.GetAction();
 
                 // First line: A valid queen action
                 // Second line: A set of training instructions
-                Console.WriteLine(actions.Item1);
-                Console.WriteLine(actions.Item2);
+                Console.WriteLine(queenAction);
+                Console.WriteLine(trainingAction);
             }
         }
 
@@ -46,10 +37,12 @@ namespace CodeRoyale
         {
             var sites = new List<Site>();
 
+            // ReSharper disable once AssignNullToNotNullAttribute
             var  numSites = int.Parse(Console.ReadLine());
 
             for (var i = 0; i < numSites; i++)
             {
+                // ReSharper disable once PossibleNullReferenceException
                 var siteInfo = Console.ReadLine().Split(' ');
 
                 sites.Add(new Site(int.Parse(siteInfo[0]),
@@ -64,6 +57,7 @@ namespace CodeRoyale
         {
             for (var i = 0; i < game.NumberOfSites; i++)
             {
+                // ReSharper disable once PossibleNullReferenceException
                 var inputs = Console.ReadLine().Split(' ');
                 var siteId = int.Parse(inputs[0]);
                 var gold = int.Parse(inputs[1]); 
@@ -85,10 +79,12 @@ namespace CodeRoyale
         {
             game.ClearUnits();
 
+            // ReSharper disable once AssignNullToNotNullAttribute
             var numberOfUnits = int.Parse(Console.ReadLine());
 
             for (var i = 0; i < numberOfUnits; i++)
             {
+                // ReSharper disable once PossibleNullReferenceException
                 var inputs = Console.ReadLine().Split(' ');
 
                 var position = new Point(int.Parse(inputs[0]), int.Parse(inputs[1]));
@@ -128,7 +124,7 @@ namespace CodeRoyale
         private const int _giantCost = 140;
         
 
-        private List<Site> _sites;
+        private readonly List<Site> _sites;
         private List<Unit> _playerUnits;
         private List<Unit> _enemyUnits;
 

@@ -524,13 +524,11 @@ namespace CodeRoyale
         public int Gold { get; set; }
         public int MaxMineSize { get; set; }
 
-        internal Site(int id, Point position, int radius, int gold, int maxMineSize)
+        internal Site(int id, Point position, int radius)
         {
             Id = id;
             Position = position;
             Radius = radius;
-            Gold = gold;
-            MaxMineSize = maxMineSize;
 
             Structure = StructureType.Empty;
         }

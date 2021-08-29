@@ -6,6 +6,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Runtime.CompilerServices;
+using System.Transactions;
 
 namespace CodeRoyale
 {
@@ -65,8 +66,8 @@ namespace CodeRoyale
             {
                 var inputs = Console.ReadLine().Split(' ');
                 var siteId = int.Parse(inputs[0]);
-                var ignore1 = int.Parse(inputs[1]); // used in future leagues
-                var ignore2 = int.Parse(inputs[2]); // used in future leagues
+                var gold = int.Parse(inputs[1]); 
+                var maxMineSize = int.Parse(inputs[2]);
                 var structureType = int.Parse(inputs[3]); // -1 = No structure, 2 = Barracks
                 var owner = int.Parse(inputs[4]); // -1 = No structure, 0 = Friendly, 1 = Enemy
                 var param1 = int.Parse(inputs[5]);
@@ -74,7 +75,9 @@ namespace CodeRoyale
 
                 game.UpdateSite(siteId,
                                 owner,
-                                structureType);
+                                structureType,
+                                gold,
+                                maxMineSize);
             }
         }
 
@@ -146,7 +149,7 @@ namespace CodeRoyale
             giantBarracksIds = new List<int>();
         }
 
-        internal void UpdateSite(int siteId, int owner, int structureType)
+        internal void UpdateSite(int siteId, int owner, int structureType, int gold, int maxMineSize)
         {
             var site = _sites.Single(s => s.Id == siteId);
 
@@ -176,6 +179,9 @@ namespace CodeRoyale
                     site.Structure = StructureType.BarracksGiant;
                 }
             }
+
+            site.Gold = gold;
+            site.MaxMineSize = maxMineSize;
         }
 
         internal void ClearUnits()
@@ -513,16 +519,18 @@ namespace CodeRoyale
         internal int Id { get; }
         internal Point Position { get; }
         internal int Radius { get; }
-
         internal StructureType Structure { get; set; }
-
         internal int Owner { get; set; }
+        public int Gold { get; set; }
+        public int MaxMineSize { get; set; }
 
-        internal Site(int id, Point position, int radius)
+        internal Site(int id, Point position, int radius, int gold, int maxMineSize)
         {
             Id = id;
             Position = position;
             Radius = radius;
+            Gold = gold;
+            MaxMineSize = maxMineSize;
 
             Structure = StructureType.Empty;
         }

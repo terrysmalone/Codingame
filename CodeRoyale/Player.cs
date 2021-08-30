@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Transactions;
 
 namespace CodeRoyale
 {
@@ -119,6 +120,8 @@ namespace CodeRoyale
 
     internal sealed class Game
     {
+        private  bool _playAggressively = true;
+        
         private const int _archerCost = 100;
         private const int _knightCost = 80;
         private const int _giantCost = 140;
@@ -180,6 +183,11 @@ namespace CodeRoyale
             if (site.Structure == StructureType.Mine)
             {
                 site.IncrementMineSize();
+            }
+            
+            if (site.Structure == StructureType.Tower)
+            {
+                site.IncrementTowerSize();
             }
 
             site.Gold = gold;
@@ -281,7 +289,135 @@ namespace CodeRoyale
             var giantBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksGiant).ToList();
             var towers = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.Tower).ToList();
             var mines = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.Mine).ToList();
+
+            var action = DecideWhetherToRunAway(queen);
+
+            if (action != null)
+            {
+                return action;
+            }
+
+            // If the queen is touching a mine that can be levelled up
+            if (_sites.Where(s => s.Owner == 0 && s.Structure == StructureType.Mine).Select(s => s.Id).Contains(TouchedSite))
+            {
+                var touchedMine = _sites.Single(s => s.Id == TouchedSite);
+
+                if (touchedMine.MaxMineSize > touchedMine.MineSize)
+                {
+                    return $"BUILD {touchedMine.Id} MINE";
+                }
+            }
             
+            if (_sites.Where(s => s.Owner == 0 && s.Structure == StructureType.Tower).Select(s => s.Id).Contains(TouchedSite))
+            {
+                var touchedTower = _sites.Single(s => s.Id == TouchedSite);
+
+                if (touchedTower.TowerSize < 3 )
+                {
+                    return $"BUILD {touchedTower.Id} TOWER";
+                }
+            }
+
+            var enemyHasTowers = _sites.Any(s => s.Owner != 0 && s.Structure == StructureType.Tower);
+
+            if (_playAggressively)
+            {
+                if (closestEmptySiteId != -1)
+                {
+                    var closestSite = _sites.Single(s => s.Id == closestEmptySiteId);
+                    
+                    var buildingType = string.Empty;
+                    
+                    if (mines.Count < idealMineCount && closestSite.Gold > 0)
+                    {
+                        buildingType = "MINE";
+                    }
+                    else if (towers.Count < 1)
+                    {
+                        buildingType = "TOWER";
+                    }
+                    else if (knightBarracks.Count < 1)
+                    {
+                        buildingType = "BARRACKS-KNIGHT";
+                        knightBarracksIds.Add(closestEmptySiteId);
+                    }
+                    else
+                    {
+                        buildingType = "TOWER";
+                    }
+                    
+                    if (!string.IsNullOrEmpty(buildingType))
+                    {
+                        return $"BUILD {closestEmptySiteId} {buildingType}";
+                    }
+                    
+                    if (towers.Count > 0)
+                    {
+                        return $"MOVE {towers.First().Position.X} {towers.First().Position.Y}";
+                    }
+                }
+            }
+            else
+            {
+                if (closestEmptySiteId != -1)
+                {
+                    var closestSite = _sites.Single(s => s.Id == closestEmptySiteId);
+
+                    var buildingType = string.Empty;
+
+                    if (archerBarracks.Count < 1)
+                    {
+                        buildingType = "BARRACKS-ARCHER";
+                        _archeryBarracksIds.Add(closestEmptySiteId);
+                    }
+                    else if (mines.Count < idealMineCount && closestSite.Gold > 0)
+                    {
+                        buildingType = "MINE";
+                    }
+                    else if (knightBarracks.Count < 1)
+                    {
+                        buildingType = "BARRACKS-KNIGHT";
+                        knightBarracksIds.Add(closestEmptySiteId);
+                    }
+                    else if (giantBarracks.Count < 1 && enemyHasTowers)
+                    {
+                        buildingType = "BARRACKS-GIANT";
+                        giantBarracksIds.Add(closestEmptySiteId);
+                    }
+                    else if (towers.Count < idealTowerCount)
+                    {
+                        buildingType = "TOWER";
+                    }
+                    else
+                    {
+                        // Find closest mine
+                        buildingType = "MINE";
+
+                        // Upgrade it
+                        closestEmptySiteId = mines.First().Id;
+                    }
+
+                    if (!string.IsNullOrEmpty(buildingType))
+                    {
+                        return $"BUILD {closestEmptySiteId} {buildingType}";
+                    }
+                }
+
+                //queenAction = $"MOVE 0 0";
+
+                //Console.Error.WriteLine($"Queen move to {towers.First().Position.X},{towers.First().Position.Y}");
+
+                if (towers.Count > 0)
+                {
+                    return $"MOVE {towers.First().Position.X} {towers.First().Position.Y}";
+                }
+            }
+            
+            return $"WAIT"; 
+        }
+
+        private string DecideWhetherToRunAway(Unit queen)
+        {
             var closestUnitToQueen = ClosestEnemyUnitToQueen(queen.Position);
             
             // Prioritise running away  
@@ -297,86 +433,19 @@ namespace CodeRoyale
                     return $"MOVE {closestArcher.X} {closestArcher.Y}";
                 }
                 
-                if (_sites.Any(u => u.Structure == StructureType.Tower))
-                {
-                    // Go to nearest tower
-                    var closestTower = GetClosestStructure(queen, StructureType.Tower, 0);
-                    
-                    return $"MOVE {closestTower.X} {closestTower.Y}";
-                }
+                // if (_sites.Any(u => u.Structure == StructureType.Tower))
+                // {
+                //     // Go to nearest tower
+                //     var closestTower = GetClosestStructure(queen, StructureType.Tower, 0);
+                //     
+                //     return $"MOVE {closestTower.X} {closestTower.Y}";
+                // }
                 
                 // Just run away
                 return $"MOVE {queen.Position.X - (closestUnitToQueen.Position.X - queen.Position.X)} {queen.Position.Y - (closestUnitToQueen.Position.Y - queen.Position.Y)}";
             }
 
-            // If the queen is touching a mine that can be levelled up
-            if (_sites.Where(s => s.Owner == 0 && s.Structure == StructureType.Mine).Select(s => s.Id).Contains(TouchedSite))
-            {
-                var touchedMine = _sites.Single(s => s.Id == TouchedSite);
-
-                if (touchedMine.MaxMineSize > touchedMine.MineSize)
-                {
-                    return $"BUILD {touchedMine.Id} MINE";
-                }
-            }
-
-            if (closestEmptySiteId != -1)
-            {
-                var closestSite = _sites.Single(s => s.Id == closestEmptySiteId);
-                
-                var buildingType = string.Empty;
-                var enemyHasTowers = giantBarracks.Count < 1 && _sites.Any(s => s.Owner != 0 && s.Structure == StructureType.Tower);
-                
-                if (archerBarracks.Count < 1)
-                {
-                    buildingType = "BARRACKS-ARCHER";
-                    _archeryBarracksIds.Add(closestEmptySiteId);
-                }
-                else if (mines.Count < idealMineCount && closestSite.Gold > 0)
-                {
-                    buildingType = "MINE";
-                }
-                else if (knightBarracks.Count < 1)
-                {
-                    buildingType = "BARRACKS-KNIGHT";
-                    knightBarracksIds.Add(closestEmptySiteId);
-                }
-                else if (giantBarracks.Count < 1 && enemyHasTowers)
-                {
-                    buildingType = "BARRACKS-GIANT";
-                    giantBarracksIds.Add(closestEmptySiteId);
-                }
-                else if (towers.Count < idealTowerCount)
-                {
-                    buildingType = "TOWER";
-                }
-                else
-                {
-                    // Find closest mine
-                    buildingType = "MINE";
-                    
-                    // Upgrade it
-                    closestEmptySiteId = mines.First().Id;
-                }
-
-                if (!string.IsNullOrEmpty(buildingType))
-                {
-                    return $"BUILD {closestEmptySiteId} {buildingType}";
-                }
-            }
-
-            //queenAction = $"MOVE 0 0";
-            
-            //Console.Error.WriteLine($"Queen move to {towers.First().Position.X},{towers.First().Position.Y}");
-
-            if (towers.Count > 0)
-            {
-                return $"MOVE {towers.First().Position.X} {towers.First().Position.Y}";
-            }
-            else
-            {
-                return $"WAIT";
-            }
+            return null;
         }
 
         private Point GetClosestUnit(Unit sourceUnit, UnitType unitType)
@@ -470,57 +539,76 @@ namespace CodeRoyale
         
         private UnitType GetIdealUnit()
         {
-            // We want a proportion of
-            // 4 knights to
-            // 2 archers to
-            // 1 giant
-            var idealKnightProportion = 2;
-            var idealArcherProportion = 4;
-            var idealGiantProportion = 1;
-            
-            var numberOfKnights = _playerUnits.Count(u => u.Type == UnitType.Knight);
-            var numberOfArchers = _playerUnits.Count(u => u.Type == UnitType.Archer);
             var numberOfGiants = _playerUnits.Count(u => u.Type == UnitType.Giant);
-
-            if (numberOfArchers <= 2)
-            {
-                return UnitType.Archer;
-            }
             
-            if (numberOfKnights <= 1)
+            if (_playAggressively)
             {
-                return UnitType.Knight;
-            }
+                // Just make knights
 
-            if (numberOfGiants <= 0)
-            {
-                return UnitType.Giant;
-            }
-
-            while (true)
-            {
-                numberOfKnights -= idealKnightProportion;
-                numberOfArchers -= idealArcherProportion;
-                numberOfGiants -= idealGiantProportion;
-              
-                if (numberOfArchers <= 2)
+                if (_sites.Count(s => s.Owner == 0 && s.Structure == StructureType.BarracksGiant) > 0
+                    && _sites.Count(s => s.Owner != 0 && s.Structure == StructureType.Tower) > 0
+                    && numberOfGiants == 0)
                 {
-                    //Console.Error.WriteLine($"Archer chosen-Counts:{numberOfKnights},{numberOfArchers},{numberOfGiants}");
-                    return UnitType.Archer;
+                    return UnitType.Giant;
                 }
                 
+                return UnitType.Knight;
+            }
+            else
+            {
+                // We want a proportion of
+                // 4 knights to
+                // 2 archers to
+                // 1 giant
+                var idealKnightProportion = 2;
+                var idealArcherProportion = 4;
+                var idealGiantProportion = 1;
+
+                var numberOfKnights = _playerUnits.Count(u => u.Type == UnitType.Knight);
+                var numberOfArchers = _playerUnits.Count(u => u.Type == UnitType.Archer);
+
+                if (numberOfArchers <= 2)
+                {
+                    return UnitType.Archer;
+                }
+
                 if (numberOfKnights <= 1)
                 {
-                    //Console.Error.WriteLine($"Knight chosen-Counts:{numberOfKnights},{numberOfArchers},{numberOfGiants}");
                     return UnitType.Knight;
                 }
 
                 if (numberOfGiants <= 0)
                 {
-                    //Console.Error.WriteLine($"Giant chosen-Counts:{numberOfKnights},{numberOfArchers},{numberOfGiants}");
                     return UnitType.Giant;
                 }
+
+                while (true)
+                {
+                    numberOfKnights -= idealKnightProportion;
+                    numberOfArchers -= idealArcherProportion;
+                    numberOfGiants -= idealGiantProportion;
+
+                    if (numberOfArchers <= 2)
+                    {
+                        //Console.Error.WriteLine($"Archer chosen-Counts:{numberOfKnights},{numberOfArchers},{numberOfGiants}");
+                        return UnitType.Archer;
+                    }
+
+                    if (numberOfKnights <= 1)
+                    {
+                        //Console.Error.WriteLine($"Knight chosen-Counts:{numberOfKnights},{numberOfArchers},{numberOfGiants}");
+                        return UnitType.Knight;
+                    }
+
+                    if (numberOfGiants <= 0)
+                    {
+                        //Console.Error.WriteLine($"Giant chosen-Counts:{numberOfKnights},{numberOfArchers},{numberOfGiants}");
+                        return UnitType.Giant;
+                    }
+                }
             }
+
+            return UnitType.Knight;
         }
 
         private void DebugAll()
@@ -597,6 +685,7 @@ namespace CodeRoyale
         public int MaxMineSize { get; set; }
         
         public int MineSize { get; private set; }
+        public int TowerSize { get;  private set; }
 
         internal Site(int id, Point position, int radius)
         {
@@ -607,10 +696,10 @@ namespace CodeRoyale
             Structure = StructureType.Empty;
         }
 
-        public void IncrementMineSize()
-        {
-            MineSize++;
-        }
+        public void IncrementMineSize() => MineSize++;
+        public void IncrementTowerSize() => TowerSize++;
+        
+        
     }
 
     internal sealed class Unit

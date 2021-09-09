@@ -12,7 +12,7 @@ namespace UltimateTicTacToeTest
         // "-" for empty
         internal static TicTacToe GetTicTacToeBoard(string boardString)
         {
-            TicTacToe ticTacToe = new TicTacToe();
+            var ticTacToe = new TicTacToe();
             
             var board = GetBoard(boardString);
             

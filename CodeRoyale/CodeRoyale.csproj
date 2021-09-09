@@ -2,6 +2,6 @@
     <PropertyGroup>
         <OutputType>Exe</OutputType>
         <TargetFramework>net5.0</TargetFramework>
-        <StartupObject>CodeRoyal.Player</StartupObject>
+        <StartupObject>CodeRoyale.Player</StartupObject>
     </PropertyGroup>    
 </Project>

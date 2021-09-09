@@ -13,7 +13,7 @@ namespace UltimateTicTacToeTest
         [Test]
         public void TestEvaluate_OneSubBoardWinFromXPointOfView()
         {
-            var ticTacToe = new UltimateTicTacToe.UltimateTicTacToe();
+            var ticTacToe = new MultiTicTacToe();
             ticTacToe.AddMove(3, 0, 'X');
             ticTacToe.AddMove(4, 1, 'X');
             ticTacToe.AddMove(5, 2,'X');
@@ -24,7 +24,7 @@ namespace UltimateTicTacToeTest
         [Test]
         public void TestEvaluate_OneSubBoardLossFromXPointOfView()
         {
-            var ticTacToe = new UltimateTicTacToe.UltimateTicTacToe();
+            var ticTacToe = new MultiTicTacToe();
             ticTacToe.AddMove(8, 8, 'O');
             ticTacToe.AddMove(7, 7, 'O');
             ticTacToe.AddMove(6, 6,'O');
@@ -35,7 +35,7 @@ namespace UltimateTicTacToeTest
         [Test]
         public void TestEvaluate_MoreSubBoardWinFromXPointOfView()
         {
-            var ticTacToe = new UltimateTicTacToe.UltimateTicTacToe();
+            var ticTacToe = new MultiTicTacToe();
             // X won sub board 0
             ticTacToe.AddMove(0, 0, 'X');
             ticTacToe.AddMove(0, 1, 'X');
@@ -55,7 +55,7 @@ namespace UltimateTicTacToeTest
         [Test]
         public void TestEvaluate_MoreSubBoardLossesFromXPointOfView()
         {
-            var ticTacToe = new UltimateTicTacToe.UltimateTicTacToe();
+            var ticTacToe = new MultiTicTacToe();
             // X won sub board 0
             ticTacToe.AddMove(0, 0, 'O');
             ticTacToe.AddMove(1, 1, 'O');
@@ -75,7 +75,7 @@ namespace UltimateTicTacToeTest
         [Test]
         public void TestEvaluate_OverallWinFromXPointOfView()
         {
-            var ticTacToe = new UltimateTicTacToe.UltimateTicTacToe();
+            var ticTacToe = new MultiTicTacToe();
             // X won sub board 0
             ticTacToe.AddMove(0, 0, 'X');
             ticTacToe.AddMove(0, 1, 'X');
@@ -95,7 +95,7 @@ namespace UltimateTicTacToeTest
         [Test]
         public void TestEvaluate_OverallLossFromXPointOfView()
         {
-            var ticTacToe = new UltimateTicTacToe.UltimateTicTacToe();
+            var ticTacToe = new MultiTicTacToe();
             // X won sub board 0
             ticTacToe.AddMove(0, 0, 'O');
             ticTacToe.AddMove(0, 1, 'O');
@@ -119,7 +119,7 @@ namespace UltimateTicTacToeTest
         [Test]
         public void TestEvaluate_OneSubBoardWinFromOPointOfView()
         {
-            var ticTacToe = new UltimateTicTacToe.UltimateTicTacToe();
+            var ticTacToe = new MultiTicTacToe();
             ticTacToe.AddMove(6, 0, 'O');
             ticTacToe.AddMove(6, 1, 'O');
             ticTacToe.AddMove(6, 2, 'O');
@@ -130,7 +130,7 @@ namespace UltimateTicTacToeTest
         [Test]
         public void TestEvaluate_OneSubBoardLossFromOPointOfView()
         {
-            var ticTacToe = new UltimateTicTacToe.UltimateTicTacToe();
+            var ticTacToe = new MultiTicTacToe();
             ticTacToe.AddMove(3, 0, 'X');
             ticTacToe.AddMove(4, 0, 'X');
             ticTacToe.AddMove(5, 0, 'X');
@@ -141,7 +141,7 @@ namespace UltimateTicTacToeTest
         [Test]
         public void TestEvaluate_MoreSubBoardWinFromOPointOfView()
         {
-            var ticTacToe = new UltimateTicTacToe.UltimateTicTacToe();
+            var ticTacToe = new MultiTicTacToe();
             ticTacToe.AddMove(3, 0, 'X');
             ticTacToe.AddMove(4, 0, 'X');
             ticTacToe.AddMove(5, 0, 'X');
@@ -152,7 +152,7 @@ namespace UltimateTicTacToeTest
         [Test]
         public void TestEvaluate_MoreSubBoardLossFromOPointOfView()
         {
-            var ticTacToe = new UltimateTicTacToe.UltimateTicTacToe();
+            var ticTacToe = new MultiTicTacToe();
             // (X) won sub board 0
             ticTacToe.AddMove(0, 0, 'O');
             ticTacToe.AddMove(0, 1, 'O');
@@ -177,7 +177,7 @@ namespace UltimateTicTacToeTest
         [Test]
         public void TestEvaluate_OverallWinFromOPointOfView()
         {
-            var ticTacToe = new UltimateTicTacToe.UltimateTicTacToe();
+            var ticTacToe = new MultiTicTacToe();
             // O won sub board 0
             ticTacToe.AddMove(0, 0, 'O');
             ticTacToe.AddMove(0, 1, 'O');
@@ -197,7 +197,7 @@ namespace UltimateTicTacToeTest
         [Test]
         public void TestEvaluate_OverallLossFromOPointOfView()
         {
-            var ticTacToe = new UltimateTicTacToe.UltimateTicTacToe();
+            var ticTacToe = new MultiTicTacToe();
             // O won sub board 0
             ticTacToe.AddMove(0, 0, 'X');
             ticTacToe.AddMove(0, 1, 'X');
@@ -217,7 +217,7 @@ namespace UltimateTicTacToeTest
         [Test]
         public void TestAddMove()
         {
-            var ticTacToe = new UltimateTicTacToe.UltimateTicTacToe();
+            var ticTacToe = new MultiTicTacToe();
             // O won sub board 0
             ticTacToe.AddMove(0, 3, 'X');
             
@@ -245,7 +245,7 @@ namespace UltimateTicTacToeTest
         [Test]
         public void TestAddingAndUndoing()
         {
-            var ticTacToe = new UltimateTicTacToe.UltimateTicTacToe();
+            var ticTacToe = new MultiTicTacToe();
             
             var rand = new Random();
             

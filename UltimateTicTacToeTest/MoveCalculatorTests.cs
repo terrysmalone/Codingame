@@ -188,7 +188,7 @@ namespace UltimateTicTacToeTest
             var subBoard8 = TicTacToeBoardFactory.GetTicTacToeBoard("X--X-----");
 
 
-            var ticTacToe = new UltimateTicTacToe.UltimateTicTacToe();
+            var ticTacToe = new MultiTicTacToe();
             
             ticTacToe.SubBoards[0,0] = subBoard0;
             ticTacToe.SubBoards[1,0] = subBoard1;
@@ -234,7 +234,7 @@ namespace UltimateTicTacToeTest
             var subBoard7 = TicTacToeBoardFactory.GetTicTacToeBoard("---------");
             var subBoard8 = TicTacToeBoardFactory.GetTicTacToeBoard("---X-----");
 
-            var ticTacToe = new UltimateTicTacToe.UltimateTicTacToe();
+            var ticTacToe = new MultiTicTacToe();
             
             ticTacToe.SubBoards[0,0] = subBoard0;
             ticTacToe.SubBoards[1,0] = subBoard1;

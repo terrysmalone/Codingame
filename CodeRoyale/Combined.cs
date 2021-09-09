@@ -9,8 +9,6 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 
-namespace CodeRoyaleCombined
-{
     internal sealed class Game
     {
         private  bool _playAggressively = true;
@@ -761,4 +759,3 @@ namespace CodeRoyaleCombined
         Archer,
         Giant
     }
-}

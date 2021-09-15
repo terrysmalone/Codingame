@@ -10,6 +10,9 @@ namespace Fall2020Challenge
         internal List<Spell> Spells { get; private set; }
         internal Inventory PlayerInventory { get; private set; }
         internal Inventory OpponentInventory { get; private set; }
+
+        private Recipe _targetRecipe = null;
+        private Queue<string> _listOfActions = new Queue<string>();
         
         public Game()
         {
@@ -37,62 +40,61 @@ namespace Fall2020Challenge
         }
         public string GetAction()
         {
-            //DisplayRecipes();
-            //DisplaySpells();
-            
-            // Very basic implementation
-            foreach (var recipe in Recipes.Where(recipe =>    PlayerInventory.Ingredients[0] >= recipe.Ingredients[0] 
-                                                              && PlayerInventory.Ingredients[1] >= recipe.Ingredients[1] 
-                                                              && PlayerInventory.Ingredients[2] >= recipe.Ingredients[2] 
-                                                              && PlayerInventory.Ingredients[3] >= recipe.Ingredients[3]))
+            if(_targetRecipe == null || !Recipes.Exists(r => r.Id == _targetRecipe.Id))
             {
-                return $"{Recipe.ActionType} {recipe.Id}";
-            }
-            
-            // Pick the most expensive spell
-            var targetRecipe = Recipes.OrderByDescending(s => s.Price).First();
-            
-            Console.Error.WriteLine($"targetRecipe: {targetRecipe.Id}");
-            
-            //var neededForRecipe = CalculateNeededIngredients(targetRecipe.Ingredients);
+                // Pick the most expensive recipe
+                _targetRecipe = Recipes.OrderByDescending(s => s.Price).First();
+                _listOfActions = new Queue<string>();
 
-            //var  currentlyNeeded = neededForRecipe[0] + neededForRecipe[1] + neededForRecipe[2] + neededForRecipe[3];
-            
-            var bestSpellId = -1;
-            var lowestNeeds = int.MaxValue;
-
-            foreach (var spell in Spells.Where(s => s.Castable))
-            {
-                if(!CanSpellBeCast(spell.IngredientsChange)) { continue; }
-
-                var needsAfterSpell = CalculateNeededIngredientsAfterChange(targetRecipe.Ingredients, spell.IngredientsChange);
-                
-                Console.Error.WriteLine($"Needs after spell {spell.Id}: [{needsAfterSpell[0]},{needsAfterSpell[1]},{needsAfterSpell[2]},{needsAfterSpell[3]}]");
-                var totalNeedsAfterSpell = needsAfterSpell[0] + needsAfterSpell[1] + needsAfterSpell[2] + needsAfterSpell[3];
-                
-                // If this spell makes it brewable just cast it
-                if(totalNeedsAfterSpell == 0)
+                if (CanRecipeBeMade(_targetRecipe))
                 {
-                    return $"{Spell.ActionType} {spell.Id}";
-                }
-                
-                // Check if this spell makes it more castable
-                if(totalNeedsAfterSpell < lowestNeeds)
-                {
-                    lowestNeeds = totalNeedsAfterSpell;
-                    bestSpellId = spell.Id;
+                    return $"BREW {_targetRecipe.Id}";
                 }
             }
-            
-            if(bestSpellId != -1)
-            {
-                return $"{Spell.ActionType} {bestSpellId}";
-            }
 
-            //return $"{Spell.ActionType} {Spells.First(s => s.Castable).Id}";
-            return "REST";
-            
+            Console.Error.Write("Recipe ingredients");
+            DisplayIngredients(_targetRecipe.Ingredients);
+
+            Console.Error.Write("Current ingredients");
+            DisplayIngredients(PlayerInventory.Ingredients);
+
+            DisplaySpellIngredients();
+
+            if(!_listOfActions.Any())
+            {
+                // Make list of actions
+                _listOfActions = MakeActionsList(_targetRecipe.Ingredients);
+
+                return _listOfActions.Dequeue();
+            }
+            else
+            {
+                return _listOfActions.Dequeue();
+            }
         }
+
+        private Queue<string> MakeActionsList(int[] targetRecipeIngredients)
+        {
+            var actions = new Queue<string>();
+
+            var rootNode = new TreeNode(null, Spells.ConvertAll(s => new Spell(s.Id, s.IngredientsChange, s.Castable)).ToList(), PlayerInventory.Ingredients, string.Empty, null);
+
+            var recipeMade = false;
+
+            while (!recipeMade)
+            {
+
+                //if(PlayerInventory)
+            //}
+
+            actions.Enqueue("CAST 79");
+
+            actions.Enqueue("REST");
+            actions.Enqueue("CAST 79");
+
+            return actions;
+        }
+
         private bool CanSpellBeCast(int[] spellIngredientsChange)
         {
             var inventoryIngredients = PlayerInventory.Ingredients;
@@ -102,6 +104,19 @@ namespace Fall2020Challenge
                       && inventoryIngredients[2] + spellIngredientsChange[2] >= 0
                       && inventoryIngredients[3] + spellIngredientsChange[3] >= 0;
 
+        }
+
+        private bool CanRecipeBeMade(Recipe recipe)
+        {
+            for (var i = 0; i < 4; i++)
+            {
+                if(PlayerInventory.Ingredients[i] < recipe.Ingredients[i])
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         private int[] CalculateNeededIngredients(int[] targetIngredients)
@@ -130,12 +145,29 @@ namespace Fall2020Challenge
             };
         }
 
+        private int[] CalculateSpareIngredients(int[] neededIngredients)
+        {
+            var spareIngredients = new int[4];
+
+            for (var i = 0; i < 4; i++)
+            {
+                spareIngredients[i] = 0;
+
+                if(PlayerInventory.Ingredients[i] > neededIngredients[i])
+                {
+                    spareIngredients[i] = PlayerInventory.Ingredients[i] - neededIngredients[i];
+                }
+            }
+
+            return spareIngredients;
+        }
+
         private void DisplayRecipes()
         {
             Console.Error.WriteLine("Recipes");
             
             foreach (var recipe in Recipes)
-            {  
+            {
                 Console.Error.WriteLine("actionId: " + recipe.Id);
                 Console.Error.WriteLine("blueIngredients:   " + recipe.Ingredients[0]);   
                 Console.Error.WriteLine("greenIngredients:  " + recipe.Ingredients[1]);   
@@ -145,7 +177,12 @@ namespace Fall2020Challenge
                 Console.Error.WriteLine();                    
             }   
         }
-        
+
+        private static void DisplayIngredients(int[] ingredients)
+        {
+            Console.Error.WriteLine($"[{ingredients[0]},{ingredients[1]},{ingredients[2]},{ingredients[3]}]");
+        }
+
         private void DisplaySpells()
         {
             Console.Error.WriteLine("Spells");
@@ -159,6 +196,44 @@ namespace Fall2020Challenge
                 Console.Error.WriteLine("Yellow Ingredients change: " + spell.IngredientsChange[3]);
                 Console.Error.WriteLine();        
             }   
+        }
+
+        private void DisplaySpellIngredients()
+        {
+            Console.Error.WriteLine("SpellIngredients");
+
+            foreach (var spell in Spells)
+            {
+                Console.Error.WriteLine($"[{spell.IngredientsChange[0]},{spell.IngredientsChange[1]},{spell.IngredientsChange[2]},{spell.IngredientsChange[3]}]");
+            }
+        }
+    }
+
+    internal class TreeNode
+    {
+        private readonly int[] _change;
+        public TreeNode Parent { get; }
+        public List<Spell> CurrentSpells { get; }
+        public int[] PlayerIngredients { get; }
+
+        public string Action { get; }
+
+        private List<TreeNode> _children;
+
+        public TreeNode(TreeNode parent, List<Spell> currentSpells, int[] playerIngredients, string action, int[] change)
+        {
+            _change = change;
+            Parent = parent;
+            CurrentSpells = currentSpells;
+            PlayerIngredients = playerIngredients;
+            Action = action;
+
+            _children = new List<TreeNode>();
+        }
+
+        internal void AddChild(TreeNode child)
+        {
+            _children.Add(child);
         }
     }
 }

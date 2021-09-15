@@ -77,7 +77,7 @@ namespace Fall2020Challenge
         {
             var actions = new Queue<string>();
 
-            var rootNode = new TreeNode(null, Spells.ConvertAll(s => new Spell(s.Id, s.IngredientsChange, s.Castable)).ToList(), PlayerInventory.Ingredients, string.Empty, null);
+            //var rootNode = new TreeNode(null, Spells.ConvertAll(s => new Spell(s.Id, s.IngredientsChange, s.Castable)).ToList(), PlayerInventory.Ingredients, string.Empty, null);
 
             var recipeMade = false;
 
@@ -85,7 +85,7 @@ namespace Fall2020Challenge
             {
 
                 //if(PlayerInventory)
-            //}
+            }
 
             actions.Enqueue("CAST 79");
 
@@ -206,34 +206,6 @@ namespace Fall2020Challenge
             {
                 Console.Error.WriteLine($"[{spell.IngredientsChange[0]},{spell.IngredientsChange[1]},{spell.IngredientsChange[2]},{spell.IngredientsChange[3]}]");
             }
-        }
-    }
-
-    internal class TreeNode
-    {
-        private readonly int[] _change;
-        public TreeNode Parent { get; }
-        public List<Spell> CurrentSpells { get; }
-        public int[] PlayerIngredients { get; }
-
-        public string Action { get; }
-
-        private List<TreeNode> _children;
-
-        public TreeNode(TreeNode parent, List<Spell> currentSpells, int[] playerIngredients, string action, int[] change)
-        {
-            _change = change;
-            Parent = parent;
-            CurrentSpells = currentSpells;
-            PlayerIngredients = playerIngredients;
-            Action = action;
-
-            _children = new List<TreeNode>();
-        }
-
-        internal void AddChild(TreeNode child)
-        {
-            _children.Add(child);
         }
     }
 }

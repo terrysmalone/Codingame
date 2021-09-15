@@ -15,7 +15,8 @@ namespace CodeVsZombies
         {
             var closestZombieDistance = double.MaxValue;
             var closestHumanPoint = new Point(0,0);
-        
+            var closesZombiePoint = new Point(0,0);
+
             // Find the player with the closest Zombie
             foreach (var human in _humans)
             {
@@ -29,12 +30,13 @@ namespace CodeVsZombies
                         {
                             closestZombieDistance = distance;
                             closestHumanPoint = human.Position;
+                            closesZombiePoint = zombie.Position;
                         }
                     }
                 }
             }
         
-            return closestHumanPoint;
+            return closesZombiePoint;
         }
         private bool CanHumanBeSaved(Human human, Zombie zombie)
         {

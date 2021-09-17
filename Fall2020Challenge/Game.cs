@@ -12,7 +12,9 @@ namespace Fall2020Challenge
         internal Inventory OpponentInventory { get; private set; }
 
         private Recipe _targetRecipe = null;
-        private Queue<string> _listOfActions = new Queue<string>();
+        private List<string> _listOfActions = new List<string>();
+
+        private const int _maxSearchDepth = 20;
         
         public Game()
         {
@@ -43,56 +45,208 @@ namespace Fall2020Challenge
             if(_targetRecipe == null || !Recipes.Exists(r => r.Id == _targetRecipe.Id))
             {
                 // Pick the most expensive recipe
-                _targetRecipe = Recipes.OrderByDescending(s => s.Price).First();
-                _listOfActions = new Queue<string>();
+                _targetRecipe = Recipes.OrderBy(s => s.Price).First();
+                _listOfActions = new List<string>();
 
                 if (CanRecipeBeMade(_targetRecipe))
                 {
                     return $"BREW {_targetRecipe.Id}";
                 }
+
+                Console.Error.WriteLine($"Target:{_targetRecipe.Id}");
             }
 
-            Console.Error.Write("Recipe ingredients");
-            DisplayIngredients(_targetRecipe.Ingredients);
+            //Console.Error.Write("Recipe ingredients");
+            //DisplayIngredients(_targetRecipe.Ingredients);
 
-            Console.Error.Write("Current ingredients");
-            DisplayIngredients(PlayerInventory.Ingredients);
+            //Console.Error.Write("Current ingredients");
+            //DisplayIngredients(PlayerInventory.Ingredients);
 
-            DisplaySpellIngredients();
+            //DisplaySpellIngredients();
 
-            if(!_listOfActions.Any())
+            Console.Error.WriteLine($"Actions count: {_listOfActions.Count}");
+            if(!_listOfActions.Any() || _listOfActions.Count == 0)
             {
                 // Make list of actions
                 _listOfActions = MakeActionsList(_targetRecipe.Ingredients);
 
-                return _listOfActions.Dequeue();
+                _listOfActions.Add($"BREW {_targetRecipe.Id}");
+
+                Console.Error.WriteLine("---------------------");
+                foreach (var actn in _listOfActions)
+                {
+                    Console.Error.WriteLine(actn);
+                }
+
+                var action = _listOfActions[0];
+                _listOfActions.RemoveAt(0);
+                return action;
             }
             else
             {
-                return _listOfActions.Dequeue();
+                var action = _listOfActions[0];
+                _listOfActions.RemoveAt(0);
+                return action;
             }
         }
 
-        private Queue<string> MakeActionsList(int[] targetRecipeIngredients)
+        private List<string> MakeActionsList(int[] targetRecipeIngredients)
         {
-            var actions = new Queue<string>();
-
             //var rootNode = new TreeNode(null, Spells.ConvertAll(s => new Spell(s.Id, s.IngredientsChange, s.Castable)).ToList(), PlayerInventory.Ingredients, string.Empty, null);
 
-            var recipeMade = false;
+            var availableSpells = Spells.ConvertAll(s => new Spell(s.Id, s.IngredientsChange, s.Castable)).ToList();
+            var playerIngredients = GetDeepCopy(PlayerInventory.Ingredients);
 
-            while (!recipeMade)
+            var head = new TreeNode<GameState>(new GameState(availableSpells, playerIngredients, new List<string>()));
+
+            // Build the tree
+            AddChildren(head, 0);
+
+            //DisplayTreeNode(head);
+
+            // Search the tree
+            var actionsList = GetActionsList(head, targetRecipeIngredients, 0);
+
+            return actionsList;
+        }
+
+        private static int[] GetDeepCopy(IReadOnlyList<int> playerInventoryIngredients)
+        {
+            var copy = new int[playerInventoryIngredients.Count];
+
+            for (var i = 0; i < playerInventoryIngredients.Count; i++)
             {
-
-                //if(PlayerInventory)
+                copy[i] = playerInventoryIngredients[i];
             }
 
-            actions.Enqueue("CAST 79");
+            return copy;
+        }
 
-            actions.Enqueue("REST");
-            actions.Enqueue("CAST 79");
+        private static void AddChildren(TreeNode<GameState> currentNode, int currentDepth)
+        {
+            if(currentDepth >= _maxSearchDepth)
+            {
+                return;
+            }
 
-            return actions;
+            var children = GetChildrenStates(currentNode);
+
+            foreach (var child in children)
+            {
+                var childNode = currentNode.AddChild(child);
+
+                AddChildren(childNode, currentDepth+1);
+            }
+        }
+
+        private static List<GameState> GetChildrenStates(TreeNode<GameState> currentNode)
+        {
+            var children = new List<GameState>();
+
+            var currentIngredients = currentNode.Value.PlayerIngredients;
+            var currentSpells = currentNode.Value.AvailableSpells;
+            var currentActions = currentNode.Value.Actions;
+
+            // Can I make each spell
+            foreach (var currentSpell in currentSpells)
+            {
+                // If the spell is castable
+                if (currentSpell.Castable)
+                {
+                    var combinedIngredients = CombineIngredients(currentIngredients, currentSpell.IngredientsChange);
+
+                    // if I have the ingredients to make the spell and making it doesn't put me above 10
+                    if(    combinedIngredients.All(ingredient => ingredient >= 0)
+                       &&  combinedIngredients.Sum() <= 10)
+                    {
+                        var spells = currentSpells.ConvertAll(s => new Spell(s.Id, s.IngredientsChange, false)).ToList();
+
+                        var actions = new List<string>(currentActions);
+                        actions.Add($"CAST {currentSpell.Id}");
+
+                        children.Add(new GameState(spells, combinedIngredients, actions));
+                    }
+                }
+            }
+
+            // Can I rest
+            if(currentSpells.Any(s => s.Castable == false))
+            {
+                var spells = currentSpells.ConvertAll(s => new Spell(s.Id, s.IngredientsChange, true)).ToList();
+                var actions = new List<string>(currentActions);
+                actions.Add("REST");
+
+                children.Add(new GameState(spells, GetDeepCopy(currentIngredients), actions));
+            }
+
+            return children;
+        }
+
+        private static int[] CombineIngredients(IReadOnlyList<int> ingredients, IReadOnlyList<int> addedIngredients)
+        {
+            var combined = new int[4];
+
+            combined[0] = ingredients[0] + addedIngredients[0];
+            combined[1] = ingredients[1] + addedIngredients[1];
+            combined[2] = ingredients[2] + addedIngredients[2];
+            combined[3] = ingredients[3] + addedIngredients[3];
+
+            return combined;
+        }
+
+        private List<string> GetActionsList(TreeNode<GameState> head, int[] targetRecipeIngredients, int depth)
+        {
+            var actionsList = new List<string>();
+
+            foreach (var child in head.Children)
+            {
+                // Add action
+                actionsList.Add(child.Value.Actions[^1]);
+
+                // check for win
+                if(CheckNode(child, targetRecipeIngredients, depth+1, actionsList))
+                {
+                    return actionsList;
+                }
+
+                //remove action
+                actionsList.RemoveAt(actionsList.Count-1);
+            }
+
+            return actionsList;
+        }
+        private bool CheckNode(TreeNode<GameState> node, int[] targetRecipeIngredients, int depth, List<string> actionsList)
+        {
+            // if node is a winner return
+            if(CanRecipeBeMadeWithIngredients(targetRecipeIngredients, node.Value.PlayerIngredients))
+            {
+                Console.Error.WriteLine("---------------------");
+                foreach (var actn in actionsList)
+                {
+                    Console.Error.WriteLine(actn);
+                }
+
+                return true;
+            }
+
+            // get children
+
+            foreach (var child in node.Children)
+            {
+                // Add action
+                actionsList.Add(child.Value.Actions[^1]);
+
+                // check for win
+                if(CheckNode(child, targetRecipeIngredients, depth+1, actionsList))
+                {
+                    return true;
+                }
+
+                //remove action
+                actionsList.RemoveAt(actionsList.Count-1);
+            }
+
+            return false;
         }
 
         private bool CanSpellBeCast(int[] spellIngredientsChange)
@@ -115,6 +269,24 @@ namespace Fall2020Challenge
                     return false;
                 }
             }
+
+            return true;
+        }
+
+        private bool CanRecipeBeMadeWithIngredients(int[] targetIngredients, int[] currentIngredients)
+        {
+            for (var i = 0; i < 4; i++)
+            {
+                if(targetIngredients[i] > currentIngredients[i])
+                {
+                    return false;
+                }
+            }
+
+            Console.Error.WriteLine("---------------------");
+
+            Console.Error.WriteLine("Target ingredients: " + string.Join(",", targetIngredients));
+            Console.Error.WriteLine("Current ingredients: " + string.Join(",", currentIngredients));
 
             return true;
         }
@@ -205,6 +377,23 @@ namespace Fall2020Challenge
             foreach (var spell in Spells)
             {
                 Console.Error.WriteLine($"[{spell.IngredientsChange[0]},{spell.IngredientsChange[1]},{spell.IngredientsChange[2]},{spell.IngredientsChange[3]}]");
+            }
+        }
+
+        private void DisplayTreeNode(TreeNode<GameState> head, string indent = "-")
+        {
+            if(head.Value.Actions.Any())
+            {
+                Console.Error.WriteLine(indent + head.Value.Actions[^1]);
+            }
+            else
+            {
+                Console.Error.WriteLine(indent + "ROOT");
+            }
+
+            foreach (var child in head.Children)
+            {
+                DisplayTreeNode(child, $"-{indent}");
             }
         }
     }

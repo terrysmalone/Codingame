@@ -14,7 +14,9 @@ namespace Fall2020Challenge
         private Recipe _targetRecipe = null;
         private List<string> _listOfActions = new List<string>();
 
-        private const int _maxSearchDepth = 20;
+        private const int _maxSearchDepth = 15;
+
+        private int _nodesChecked = 0;
         
         public Game()
         {
@@ -42,8 +44,16 @@ namespace Fall2020Challenge
         }
         public string GetAction()
         {
+            //Console.Error.WriteLine("Recipes");
+
+            // foreach (var recipe in Recipes)
+            // {
+            //     Console.Error.WriteLine($"ID:{recipe.Id}");
+            // }
+
             if(_targetRecipe == null || !Recipes.Exists(r => r.Id == _targetRecipe.Id))
             {
+
                 // Pick the most expensive recipe
                 _targetRecipe = Recipes.OrderBy(s => s.Price).First();
                 _listOfActions = new List<string>();
@@ -52,8 +62,6 @@ namespace Fall2020Challenge
                 {
                     return $"BREW {_targetRecipe.Id}";
                 }
-
-                Console.Error.WriteLine($"Target:{_targetRecipe.Id}");
             }
 
             //Console.Error.Write("Recipe ingredients");
@@ -67,16 +75,13 @@ namespace Fall2020Challenge
             Console.Error.WriteLine($"Actions count: {_listOfActions.Count}");
             if(!_listOfActions.Any() || _listOfActions.Count == 0)
             {
+
                 // Make list of actions
+                _nodesChecked = 0;
                 _listOfActions = MakeActionsList(_targetRecipe.Ingredients);
+                Console.Error.WriteLine($"Nodes checked:{_nodesChecked}");
 
                 _listOfActions.Add($"BREW {_targetRecipe.Id}");
-
-                Console.Error.WriteLine("---------------------");
-                foreach (var actn in _listOfActions)
-                {
-                    Console.Error.WriteLine(actn);
-                }
 
                 var action = _listOfActions[0];
                 _listOfActions.RemoveAt(0);
@@ -97,10 +102,15 @@ namespace Fall2020Challenge
             var availableSpells = Spells.ConvertAll(s => new Spell(s.Id, s.IngredientsChange, s.Castable)).ToList();
             var playerIngredients = GetDeepCopy(PlayerInventory.Ingredients);
 
+            Console.Error.WriteLine("Got spells");
+            DisplayIngredients(playerIngredients);
+
             var head = new TreeNode<GameState>(new GameState(availableSpells, playerIngredients, new List<string>()));
 
+            Console.Error.WriteLine("Building tree");
             // Build the tree
             AddChildren(head, 0);
+            Console.Error.WriteLine("Tree built");
 
             //DisplayTreeNode(head);
 
@@ -220,11 +230,11 @@ namespace Fall2020Challenge
             // if node is a winner return
             if(CanRecipeBeMadeWithIngredients(targetRecipeIngredients, node.Value.PlayerIngredients))
             {
-                Console.Error.WriteLine("---------------------");
-                foreach (var actn in actionsList)
-                {
-                    Console.Error.WriteLine(actn);
-                }
+                // Console.Error.WriteLine("---------------------");
+                // foreach (var actn in actionsList)
+                // {
+                //     Console.Error.WriteLine(actn);
+                // }
 
                 return true;
             }
@@ -275,6 +285,7 @@ namespace Fall2020Challenge
 
         private bool CanRecipeBeMadeWithIngredients(int[] targetIngredients, int[] currentIngredients)
         {
+            _nodesChecked++;
             for (var i = 0; i < 4; i++)
             {
                 if(targetIngredients[i] > currentIngredients[i])

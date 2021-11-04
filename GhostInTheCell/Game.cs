@@ -21,6 +21,12 @@ namespace GhostInTheCell
 
             DisplayFactories();
 
+            var mostPopulaceFactory = _factories.Where(f => f.Owner == Owner.Player).OrderByDescending(f => f.NumberOfCyborgs).First();
+
+            foreach
+
+            var amount = mostPopulaceFactory.NumberOfCyborgs / 2;
+
             return move;
         }
 

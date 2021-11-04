@@ -73,6 +73,10 @@ using System.Collections;
 
             DisplayFactories();
 
+            var mostPopulaceFactory = _factories.Where(f => f.Owner == Owner.Player).OrderByDescending(f => f.NumberOfCyborgs).First();
+
+            var amount = mostPopulaceFactory.NumberOfCyborgs / 2;
+
             return move;
         }
 
@@ -132,7 +136,7 @@ using System.Collections;
     {
         Neutral = 0,
         Player = 1,
-        Opponent = -1
+        Enemy = -1
     }
 
     /**

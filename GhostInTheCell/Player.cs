@@ -70,8 +70,8 @@ namespace GhostInTheCell
                     }
                     else if(entityType == "TROOP")
                     {
-                        var destinationFactory = int.Parse(inputs[3]);
-                        var sourceFactory = int.Parse(inputs[4]);
+                        var sourceFactory = int.Parse(inputs[3]);
+                        var destinationFactory = int.Parse(inputs[4]);
                         var numberOfCyborgs = int.Parse(inputs[5]);
                         var turnsUntilArrival = int.Parse(inputs[6]);
 

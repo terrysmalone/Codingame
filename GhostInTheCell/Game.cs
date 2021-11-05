@@ -21,7 +21,7 @@ namespace GhostInTheCell
 
             //DisplayFactories();
 
-            // Basic strategy
+            // Strategy
 
             // We can make one move per turn
             // Pick in this order
@@ -45,11 +45,27 @@ namespace GhostInTheCell
 
             while (!targetFound)
             {
-                Console.Error.WriteLine($"targetIndex: {targetIndex}");
-                Console.Error.WriteLine($"allViableTargetFactories.Count: {allViableTargetFactories.Count}");
+                // Temporary - we'll eventually try a new source
+                if (targetIndex >= allViableTargetFactories.Count)
+                {
+                    return "WAIT";
+                }
+
                 var targetFactory = allViableTargetFactories[targetIndex];
-                // TODO: don't send if we're already sending
-                    // unless opponent is sending to beat us
+
+                Console.Error.WriteLine($"targetFactory.Id:{targetFactory.Id}");
+                DisplayPlayerTroops();
+
+                // If we're already sending troops somewhere don't send more
+                //
+                if(_playerTroops.Any(t => t.DestinationFactory == targetFactory.Id))
+                {
+                    targetIndex++;
+                    continue;
+                }
+
+                // TODO: unless opponent is sending to beat us
+
                 var neededTroops = targetFactory.NumberOfCyborgs + 10; //TODO: add for any en-route
 
                 if(neededTroops <= availableTroops)
@@ -109,6 +125,21 @@ namespace GhostInTheCell
                     Console.Error.WriteLine($"Link:{link.SourceFactory}-{link.DestinationFactory}:{link.Distance}");
                 }
 
+                Console.Error.WriteLine("================");
+            }
+        }
+
+        private void DisplayPlayerTroops()
+        {
+            Console.Error.WriteLine("PLAYER TROOPS");
+            Console.Error.WriteLine("================");
+
+            foreach (var troop in _playerTroops)
+            {
+                Console.Error.WriteLine($"troop.SourceFactory:{troop.SourceFactory}");
+                Console.Error.WriteLine($"troop.DestinationFactory:{troop.DestinationFactory}");
+                Console.Error.WriteLine($"troop.NumberOfCyborgs:{troop.NumberOfCyborgs}");
+                Console.Error.WriteLine($"troop.TurnsUntilArrival:{troop.TurnsUntilArrival}");
                 Console.Error.WriteLine("================");
             }
         }

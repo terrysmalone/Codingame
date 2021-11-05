@@ -66,7 +66,7 @@ namespace GhostInTheCell
             //move += AddDefensiveMoves(playerFactories, availableTroops);
 
             // TODO: Make more sophisticated. We want to go for high producing, close ones first
-            var allViableTargetFactories = _factories.Where(f => f.Owner != Owner.Player)
+            var allViableTargetFactories = _factories.Where(f => f.Owner != Owner.Player && f.Production > 0)
                                                      .OrderByDescending(f => f.Owner == Owner.Neutral) // Neutral then opponent
                                                      .ThenByDescending(f => f.Production)
                                                      .ThenBy(f => f.NumberOfCyborgs)
@@ -74,8 +74,16 @@ namespace GhostInTheCell
 
             foreach (var targetFactory in allViableTargetFactories)
             {
+                var playerTroopsEnRoute = _playerTroops.Where(t => t.DestinationFactory == targetFactory.Id)
+                                                       .Select(f => f.NumberOfCyborgs)
+                                                       .Sum();
+
+                var enemyTroopsEnRoute = _enemyTroops.Where(t => t.DestinationFactory == targetFactory.Id)
+                                                     .Select(f => f.NumberOfCyborgs)
+                                                     .Sum();
+
                 // How many troops do we need
-                var troopsNeeded = targetFactory.NumberOfCyborgs + 1;
+                var troopsNeeded = (targetFactory.NumberOfCyborgs + 1 +  enemyTroopsEnRoute) - playerTroopsEnRoute;
 
                 var linksToPlayerFactories = targetFactory.Links.Where(l => playerFactories.Select(f => f.Id).Contains(l.DestinationFactory))
                                                           .OrderBy(l => l.Distance).ToList();

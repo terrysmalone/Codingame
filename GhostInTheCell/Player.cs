@@ -49,7 +49,7 @@ namespace GhostInTheCell
                 var enempyTroops = new List<Troop>();
 
                 var entityCount = int.Parse(Console.ReadLine()); // the number of entities (e.g. factories and troops)
-                Console.Error.WriteLine($"entityCount:{entityCount}");
+
 
                 for (var i = 0; i < entityCount; i++)
                 {

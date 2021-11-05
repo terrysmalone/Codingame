@@ -71,60 +71,75 @@ using System.Collections;
         {
             var move = string.Empty;
 
+            // We want to keep track of how many cyborgs we can send
+            //
+            var availableTroops = _factories.Where(f => f.Owner == Owner.Player)
+                                            .ToDictionary(f => f.Id, f => f.NumberOfCyborgs);
+
             //DisplayFactories();
 
-            // Strategy
-            // Very basic flood fill
-
-            // For every one of my factories
-                // split
-
-            var myFactories = _factories.Where(f => f.Owner == Owner.Player).OrderByDescending(f => f.NumberOfCyborgs);
+            var playerFactories = _factories.Where(f => f.Owner == Owner.Player).ToList();
 
             // TODO: Make more sophisticated. We want to go for high producing, close ones first
-            var allViableTargetFactoryIds = _factories.Where(f => f.Owner != Owner.Player)
+            var allViableTargetFactories = _factories.Where(f => f.Owner != Owner.Player)
                                                              .OrderByDescending(f => f.Owner == Owner.Neutral) // Neutral then opponent
-                                                             .Select(f => f.Id).ToList();
+                                                             .ThenBy(f => f.NumberOfCyborgs)
+                                                             .ToList();
 
-            foreach (var factory in myFactories)
+            foreach (var targetFactory in allViableTargetFactories)
             {
-                var troopsInFactory = factory.NumberOfCyborgs;
+                // How many troops do we need
+                var troopsNeeded = targetFactory.NumberOfCyborgs + 1;
 
-                // order all targets
-                // send to desirable ones first
+                var linksToPlayerFactories = targetFactory.Links.Where(l => playerFactories.Select(f => f.Id).Contains(l.DestinationFactory))
+                                                                  .OrderBy(l => l.Distance).ToList();
 
-                var targetAmounts = new int[allViableTargetFactoryIds.Count];
+                var linkIndex = 0;
 
-                var counter = 0;
-                var targetIndex = 0;
-                var maxTargetIndex = allViableTargetFactoryIds.Count - 1;
+                //DisplayFactory(targetFactory);
 
-                while(counter <= troopsInFactory)
+                //DisplayLinks(linksToPlayerFactories);
+
+                // Get them from the closest place first
+                while (linkIndex < linksToPlayerFactories.Count && troopsNeeded > 0)
                 {
-                    if (targetIndex > maxTargetIndex)
+                    //Console.Error.WriteLine($"linkIndex:{linkIndex}");
+                    var closestFactoryId = linksToPlayerFactories[linkIndex].DestinationFactory;
+                    var availableAtFactory = availableTroops[closestFactoryId];
+
+                    if (availableAtFactory >= troopsNeeded)
                     {
-                        targetIndex = 0;
+                        move += $"MOVE {closestFactoryId} {targetFactory.Id} {troopsNeeded};";
+
+                        troopsNeeded = 0;
+                        availableTroops[closestFactoryId] -= troopsNeeded;
+                    }
+                    else
+                    {
+                        move += $"MOVE {closestFactoryId} {targetFactory.Id} {availableAtFactory};";
+
+                        troopsNeeded -= availableAtFactory;
+                        availableTroops[closestFactoryId] = 0;
                     }
 
-                    targetAmounts[targetIndex]++;
-
-                    targetIndex++;
-                    counter++;
+                    linkIndex++;
                 }
 
-                for (var i = 0; i < targetAmounts.Length; i++)
-                {
-                    if(targetAmounts[i] > 0)
-                    {
-                        move += $"MOVE {factory.Id} {allViableTargetFactoryIds[i]} {targetAmounts[i]};";
-                    }
-                }
+                // Update available troops
+
+                //When we're out of available troops return
             }
 
             if (move.Length > 0)
             {
                 move = move.TrimEnd(';');
             }
+            else
+            {
+                move = "WAIT";
+            }
+
+            Console.Error.WriteLine($"move:{move}");
 
             return move;
         }
@@ -151,17 +166,28 @@ using System.Collections;
 
             foreach (var factory in _factories)
             {
-                Console.Error.WriteLine($"factory.Id:{factory.Id}");
-                Console.Error.WriteLine($"factory.Owner:{factory.Owner}");
-                Console.Error.WriteLine($"factory.NumberOfCyborgs:{factory.NumberOfCyborgs}");
-                Console.Error.WriteLine($"factory.Production:{factory.Production}");
-                Console.Error.WriteLine("------------------");
-                foreach (var link in factory.Links)
-                {
-                    Console.Error.WriteLine($"Link:{link.SourceFactory}-{link.DestinationFactory}:{link.Distance}");
-                }
+                DisplayFactory(factory);
+            }
+        }
 
-                Console.Error.WriteLine("================");
+        private static void DisplayFactory(Factory factory)
+        {
+            Console.Error.WriteLine($"factory.Id:{factory.Id}");
+            Console.Error.WriteLine($"factory.Owner:{factory.Owner}");
+            Console.Error.WriteLine($"factory.NumberOfCyborgs:{factory.NumberOfCyborgs}");
+            Console.Error.WriteLine($"factory.Production:{factory.Production}");
+            Console.Error.WriteLine("------------------");
+
+            DisplayLinks(factory.Links);
+
+            Console.Error.WriteLine("================");
+        }
+
+        private static void DisplayLinks(List<Link> links)
+        {
+            foreach (var link in links)
+            {
+                Console.Error.WriteLine($"Link:{link.SourceFactory}-{link.DestinationFactory}:{link.Distance}");
             }
         }
 

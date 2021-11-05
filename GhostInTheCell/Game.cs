@@ -17,78 +17,62 @@ namespace GhostInTheCell
 
         internal string GetMove()
         {
-            var move = "WAIT";
+            var move = string.Empty;
 
             //DisplayFactories();
 
             // Strategy
+            // Very basic flood fill
 
-            // We can make one move per turn
-            // Pick in this order
+            // For every one of my factories
+                // split
 
-            // Send from most populace factory
-            var sendFromFactory = _factories.Where(f => f.Owner == Owner.Player).OrderByDescending(f => f.NumberOfCyborgs).First();
+            var myFactories = _factories.Where(f => f.Owner == Owner.Player).OrderByDescending(f => f.NumberOfCyborgs);
 
-            var allViableTargetFactories = _factories.Where(f => f.Owner != Owner.Player)
-                                                     .OrderByDescending(f => f.Owner == Owner.Neutral).ToList();             // Neutral then opponent
+            // TODO: Make more sophisticated. We want to go for high producing, close ones first
+            var allViableTargetFactoryIds = _factories.Where(f => f.Owner != Owner.Player)
+                                                             .OrderByDescending(f => f.Owner == Owner.Neutral) // Neutral then opponent
+                                                             .Select(f => f.Id).ToList();
 
-            // closest then furthest
-            var viableLinks = sendFromFactory.Links.OrderByDescending(l => l.Distance);
-
-            var targetIndex = 0;
-            var targetFound = false;
-
-            var availableTroops = sendFromFactory.NumberOfCyborgs;
-
-            var targetId = 0;
-            var troopsToSend = 0;
-
-            while (!targetFound)
+            foreach (var factory in myFactories)
             {
-                // Temporary - we'll eventually try a new source
-                if (targetIndex >= allViableTargetFactories.Count)
+                var troopsInFactory = factory.NumberOfCyborgs;
+
+                // order all targets
+                // send to desirable ones first
+
+                var targetAmounts = new int[allViableTargetFactoryIds.Count];
+
+                var counter = 0;
+                var targetIndex = 0;
+                var maxTargetIndex = allViableTargetFactoryIds.Count - 1;
+
+                while(counter <= troopsInFactory)
                 {
-                    return "WAIT";
-                }
+                    if (targetIndex > maxTargetIndex)
+                    {
+                        targetIndex = 0;
+                    }
 
-                var targetFactory = allViableTargetFactories[targetIndex];
+                    targetAmounts[targetIndex]++;
 
-                Console.Error.WriteLine($"targetFactory.Id:{targetFactory.Id}");
-                DisplayPlayerTroops();
-
-                // If we're already sending troops somewhere don't send more
-                //
-                if(_playerTroops.Any(t => t.DestinationFactory == targetFactory.Id))
-                {
                     targetIndex++;
-                    continue;
+                    counter++;
                 }
 
-                // TODO: unless opponent is sending to beat us
-
-                var neededTroops = targetFactory.NumberOfCyborgs + 10; //TODO: add for any en-route
-
-                if(neededTroops <= availableTroops)
+                for (var i = 0; i < targetAmounts.Length; i++)
                 {
-                    targetId = targetFactory.Id;
-                    troopsToSend = neededTroops;
-                    targetFound = true;
+                    if(targetAmounts[i] > 0)
+                    {
+                        move += $"MOVE {factory.Id} {allViableTargetFactoryIds[i]} {targetAmounts[i]};";
+                    }
                 }
-                else // Temporary just send what we can
-                {
-                    targetId = targetFactory.Id;
-                    troopsToSend = sendFromFactory.NumberOfCyborgs;
-                    targetFound = true;
-                }
-
-                targetIndex++;
             }
 
-            // How many to send
-            // target amount + enemy troops en-route + 10
-                // If we don't have enough pick another one
-
-            move = $"MOVE {sendFromFactory.Id} {targetId} {troopsToSend}";
+            if (move.Length > 0)
+            {
+                move = move.TrimEnd(';');
+            }
 
             return move;
         }

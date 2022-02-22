@@ -30,6 +30,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeRoyale", "CodeRoyale\Co
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FileConcatenator", "FileConcatenator\FileConcatenator.csproj", "{2585E575-C72D-4FFC-B365-8DCC44F298CD}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GhostInTheCell", "GhostInTheCell\GhostInTheCell.csproj", "{0B7AC5BC-303C-473D-AE19-D0E5557F26D9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -96,5 +98,9 @@ Global
 		{2585E575-C72D-4FFC-B365-8DCC44F298CD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2585E575-C72D-4FFC-B365-8DCC44F298CD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2585E575-C72D-4FFC-B365-8DCC44F298CD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0B7AC5BC-303C-473D-AE19-D0E5557F26D9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0B7AC5BC-303C-473D-AE19-D0E5557F26D9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0B7AC5BC-303C-473D-AE19-D0E5557F26D9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0B7AC5BC-303C-473D-AE19-D0E5557F26D9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

@@ -1,0 +1,11 @@
+{
+  "Version": 1,
+  "ProjectMap": {
+    "b1e0eed5-66f0-4545-a96c-cc59aa8ced36": {
+      "ProjectGuid": "b1e0eed5-66f0-4545-a96c-cc59aa8ced36",
+      "DisplayName": "CoinGuesser",
+      "ColorIndex": 0
+    }
+  },
+  "NextColorIndex": 1
+}

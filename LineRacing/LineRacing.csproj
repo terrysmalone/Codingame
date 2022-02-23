@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <LangVersion>latestmajor</LangVersion>
+        <StartupObject>LineRacing.Player</StartupObject>
+        <TargetFramework>net5.0</TargetFramework>
+    </PropertyGroup>
+
+</Project>

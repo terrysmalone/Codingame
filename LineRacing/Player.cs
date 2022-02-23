@@ -94,7 +94,7 @@ namespace LineRacing
             // Check left
             var leftPos = new Point(position.X-1, position.Y);
 
-            var isViable = !(leftPos.X <= 0);
+            var isViable = !(leftPos.X <= -1);
 
             if (isViable && !filledPositions.Contains(leftPos))
             {
@@ -104,7 +104,7 @@ namespace LineRacing
             // Check right
             var rightPos = new Point(position.X+1, position.Y);
 
-            isViable = !(rightPos.X >= WIDTH - 1);
+            isViable = !(rightPos.X >= WIDTH);
 
             if (isViable && !filledPositions.Contains(rightPos))
             {
@@ -114,7 +114,7 @@ namespace LineRacing
             // Check down
             var downPos = new Point(position.X, position.Y+1);
 
-            isViable = !(downPos.Y <= 0);
+            isViable = !(downPos.Y <= -1);
 
             if (isViable && !filledPositions.Contains(downPos))
             {
@@ -124,14 +124,14 @@ namespace LineRacing
             // Check up
             var upPos = new Point(position.X, position.Y-1);
 
-            isViable = !(upPos.Y <= HEIGHT - 1);
+            isViable = !(upPos.Y <= HEIGHT);
 
             if (isViable && !filledPositions.Contains(upPos))
             {
-                return "Up";
+                return "UP";
             }
 
-            return string.Empty;
+            return "LEFT";
         }
 
         private static void DisplayLightCyclePosition(Point position0, Point position1)

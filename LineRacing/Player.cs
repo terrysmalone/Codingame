@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
 
 namespace LineRacing
@@ -13,22 +14,24 @@ namespace LineRacing
             string currentDirection = "LEFT";
             string[] inputs;
 
-            Point playerStartPosition = new Point(-1, -1);
-            Point playerEndPosition = new Point(-1, -1);
+            var playerStartPosition = new Point(-1, -1);
+            var playerEndPosition = new Point(-1, -1);
+
+            var filledPositions = new List<Point>();
 
             // game loop
             while (true)
             {
                 inputs = Console.ReadLine().Split(' ');
-                int numberOfPlayers = int.Parse(inputs[0]); // total number of players (2 to 4).
-                int playerNumber = int.Parse(inputs[1]); // your player number (0 to 3).
+                var numberOfPlayers = int.Parse(inputs[0]); // total number of players (2 to 4).
+                var playerNumber = int.Parse(inputs[1]); // your player number (0 to 3).
 
                 Point[] enemyStartPositions = new Point[numberOfPlayers - 1];
                 Point[] enemyEndPositions = new Point[numberOfPlayers - 1];
 
                 var enemyIndex = 0;
 
-                for (int i = 0; i < numberOfPlayers; i++)
+                for (var i = 0; i < numberOfPlayers; i++)
                 {
                     inputs = Console.ReadLine().Split(' ');
 
@@ -36,11 +39,31 @@ namespace LineRacing
                     {
                         playerStartPosition = new Point(int.Parse(inputs[0]), int.Parse(inputs[1]));
                         playerEndPosition = new Point(int.Parse(inputs[2]), int.Parse(inputs[3]));
+
+                        if (!filledPositions.Contains(playerStartPosition))
+                        {
+                            filledPositions.Add(playerStartPosition);
+                        }
+
+                        if (!filledPositions.Contains(playerEndPosition))
+                        {
+                            filledPositions.Add(playerEndPosition);
+                        }
                     }
                     else
                     {
                         enemyStartPositions[enemyIndex] = new Point(int.Parse(inputs[0]), int.Parse(inputs[1]));
                         enemyEndPositions[enemyIndex] = new Point(int.Parse(inputs[2]), int.Parse(inputs[3]));
+
+                        if (!filledPositions.Contains(enemyStartPositions[enemyIndex]))
+                        {
+                            filledPositions.Add(enemyStartPositions[enemyIndex]);
+                        }
+
+                        if (!filledPositions.Contains(enemyEndPositions[enemyIndex]))
+                        {
+                            filledPositions.Add(enemyEndPositions[enemyIndex]);
+                        }
 
                         enemyIndex++;
                     }
@@ -49,7 +72,7 @@ namespace LineRacing
                 DisplayLightCyclePosition(playerStartPosition, playerEndPosition);
                 DisplayLightCyclePositions(enemyStartPositions, enemyEndPositions);
 
-                var nextMove = GetNextMove(playerEndPosition, currentDirection);
+                var nextMove = GetNextMove(playerEndPosition, currentDirection, filledPositions);
 
                 if (nextMove != string.Empty)
                 {
@@ -66,70 +89,46 @@ namespace LineRacing
             }
         }
 
-        private static string GetNextMove(Point position, string currentDirection)
+        private static string GetNextMove(Point position, string currentDirection, List<Point> filledPositions)
         {
-            // Very basic - just avoid walls
-            if (position.X <= 0)
+            // Check left
+            var leftPos = new Point(position.X-1, position.Y);
+
+            var isViable = !(leftPos.X <= 0);
+
+            if (isViable && !filledPositions.Contains(leftPos))
             {
-                if (position.Y <= 0)
-                {
-                    return "DOWN";
-                }
-                else if (position.Y >= HEIGHT - 1)
-                {
-                    return "UP";
-                }
-                else
-                {
-                    return "UP";
-                }
-            }
-            else if (position.X >= WIDTH - 1)
-            {
-                if (position.Y <= 0)
-                {
-                    return "DOWN";
-                }
-                else if (position.Y >= HEIGHT - 1)
-                {
-                    return "UP";
-                }
-                else
-                {
-                    return "DOWN";
-                }
+                return "LEFT";
             }
 
-            if (position.Y <= 0)
-            {
-                if (position.X <= 0)
-                {
-                    return "RIGHT";
-                }
-                else if (position.X >= WIDTH - 1)
-                {
-                    return "LEFT";
-                }
-                else
-                {
-                    return "LEFT";
-                }
+            // Check right
+            var rightPos = new Point(position.X+1, position.Y);
 
-            }
-            else if (position.Y >= HEIGHT - 1)
+            isViable = !(rightPos.X >= WIDTH - 1);
+
+            if (isViable && !filledPositions.Contains(rightPos))
             {
-                if (position.X <= 0)
-                {
-                    return "RIGHT";
-                }
-                else if (position.X >= WIDTH - 1)
-                {
-                    return "LEFT";
-                }
-                else
-                {
-                    return "RIGHT";
-                }
+                return "RIGHT";
+            }
+
+            // Check down
+            var downPos = new Point(position.X, position.Y+1);
+
+            isViable = !(downPos.Y <= 0);
+
+            if (isViable && !filledPositions.Contains(downPos))
+            {
+                return "DOWN";
+            }
+
+            // Check up
+            var upPos = new Point(position.X, position.Y-1);
+
+            isViable = !(upPos.Y <= HEIGHT - 1);
+
+            if (isViable && !filledPositions.Contains(upPos))
+            {
+                return "Up";
             }
 
             return string.Empty;

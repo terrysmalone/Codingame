@@ -5,7 +5,12 @@
       "ProjectGuid": "b1e0eed5-66f0-4545-a96c-cc59aa8ced36",
       "DisplayName": "CoinGuesser",
       "ColorIndex": 0
+    },
+    "d9b2400a-0ddf-442c-8deb-8de02b93eae0": {
+      "ProjectGuid": "d9b2400a-0ddf-442c-8deb-8de02b93eae0",
+      "DisplayName": "WinamaxGolf",
+      "ColorIndex": 1
     }
   },
-  "NextColorIndex": 1
+  "NextColorIndex": 2
 }

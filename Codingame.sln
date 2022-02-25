@@ -35,13 +35,13 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FileConcatenator", "FileCon
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GhostInTheCell", "GhostInTheCell\GhostInTheCell.csproj", "{0B7AC5BC-303C-473D-AE19-D0E5557F26D9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LineRacing", "LineRacing\LineRacing.csproj", "{294AE615-6E08-4214-947D-150C4F8424E5}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CoinGuesser", "CoinGuesser\CoinGuesser.csproj", "{B1E0EED5-66F0-4545-A96C-CC59AA8CED36}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LineRacing", "LineRacing\LineRacing.csproj", "{294AE615-6E08-4214-947D-150C4F8424E5}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CoinGuesser", "CoinGuesser\CoinGuesser.csproj", "{B1E0EED5-66F0-4545-A96C-CC59AA8CED36}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PlatinumRift", "PlatinumRift\PlatinumRift.csproj", "{8DC89AAD-65B9-4098-861B-7432EA6D9B54}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WinamaxGolf", "WinamaxGolf\WinamaxGolf.csproj", "{D9B2400A-0DDF-442C-8DEB-8DE02B93EAE0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -125,6 +125,10 @@ Global
 		{8DC89AAD-65B9-4098-861B-7432EA6D9B54}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8DC89AAD-65B9-4098-861B-7432EA6D9B54}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8DC89AAD-65B9-4098-861B-7432EA6D9B54}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D9B2400A-0DDF-442C-8DEB-8DE02B93EAE0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D9B2400A-0DDF-442C-8DEB-8DE02B93EAE0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D9B2400A-0DDF-442C-8DEB-8DE02B93EAE0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D9B2400A-0DDF-442C-8DEB-8DE02B93EAE0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

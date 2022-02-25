@@ -1,34 +1,43 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Drawing;
 
 namespace WinamaxGolf
 {
-    class Solution
+    internal sealed class Solution
     {
         static void Main(string[] args)
         {
-            string[] inputs = Console.ReadLine().Split(' ');
-            int width = int.Parse(inputs[0]);
-            int height = int.Parse(inputs[1]);
+            var inputs = Console.ReadLine().Split(' ');
+            var width = int.Parse(inputs[0]);
+            var height = int.Parse(inputs[1]);
 
-            var course = new char[width, height];
+            var courseText = new char[width, height];
 
-            for (int y = 0; y < height; y++)
+            for (var y = 0; y < height; y++)
             {
-                string row = Console.ReadLine();
+                var row = Console.ReadLine();
 
                 var cols = row.ToCharArray();
 
-                for (int x = 0; x < width; x++)
+                for (var x = 0; x < width; x++)
                 {
-                    course[x,y] = cols[x];
+                    courseText[x,y] = cols[x];
                 }
 
-                Console.Error.WriteLine(row);
+                //Console.Error.WriteLine(row);
             }
 
-            DisplayCourse(course);
+            DebugDisplayer.DisplayCourseText(courseText);
+            
+            // Convert to Course
+            var course = CourseConverter.TextToCourse(courseText);
 
-            var moves = CalculateMoves(course);
+            DebugDisplayer.DisplayCourse(course);
+
+            var moveCalculator = new MoveCalculator();
+
+            var moves = MoveCalculator.CalculateMoves(course);
 
             // while all balls are not in holes
 
@@ -37,30 +46,8 @@ namespace WinamaxGolf
             // recursively try all moves
 
             // Verify if move is possible
-        }
 
-        private static string CalculateMoves(char[,] course)
-        {
-
-
-            return string.Empty;
-        }
-
-        private static void DisplayCourse(char[,] course)
-        {
-            var display = string.Empty;
-
-            for (int y = 0; y < course.GetLength(1); y++)
-            {
-                for (int x = 0; x < course.GetLength(0); x++)
-                {
-                    display += course[x,y];
-                }
-
-                display += "\n";
-            }
-
-            Console.Error.WriteLine(display);
+            Console.WriteLine(moves);
         }
     }
 }

@@ -5,58 +5,211 @@
   name duplicates.
 ***************************************************************/
 using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.Linq;
+using System.Net;
 
-    class Solution
+    internal sealed class Course
     {
-        static void Main(string[] args)
+        internal CourseContent[,] Contents { get; }
+
+        private List<(Point, int)> _balls = new List<(Point, int)>();
+
+        internal Course(int x, int y)
         {
-            string[] inputs = Console.ReadLine().Split(' ');
-            int width = int.Parse(inputs[0]);
-            int height = int.Parse(inputs[1]);
+            Contents = new CourseContent[x,y];
+        }
 
-            var course = new char[width, height];
+        internal void AddBall(int x, int y, int numberOfHits)
+        {
+            _balls.Add((new Point(x, y), numberOfHits));
+        }
 
-            for (int y = 0; y < height; y++)
+        internal void AddContent(int x, int y, CourseContent content)
+        {
+            Contents[x, y] = content;
+        }
+
+        internal List<(Point, int)> GetBalls()
+        {
+            return _balls.ConvertAll(ball => (ball.Item1, ball.Item2));
+        }
+
+        internal int GetNumberOfHits(int x, int y)
+        {
+            return _balls.Single(b => b.Item1.X == x && b.Item1.Y == y).Item2;
+        }
+
+        public void MoveBall(Point startPoint, Point endPoint)
+        {
+            var numberOfHits = _balls.Single(b => b.Item1.X == startPoint.X && b.Item1.Y == startPoint.Y).Item2;
+
+            _balls.Remove((new Point(startPoint.X, startPoint.Y),numberOfHits));
+
+            _balls.Add((new Point(endPoint.X, endPoint.Y), numberOfHits-1));
+
+
+        }
+
+        public void UnMoveBall(Point startPoint, Point endPoint)
+        {
+            var numberOfHits = _balls.Single(b => b.Item1.X == endPoint.X && b.Item1.Y == endPoint.Y).Item2;
+
+            _balls.Remove((new Point(endPoint.X, endPoint.Y),numberOfHits));
+
+            _balls.Add((new Point(startPoint.X, startPoint.Y), numberOfHits+1));
+        }
+    }
+
+    public enum CourseContent
+    {
+        Empty,
+        Ball,
+        Hole,
+        Water
+    }
+
+    internal sealed class CourseConverter
+    {
+        internal static Course TextToCourse(char[,] courseText)
+        {
+            var course = new Course(courseText.GetLength(0), courseText.GetLength(1));
+
+            for (var y = 0; y < courseText.GetLength(1); y++)
             {
-                string row = Console.ReadLine();
-
-                var cols = row.ToCharArray();
-
-                for (int x = 0; x < width; x++)
+                for (var x = 0; x < courseText.GetLength(0); x++)
                 {
-                    course[x,y] = cols[x];
-                }
+                    var character = courseText[x,y];
 
-                Console.Error.WriteLine(row);
+                    var result = 0;
+
+                    if(int.TryParse(character.ToString(), out result))
+                    {
+                        Console.Error.WriteLine($"Adding ball to {x},{y}");
+                        course.AddBall(x, y, result);
+                    }
+                    else
+                    {
+                        var courseContent = character switch
+                        {
+                            '.' => CourseContent.Empty,
+                            'X' => CourseContent.Water,
+                            'H' => CourseContent.Hole,
+                            _ => throw new ArgumentOutOfRangeException()
+                        };
+
+                        Console.Error.WriteLine($"Adding {courseContent} to {x},{y}");
+
+                        course.AddContent(x, y, courseContent);
+                    }
+                }
             }
 
-            DisplayCourse(course);
-
-            var moves = CalculateMoves(course);
-
-            // while all balls are not in holes
-
-            // calculate all possible moves
-
-            // recursively try all moves
-
-            // Verify if move is possible
+            return course;
         }
 
-        private static string CalculateMoves(char[,] course)
+        internal static char[,] CourseToText(Course course)
         {
+            var contents = course.Contents;
 
+            var courseText = new char[contents.GetLength(0), contents.GetLength(1)];
 
-            return string.Empty;
+            for (var y = 0; y < contents.GetLength(1); y++)
+            {
+                for (var x = 0; x < contents.GetLength(0); x++)
+                {
+                    var content = contents[x,y];
+
+                    var result = 0;
+
+                    var character = contents[x,y] switch
+                    {
+                        CourseContent.Empty => '.',
+                        CourseContent.Water => 'X',
+                        CourseContent.Hole => 'H',
+                        _ => throw new ArgumentOutOfRangeException()
+                    };
+
+                    courseText[x, y] = character;
+                }
+            }
+
+            return courseText;
         }
 
-        private static void DisplayCourse(char[,] course)
+        public static string CreateMoveBoard(int width, int height, List<(Point, Point)> verifiedMoves)
+        {
+            var moveChars = new char[width, height];
+
+            for (var y = 0; y < moveChars.GetLength(1); y++)
+            {
+                for (var x = 0; x < moveChars.GetLength(0); x++)
+                {
+                    moveChars[x, y] = '.';
+                }
+            }
+
+            foreach (var move in verifiedMoves)
+            {
+                if (move.Item2.X > move.Item1.X)
+                {
+                    moveChars[move.Item1.X, move.Item1.Y] = '>';
+                }
+            }
+
+            var answer = string.Empty;
+
+            for (var y = 0; y < moveChars.GetLength(1); y++)
+            {
+                for (var x = 0; x < moveChars.GetLength(0); x++)
+                {
+                    answer += moveChars[x,y];
+                }
+
+                answer += "\n";
+            }
+
+            return answer;
+        }
+    }
+
+    internal static class DebugDisplayer
+    {
+        internal static void DisplayCourse(Course course)
         {
             var display = string.Empty;
 
-            for (int y = 0; y < course.GetLength(1); y++)
+            var courseContents = course.Contents;
+
+            for (var y = 0; y < courseContents.GetLength(1); y++)
             {
-                for (int x = 0; x < course.GetLength(0); x++)
+                for (var x = 0; x < courseContents.GetLength(0); x++)
+                {
+                    var character = courseContents[x,y] switch
+                    {
+                        CourseContent.Empty => '.',
+                        CourseContent.Water => 'X',
+                        CourseContent.Hole => 'H',
+                        _ => '.'
+                    };
+
+                    display += character;
+                }
+
+                display += "\n";
+            }
+
+            Console.Error.WriteLine(display);
+        }
+
+        internal static void DisplayCourseText(char[,] course)
+        {
+            var display = string.Empty;
+
+            for (var y = 0; y < course.GetLength(1); y++)
+            {
+                for (var x = 0; x < course.GetLength(0); x++)
                 {
                     display += course[x,y];
                 }
@@ -65,5 +218,213 @@ using System;
             }
 
             Console.Error.WriteLine(display);
+        }
+    }
+
+    internal sealed class MoveCalculator
+    {
+        internal static string CalculateMoves(Course course)
+        {
+            var verifiedMoves = new List<(Point, Point)>();
+            var possibleMoves = new List<(Point, Point)>();
+
+            var courseContents = course.Contents;
+
+            foreach (var ball in course.GetBalls())
+            {
+                possibleMoves.AddRange(CalculateMovesForBall(courseContents, ball.Item1.X, ball.Item1.Y, ball.Item2));
+            }
+
+            Console.Error.WriteLine($"Base calculate move. {possibleMoves.Count} possible moves found");
+
+            foreach (var possibleMove in possibleMoves)
+            {
+                // Make move
+                course.MoveBall(possibleMove.Item1, possibleMove.Item2);
+                verifiedMoves.Add(possibleMove);
+
+                var works = CalculateMoves(verifiedMoves, course);
+
+                // Unmake move
+                //course.UnMoveBall(possibleMove.Item1, possibleMove.Item2);
+                course.UnMoveBall(possibleMove.Item1, possibleMove.Item2);
+
+                if (works)
+                {
+                    // convert verified moves to output board
+
+                    Console.Error.WriteLine($"VerifiedMove count: {verifiedMoves.Count}");
+
+                    var courseConverter = new CourseConverter();
+
+                    return CourseConverter.CreateMoveBoard(courseContents.GetLength(0), courseContents.GetLength(1), verifiedMoves);
+
+
+                }
+                else
+                {
+                    verifiedMoves.RemoveAt(verifiedMoves.Count-1);
+                }
+            }
+
+            return string.Empty;
+        }
+
+        private static bool CalculateMoves(List<(Point, Point)> verifiedMoves, Course course)
+        {
+            if (AreAllBallsInSeparateHoles(course))
+            {
+                Console.Error.WriteLine($"All balls in holes");
+                return true;
+            }
+
+            // if it fails
+                // return false
+            //else
+            {
+                var possibleMoves = new List<(Point, Point)>();
+
+                var courseContents = course.Contents;
+
+                foreach (var ball in course.GetBalls())
+                {
+                    possibleMoves.AddRange(CalculateMovesForBall(courseContents, ball.Item1.X, ball.Item1.Y, ball.Item2));
+                }
+
+                Console.Error.WriteLine($"Calculate move. {possibleMoves.Count} possible moves found");
+
+                foreach (var possibleMove in possibleMoves)
+                {
+                    // make move
+                    course.MoveBall(possibleMove.Item1, possibleMove.Item2);
+                    verifiedMoves.Add(possibleMove);
+
+                    var works = CalculateMoves(verifiedMoves, course);
+
+                    course.UnMoveBall(possibleMove.Item1, possibleMove.Item2);
+
+                    if (works)
+                    {
+                        return true;
+                    }
+                    else
+                    {
+                        verifiedMoves.RemoveAt(verifiedMoves.Count-1);
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        private static IEnumerable<(Point, Point)> CalculateMovesForBall(CourseContent[,] courseContent, int xStart, int yStart, int numberOfHitsAllowed)
+        {
+            var allowedMoves = new List<(Point, Point)>();
+
+            var startPoint = new Point(xStart, yStart);
+
+            // check left
+
+            // check right
+            var xPosition = startPoint.X + 1;
+            var yPosition = startPoint.Y;
+
+            while (xPosition < courseContent.GetLength(0))
+            {
+                var gridContent = courseContent[xPosition, yPosition];
+
+                if (gridContent == CourseContent.Hole)
+                {
+                    // verify there's no other ball here
+
+                    allowedMoves.Add((startPoint, new Point(xPosition, yPosition)));
+                }
+                else if (gridContent == CourseContent.Empty)
+                {
+                    allowedMoves.Add((startPoint, new Point(xPosition, yPosition)));
+                }
+
+                xPosition++;
+
+            }
+
+            // check up
+
+            //check down
+
+            return allowedMoves;
+        }
+
+        private static bool AreAllBallsInSeparateHoles(Course course)
+        {
+            var balls = course.GetBalls();
+            var courseContents = course.Contents;
+
+            var duplicates = balls.GroupBy(b => new { b.Item1.X, b.Item1.Y }).Where(x => x.Skip(1).Any()).Any();
+
+            if (duplicates)
+            {
+                Console.Error.WriteLine($"Duplicates found");
+                return false;
+            }
+
+            foreach (var ball in balls)
+            {
+                Console.Error.WriteLine($"Checking {ball.Item1.X},{ball.Item1.Y} - courseContents[ball.Item1.X, ball.Item1.Y]");
+                if (courseContents[ball.Item1.X, ball.Item1.Y] != CourseContent.Hole)
+                {
+                    Console.Error.WriteLine($"A ball is not in a hole");
+                    return false;
+                }
+            }
+
+            return true;
+        }
+    }
+
+    internal sealed class Solution
+    {
+        static void Main(string[] args)
+        {
+            var inputs = Console.ReadLine().Split(' ');
+            var width = int.Parse(inputs[0]);
+            var height = int.Parse(inputs[1]);
+
+            var courseText = new char[width, height];
+
+            for (var y = 0; y < height; y++)
+            {
+                var row = Console.ReadLine();
+
+                var cols = row.ToCharArray();
+
+                for (var x = 0; x < width; x++)
+                {
+                    courseText[x,y] = cols[x];
+                }
+
+                //Console.Error.WriteLine(row);
+            }
+
+            DebugDisplayer.DisplayCourseText(courseText);
+            
+            // Convert to Course
+            var course = CourseConverter.TextToCourse(courseText);
+
+            DebugDisplayer.DisplayCourse(course);
+
+            var moveCalculator = new MoveCalculator();
+
+            var moves = MoveCalculator.CalculateMoves(course);
+
+            // while all balls are not in holes
+
+            // calculate all possible moves
+
+            // recursively try all moves
+
+            // Verify if move is possible
+
+            Console.WriteLine(moves);
         }
     }

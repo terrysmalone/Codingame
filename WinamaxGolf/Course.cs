@@ -36,24 +36,34 @@ namespace WinamaxGolf
             return _balls.Single(b => b.Item1.X == x && b.Item1.Y == y).Item2;
         }
 
+        private List<(Point, int)> _movedBalls = new List<(Point, int)>();
+
         public void MoveBall(Point startPoint, Point endPoint)
         {
-            var numberOfHits = _balls.Single(b => b.Item1.X == startPoint.X && b.Item1.Y == startPoint.Y).Item2;
+            var movedBall = _balls.Single(b => b.Item1.X == startPoint.X && b.Item1.Y == startPoint.Y);
 
-            _balls.Remove((new Point(startPoint.X, startPoint.Y),numberOfHits));
+            _movedBalls.Add(movedBall);
+
+            var numberOfHits = movedBall.Item2;
+
+            _balls.Remove((new Point(startPoint.X, startPoint.Y), movedBall.Item2));
 
             _balls.Add((new Point(endPoint.X, endPoint.Y), numberOfHits-1));
-
-
         }
 
         public void UnMoveBall(Point startPoint, Point endPoint)
         {
-            var numberOfHits = _balls.Single(b => b.Item1.X == endPoint.X && b.Item1.Y == endPoint.Y).Item2;
+            //var numberOfHits = _balls.Single(b => b.Item1.X == endPoint.X && b.Item1.Y == endPoint.Y).Item2;
+            var movedBall = _movedBalls[^1];
 
-            _balls.Remove((new Point(endPoint.X, endPoint.Y),numberOfHits));
 
-            _balls.Add((new Point(startPoint.X, startPoint.Y), numberOfHits+1));
+            _balls.Remove((new Point(endPoint.X, endPoint.Y),movedBall.Item2-1));
+            //Console.Error.WriteLine($"Removing ball at {endPoint.X},{endPoint.Y}");
+            //Console.Error.WriteLine($"Moving it to {movedBall.Item1.X},{movedBall.Item1.Y}");
+
+            _balls.Add((new Point(movedBall.Item1.X, movedBall.Item1.Y), movedBall.Item2));
+
+            _movedBalls.RemoveAt(_movedBalls.Count-1);
         }
     }
 }

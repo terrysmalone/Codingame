@@ -43,6 +43,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PlatinumRift", "PlatinumRif
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WinamaxGolf", "WinamaxGolf\WinamaxGolf.csproj", "{D9B2400A-0DDF-442C-8DEB-8DE02B93EAE0}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinamaxGolfTests", "WinamaxGolfTests\WinamaxGolfTests.csproj", "{EB43A889-7097-4529-9FAC-AAB059D6FCE3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -129,6 +131,10 @@ Global
 		{D9B2400A-0DDF-442C-8DEB-8DE02B93EAE0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D9B2400A-0DDF-442C-8DEB-8DE02B93EAE0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D9B2400A-0DDF-442C-8DEB-8DE02B93EAE0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EB43A889-7097-4529-9FAC-AAB059D6FCE3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EB43A889-7097-4529-9FAC-AAB059D6FCE3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EB43A889-7097-4529-9FAC-AAB059D6FCE3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EB43A889-7097-4529-9FAC-AAB059D6FCE3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

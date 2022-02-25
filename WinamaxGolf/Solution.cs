@@ -1,7 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Drawing;
+using System.Runtime.CompilerServices;
 
+[assembly: InternalsVisibleTo("WinamaxGolfTests")]
 namespace WinamaxGolf
 {
     internal sealed class Solution

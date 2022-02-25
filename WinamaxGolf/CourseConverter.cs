@@ -72,7 +72,7 @@ namespace WinamaxGolf
             return courseText;
         }
 
-        public static string CreateMoveBoard(int width, int height, List<(Point, Point)> verifiedMoves)
+        internal static char[,] CreateMoveBoard(int width, int height, List<(Point, Point)> verifiedMoves)
         {
             var moveChars = new char[width, height];
 
@@ -104,13 +104,18 @@ namespace WinamaxGolf
                 }
             }
 
+            return moveChars;
+        }
+
+        internal static string ConvertMoveBoardToString(char[,] moveBoard)
+        {
             var answer = string.Empty;
 
-            for (var y = 0; y < moveChars.GetLength(1); y++)
+            for (var y = 0; y < moveBoard.GetLength(1); y++)
             {
-                for (var x = 0; x < moveChars.GetLength(0); x++)
+                for (var x = 0; x < moveBoard.GetLength(0); x++)
                 {
-                    answer += moveChars[x,y];
+                    answer += moveBoard[x,y];
                 }
 
                 answer += "\n";

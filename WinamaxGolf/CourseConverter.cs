@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Xml.Schema;
 
 namespace WinamaxGolf
 {
@@ -84,6 +85,8 @@ namespace WinamaxGolf
                 }
             }
 
+            //TODO: Add arrows for the whole move, not just the start
+
             foreach (var move in verifiedMoves)
             {
                 if (move.Item2.X > move.Item1.X)
@@ -118,7 +121,10 @@ namespace WinamaxGolf
                     answer += moveBoard[x,y];
                 }
 
-                answer += "\n";
+                if (y < moveBoard.GetLength(1) - 1)
+                {
+                    answer += "\n";
+                }
             }
 
             return answer;

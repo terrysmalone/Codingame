@@ -39,8 +39,13 @@ namespace WinamaxGolf
 
             var moves = MoveCalculator.CalculateMoves(course);
 
+            var results = moves.Split("\n");
 
-            Console.WriteLine(moves);
+            foreach (var result in results)
+            {
+                Console.Error.WriteLine($"result - {result}");
+                Console.WriteLine(result);
+            }
         }
     }
 }

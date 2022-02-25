@@ -156,6 +156,18 @@ using System.Net;
                 {
                     moveChars[move.Item1.X, move.Item1.Y] = '>';
                 }
+                else if (move.Item2.X < move.Item1.X)
+                {
+                    moveChars[move.Item1.X, move.Item1.Y] = '<';
+                }
+                else if(move.Item2.Y < move.Item1.Y)
+                {
+                    moveChars[move.Item1.X, move.Item1.Y] = '^';
+                }
+                else if(move.Item2.Y > move.Item1.Y)
+                {
+                    moveChars[move.Item1.X, move.Item1.Y] = 'v';
+                }
             }
 
             var answer = string.Empty;
@@ -255,11 +267,7 @@ using System.Net;
 
                     Console.Error.WriteLine($"VerifiedMove count: {verifiedMoves.Count}");
 
-                    var courseConverter = new CourseConverter();
-
                     return CourseConverter.CreateMoveBoard(courseContents.GetLength(0), courseContents.GetLength(1), verifiedMoves);
-
-
                 }
                 else
                 {
@@ -324,10 +332,30 @@ using System.Net;
             var startPoint = new Point(xStart, yStart);
 
             // check left
+            var xPosition = startPoint.X - 1;
+            var yPosition = startPoint.Y;
+
+            while (xPosition >= 0)
+            {
+                var gridContent = courseContent[xPosition, yPosition];
+
+                if (gridContent == CourseContent.Hole)
+                {
+                    // verify there's no other ball here
+
+                    allowedMoves.Add((startPoint, new Point(xPosition, yPosition)));
+                }
+                else if (gridContent == CourseContent.Empty)
+                {
+                    allowedMoves.Add((startPoint, new Point(xPosition, yPosition)));
+                }
+
+                xPosition--;
+            }
 
             // check right
-            var xPosition = startPoint.X + 1;
-            var yPosition = startPoint.Y;
+            xPosition = startPoint.X + 1;
+            yPosition = startPoint.Y;
 
             while (xPosition < courseContent.GetLength(0))
             {
@@ -345,12 +373,51 @@ using System.Net;
                 }
 
                 xPosition++;
-
             }
 
             // check up
+            xPosition = startPoint.X;
+            yPosition = startPoint.Y - 1;
+
+            while (yPosition >= 0)
+            {
+                var gridContent = courseContent[xPosition, yPosition];
+
+                if (gridContent == CourseContent.Hole)
+                {
+                    // verify there's no other ball here
+
+                    allowedMoves.Add((startPoint, new Point(xPosition, yPosition)));
+                }
+                else if (gridContent == CourseContent.Empty)
+                {
+                    allowedMoves.Add((startPoint, new Point(xPosition, yPosition)));
+                }
+
+                yPosition--;
+            }
 
             //check down
+            xPosition = startPoint.X;
+            yPosition = startPoint.Y + 1;
+
+            while (yPosition < courseContent.GetLength(1))
+            {
+                var gridContent = courseContent[xPosition, yPosition];
+
+                if (gridContent == CourseContent.Hole)
+                {
+                    // verify there's no other ball here
+
+                    allowedMoves.Add((startPoint, new Point(xPosition, yPosition)));
+                }
+                else if (gridContent == CourseContent.Empty)
+                {
+                    allowedMoves.Add((startPoint, new Point(xPosition, yPosition)));
+                }
+
+                yPosition++;
+            }
 
             return allowedMoves;
         }
@@ -417,13 +484,6 @@ using System.Net;
 
             var moves = MoveCalculator.CalculateMoves(course);
 
-            // while all balls are not in holes
-
-            // calculate all possible moves
-
-            // recursively try all moves
-
-            // Verify if move is possible
 
             Console.WriteLine(moves);
         }

@@ -39,13 +39,6 @@ namespace WinamaxGolf
 
             var moves = MoveCalculator.CalculateMoves(course);
 
-            // while all balls are not in holes
-
-            // calculate all possible moves
-
-            // recursively try all moves
-
-            // Verify if move is possible
 
             Console.WriteLine(moves);
         }

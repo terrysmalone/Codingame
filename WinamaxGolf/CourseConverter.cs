@@ -90,6 +90,18 @@ namespace WinamaxGolf
                 {
                     moveChars[move.Item1.X, move.Item1.Y] = '>';
                 }
+                else if (move.Item2.X < move.Item1.X)
+                {
+                    moveChars[move.Item1.X, move.Item1.Y] = '<';
+                }
+                else if(move.Item2.Y < move.Item1.Y)
+                {
+                    moveChars[move.Item1.X, move.Item1.Y] = '^';
+                }
+                else if(move.Item2.Y > move.Item1.Y)
+                {
+                    moveChars[move.Item1.X, move.Item1.Y] = 'v';
+                }
             }
 
             var answer = string.Empty;

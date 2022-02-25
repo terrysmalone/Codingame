@@ -6,6 +6,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <LangVersion>latestmajor</LangVersion>
+        <StartupObject>PlatinumRift.Player</StartupObject>
     </PropertyGroup>
 
 </Project>

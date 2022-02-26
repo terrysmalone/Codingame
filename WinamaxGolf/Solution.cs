@@ -37,7 +37,7 @@ namespace WinamaxGolf
 
             var moveCalculator = new MoveCalculator();
 
-            var moves = MoveCalculator.CalculateMoves(course);
+            var moves = moveCalculator.CalculateMoves(course);
 
             var results = moves.Split("\n");
 

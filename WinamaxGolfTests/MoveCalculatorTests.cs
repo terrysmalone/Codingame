@@ -17,7 +17,9 @@ namespace WinamaxGolfTests
             course.AddBall(0, 0, 2);
             course.AddBall(2, 2, 1);
 
-            var moves = MoveCalculator.CalculateMoves(course);
+
+
+            var moves = new MoveCalculator().CalculateMoves(course);
         }
 
         [Test]
@@ -31,7 +33,7 @@ namespace WinamaxGolfTests
 
             course.AddBall(0, 0, 2);
 
-            var moves = MoveCalculator.CalculateMoves(course);
+            var moves = new MoveCalculator().CalculateMoves(course);
         }
     }
 }

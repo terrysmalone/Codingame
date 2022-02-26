@@ -1,14 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
+using System.Threading;
 
 namespace WinamaxGolf
 {
     internal sealed class MoveCalculator
     {
-        internal static string CalculateMoves(Course course)
+        private Stopwatch _timer = new Stopwatch();
+
+        internal string CalculateMoves(Course course)
         {
+            _timer.Start();
+
             var verifiedMoves = new List<(Point, Point)>();
             var possibleMoves = new List<(Point, Point)>();
 
@@ -42,6 +48,11 @@ namespace WinamaxGolf
 
                     //Console.Error.WriteLine($"VerifiedMove count: {verifiedMoves.Count}");
 
+                    _timer.Stop();
+
+                    var timeSpan = _timer.Elapsed;
+                    Console.Error.WriteLine(timeSpan);
+
                     return CourseConverter.ConvertMoveBoardToString(CourseConverter.CreateMoveBoard(courseContents.GetLength(0), courseContents.GetLength(1), verifiedMoves));
                 }
                 else
@@ -60,12 +71,15 @@ namespace WinamaxGolf
                 return false;
             }
 
-
-
             if (AreAllBallsInSeparateHoles(course))
             {
                 //Console.Error.WriteLine("All balls in holes. Returning true");
                 return true;
+            }
+
+            if (AreAnyDeadBalls(course))
+            {
+                return false;
             }
 
             var possibleMoves = new List<(Point, Point)>();
@@ -133,6 +147,7 @@ namespace WinamaxGolf
             //Console.Error.WriteLine("returning false");
             return false;
         }
+
         private static bool AreAnyBallsInSameSpot(List<(Point, int)> balls)
         {
             var duplicates = balls.GroupBy(b => new { b.Item1.X, b.Item1.Y }).Where(x => x.Skip(1).Any()).Any();
@@ -144,6 +159,11 @@ namespace WinamaxGolf
             }
 
             return false;
+        }
+
+        private static bool AreAnyDeadBalls(Course course)
+        {
+            return course.GetBalls().Any(b => b.Item2 == 0 && course.Contents[b.Item1.X, b.Item1.Y] != CourseContent.Hole);
         }
 
         private static IEnumerable<(Point, Point)> CalculateMovesForBall(CourseContent[,] courseContent, char[,] moveBoard, int xStart, int yStart, int shotCount)

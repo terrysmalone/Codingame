@@ -55,6 +55,14 @@ namespace WinamaxGolf
 
         private static bool CalculateMoves(List<(Point, Point)> verifiedMoves, Course course)
         {
+            var duplicates = course.GetBalls().GroupBy(b => new { b.Item1.X, b.Item1.Y }).Where(x => x.Skip(1).Any()).Any();
+
+            if (duplicates)
+            {
+                Console.Error.WriteLine($"Duplicates found");
+                return false;
+            }
+
             if (AreAllBallsInSeparateHoles(course))
             {
                 Console.Error.WriteLine("All balls in holes. Returning true");
@@ -270,14 +278,6 @@ namespace WinamaxGolf
         {
             var balls = course.GetBalls();
             var courseContents = course.Contents;
-
-            var duplicates = balls.GroupBy(b => new { b.Item1.X, b.Item1.Y }).Where(x => x.Skip(1).Any()).Any();
-
-            if (duplicates)
-            {
-                Console.Error.WriteLine($"Duplicates found");
-                return false;
-            }
 
             foreach (var ball in balls)
             {

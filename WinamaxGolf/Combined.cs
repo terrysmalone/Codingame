@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Xml.Schema;
 using System.Net;
 using System.Runtime.CompilerServices;
 
@@ -161,23 +162,40 @@ using System.Runtime.CompilerServices;
                 }
             }
 
+            //TODO: Add arrows for the whole move, not just the start
+
             foreach (var move in verifiedMoves)
             {
+                char arrowDirection;
+
                 if (move.Item2.X > move.Item1.X)
                 {
-                    moveChars[move.Item1.X, move.Item1.Y] = '>';
+                    for (var x = move.Item1.X; x < move.Item2.X; x++)
+                    {
+                        moveChars[x, move.Item1.Y] = '>';
+                    }
                 }
                 else if (move.Item2.X < move.Item1.X)
                 {
-                    moveChars[move.Item1.X, move.Item1.Y] = '<';
+                    for (var x = move.Item1.X; x > move.Item2.X; x--)
+                    {
+                        moveChars[x, move.Item1.Y] = '<';
+                    }
                 }
                 else if(move.Item2.Y < move.Item1.Y)
                 {
-                    moveChars[move.Item1.X, move.Item1.Y] = '^';
+                    for (var y = move.Item1.Y; y > move.Item2.Y; y--)
+                    {
+                        moveChars[move.Item1.X, y] = '^';
+                    }
+
                 }
                 else if(move.Item2.Y > move.Item1.Y)
                 {
-                    moveChars[move.Item1.X, move.Item1.Y] = 'v';
+                    for (var y = move.Item1.Y; y < move.Item2.Y; y++)
+                    {
+                        moveChars[move.Item1.X, y] = 'v';
+                    }
                 }
             }
 

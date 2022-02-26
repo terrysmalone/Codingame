@@ -89,21 +89,36 @@ namespace WinamaxGolf
 
             foreach (var move in verifiedMoves)
             {
+                char arrowDirection;
+
                 if (move.Item2.X > move.Item1.X)
                 {
-                    moveChars[move.Item1.X, move.Item1.Y] = '>';
+                    for (var x = move.Item1.X; x < move.Item2.X; x++)
+                    {
+                        moveChars[x, move.Item1.Y] = '>';
+                    }
                 }
                 else if (move.Item2.X < move.Item1.X)
                 {
-                    moveChars[move.Item1.X, move.Item1.Y] = '<';
+                    for (var x = move.Item1.X; x > move.Item2.X; x--)
+                    {
+                        moveChars[x, move.Item1.Y] = '<';
+                    }
                 }
                 else if(move.Item2.Y < move.Item1.Y)
                 {
-                    moveChars[move.Item1.X, move.Item1.Y] = '^';
+                    for (var y = move.Item1.Y; y > move.Item2.Y; y--)
+                    {
+                        moveChars[move.Item1.X, y] = '^';
+                    }
+
                 }
                 else if(move.Item2.Y > move.Item1.Y)
                 {
-                    moveChars[move.Item1.X, move.Item1.Y] = 'v';
+                    for (var y = move.Item1.Y; y < move.Item2.Y; y++)
+                    {
+                        moveChars[move.Item1.X, y] = 'v';
+                    }
                 }
             }
 

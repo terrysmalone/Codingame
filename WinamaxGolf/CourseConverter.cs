@@ -21,7 +21,7 @@ namespace WinamaxGolf
 
                     if(int.TryParse(character.ToString(), out result))
                     {
-                        Console.Error.WriteLine($"Adding ball to {x},{y}");
+                        //Console.Error.WriteLine($"Adding ball to {x},{y}");
                         course.AddBall(x, y, result);
                     }
                     else
@@ -34,7 +34,7 @@ namespace WinamaxGolf
                             _ => throw new ArgumentOutOfRangeException()
                         };
 
-                        Console.Error.WriteLine($"Adding {courseContent} to {x},{y}");
+                        //Console.Error.WriteLine($"Adding {courseContent} to {x},{y}");
 
                         course.AddContent(x, y, courseContent);
                     }

@@ -98,7 +98,7 @@ using System.Runtime.CompilerServices;
 
                     if(int.TryParse(character.ToString(), out result))
                     {
-                        Console.Error.WriteLine($"Adding ball to {x},{y}");
+                        //Console.Error.WriteLine($"Adding ball to {x},{y}");
                         course.AddBall(x, y, result);
                     }
                     else
@@ -111,7 +111,7 @@ using System.Runtime.CompilerServices;
                             _ => throw new ArgumentOutOfRangeException()
                         };
 
-                        Console.Error.WriteLine($"Adding {courseContent} to {x},{y}");
+                        //Console.Error.WriteLine($"Adding {courseContent} to {x},{y}");
 
                         course.AddContent(x, y, courseContent);
                     }
@@ -340,11 +340,11 @@ using System.Runtime.CompilerServices;
                 possibleMoves.AddRange(CalculateMovesForBall(courseContents, moveBoard, ball.Item1.X, ball.Item1.Y, ball.Item2));
             }
 
-            Console.Error.WriteLine($"Base calculate move. {possibleMoves.Count} possible moves found");
+            //Console.Error.WriteLine($"Base calculate move. {possibleMoves.Count} possible moves found");
 
             foreach (var possibleMove in possibleMoves)
             {
-                Console.Error.WriteLine($"Attempting move {possibleMove.Item1.X},{possibleMove.Item1.Y} to {possibleMove.Item2.X},{possibleMove.Item2.Y}");
+                //Console.Error.WriteLine($"Attempting move {possibleMove.Item1.X},{possibleMove.Item1.Y} to {possibleMove.Item2.X},{possibleMove.Item2.Y}");
 
                 // Make move
                 course.MoveBall(possibleMove.Item1, possibleMove.Item2);
@@ -360,7 +360,7 @@ using System.Runtime.CompilerServices;
                 {
                     // convert verified moves to output board
 
-                    Console.Error.WriteLine($"VerifiedMove count: {verifiedMoves.Count}");
+                    //Console.Error.WriteLine($"VerifiedMove count: {verifiedMoves.Count}");
 
                     return CourseConverter.ConvertMoveBoardToString(CourseConverter.CreateMoveBoard(courseContents.GetLength(0), courseContents.GetLength(1), verifiedMoves));
                 }
@@ -379,13 +379,13 @@ using System.Runtime.CompilerServices;
 
             if (duplicates)
             {
-                Console.Error.WriteLine($"Duplicates found");
+                //Console.Error.WriteLine($"Duplicates found");
                 return false;
             }
 
             if (AreAllBallsInSeparateHoles(course))
             {
-                Console.Error.WriteLine("All balls in holes. Returning true");
+                //Console.Error.WriteLine("All balls in holes. Returning true");
                 return true;
             }
 
@@ -403,33 +403,33 @@ using System.Runtime.CompilerServices;
                 }
             }
 
-            Console.Error.WriteLine($"Calculate move. {possibleMoves.Count} possible moves found");
+            //Console.Error.WriteLine($"Calculate move. {possibleMoves.Count} possible moves found");
 
             if (possibleMoves.Count == 0)
             {
-                Console.Error.WriteLine("returning false");
+                //Console.Error.WriteLine("returning false");
                 return false;
             }
 
-            Console.Error.WriteLine("=======================================");
-            Console.Error.WriteLine("Before move");
-            DebugDisplayer.DisplayMoves(courseContents.GetLength(0), courseContents.GetLength(1), verifiedMoves);
-            DebugDisplayer.DisplayBallLocations(course.GetBalls());
+            //Console.Error.WriteLine("=======================================");
+            //Console.Error.WriteLine("Before move");
+            //DebugDisplayer.DisplayMoves(courseContents.GetLength(0), courseContents.GetLength(1), verifiedMoves);
+            //DebugDisplayer.DisplayBallLocations(course.GetBalls());
 
 
             foreach (var possibleMove in possibleMoves)
             {
-                Console.Error.WriteLine($"Attempting move {possibleMove.Item1.X},{possibleMove.Item1.Y} to {possibleMove.Item2.X},{possibleMove.Item2.Y}");
+                //Console.Error.WriteLine($"Attempting move {possibleMove.Item1.X},{possibleMove.Item1.Y} to {possibleMove.Item2.X},{possibleMove.Item2.Y}");
 
                 // make move
                 course.MoveBall(possibleMove.Item1, possibleMove.Item2);
 
                 verifiedMoves.Add(possibleMove);
 
-                Console.Error.WriteLine("=======================================");
-                Console.Error.WriteLine("After make move");
-                DebugDisplayer.DisplayMoves(courseContents.GetLength(0), courseContents.GetLength(1), verifiedMoves);
-                DebugDisplayer.DisplayBallLocations(course.GetBalls());
+                //Console.Error.WriteLine("=======================================");
+                //Console.Error.WriteLine("After make move");
+                //DebugDisplayer.DisplayMoves(courseContents.GetLength(0), courseContents.GetLength(1), verifiedMoves);
+                //DebugDisplayer.DisplayBallLocations(course.GetBalls());
 
                 var works = CalculateMoves(verifiedMoves, course);
 
@@ -437,21 +437,21 @@ using System.Runtime.CompilerServices;
 
                 if (works)
                 {
-                    Console.Error.WriteLine("returning true");
+                    //Console.Error.WriteLine("returning true");
                     return true;
                 }
                 else
                 {
                     verifiedMoves.RemoveAt(verifiedMoves.Count-1);
 
-                    Console.Error.WriteLine("=======================================");
-                    Console.Error.WriteLine("After unmake move");
-                    DebugDisplayer.DisplayMoves(courseContents.GetLength(0), courseContents.GetLength(1), verifiedMoves);
-                    DebugDisplayer.DisplayBallLocations(course.GetBalls());
+                    //Console.Error.WriteLine("=======================================");
+                    //Console.Error.WriteLine("After unmake move");
+                    //DebugDisplayer.DisplayMoves(courseContents.GetLength(0), courseContents.GetLength(1), verifiedMoves);
+                    //DebugDisplayer.DisplayBallLocations(course.GetBalls());
                 }
             }
 
-            Console.Error.WriteLine("returning false");
+            //Console.Error.WriteLine("returning false");
             return false;
         }
 
@@ -637,12 +637,12 @@ using System.Runtime.CompilerServices;
                 //Console.Error.WriteLine(row);
             }
 
-            DebugDisplayer.DisplayCourseText(courseText);
+            //DebugDisplayer.DisplayCourseText(courseText);
             
             // Convert to Course
             var course = CourseConverter.TextToCourse(courseText);
 
-            DebugDisplayer.DisplayCourse(course);
+            //DebugDisplayer.DisplayCourse(course);
 
             var moveCalculator = new MoveCalculator();
 
@@ -652,7 +652,7 @@ using System.Runtime.CompilerServices;
 
             foreach (var result in results)
             {
-                Console.Error.WriteLine($"result - {result}");
+                //Console.Error.WriteLine($"result - {result}");
                 Console.WriteLine(result);
             }
         }

@@ -20,11 +20,11 @@ namespace WinamaxGolf
                 possibleMoves.AddRange(CalculateMovesForBall(courseContents, moveBoard, ball.Item1.X, ball.Item1.Y, ball.Item2));
             }
 
-            Console.Error.WriteLine($"Base calculate move. {possibleMoves.Count} possible moves found");
+            //Console.Error.WriteLine($"Base calculate move. {possibleMoves.Count} possible moves found");
 
             foreach (var possibleMove in possibleMoves)
             {
-                Console.Error.WriteLine($"Attempting move {possibleMove.Item1.X},{possibleMove.Item1.Y} to {possibleMove.Item2.X},{possibleMove.Item2.Y}");
+                //Console.Error.WriteLine($"Attempting move {possibleMove.Item1.X},{possibleMove.Item1.Y} to {possibleMove.Item2.X},{possibleMove.Item2.Y}");
 
                 // Make move
                 course.MoveBall(possibleMove.Item1, possibleMove.Item2);
@@ -40,7 +40,7 @@ namespace WinamaxGolf
                 {
                     // convert verified moves to output board
 
-                    Console.Error.WriteLine($"VerifiedMove count: {verifiedMoves.Count}");
+                    //Console.Error.WriteLine($"VerifiedMove count: {verifiedMoves.Count}");
 
                     return CourseConverter.ConvertMoveBoardToString(CourseConverter.CreateMoveBoard(courseContents.GetLength(0), courseContents.GetLength(1), verifiedMoves));
                 }
@@ -59,13 +59,13 @@ namespace WinamaxGolf
 
             if (duplicates)
             {
-                Console.Error.WriteLine($"Duplicates found");
+                //Console.Error.WriteLine($"Duplicates found");
                 return false;
             }
 
             if (AreAllBallsInSeparateHoles(course))
             {
-                Console.Error.WriteLine("All balls in holes. Returning true");
+                //Console.Error.WriteLine("All balls in holes. Returning true");
                 return true;
             }
 
@@ -83,33 +83,33 @@ namespace WinamaxGolf
                 }
             }
 
-            Console.Error.WriteLine($"Calculate move. {possibleMoves.Count} possible moves found");
+            //Console.Error.WriteLine($"Calculate move. {possibleMoves.Count} possible moves found");
 
             if (possibleMoves.Count == 0)
             {
-                Console.Error.WriteLine("returning false");
+                //Console.Error.WriteLine("returning false");
                 return false;
             }
 
-            Console.Error.WriteLine("=======================================");
-            Console.Error.WriteLine("Before move");
-            DebugDisplayer.DisplayMoves(courseContents.GetLength(0), courseContents.GetLength(1), verifiedMoves);
-            DebugDisplayer.DisplayBallLocations(course.GetBalls());
+            //Console.Error.WriteLine("=======================================");
+            //Console.Error.WriteLine("Before move");
+            //DebugDisplayer.DisplayMoves(courseContents.GetLength(0), courseContents.GetLength(1), verifiedMoves);
+            //DebugDisplayer.DisplayBallLocations(course.GetBalls());
 
 
             foreach (var possibleMove in possibleMoves)
             {
-                Console.Error.WriteLine($"Attempting move {possibleMove.Item1.X},{possibleMove.Item1.Y} to {possibleMove.Item2.X},{possibleMove.Item2.Y}");
+                //Console.Error.WriteLine($"Attempting move {possibleMove.Item1.X},{possibleMove.Item1.Y} to {possibleMove.Item2.X},{possibleMove.Item2.Y}");
 
                 // make move
                 course.MoveBall(possibleMove.Item1, possibleMove.Item2);
 
                 verifiedMoves.Add(possibleMove);
 
-                Console.Error.WriteLine("=======================================");
-                Console.Error.WriteLine("After make move");
-                DebugDisplayer.DisplayMoves(courseContents.GetLength(0), courseContents.GetLength(1), verifiedMoves);
-                DebugDisplayer.DisplayBallLocations(course.GetBalls());
+                //Console.Error.WriteLine("=======================================");
+                //Console.Error.WriteLine("After make move");
+                //DebugDisplayer.DisplayMoves(courseContents.GetLength(0), courseContents.GetLength(1), verifiedMoves);
+                //DebugDisplayer.DisplayBallLocations(course.GetBalls());
 
                 var works = CalculateMoves(verifiedMoves, course);
 
@@ -117,21 +117,21 @@ namespace WinamaxGolf
 
                 if (works)
                 {
-                    Console.Error.WriteLine("returning true");
+                    //Console.Error.WriteLine("returning true");
                     return true;
                 }
                 else
                 {
                     verifiedMoves.RemoveAt(verifiedMoves.Count-1);
 
-                    Console.Error.WriteLine("=======================================");
-                    Console.Error.WriteLine("After unmake move");
-                    DebugDisplayer.DisplayMoves(courseContents.GetLength(0), courseContents.GetLength(1), verifiedMoves);
-                    DebugDisplayer.DisplayBallLocations(course.GetBalls());
+                    //Console.Error.WriteLine("=======================================");
+                    //Console.Error.WriteLine("After unmake move");
+                    //DebugDisplayer.DisplayMoves(courseContents.GetLength(0), courseContents.GetLength(1), verifiedMoves);
+                    //DebugDisplayer.DisplayBallLocations(course.GetBalls());
                 }
             }
 
-            Console.Error.WriteLine("returning false");
+            //Console.Error.WriteLine("returning false");
             return false;
         }
 

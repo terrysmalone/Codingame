@@ -28,12 +28,12 @@ namespace WinamaxGolf
                 //Console.Error.WriteLine(row);
             }
 
-            DebugDisplayer.DisplayCourseText(courseText);
+            //DebugDisplayer.DisplayCourseText(courseText);
             
             // Convert to Course
             var course = CourseConverter.TextToCourse(courseText);
 
-            DebugDisplayer.DisplayCourse(course);
+            //DebugDisplayer.DisplayCourse(course);
 
             var moveCalculator = new MoveCalculator();
 
@@ -43,7 +43,7 @@ namespace WinamaxGolf
 
             foreach (var result in results)
             {
-                Console.Error.WriteLine($"result - {result}");
+                //Console.Error.WriteLine($"result - {result}");
                 Console.WriteLine(result);
             }
         }

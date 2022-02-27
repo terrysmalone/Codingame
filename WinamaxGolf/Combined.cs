@@ -4,9 +4,9 @@
   This hasn't been put in a namespace to allow for class 
   name duplicates.
 ***************************************************************/
+using System.Drawing;
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
 using System.Xml.Schema;
 using System.Net;
@@ -14,11 +14,25 @@ using System.Diagnostics;
 using System.Threading;
 using System.Runtime.CompilerServices;
 
+    internal sealed class Ball
+    {
+        // TODO: Add a flag for already moved
+
+        public Point Position { get; }
+        public int NumberOfHits { get; }
+
+        public Ball(Point position, int numberOfHits)
+        {
+            Position = position;
+            NumberOfHits = numberOfHits;
+        }
+    }
+
     internal sealed class Course
     {
         internal CourseContent[,] Contents { get; }
 
-        private List<(Point, int)> _balls = new List<(Point, int)>();
+        private List<Ball> _balls = new List<Ball>();
 
         internal Course(int x, int y)
         {
@@ -27,7 +41,7 @@ using System.Runtime.CompilerServices;
 
         internal void AddBall(int x, int y, int numberOfHits)
         {
-            _balls.Add((new Point(x, y), numberOfHits));
+            _balls.Add(new Ball(new Point(x, y), numberOfHits));
         }
 
         internal void AddContent(int x, int y, CourseContent content)
@@ -35,29 +49,31 @@ using System.Runtime.CompilerServices;
             Contents[x, y] = content;
         }
 
-        internal List<(Point, int)> GetBalls()
+        internal List<Ball> GetBalls()
         {
-            return _balls.ConvertAll(ball => (ball.Item1, ball.Item2));
+            return _balls.ConvertAll(b => (new Ball(b.Position, b.NumberOfHits)));
         }
 
         internal int GetNumberOfHits(int x, int y)
         {
-            return _balls.Single(b => b.Item1.X == x && b.Item1.Y == y).Item2;
+            return _balls.Single(b => b.Position.X == x && b.Position.Y == y).NumberOfHits;
         }
 
-        private List<(Point, int)> _movedBalls = new List<(Point, int)>();
+        private List<Ball> _movedBalls = new List<Ball>();
 
         public void MoveBall(Point startPoint, Point endPoint)
         {
-            var movedBall = _balls.Single(b => b.Item1.X == startPoint.X && b.Item1.Y == startPoint.Y);
+            //TODO: Don't add and remove balls. Just move them
+
+            var movedBall = _balls.Single(b => b.Position.X == startPoint.X && b.Position.Y == startPoint.Y);
 
             _movedBalls.Add(movedBall);
 
-            var numberOfHits = movedBall.Item2;
+            var numberOfHits = movedBall.NumberOfHits;
 
-            _balls.Remove((new Point(startPoint.X, startPoint.Y), movedBall.Item2));
+            _balls.Remove(new Ball(new Point(startPoint.X, startPoint.Y), movedBall.NumberOfHits));
 
-            _balls.Add((new Point(endPoint.X, endPoint.Y), numberOfHits-1));
+            _balls.Add(new Ball(new Point(endPoint.X, endPoint.Y), numberOfHits-1));
         }
 
         public void UnMoveBall(Point startPoint, Point endPoint)
@@ -66,11 +82,11 @@ using System.Runtime.CompilerServices;
             var movedBall = _movedBalls[^1];
 
 
-            _balls.Remove((new Point(endPoint.X, endPoint.Y),movedBall.Item2-1));
+            _balls.Remove(new Ball(new Point(endPoint.X, endPoint.Y),movedBall.NumberOfHits-1));
             //Console.Error.WriteLine($"Removing ball at {endPoint.X},{endPoint.Y}");
             //Console.Error.WriteLine($"Moving it to {movedBall.Item1.X},{movedBall.Item1.Y}");
 
-            _balls.Add((new Point(movedBall.Item1.X, movedBall.Item1.Y), movedBall.Item2));
+            _balls.Add(new Ball(new Point(movedBall.Position.X, movedBall.Position.Y), movedBall.NumberOfHits));
 
             _movedBalls.RemoveAt(_movedBalls.Count-1);
         }
@@ -343,7 +359,7 @@ using System.Runtime.CompilerServices;
 
             foreach (var ball in course.GetBalls())
             {
-                possibleMoves.AddRange(CalculateMovesForBall(courseContents, moveBoard, ball.Item1.X, ball.Item1.Y, ball.Item2));
+                possibleMoves.AddRange(CalculateMovesForBall(courseContents, moveBoard, ball.Position.X, ball.Position.Y, ball.NumberOfHits));
             }
 
             //Console.Error.WriteLine($"Base calculate move. {possibleMoves.Count} possible moves found");
@@ -410,9 +426,9 @@ using System.Runtime.CompilerServices;
 
             foreach (var ball in course.GetBalls())
             {
-                if (ball.Item2 > 0)
+                if (ball.NumberOfHits > 0)
                 {
-                    possibleMoves.AddRange(CalculateMovesForBall(courseContents, moveBoard, ball.Item1.X, ball.Item1.Y, ball.Item2));
+                    possibleMoves.AddRange(CalculateMovesForBall(courseContents, moveBoard, ball.Position.X, ball.Position.Y, ball.NumberOfHits));
                 }
             }
 
@@ -468,9 +484,9 @@ using System.Runtime.CompilerServices;
             return false;
         }
 
-        private static bool AreAnyBallsInSameSpot(List<(Point, int)> balls)
+        private static bool AreAnyBallsInSameSpot(List<Ball> balls)
         {
-            var duplicates = balls.GroupBy(b => new { b.Item1.X, b.Item1.Y }).Where(x => x.Skip(1).Any()).Any();
+            var duplicates = balls.GroupBy(b => new { b.Position.X, b.Position.Y }).Where(x => x.Skip(1).Any()).Any();
 
             if (duplicates)
             {
@@ -483,7 +499,7 @@ using System.Runtime.CompilerServices;
 
         private static bool AreAnyDeadBalls(Course course)
         {
-            return course.GetBalls().Any(b => b.Item2 == 0 && course.Contents[b.Item1.X, b.Item1.Y] != CourseContent.Hole);
+            return course.GetBalls().Any(b => b.NumberOfHits == 0 && course.Contents[b.Position.X, b.Position.Y] != CourseContent.Hole);
         }
 
         private static IEnumerable<(Point, Point)> CalculateMovesForBall(CourseContent[,] courseContent, char[,] moveBoard, int xStart, int yStart, int shotCount)
@@ -633,7 +649,7 @@ using System.Runtime.CompilerServices;
             foreach (var ball in balls)
             {
                 //Console.Error.WriteLine($"Checking {ball.Item1.X},{ball.Item1.Y} - courseContents[ball.Item1.X, ball.Item1.Y]");
-                if (courseContents[ball.Item1.X, ball.Item1.Y] != CourseContent.Hole)
+                if (courseContents[ball.Position.X, ball.Position.Y] != CourseContent.Hole)
                 {
                     //Console.Error.WriteLine($"A ball is not in a hole");
                     return false;

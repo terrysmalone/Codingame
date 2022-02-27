@@ -23,7 +23,7 @@ namespace WinamaxGolf
 
             foreach (var ball in course.GetBalls())
             {
-                possibleMoves.AddRange(CalculateMovesForBall(courseContents, moveBoard, ball.Item1.X, ball.Item1.Y, ball.Item2));
+                possibleMoves.AddRange(CalculateMovesForBall(courseContents, moveBoard, ball.Position.X, ball.Position.Y, ball.NumberOfHits));
             }
 
             //Console.Error.WriteLine($"Base calculate move. {possibleMoves.Count} possible moves found");
@@ -90,9 +90,9 @@ namespace WinamaxGolf
 
             foreach (var ball in course.GetBalls())
             {
-                if (ball.Item2 > 0)
+                if (ball.NumberOfHits > 0)
                 {
-                    possibleMoves.AddRange(CalculateMovesForBall(courseContents, moveBoard, ball.Item1.X, ball.Item1.Y, ball.Item2));
+                    possibleMoves.AddRange(CalculateMovesForBall(courseContents, moveBoard, ball.Position.X, ball.Position.Y, ball.NumberOfHits));
                 }
             }
 
@@ -148,9 +148,9 @@ namespace WinamaxGolf
             return false;
         }
 
-        private static bool AreAnyBallsInSameSpot(List<(Point, int)> balls)
+        private static bool AreAnyBallsInSameSpot(List<Ball> balls)
         {
-            var duplicates = balls.GroupBy(b => new { b.Item1.X, b.Item1.Y }).Where(x => x.Skip(1).Any()).Any();
+            var duplicates = balls.GroupBy(b => new { b.Position.X, b.Position.Y }).Where(x => x.Skip(1).Any()).Any();
 
             if (duplicates)
             {
@@ -163,7 +163,7 @@ namespace WinamaxGolf
 
         private static bool AreAnyDeadBalls(Course course)
         {
-            return course.GetBalls().Any(b => b.Item2 == 0 && course.Contents[b.Item1.X, b.Item1.Y] != CourseContent.Hole);
+            return course.GetBalls().Any(b => b.NumberOfHits == 0 && course.Contents[b.Position.X, b.Position.Y] != CourseContent.Hole);
         }
 
         private static IEnumerable<(Point, Point)> CalculateMovesForBall(CourseContent[,] courseContent, char[,] moveBoard, int xStart, int yStart, int shotCount)
@@ -313,7 +313,7 @@ namespace WinamaxGolf
             foreach (var ball in balls)
             {
                 //Console.Error.WriteLine($"Checking {ball.Item1.X},{ball.Item1.Y} - courseContents[ball.Item1.X, ball.Item1.Y]");
-                if (courseContents[ball.Item1.X, ball.Item1.Y] != CourseContent.Hole)
+                if (courseContents[ball.Position.X, ball.Position.Y] != CourseContent.Hole)
                 {
                     //Console.Error.WriteLine($"A ball is not in a hole");
                     return false;

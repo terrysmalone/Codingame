@@ -18,8 +18,9 @@ using System.Runtime.CompilerServices;
     {
         // TODO: Add a flag for already moved
 
-        public Point Position { get; }
-        public int NumberOfHits { get; }
+        public Point Position { get; set; }
+
+        public int NumberOfHits { get; set; }
 
         public Ball(Point position, int numberOfHits)
         {
@@ -59,36 +60,39 @@ using System.Runtime.CompilerServices;
             return _balls.Single(b => b.Position.X == x && b.Position.Y == y).NumberOfHits;
         }
 
-        private List<Ball> _movedBalls = new List<Ball>();
+        private List<int> _movedIndexes = new List<int>();
 
         public void MoveBall(Point startPoint, Point endPoint)
         {
-            //TODO: Don't add and remove balls. Just move them
+            //DebugDisplayer.DisplayBallLocations(Contents.GetLength(0), Contents.GetLength(1), _balls);
 
-            var movedBall = _balls.Single(b => b.Position.X == startPoint.X && b.Position.Y == startPoint.Y);
+            //Console.Error.WriteLine($"Moving ball from {startPoint.X},{startPoint.Y} to {endPoint.X},{endPoint.Y}");
 
-            _movedBalls.Add(movedBall);
+            _movedIndexes.Add(_balls.IndexOf(_balls.Single(b => b.Position.X == startPoint.X && b.Position.Y == startPoint.Y)));
 
-            var numberOfHits = movedBall.NumberOfHits;
+            //DebugDisplayer.DisplayMoveIndexes(_movedIndexes);
 
-            _balls.Remove(new Ball(new Point(startPoint.X, startPoint.Y), movedBall.NumberOfHits));
+            var movedBall = _balls[_movedIndexes[^1]];
 
-            _balls.Add(new Ball(new Point(endPoint.X, endPoint.Y), numberOfHits-1));
+            movedBall.Position = new Point(endPoint.X, endPoint.Y);
+            movedBall.NumberOfHits--;
+
+            //DebugDisplayer.DisplayBallLocations(Contents.GetLength(0), Contents.GetLength(1), _balls);
         }
 
         public void UnMoveBall(Point startPoint, Point endPoint)
         {
-            //var numberOfHits = _balls.Single(b => b.Item1.X == endPoint.X && b.Item1.Y == endPoint.Y).Item2;
-            var movedBall = _movedBalls[^1];
+            //DebugDisplayer.DisplayBallLocations(Contents.GetLength(0), Contents.GetLength(1), _balls);
 
+            var lastIndex = _movedIndexes[^1];
+            var movedBall = _balls[lastIndex];
 
-            _balls.Remove(new Ball(new Point(endPoint.X, endPoint.Y),movedBall.NumberOfHits-1));
-            //Console.Error.WriteLine($"Removing ball at {endPoint.X},{endPoint.Y}");
-            //Console.Error.WriteLine($"Moving it to {movedBall.Item1.X},{movedBall.Item1.Y}");
+            movedBall.Position = new Point(startPoint.X, startPoint.Y);
+            movedBall.NumberOfHits++;
 
-            _balls.Add(new Ball(new Point(movedBall.Position.X, movedBall.Position.Y), movedBall.NumberOfHits));
+            _movedIndexes.RemoveAt(_movedIndexes.Count-1);
 
-            _movedBalls.RemoveAt(_movedBalls.Count-1);
+            //DebugDisplayer.DisplayBallLocations(Contents.GetLength(0), Contents.GetLength(1), _balls);
         }
     }
 
@@ -334,12 +338,63 @@ using System.Runtime.CompilerServices;
 
             Console.Error.WriteLine(display);
         }
-        public static void DisplayBallLocations(List<(Point, int)> balls)
+        public static void DisplayBallLocations(int width, int height, List<Ball> balls)
         {
+        var board = new char[width, height];
+
+            for (var y = 0; y < board.GetLength(1); y++)
+            {
+                for (var x = 0; x < board.GetLength(0); x++)
+                {
+                    board[x, y] = ' ';
+                }
+            }
+
             foreach (var ball in balls)
             {
-                Console.Error.WriteLine($"{ball.Item1.X},{ball.Item1.Y}");
+                board[ball.Position.X, ball.Position.Y] = (char)('0' + ball.NumberOfHits);
+                Console.Error.WriteLine($"{ball.Position.X},{ball.Position.Y}");
             }
+
+            var display = string.Empty;
+
+            for (var i = 0; i < width; i++)
+            {
+                display += "---";
+            }
+
+            display += "\n";
+
+            for (var y = 0; y < board.GetLength(1); y++)
+            {
+                display += "|";
+                for (var x = 0; x < board.GetLength(0); x++)
+                {
+                    display += board[x,y];
+                    display += "|";
+                }
+
+                display += "\n";
+            }
+
+            for (var i = 0; i < width; i++)
+            {
+                display += "---";
+            }
+
+            Console.Error.WriteLine(display);
+        }
+
+        internal static void DisplayMoveIndexes(IEnumerable<int> moveIndexes)
+        {
+            Console.Error.Write("MoveIndexes: ");
+
+            foreach (var moveIndex in moveIndexes)
+            {
+                Console.Error.Write(moveIndex + " ");
+            }
+
+            Console.Error.WriteLine();
         }
     }
 
@@ -375,7 +430,6 @@ using System.Runtime.CompilerServices;
                 var works = CalculateMoves(verifiedMoves, course);
 
                 // Unmake move
-                //course.UnMoveBall(possibleMove.Item1, possibleMove.Item2);
                 course.UnMoveBall(possibleMove.Item1, possibleMove.Item2);
 
                 if (works)
@@ -443,11 +497,13 @@ using System.Runtime.CompilerServices;
             //Console.Error.WriteLine("=======================================");
             //Console.Error.WriteLine("Before move");
             //DebugDisplayer.DisplayMoves(courseContents.GetLength(0), courseContents.GetLength(1), verifiedMoves);
-            //DebugDisplayer.DisplayBallLocations(course.GetBalls());
+            //DebugDisplayer.DisplayBallLocations(course.Contents.GetLength(0), course.Contents.GetLength(1), course.GetBalls());
 
 
             foreach (var possibleMove in possibleMoves)
             {
+                //Console.Error.WriteLine("=======================================");
+                //Console.Error.WriteLine("Before make move");
                 //Console.Error.WriteLine($"Attempting move {possibleMove.Item1.X},{possibleMove.Item1.Y} to {possibleMove.Item2.X},{possibleMove.Item2.Y}");
 
                 // make move
@@ -458,7 +514,7 @@ using System.Runtime.CompilerServices;
                 //Console.Error.WriteLine("=======================================");
                 //Console.Error.WriteLine("After make move");
                 //DebugDisplayer.DisplayMoves(courseContents.GetLength(0), courseContents.GetLength(1), verifiedMoves);
-                //DebugDisplayer.DisplayBallLocations(course.GetBalls());
+                //DebugDisplayer.DisplayBallLocations(course.Contents.GetLength(0), course.Contents.GetLength(1), course.GetBalls());
 
                 var works = CalculateMoves(verifiedMoves, course);
 
@@ -476,7 +532,7 @@ using System.Runtime.CompilerServices;
                     //Console.Error.WriteLine("=======================================");
                     //Console.Error.WriteLine("After unmake move");
                     //DebugDisplayer.DisplayMoves(courseContents.GetLength(0), courseContents.GetLength(1), verifiedMoves);
-                    //DebugDisplayer.DisplayBallLocations(course.GetBalls());
+                    //DebugDisplayer.DisplayBallLocations(course.Contents.GetLength(0), course.Contents.GetLength(1), course.GetBalls());
                 }
             }
 
@@ -690,6 +746,7 @@ using System.Runtime.CompilerServices;
             var course = CourseConverter.TextToCourse(courseText);
 
             //DebugDisplayer.DisplayCourse(course);
+            //DebugDisplayer.DisplayBallLocations(course.Contents.GetLength(0), course.Contents.GetLength(1), course.GetBalls());
 
             var moveCalculator = new MoveCalculator();
 

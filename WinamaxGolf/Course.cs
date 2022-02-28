@@ -36,36 +36,39 @@ namespace WinamaxGolf
             return _balls.Single(b => b.Position.X == x && b.Position.Y == y).NumberOfHits;
         }
 
-        private List<Ball> _movedBalls = new List<Ball>();
+        private List<int> _movedIndexes = new List<int>();
 
         public void MoveBall(Point startPoint, Point endPoint)
         {
-            //TODO: Don't add and remove balls. Just move them
+            //DebugDisplayer.DisplayBallLocations(Contents.GetLength(0), Contents.GetLength(1), _balls);
 
-            var movedBall = _balls.Single(b => b.Position.X == startPoint.X && b.Position.Y == startPoint.Y);
+            //Console.Error.WriteLine($"Moving ball from {startPoint.X},{startPoint.Y} to {endPoint.X},{endPoint.Y}");
 
-            _movedBalls.Add(movedBall);
+            _movedIndexes.Add(_balls.IndexOf(_balls.Single(b => b.Position.X == startPoint.X && b.Position.Y == startPoint.Y)));
 
-            var numberOfHits = movedBall.NumberOfHits;
+            //DebugDisplayer.DisplayMoveIndexes(_movedIndexes);
 
-            _balls.Remove(new Ball(new Point(startPoint.X, startPoint.Y), movedBall.NumberOfHits));
+            var movedBall = _balls[_movedIndexes[^1]];
 
-            _balls.Add(new Ball(new Point(endPoint.X, endPoint.Y), numberOfHits-1));
+            movedBall.Position = new Point(endPoint.X, endPoint.Y);
+            movedBall.NumberOfHits--;
+
+            //DebugDisplayer.DisplayBallLocations(Contents.GetLength(0), Contents.GetLength(1), _balls);
         }
 
         public void UnMoveBall(Point startPoint, Point endPoint)
         {
-            //var numberOfHits = _balls.Single(b => b.Item1.X == endPoint.X && b.Item1.Y == endPoint.Y).Item2;
-            var movedBall = _movedBalls[^1];
+            //DebugDisplayer.DisplayBallLocations(Contents.GetLength(0), Contents.GetLength(1), _balls);
 
+            var lastIndex = _movedIndexes[^1];
+            var movedBall = _balls[lastIndex];
 
-            _balls.Remove(new Ball(new Point(endPoint.X, endPoint.Y),movedBall.NumberOfHits-1));
-            //Console.Error.WriteLine($"Removing ball at {endPoint.X},{endPoint.Y}");
-            //Console.Error.WriteLine($"Moving it to {movedBall.Item1.X},{movedBall.Item1.Y}");
+            movedBall.Position = new Point(startPoint.X, startPoint.Y);
+            movedBall.NumberOfHits++;
 
-            _balls.Add(new Ball(new Point(movedBall.Position.X, movedBall.Position.Y), movedBall.NumberOfHits));
+            _movedIndexes.RemoveAt(_movedIndexes.Count-1);
 
-            _movedBalls.RemoveAt(_movedBalls.Count-1);
+            //DebugDisplayer.DisplayBallLocations(Contents.GetLength(0), Contents.GetLength(1), _balls);
         }
     }
 }

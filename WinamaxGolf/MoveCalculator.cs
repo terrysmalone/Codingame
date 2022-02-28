@@ -39,7 +39,6 @@ namespace WinamaxGolf
                 var works = CalculateMoves(verifiedMoves, course);
 
                 // Unmake move
-                //course.UnMoveBall(possibleMove.Item1, possibleMove.Item2);
                 course.UnMoveBall(possibleMove.Item1, possibleMove.Item2);
 
                 if (works)
@@ -107,11 +106,13 @@ namespace WinamaxGolf
             //Console.Error.WriteLine("=======================================");
             //Console.Error.WriteLine("Before move");
             //DebugDisplayer.DisplayMoves(courseContents.GetLength(0), courseContents.GetLength(1), verifiedMoves);
-            //DebugDisplayer.DisplayBallLocations(course.GetBalls());
+            //DebugDisplayer.DisplayBallLocations(course.Contents.GetLength(0), course.Contents.GetLength(1), course.GetBalls());
 
 
             foreach (var possibleMove in possibleMoves)
             {
+                //Console.Error.WriteLine("=======================================");
+                //Console.Error.WriteLine("Before make move");
                 //Console.Error.WriteLine($"Attempting move {possibleMove.Item1.X},{possibleMove.Item1.Y} to {possibleMove.Item2.X},{possibleMove.Item2.Y}");
 
                 // make move
@@ -122,7 +123,7 @@ namespace WinamaxGolf
                 //Console.Error.WriteLine("=======================================");
                 //Console.Error.WriteLine("After make move");
                 //DebugDisplayer.DisplayMoves(courseContents.GetLength(0), courseContents.GetLength(1), verifiedMoves);
-                //DebugDisplayer.DisplayBallLocations(course.GetBalls());
+                //DebugDisplayer.DisplayBallLocations(course.Contents.GetLength(0), course.Contents.GetLength(1), course.GetBalls());
 
                 var works = CalculateMoves(verifiedMoves, course);
 
@@ -140,7 +141,7 @@ namespace WinamaxGolf
                     //Console.Error.WriteLine("=======================================");
                     //Console.Error.WriteLine("After unmake move");
                     //DebugDisplayer.DisplayMoves(courseContents.GetLength(0), courseContents.GetLength(1), verifiedMoves);
-                    //DebugDisplayer.DisplayBallLocations(course.GetBalls());
+                    //DebugDisplayer.DisplayBallLocations(course.Contents.GetLength(0), course.Contents.GetLength(1), course.GetBalls());
                 }
             }
 

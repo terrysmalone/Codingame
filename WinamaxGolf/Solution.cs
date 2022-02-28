@@ -34,6 +34,7 @@ namespace WinamaxGolf
             var course = CourseConverter.TextToCourse(courseText);
 
             //DebugDisplayer.DisplayCourse(course);
+            //DebugDisplayer.DisplayBallLocations(course.Contents.GetLength(0), course.Contents.GetLength(1), course.GetBalls());
 
             var moveCalculator = new MoveCalculator();
 

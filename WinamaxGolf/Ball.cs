@@ -6,8 +6,9 @@ namespace WinamaxGolf
     {
         // TODO: Add a flag for already moved
 
-        public Point Position { get; }
-        public int NumberOfHits { get; }
+        public Point Position { get; set; }
+
+        public int NumberOfHits { get; set; }
 
         public Ball(Point position, int numberOfHits)
         {

@@ -43,7 +43,7 @@ namespace Labyrinth
                     MoveDirection.Left => "LEFT",
                     MoveDirection.Up => "UP",
                     MoveDirection.Down => "DOWN",
-                    _ => "RIGHT"
+                    _ => "UP"
                 };
 
                 // Write an action using Console.WriteLine()

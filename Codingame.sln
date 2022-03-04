@@ -41,6 +41,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CoinGuesser", "CoinGuesser\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PlatinumRift", "PlatinumRift\PlatinumRift.csproj", "{8DC89AAD-65B9-4098-861B-7432EA6D9B54}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Labyrinth", "Labyrinth\Labyrinth.csproj", "{061E6A72-5174-4C5A-AE07-5ABC035F05F6}"
+EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WinamaxGolf", "WinamaxGolf\WinamaxGolf.csproj", "{D9B2400A-0DDF-442C-8DEB-8DE02B93EAE0}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinamaxGolfTests", "WinamaxGolfTests\WinamaxGolfTests.csproj", "{EB43A889-7097-4529-9FAC-AAB059D6FCE3}"
@@ -127,6 +129,10 @@ Global
 		{8DC89AAD-65B9-4098-861B-7432EA6D9B54}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8DC89AAD-65B9-4098-861B-7432EA6D9B54}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8DC89AAD-65B9-4098-861B-7432EA6D9B54}.Release|Any CPU.Build.0 = Release|Any CPU
+		{061E6A72-5174-4C5A-AE07-5ABC035F05F6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{061E6A72-5174-4C5A-AE07-5ABC035F05F6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{061E6A72-5174-4C5A-AE07-5ABC035F05F6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{061E6A72-5174-4C5A-AE07-5ABC035F05F6}.Release|Any CPU.Build.0 = Release|Any CPU
 		{D9B2400A-0DDF-442C-8DEB-8DE02B93EAE0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{D9B2400A-0DDF-442C-8DEB-8DE02B93EAE0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D9B2400A-0DDF-442C-8DEB-8DE02B93EAE0}.Release|Any CPU.ActiveCfg = Release|Any CPU

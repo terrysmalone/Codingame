@@ -25,6 +25,8 @@ namespace WinamaxGolf
                         _ => '.'
                     };
 
+                    Console.Error.WriteLine($"{x}, {y}, {character}");
+
                     display += character;
                 }
 
@@ -113,7 +115,7 @@ namespace WinamaxGolf
             foreach (var ball in balls)
             {
                 board[ball.Position.X, ball.Position.Y] = (char)('0' + ball.NumberOfHits);
-                Console.Error.WriteLine($"{ball.Position.X},{ball.Position.Y}");
+                Console.Error.WriteLine($"{ball.Position.X},{ball.Position.Y}, {ball.NumberOfHits}");
             }
 
             var display = string.Empty;

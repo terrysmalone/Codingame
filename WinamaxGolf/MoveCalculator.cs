@@ -9,11 +9,11 @@ namespace WinamaxGolf
 {
     internal sealed class MoveCalculator
     {
-        private Stopwatch _timer = new Stopwatch();
+        private Stopwatch _totalTimeStopwatch = new Stopwatch();
 
         internal string CalculateMoves(Course course)
         {
-            _timer.Start();
+            _totalTimeStopwatch.Start();
 
             var verifiedMoves = new List<(Point, Point)>();
             var possibleMoves = new List<(Point, Point)>();
@@ -23,7 +23,7 @@ namespace WinamaxGolf
 
             foreach (var ball in course.GetBalls())
             {
-                possibleMoves.AddRange(CalculateMovesForBall(courseContents, moveBoard, ball.Position.X, ball.Position.Y, ball.NumberOfHits));
+                possibleMoves.AddRange(CalculateMovesForBall(courseContents, moveBoard, ball));
             }
 
             //Console.Error.WriteLine($"Base calculate move. {possibleMoves.Count} possible moves found");
@@ -47,10 +47,10 @@ namespace WinamaxGolf
 
                     //Console.Error.WriteLine($"VerifiedMove count: {verifiedMoves.Count}");
 
-                    _timer.Stop();
+                    _totalTimeStopwatch.Stop();
 
-                    var timeSpan = _timer.Elapsed;
-                    Console.Error.WriteLine(timeSpan);
+                    var timeSpan = _totalTimeStopwatch.Elapsed;
+                    Console.Error.WriteLine($"Total time: {timeSpan}");
 
                     return CourseConverter.ConvertMoveBoardToString(CourseConverter.CreateMoveBoard(courseContents.GetLength(0), courseContents.GetLength(1), verifiedMoves));
                 }
@@ -65,6 +65,13 @@ namespace WinamaxGolf
 
         private static bool CalculateMoves(List<(Point, Point)> verifiedMoves, Course course)
         {
+            // If a ball has 0 hits left and isn't in a hole don't bother
+            if (AreAnyDeadBalls(course))
+            {
+                return false;
+            }
+
+            // If any balls are in the same grid return
             if (AreAnyBallsInSameSpot(course.GetBalls()))
             {
                 return false;
@@ -74,11 +81,6 @@ namespace WinamaxGolf
             {
                 //Console.Error.WriteLine("All balls in holes. Returning true");
                 return true;
-            }
-
-            if (AreAnyDeadBalls(course))
-            {
-                return false;
             }
 
             var possibleMoves = new List<(Point, Point)>();
@@ -91,7 +93,7 @@ namespace WinamaxGolf
             {
                 if (ball.NumberOfHits > 0)
                 {
-                    possibleMoves.AddRange(CalculateMovesForBall(courseContents, moveBoard, ball.Position.X, ball.Position.Y, ball.NumberOfHits));
+                    possibleMoves.AddRange(CalculateMovesForBall(courseContents, moveBoard, ball));
                 }
             }
 
@@ -127,8 +129,6 @@ namespace WinamaxGolf
 
                 var works = CalculateMoves(verifiedMoves, course);
 
-                course.UnMoveBall(possibleMove.Item1, possibleMove.Item2);
-
                 if (works)
                 {
                     //Console.Error.WriteLine("returning true");
@@ -143,6 +143,8 @@ namespace WinamaxGolf
                     //DebugDisplayer.DisplayMoves(courseContents.GetLength(0), courseContents.GetLength(1), verifiedMoves);
                     //DebugDisplayer.DisplayBallLocations(course.Contents.GetLength(0), course.Contents.GetLength(1), course.GetBalls());
                 }
+
+                course.UnMoveBall(possibleMove.Item1, possibleMove.Item2);
             }
 
             //Console.Error.WriteLine("returning false");
@@ -167,143 +169,165 @@ namespace WinamaxGolf
             return course.GetBalls().Any(b => b.NumberOfHits == 0 && course.Contents[b.Position.X, b.Position.Y] != CourseContent.Hole);
         }
 
-        private static IEnumerable<(Point, Point)> CalculateMovesForBall(CourseContent[,] courseContent, char[,] moveBoard, int xStart, int yStart, int shotCount)
+        private static IEnumerable<(Point, Point)> CalculateMovesForBall(CourseContent[,] courseContent, char[,] moveBoard, Ball ball)
         {
+            var xStart = ball.Position.X;
+            var yStart = ball.Position.Y;
+            var numberOfHits = ball.NumberOfHits;
+            var direction = ball.PeekMoveDirection();
+
             var allowedMoves = new List<(Point, Point)>();
 
             var startPoint = new Point(xStart, yStart);
 
-            // check left
-            var xPosition = startPoint.X - shotCount;
-            var yPosition = startPoint.Y;
+            int xPosition, yPosition;
 
-            if (xPosition >= 0)
+            if (direction != Direction.Horizontal)
             {
-                var blocked = false;
+                // check left
+                xPosition = startPoint.X - numberOfHits;
+                yPosition = startPoint.Y;
 
-                for (var x = startPoint.X - 1; x >= startPoint.X - shotCount; x--)
+                if (xPosition >= 0)
                 {
-                    blocked = IsBlocked(moveBoard, x, yPosition);
+                    var blocked = false;
+
+                    for (var x = startPoint.X - 1; x >= startPoint.X - numberOfHits; x--)
+                    {
+                        blocked = IsBlocked(moveBoard, x, yPosition);
+                    }
+
+                    if (!blocked)
+                    {
+                        var gridContent = courseContent[xPosition, yPosition];
+
+                        if (gridContent == CourseContent.Hole)
+                        {
+                            // verify there's no other ball here
+
+                            allowedMoves.Add((startPoint, new Point(xPosition, yPosition)));
+
+                        }
+                        else if (gridContent == CourseContent.Empty)
+                        {
+                            allowedMoves.Add((startPoint, new Point(xPosition, yPosition)));
+                        }
+                    }
                 }
 
-                if (!blocked)
+                // check right
+                xPosition = startPoint.X + numberOfHits;
+                yPosition = startPoint.Y;
+
+                if (xPosition < moveBoard.GetLength(0))
                 {
-                    var gridContent = courseContent[xPosition, yPosition];
+                    var blocked = false;
 
-                    if (gridContent == CourseContent.Hole)
+                    for (var x = startPoint.X + 1; x <= startPoint.X + numberOfHits; x++)
                     {
-                        // verify there's no other ball here
-
-                        allowedMoves.Add((startPoint, new Point(xPosition, yPosition)));
-
+                        blocked = IsBlocked(moveBoard, x, yPosition);
                     }
-                    else if (gridContent == CourseContent.Empty)
+
+                    if (!blocked)
                     {
-                        allowedMoves.Add((startPoint, new Point(xPosition, yPosition)));
+                        var gridContent = courseContent[xPosition, yPosition];
+
+                        if (gridContent == CourseContent.Hole)
+                        {
+                            // verify there's no other ball here
+
+                            allowedMoves.Add((startPoint, new Point(xPosition, yPosition)));
+
+                        }
+                        else if (gridContent == CourseContent.Empty)
+                        {
+                            allowedMoves.Add((startPoint, new Point(xPosition, yPosition)));
+                        }
                     }
                 }
             }
 
-            // check right
-            xPosition = startPoint.X + shotCount;
-            yPosition = startPoint.Y;
-
-            if (xPosition < moveBoard.GetLength(0))
+            if (direction != Direction.Vertical)
             {
-                var blocked = false;
 
-                for (var x = startPoint.X + 1; x <= startPoint.X + shotCount; x++)
+                // check up
+                xPosition = startPoint.X;
+                yPosition = startPoint.Y - numberOfHits;
+
+                if (yPosition >= 0)
                 {
-                    blocked = IsBlocked(moveBoard, x, yPosition);
+                    var blocked = false;
+
+                    for (var y = startPoint.Y - 1; y >= startPoint.Y - numberOfHits; y--)
+                    {
+                        blocked = IsBlocked(moveBoard, xPosition, y);
+                    }
+
+                    if (!blocked)
+                    {
+                        var gridContent = courseContent[xPosition, yPosition];
+
+                        if (gridContent == CourseContent.Hole)
+                        {
+                            // verify there's no other ball here
+
+                            allowedMoves.Add((startPoint, new Point(xPosition, yPosition)));
+
+                        }
+                        else if (gridContent == CourseContent.Empty)
+                        {
+                            allowedMoves.Add((startPoint, new Point(xPosition, yPosition)));
+                        }
+                    }
                 }
 
-                if (!blocked)
+                //check down
+                xPosition = startPoint.X;
+                yPosition = startPoint.Y + numberOfHits;
+
+                if (yPosition < moveBoard.GetLength(1))
                 {
-                    var gridContent = courseContent[xPosition, yPosition];
+                    var blocked = false;
 
-                    if (gridContent == CourseContent.Hole)
+                    for (var y = startPoint.Y + 1; y <= startPoint.Y + numberOfHits; y++)
                     {
-                        // verify there's no other ball here
-
-                        allowedMoves.Add((startPoint, new Point(xPosition, yPosition)));
-
+                        blocked = IsBlocked(moveBoard, xPosition, y);
                     }
-                    else if (gridContent == CourseContent.Empty)
+
+                    if (!blocked)
                     {
-                        allowedMoves.Add((startPoint, new Point(xPosition, yPosition)));
+                        var gridContent = courseContent[xPosition, yPosition];
+
+                        if (gridContent == CourseContent.Hole)
+                        {
+                            // verify there's no other ball here
+
+                            allowedMoves.Add((startPoint, new Point(xPosition, yPosition)));
+
+                        }
+                        else if (gridContent == CourseContent.Empty)
+                        {
+                            allowedMoves.Add((startPoint, new Point(xPosition, yPosition)));
+                        }
                     }
                 }
             }
 
-            // check up
-            xPosition = startPoint.X;
-            yPosition = startPoint.Y - shotCount;
+            // = allowedMoves.OrderBy(m => GetDistance(m.Item1, m.Item2)).ToList();
 
-            if (yPosition >= 0)
-            {
-                var blocked = false;
-
-                for (var y = startPoint.Y - 1; y >= startPoint.Y - shotCount; y--)
-                {
-                    blocked = IsBlocked(moveBoard, xPosition, y);
-                }
-
-                if (!blocked)
-                {
-                    var gridContent = courseContent[xPosition, yPosition];
-
-                    if (gridContent == CourseContent.Hole)
-                    {
-                        // verify there's no other ball here
-
-                        allowedMoves.Add((startPoint, new Point(xPosition, yPosition)));
-
-                    }
-                    else if (gridContent == CourseContent.Empty)
-                    {
-                        allowedMoves.Add((startPoint, new Point(xPosition, yPosition)));
-                    }
-                }
-            }
-
-            //check down
-            xPosition = startPoint.X;
-            yPosition = startPoint.Y + shotCount;
-
-            if (yPosition < moveBoard.GetLength(1))
-            {
-                var blocked = false;
-
-                for (var y = startPoint.Y + 1; y <= startPoint.Y + shotCount; y++)
-                {
-                    blocked = IsBlocked(moveBoard, xPosition, y);
-                }
-
-                if (!blocked)
-                {
-                    var gridContent = courseContent[xPosition, yPosition];
-
-                    if (gridContent == CourseContent.Hole)
-                    {
-                        // verify there's no other ball here
-
-                        allowedMoves.Add((startPoint, new Point(xPosition, yPosition)));
-
-                    }
-                    else if (gridContent == CourseContent.Empty)
-                    {
-                        allowedMoves.Add((startPoint, new Point(xPosition, yPosition)));
-                    }
-                }
-            }
+            //allowedMoves = allowedMoves.OrderByDescending(m => GetDistance(m.Item1, m.Item2)).ToList();
 
             return allowedMoves;
         }
+
+        private static int GetDistance(Point point1, Point point2)
+        {
+            return Math.Abs(point1.X - point2.X) + Math.Abs(point1.Y - point2.Y);
+            //return Math.Sqrt(Math.Pow(point1.X - point2.X, 2) - Math.Pow(point1.Y - point2.Y, 2));
+        }
         private static bool IsBlocked(char[,] moveBoard, int x, int yPosition)
         {
-            var blocked = moveBoard[x, yPosition] == '<' || moveBoard[x, yPosition] == '>' || moveBoard[x, yPosition] == '^' || moveBoard[x, yPosition] == 'v';
-
-            return blocked;
+            return moveBoard[x, yPosition] != '.';
         }
 
         private static bool AreAllBallsInSeparateHoles(Course course)

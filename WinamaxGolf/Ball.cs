@@ -1,10 +1,11 @@
-﻿using System.Drawing;
+﻿using System.Collections.Generic;
+using System.Drawing;
 
 namespace WinamaxGolf
 {
     internal sealed class Ball
     {
-        // TODO: Add a flag for already moved
+        private Stack<Direction> _moveDirections;
 
         public Point Position { get; set; }
 
@@ -14,6 +15,22 @@ namespace WinamaxGolf
         {
             Position = position;
             NumberOfHits = numberOfHits;
+
+            _moveDirections = new Stack<Direction>();
+            _moveDirections.Push(Direction.Vertical);
+        }
+        public void AddDirection(Direction direction)
+        {
+            _moveDirections.Push(direction);
+        }
+        public Direction PeekMoveDirection()
+        {
+            return _moveDirections.Peek();
+        }
+
+        public Direction PopMoveDirection()
+        {
+            return _moveDirections.Pop();
         }
     }
 }

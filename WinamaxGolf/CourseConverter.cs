@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Xml.Schema;
 
 namespace WinamaxGolf
 {
@@ -40,6 +39,8 @@ namespace WinamaxGolf
                     }
                 }
             }
+
+            course.OrderBalls();
 
             return course;
         }

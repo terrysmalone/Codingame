@@ -53,6 +53,19 @@ namespace WinamaxGolf
             movedBall.Position = new Point(endPoint.X, endPoint.Y);
             movedBall.NumberOfHits--;
 
+            if (startPoint.X - endPoint.X != 0)
+            {
+                movedBall.AddDirection(Direction.Horizontal);
+                //movedBall.MoveDirections.Push(Direction.Horizontal);
+                //Console.Error.WriteLine("Direction.Horizontal");
+            }
+            else
+            {
+                //movedBall.MoveDirections.Push(Direction.Vertical);
+                movedBall.AddDirection(Direction.Vertical);
+                //Console.Error.WriteLine("Direction.Vertical");
+            }
+
             //DebugDisplayer.DisplayBallLocations(Contents.GetLength(0), Contents.GetLength(1), _balls);
         }
 
@@ -68,7 +81,13 @@ namespace WinamaxGolf
 
             _movedIndexes.RemoveAt(_movedIndexes.Count-1);
 
+            movedBall.PopMoveDirection();
+
             //DebugDisplayer.DisplayBallLocations(Contents.GetLength(0), Contents.GetLength(1), _balls);
+        }
+        public void OrderBalls()
+        {
+            _balls = _balls.OrderBy(b => b.NumberOfHits).ToList();
         }
     }
 }

@@ -19,7 +19,7 @@ internal sealed class Player
         var baseY = int.Parse(inputs[1]);
         var heroesPerPlayer = int.Parse(Console.ReadLine()); // Always 3
 
-        var game = new Game(new Point(baseX, baseY));
+        var game = new Game(new Point(baseX, baseY), heroesPerPlayer);
 
         // game loop
         while (true)
@@ -82,14 +82,15 @@ internal sealed class Player
                 }
             }
 
-            for (var i = 0; i < heroesPerPlayer; i++)
+            var moves = game.GetMoves();
+
+            for (var i = 0; i < moves.Length; i++)
             {
                 // Write an action using Console.WriteLine()
                 // To debug: Console.Error.WriteLine("Debug messages...");
 
-
                 // In the first league: MOVE <x> <y> | WAIT; In later leagues: | SPELL <spellParams>;
-                Console.WriteLine("WAIT");
+                Console.WriteLine(moves[i]);
             }
         }
     }

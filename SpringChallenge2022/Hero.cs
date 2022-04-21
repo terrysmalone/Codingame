@@ -5,11 +5,11 @@ namespace SpringChallenge2022;
 internal sealed class Hero
 {
     public int Id { get; }
-    public Point Postion { get; set; }
+    public Point Position { get; set; }
 
-    public Hero(int id, Point postion)
+    public Hero(int id, Point position)
     {
         Id = id;
-        Postion = postion;
+        Position = position;
     }
 }

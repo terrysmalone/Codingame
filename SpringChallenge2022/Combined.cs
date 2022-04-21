@@ -4,15 +4,59 @@
   This hasn't been put in a namespace to allow for class 
   name duplicates.
 ***************************************************************/
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
-using System;
+
+
+internal static class Debugger
+{
+    internal static void DisplayMonsters(List<Monster> monsters)
+    {
+        Console.Error.WriteLine("Monsters");
+        Console.Error.WriteLine("------------------------");
+
+        foreach (var monster in monsters)
+        {
+            Console.Error.WriteLine($"{monster.Id}: {monster.Position.X}, {monster.Position.Y}");
+        }
+
+        Console.Error.WriteLine("------------------------");
+    }
+
+    internal static void DisplayPlayerHeroes(List<Hero> heroes)
+    {
+        Console.Error.WriteLine("Player heroes");
+        Console.Error.WriteLine("------------------------");
+
+        foreach (var hero in heroes)
+        {
+            Console.Error.WriteLine($"{hero.Id}: {hero.Position.X}, {hero.Position.Y}");
+        }
+
+        Console.Error.WriteLine("------------------------");
+    }
+
+    internal static void DisplayEnemyHeroes(List<Hero> heroes)
+    {
+        Console.Error.WriteLine("Enemy heroes");
+        Console.Error.WriteLine("------------------------");
+
+        foreach (var hero in heroes)
+        {
+            Console.Error.WriteLine($"{hero.Id}: {hero.Position.X}, {hero.Position.Y}");
+        }
+
+        Console.Error.WriteLine("------------------------");
+    }
+}
 
 
 internal class Game
 {
     private readonly Point _playerBaseLocation;
+    private readonly int _heroesPerPlayer;
 
     private int _playerBaseHealth;
     private int _enemyBaseHealth;
@@ -21,10 +65,28 @@ internal class Game
     private List<Hero> _playerHeroes = new List<Hero>();
     private List<Hero> _enemyHeroes = new List<Hero>();
 
-    internal Game(Point playerBaseLocation)
+    internal Game(Point playerBaseLocation, int heroesPerPlayer)
     {
         _playerBaseLocation = playerBaseLocation;
+        _heroesPerPlayer = heroesPerPlayer;
     }
+
+    internal string[] GetMoves()
+    {
+        var moves = new string[_heroesPerPlayer];
+
+        Debugger.DisplayPlayerHeroes(_playerHeroes);
+        Debugger.DisplayEnemyHeroes(_enemyHeroes);
+        Debugger.DisplayMonsters(_monsters);
+
+        for (var i = 0; i < moves.Length; i++)
+        {
+            moves[i] = "WAIT";
+        }
+
+        return moves;
+    }
+
 
     internal void SetPlayerBaseHealth(int playerBaseHealth)
     {
@@ -46,7 +108,7 @@ internal class Game
         }
         else
         {
-            playerHero.Postion = hero.Postion;
+            playerHero.Position = hero.Position;
         }
     }
     public void UpdateEnemyHero(Hero hero)
@@ -59,7 +121,7 @@ internal class Game
         }
         else
         {
-            enemyHero.Postion = hero.Postion;
+            enemyHero.Position = hero.Position;
         }
     }
 
@@ -78,12 +140,12 @@ internal class Game
 internal sealed class Hero
 {
     public int Id { get; }
-    public Point Postion { get; set; }
+    public Point Position { get; set; }
 
-    public Hero(int id, Point postion)
+    public Hero(int id, Point position)
     {
         Id = id;
-        Postion = postion;
+        Position = position;
     }
 }
 
@@ -125,7 +187,7 @@ internal sealed class Player
         var baseY = int.Parse(inputs[1]);
         var heroesPerPlayer = int.Parse(Console.ReadLine()); // Always 3
 
-        var game = new Game(new Point(baseX, baseY));
+        var game = new Game(new Point(baseX, baseY), heroesPerPlayer);
 
         // game loop
         while (true)
@@ -188,14 +250,15 @@ internal sealed class Player
                 }
             }
 
-            for (var i = 0; i < heroesPerPlayer; i++)
+            var moves = game.GetMoves();
+
+            for (var i = 0; i < moves.Length; i++)
             {
                 // Write an action using Console.WriteLine()
                 // To debug: Console.Error.WriteLine("Debug messages...");
 
-
                 // In the first league: MOVE <x> <y> | WAIT; In later leagues: | SPELL <spellParams>;
-                Console.WriteLine("WAIT");
+                Console.WriteLine(moves[i]);
             }
         }
     }

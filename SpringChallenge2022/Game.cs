@@ -7,6 +7,7 @@ namespace SpringChallenge2022;
 internal class Game
 {
     private readonly Point _playerBaseLocation;
+    private readonly int _heroesPerPlayer;
 
     private int _playerBaseHealth;
     private int _enemyBaseHealth;
@@ -15,10 +16,28 @@ internal class Game
     private List<Hero> _playerHeroes = new List<Hero>();
     private List<Hero> _enemyHeroes = new List<Hero>();
 
-    internal Game(Point playerBaseLocation)
+    internal Game(Point playerBaseLocation, int heroesPerPlayer)
     {
         _playerBaseLocation = playerBaseLocation;
+        _heroesPerPlayer = heroesPerPlayer;
     }
+
+    internal string[] GetMoves()
+    {
+        var moves = new string[_heroesPerPlayer];
+
+        Debugger.DisplayPlayerHeroes(_playerHeroes);
+        Debugger.DisplayEnemyHeroes(_enemyHeroes);
+        Debugger.DisplayMonsters(_monsters);
+
+        for (var i = 0; i < moves.Length; i++)
+        {
+            moves[i] = "WAIT";
+        }
+
+        return moves;
+    }
+
 
     internal void SetPlayerBaseHealth(int playerBaseHealth)
     {
@@ -40,7 +59,7 @@ internal class Game
         }
         else
         {
-            playerHero.Postion = hero.Postion;
+            playerHero.Position = hero.Position;
         }
     }
     public void UpdateEnemyHero(Hero hero)
@@ -53,7 +72,7 @@ internal class Game
         }
         else
         {
-            enemyHero.Postion = hero.Postion;
+            enemyHero.Position = hero.Position;
         }
     }
 

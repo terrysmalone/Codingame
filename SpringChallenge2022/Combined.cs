@@ -84,9 +84,25 @@ internal class Game
         ClearDeadMonsters();
 
         // get all viable targets
-        var viableMonsters = _monsters.Where(m => m.NearBase && m.ThreatFor == 1)
-                                                 .OrderBy(m => CalculateDistance(m.Position, _playerBaseLocation))
-                                                 .ToList();
+
+        List<Monster> viableMonsters;
+
+        var singleAttacks = false;
+
+        if (singleAttacks)
+        {
+            viableMonsters = _monsters.Where(m => m.NearBase
+                                                      && m.ThreatFor == 1
+                                                      && !_playerHeroes.Select(h => h.CurrentMonster).Contains(m.Id))
+                                      .OrderBy(m => CalculateDistance(m.Position, _playerBaseLocation))
+                                      .ToList();
+        }
+        else
+        {
+            viableMonsters = _monsters.Where(m => m.NearBase && m.ThreatFor == 1)
+                                      .OrderBy(m => CalculateDistance(m.Position, _playerBaseLocation))
+                                      .ToList();
+        }
 
         var monsterIndex = 0;
         var freeHeroes = _playerHeroes.Where(h => h.CurrentMonster == -1).ToList();
@@ -100,6 +116,8 @@ internal class Game
             var closestHero = freeHeroes.OrderBy(h => CalculateDistance(h.Position, closestMonster.Position)).First();
 
             closestHero.CurrentMonster = closestMonster.Id;
+
+            Console.Error.WriteLine($"Assigning hero {closestHero.Id} to monster {closestMonster.Id}");
 
             viableMonsters.Remove(closestMonster);
             freeHeroes.Remove(closestHero);
@@ -285,6 +303,8 @@ internal sealed class Player
             inputs = Console.ReadLine().Split(' ');
             var playerBaseHealth = int.Parse(inputs[0]); // Your base health
             var playerMana = int.Parse(inputs[1]); // Ignore in the first league; Spend ten mana to cast a spell
+
+            Console.Error.WriteLine($"playerMana: {playerMana}");
 
             game.SetPlayerBaseHealth(playerBaseHealth);
 

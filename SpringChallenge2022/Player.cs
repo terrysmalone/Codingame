@@ -1,6 +1,7 @@
-﻿namespace SpringChallenge2022;
-
+﻿using System.Drawing;
 using System;
+
+namespace SpringChallenge2022;
 
 /**
  * Auto-generated code below aims at helping you parse
@@ -29,6 +30,11 @@ internal sealed class Player
 
             var entityCount = int.Parse(Console.ReadLine()); // Amount of heros and monsters you can see
 
+            var monsters = new List<Monster>();
+
+            var playerHeroes = new List<Hero>();
+            var enemyHeroes = new List<Hero>();
+
             for (var i = 0; i < entityCount; i++)
             {
                 inputs = Console.ReadLine().Split(' ');
@@ -44,6 +50,24 @@ internal sealed class Player
                 var vy = int.Parse(inputs[8]);
                 var nearBase = int.Parse(inputs[9]); // 0=monster with no target yet, 1=monster targeting a base
                 var threatFor = int.Parse(inputs[10]); // Given this monster's trajectory, is it a threat to 1=your base, 2=your opponent's base, 0=neither
+
+                if (type == 0)
+                {
+                    monsters.Add(new Monster(id, new Point(x, y), health, vx, vy, nearBase != 0, threatFor));
+                }
+                else
+                {
+                    var hero = new Hero(id, new Point(x, y));
+
+                    if (type == 1)
+                    {
+                        playerHeroes.Add(hero);
+                    }
+                    else
+                    {
+                        enemyHeroes.Add(hero);
+                    }
+                }
             }
 
             for (var i = 0; i < heroesPerPlayer; i++)

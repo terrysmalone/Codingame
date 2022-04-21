@@ -79,9 +79,19 @@ internal class Game
         Debugger.DisplayEnemyHeroes(_enemyHeroes);
         Debugger.DisplayMonsters(_monsters);
 
+        if (_playerHeroes[0].GuardPoint.X == 0 && _playerHeroes[0].GuardPoint.Y == 0)
+        {
+            _playerHeroes[0].GuardPoint = new Point(4000, 1000);
+            _playerHeroes[1].GuardPoint = new Point(2500, 2500);
+            _playerHeroes[2].GuardPoint = new Point(1000, 4000);
+        }
+
         for (var i = 0; i < moves.Length; i++)
         {
-            moves[i] = "WAIT";
+            var hero = _playerHeroes[i];
+            //moves[i] = "WAIT";
+
+            moves[i] = $"MOVE {hero.GuardPoint.X} {hero.GuardPoint.Y}";
         }
 
         return moves;
@@ -141,6 +151,8 @@ internal sealed class Hero
 {
     public int Id { get; }
     public Point Position { get; set; }
+
+    public Point GuardPoint { get; set; }
 
     public Hero(int id, Point position)
     {

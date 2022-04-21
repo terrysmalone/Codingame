@@ -30,14 +30,27 @@ internal class Game
         Debugger.DisplayEnemyHeroes(_enemyHeroes);
         Debugger.DisplayMonsters(_monsters);
 
+        SetGuardPoints();
+
         for (var i = 0; i < moves.Length; i++)
         {
-            moves[i] = "WAIT";
+            var hero = _playerHeroes[i];
+            //moves[i] = "WAIT";
+
+            moves[i] = $"MOVE {hero.GuardPoint.X} {hero.GuardPoint.Y}";
         }
 
         return moves;
     }
-
+    private void SetGuardPoints()
+    {
+        if (_playerHeroes[0].GuardPoint.X == 0 && _playerHeroes[0].GuardPoint.Y == 0)
+        {
+            _playerHeroes[0].GuardPoint = new Point(4000, 1000);
+            _playerHeroes[1].GuardPoint = new Point(3000, 3000);
+            _playerHeroes[2].GuardPoint = new Point(1000, 4000);
+        }
+    }
 
     internal void SetPlayerBaseHealth(int playerBaseHealth)
     {

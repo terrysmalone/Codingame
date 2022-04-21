@@ -1,5 +1,6 @@
 ﻿using System.Drawing;
 using System;
+using System.Collections.Generic;
 
 namespace SpringChallenge2022;
 
@@ -18,19 +19,30 @@ internal sealed class Player
         var baseY = int.Parse(inputs[1]);
         var heroesPerPlayer = int.Parse(Console.ReadLine()); // Always 3
 
+        var game = new Game(new Point(baseX, baseY));
+
         // game loop
         while (true)
         {
-            for (var i = 0; i < 2; i++)
-            {
-                inputs = Console.ReadLine().Split(' ');
-                var baseHealth = int.Parse(inputs[0]); // Your base health
-                var mana = int.Parse(inputs[1]); // Ignore in the first league; Spend ten mana to cast a spell
-            }
+            // Don't bother persisting monsters. It's quicker just to re-add them every time.
+            // At least until we need to persist them
+            game.ClearMonsters();
+
+            // Player base stats
+            inputs = Console.ReadLine().Split(' ');
+            var playerBaseHealth = int.Parse(inputs[0]); // Your base health
+            var playerMana = int.Parse(inputs[1]); // Ignore in the first league; Spend ten mana to cast a spell
+
+            game.SetPlayerBaseHealth(playerBaseHealth);
+
+            // enemy base stats
+            inputs = Console.ReadLine().Split(' ');
+            var enemyBaseHealth = int.Parse(inputs[0]); // Your base health
+            var enemyMana = int.Parse(inputs[1]); // Ignore in the first league; Spend ten mana to cast a spell
+
+            game.SetEnemyBaseHealth(playerBaseHealth);
 
             var entityCount = int.Parse(Console.ReadLine()); // Amount of heros and monsters you can see
-
-            var monsters = new List<Monster>();
 
             var playerHeroes = new List<Hero>();
             var enemyHeroes = new List<Hero>();
@@ -53,7 +65,7 @@ internal sealed class Player
 
                 if (type == 0)
                 {
-                    monsters.Add(new Monster(id, new Point(x, y), health, vx, vy, nearBase != 0, threatFor));
+                    game.AddMonster(new Monster(id, new Point(x, y), health, vx, vy, nearBase != 0, threatFor));
                 }
                 else
                 {
@@ -61,11 +73,11 @@ internal sealed class Player
 
                     if (type == 1)
                     {
-                        playerHeroes.Add(hero);
+                        game.UpdatePlayerHero(hero);
                     }
                     else
                     {
-                        enemyHeroes.Add(hero);
+                        game.UpdateEnemyHero(hero);
                     }
                 }
             }

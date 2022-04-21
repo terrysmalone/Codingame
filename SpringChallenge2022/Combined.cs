@@ -4,14 +4,81 @@
   This hasn't been put in a namespace to allow for class 
   name duplicates.
 ***************************************************************/
+using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
 using System;
+
+
+internal class Game
+{
+    private readonly Point _playerBaseLocation;
+
+    private int _playerBaseHealth;
+    private int _enemyBaseHealth;
+
+    private List<Monster> _monsters = new List<Monster>();
+    private List<Hero> _playerHeroes = new List<Hero>();
+    private List<Hero> _enemyHeroes = new List<Hero>();
+
+    internal Game(Point playerBaseLocation)
+    {
+        _playerBaseLocation = playerBaseLocation;
+    }
+
+    internal void SetPlayerBaseHealth(int playerBaseHealth)
+    {
+        _playerBaseHealth = playerBaseHealth;
+    }
+
+    internal void SetEnemyBaseHealth(int playerBaseHealth)
+    {
+        _enemyBaseHealth = playerBaseHealth;
+    }
+
+    public void UpdatePlayerHero(Hero hero)
+    {
+        var playerHero = _playerHeroes.SingleOrDefault(h => h.Id == hero.Id);
+
+        if (playerHero == null)
+        {
+            _playerHeroes.Add(hero);
+        }
+        else
+        {
+            playerHero.Postion = hero.Postion;
+        }
+    }
+    public void UpdateEnemyHero(Hero hero)
+    {
+        var enemyHero = _enemyHeroes.SingleOrDefault(h => h.Id == hero.Id);
+
+        if (enemyHero == null)
+        {
+            _enemyHeroes.Add(hero);
+        }
+        else
+        {
+            enemyHero.Postion = hero.Postion;
+        }
+    }
+
+    internal void AddMonster(Monster monster)
+    {
+        _monsters.Add(monster);
+    }
+
+    internal void ClearMonsters()
+    {
+        _monsters.Clear();
+    }
+}
 
 
 internal sealed class Hero
 {
     public int Id { get; }
-    public Point Postion { get; }
+    public Point Postion { get; set; }
 
     public Hero(int id, Point postion)
     {
@@ -58,19 +125,30 @@ internal sealed class Player
         var baseY = int.Parse(inputs[1]);
         var heroesPerPlayer = int.Parse(Console.ReadLine()); // Always 3
 
+        var game = new Game(new Point(baseX, baseY));
+
         // game loop
         while (true)
         {
-            for (var i = 0; i < 2; i++)
-            {
-                inputs = Console.ReadLine().Split(' ');
-                var baseHealth = int.Parse(inputs[0]); // Your base health
-                var mana = int.Parse(inputs[1]); // Ignore in the first league; Spend ten mana to cast a spell
-            }
+            // Don't bother persisting monsters. It's quicker just to re-add them every time.
+            // At least until we need to persist them
+            game.ClearMonsters();
+
+            // Player base stats
+            inputs = Console.ReadLine().Split(' ');
+            var playerBaseHealth = int.Parse(inputs[0]); // Your base health
+            var playerMana = int.Parse(inputs[1]); // Ignore in the first league; Spend ten mana to cast a spell
+
+            game.SetPlayerBaseHealth(playerBaseHealth);
+
+            // enemy base stats
+            inputs = Console.ReadLine().Split(' ');
+            var enemyBaseHealth = int.Parse(inputs[0]); // Your base health
+            var enemyMana = int.Parse(inputs[1]); // Ignore in the first league; Spend ten mana to cast a spell
+
+            game.SetEnemyBaseHealth(playerBaseHealth);
 
             var entityCount = int.Parse(Console.ReadLine()); // Amount of heros and monsters you can see
-
-            var monsters = new List<Monster>();
 
             var playerHeroes = new List<Hero>();
             var enemyHeroes = new List<Hero>();
@@ -93,7 +171,7 @@ internal sealed class Player
 
                 if (type == 0)
                 {
-                    monsters.Add(new Monster(id, new Point(x, y), health, vx, vy, nearBase != 0, threatFor));
+                    game.AddMonster(new Monster(id, new Point(x, y), health, vx, vy, nearBase != 0, threatFor));
                 }
                 else
                 {
@@ -101,11 +179,11 @@ internal sealed class Player
 
                     if (type == 1)
                     {
-                        playerHeroes.Add(hero);
+                        game.UpdatePlayerHero(hero);
                     }
                     else
                     {
-                        enemyHeroes.Add(hero);
+                        game.UpdateEnemyHero(hero);
                     }
                 }
             }

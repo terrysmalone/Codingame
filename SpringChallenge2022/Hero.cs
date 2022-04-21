@@ -7,6 +7,8 @@ internal sealed class Hero
     public int Id { get; }
     public Point Position { get; set; }
 
+    public Point GuardPoint { get; set; }
+
     public Hero(int id, Point position)
     {
         Id = id;

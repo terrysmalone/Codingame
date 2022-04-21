@@ -85,30 +85,11 @@ namespace FileConcatenator
                 index = usingEndIndex;
             }
 
-            var contentStart = text.IndexOf("{", StringComparison.Ordinal);
+            var namespaceStart = text.IndexOf("namespace", StringComparison.Ordinal) + 1;
 
-            var lastClosingBraceLocation = 0;
-            index = 0;
-            found = true;
+            var contentStart = text.Substring(namespaceStart).IndexOf("\n", StringComparison.Ordinal);
 
-            while (found)
-            {
-                var closingBraceLocation = text.IndexOf("}", index, StringComparison.Ordinal);
-
-                if (closingBraceLocation != -1)
-                {
-                    lastClosingBraceLocation = closingBraceLocation;
-                }
-                else
-                {
-                    found = false;
-                    continue;
-                }
-
-                index = closingBraceLocation + 1;
-            }
-
-            var contents = text.Substring(contentStart+1, lastClosingBraceLocation - contentStart-1);
+            var contents = text.Substring(namespaceStart+contentStart);
 
             return (usings, contents);
         }

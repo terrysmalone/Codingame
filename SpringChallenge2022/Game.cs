@@ -86,11 +86,24 @@ internal class Game
 
     private void SetGuardPoints()
     {
+        var xMax = 17630;
+        var yMax = 9000;
+
         if (_playerHeroes[0].GuardPoint.X == 0 && _playerHeroes[0].GuardPoint.Y == 0)
         {
-            _playerHeroes[0].GuardPoint = new Point(4000, 1000);
-            _playerHeroes[1].GuardPoint = new Point(3000, 3000);
-            _playerHeroes[2].GuardPoint = new Point(1000, 4000);
+            Console.Error.WriteLine($"_playerBaseLocation.X:{_playerBaseLocation.X }");
+            if (_playerBaseLocation.X == 0)
+            {
+                _playerHeroes[0].GuardPoint = new Point(4000, 1000);
+                _playerHeroes[1].GuardPoint = new Point(3000, 3000);
+                _playerHeroes[2].GuardPoint = new Point(1000, 4000);
+            }
+            else
+            {
+                _playerHeroes[0].GuardPoint = new Point(xMax - 4000, yMax - 1000);
+                _playerHeroes[1].GuardPoint = new Point(xMax - 3000, yMax - 3000);
+                _playerHeroes[2].GuardPoint = new Point(xMax - 1000, yMax - 4000);
+            }
         }
     }
 

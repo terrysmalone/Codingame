@@ -25,7 +25,7 @@ internal static class Debugger
 
         foreach (var hero in heroes)
         {
-            Console.Error.WriteLine($"{hero.Id}: {hero.Position.X}, {hero.Position.Y}");
+            Console.Error.WriteLine($"{hero.Id}: Postion:({hero.Position.X},{hero.Position.Y}) - Current monster:{hero.CurrentMonster}");
         }
 
         Console.Error.WriteLine("------------------------");

@@ -9,6 +9,8 @@ internal sealed class Hero
 
     public Point GuardPoint { get; set; }
 
+    internal int CurrentMonster { get; set; } = -1;
+
     public Hero(int id, Point position)
     {
         Id = id;

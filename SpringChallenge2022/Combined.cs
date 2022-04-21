@@ -32,7 +32,7 @@ internal static class Debugger
 
         foreach (var hero in heroes)
         {
-            Console.Error.WriteLine($"{hero.Id}: {hero.Position.X}, {hero.Position.Y}");
+            Console.Error.WriteLine($"{hero.Id}: Postion:({hero.Position.X},{hero.Position.Y}) - Current monster:{hero.CurrentMonster}");
         }
 
         Console.Error.WriteLine("------------------------");
@@ -75,28 +75,86 @@ internal class Game
     {
         var moves = new string[_heroesPerPlayer];
 
-        Debugger.DisplayPlayerHeroes(_playerHeroes);
-        Debugger.DisplayEnemyHeroes(_enemyHeroes);
-        Debugger.DisplayMonsters(_monsters);
+        //Debugger.DisplayPlayerHeroes(_playerHeroes);
+        //Debugger.DisplayEnemyHeroes(_enemyHeroes);
+        //Debugger.DisplayMonsters(_monsters);
 
-        if (_playerHeroes[0].GuardPoint.X == 0 && _playerHeroes[0].GuardPoint.Y == 0)
+        SetGuardPoints();
+
+        ClearDeadMonsters();
+
+        // get all viable targets
+        var viableMonsters = _monsters.Where(m => m.NearBase && m.ThreatFor == 1)
+                                                 .OrderBy(m => CalculateDistance(m.Position, _playerBaseLocation))
+                                                 .ToList();
+
+        var monsterIndex = 0;
+        var freeHeroes = _playerHeroes.Where(h => h.CurrentMonster == -1).ToList();
+
+        while (freeHeroes.Count > 0 && monsterIndex < viableMonsters.Count)
         {
-            _playerHeroes[0].GuardPoint = new Point(4000, 1000);
-            _playerHeroes[1].GuardPoint = new Point(2500, 2500);
-            _playerHeroes[2].GuardPoint = new Point(1000, 4000);
+            Console.Error.WriteLine("Assigning hero to monster");
+
+            var closestMonster = viableMonsters[monsterIndex];
+
+            var closestHero = freeHeroes.OrderBy(h => CalculateDistance(h.Position, closestMonster.Position)).First();
+
+            closestHero.CurrentMonster = closestMonster.Id;
+
+            viableMonsters.Remove(closestMonster);
+            freeHeroes.Remove(closestHero);
+            monsterIndex++;
         }
+
+        Debugger.DisplayPlayerHeroes(_playerHeroes);
 
         for (var i = 0; i < moves.Length; i++)
         {
             var hero = _playerHeroes[i];
-            //moves[i] = "WAIT";
 
-            moves[i] = $"MOVE {hero.GuardPoint.X} {hero.GuardPoint.Y}";
+            if (hero.CurrentMonster != -1)
+            {
+                var monsterToAttack = _monsters.Single(m => m.Id == hero.CurrentMonster);
+
+                moves[i] = $"MOVE {monsterToAttack.Position.X} {monsterToAttack.Position.Y}";
+            }
+            else
+            {
+                moves[i] = $"MOVE {hero.GuardPoint.X} {hero.GuardPoint.Y}";
+            }
         }
 
         return moves;
     }
+    private static double CalculateDistance(Point position, Point position2)
+    {
+        return Math.Sqrt(Math.Pow(position.X - position2.X, 2)
+                         + Math.Pow(position.Y - position2.Y, 2));
+    }
 
+    private void SetGuardPoints()
+    {
+        if (_playerHeroes[0].GuardPoint.X == 0 && _playerHeroes[0].GuardPoint.Y == 0)
+        {
+            _playerHeroes[0].GuardPoint = new Point(4000, 1000);
+            _playerHeroes[1].GuardPoint = new Point(3000, 3000);
+            _playerHeroes[2].GuardPoint = new Point(1000, 4000);
+        }
+    }
+
+    private void ClearDeadMonsters()
+    {
+        foreach (var hero in _playerHeroes)
+        {
+            if (hero.CurrentMonster >= 0)
+            {
+                if (!_monsters.Any(m => m.Id == hero.CurrentMonster))
+                {
+                    hero.CurrentMonster = -1;
+                }
+            }
+        }
+    }
 
     internal void SetPlayerBaseHealth(int playerBaseHealth)
     {
@@ -153,6 +211,8 @@ internal sealed class Hero
     public Point Position { get; set; }
 
     public Point GuardPoint { get; set; }
+
+    internal int CurrentMonster { get; set; } = -1;
 
     public Hero(int id, Point position)
     {

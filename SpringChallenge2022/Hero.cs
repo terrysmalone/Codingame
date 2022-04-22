@@ -45,8 +45,11 @@ internal sealed class Hero
 
     public Point GetCurrentGuardPoint()
     {
-        var guardPointToReturn = new Point(_guardPoints[_currentGuardPoint].X, _guardPoints[_currentGuardPoint].Y);
+        return new Point(_guardPoints[_currentGuardPoint].X, _guardPoints[_currentGuardPoint].Y);
+    }
 
+    public Point GetNextGuardPoint()
+    {
         if (_currentGuardPoint >= _guardPoints.Count - 1)
         {
             _currentGuardPoint = 0;
@@ -56,7 +59,7 @@ internal sealed class Hero
             _currentGuardPoint++;
         }
 
-        return guardPointToReturn;
+        return new Point(_guardPoints[_currentGuardPoint].X, _guardPoints[_currentGuardPoint].Y);
     }
 
     public int GetNumberOfGuardPoints()

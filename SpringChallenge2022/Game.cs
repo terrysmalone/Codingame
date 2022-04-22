@@ -279,11 +279,31 @@ internal class Game
         {
             if (_playerBaseLocation.X == 0)
             {
-                attackPoints.Add(new List<Point> { new Point(_xMax - 3750, _yMax - 3750)});
+                attackPoints.Add(new List<Point>
+                {
+                    new Point(_xMax - 3750, _yMax - 3750), // Middle
+                    new Point(_xMax - 2000, _yMax - 4500),
+                    //new Point(_xMax - 1000, _yMax - 5000),
+                    //new Point(_xMax - 2000, _yMax - 4500),
+                    new Point(_xMax - 3750, _yMax - 3750), // Middle
+                    new Point(_xMax - 4500, _yMax - 2000),
+                    new Point(_xMax - 5000, _yMax - 1000),
+                    new Point(_xMax - 4500, _yMax - 2000)
+                });
             }
             else
             {
-                attackPoints.Add(new List<Point> { new Point(3750, 3750)});
+                attackPoints.Add(new List<Point>
+                {
+                    new Point(3750, 3750), // Middle
+                    new Point(2000, 4500),
+                    //new Point(1000, 5000),
+                    //new Point(2000, 4500),
+                    new Point(3750, 3750), // Middle
+                    new Point(4500, 2000),
+                    new Point(5000, 1000),
+                    new Point(4500, 2000)
+                });
             }
         }
 
@@ -374,8 +394,18 @@ internal class Game
                 hero.CurrentAction = $"MOVE {monsterToAttack.Position.X} {monsterToAttack.Position.Y}";
             }
             else
-            {   var nextGuardPoint = hero.GetCurrentGuardPoint();
-                hero.CurrentAction = $"MOVE {nextGuardPoint.X} {nextGuardPoint.Y}";
+            {
+                var currentGuardPoint = hero.GetCurrentGuardPoint();
+
+                if (!(hero.Position.X == currentGuardPoint.X && hero.Position.Y == currentGuardPoint.Y))
+                {
+                    hero.CurrentAction = $"MOVE {currentGuardPoint.X} {currentGuardPoint.Y}";
+                }
+                else
+                {
+                    var nextGuardPoint = hero.GetNextGuardPoint();
+                    hero.CurrentAction = $"MOVE {nextGuardPoint.X} {nextGuardPoint.Y}";
+                }
             }
         }
     }

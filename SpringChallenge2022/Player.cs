@@ -115,10 +115,3 @@ internal sealed class Player
         }
     }
 }
-
-internal enum ThreatFor
-{
-    None,
-    Player,
-    Enemy
-}

@@ -1,4 +1,5 @@
 ﻿using System.Drawing;
+using System.Runtime.InteropServices;
 
 namespace SpringChallenge2022;
 
@@ -12,6 +13,8 @@ internal sealed class Hero
     internal int CurrentMonster { get; set; } = -1;
 
     internal string CurrentAction { get; set; } = "WAIT";
+
+    internal Strategy Strategy { get; set;} = Strategy.Defend;
 
     public Hero(int id, Point position)
     {

@@ -33,6 +33,9 @@ internal class Game
         //Debugger.DisplayEnemyHeroes(_enemyHeroes);
         //Debugger.DisplayMonsters(_monsters);
 
+        // Check if we want to change any strategy
+            // When we change strategy reset the guard points
+
         SetGuardPoints();
 
         ClearDeadMonsters();
@@ -59,23 +62,46 @@ internal class Game
 
     private void SetGuardPoints()
     {
-        var xMax = 17630;
-        var yMax = 9000;
+        const int xMax = 17630;
+        const int yMax = 9000;
 
-        if (_playerHeroes[0].GuardPoint.X == 0 && _playerHeroes[0].GuardPoint.Y == 0)
+        if (_playerHeroes[0].GuardPoint.X == 0 && _playerHeroes[0].GuardPoint.Y == 0)   // or we've changed a Strategy
         {
-            Console.Error.WriteLine($"_playerBaseLocation.X:{_playerBaseLocation.X }");
-            if (_playerBaseLocation.X == 0)
+            var numberOfDefenders = _playerHeroes.Count(h => h.Strategy == Strategy.Defend);
+
+            var guardPoints = new List<Point>();
+
+            // Assign defenders
+            if (numberOfDefenders == 3)
             {
-                _playerHeroes[0].GuardPoint = new Point(4000, 1000);
-                _playerHeroes[1].GuardPoint = new Point(3000, 3000);
-                _playerHeroes[2].GuardPoint = new Point(1000, 4000);
+                if (_playerBaseLocation.X == 0)
+                {
+                    guardPoints.Add(new Point(4000, 1000));
+                    guardPoints.Add(new Point(3000, 3000));
+                    guardPoints.Add(new Point(1000, 4000));
+                }
+                else
+                {
+                     guardPoints.Add(new Point(xMax - 4000, yMax - 1000));
+                     guardPoints.Add(new Point(xMax - 3000, yMax - 3000));
+                     guardPoints.Add(new Point(xMax - 1000, yMax - 4000));
+                }
             }
-            else
+            
+            // Assign others
+
+            // Set guard points
+            if (_playerHeroes.Count != guardPoints.Count)
             {
-                _playerHeroes[0].GuardPoint = new Point(xMax - 4000, yMax - 1000);
-                _playerHeroes[1].GuardPoint = new Point(xMax - 3000, yMax - 3000);
-                _playerHeroes[2].GuardPoint = new Point(xMax - 1000, yMax - 4000);
+                Console.Error.WriteLine("ERROR: Player heroes count doesn't match guard point count");
+            }
+
+            // At some point we need to make sure we move heroes around to minimise travel to new spots
+
+            for (var i = 0; i < _playerHeroes.Count; i++)
+            {
+                var hero = _playerHeroes[i];
+                hero.GuardPoint = guardPoints[i];
             }
         }
     }

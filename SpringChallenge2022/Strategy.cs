@@ -2,5 +2,6 @@
 
 internal enum Strategy
 {
-    Defend
+    Defend,
+    Attack
 }

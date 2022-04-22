@@ -27,6 +27,8 @@ internal class Game
 
     private const int _outskirtsMinDist = 5000;
     private const int _outskirtsMaxDist = 7000;
+    private const int _heroRange = 2200;
+
 
     private List<Strategy> _defaultStrategies = new List<Strategy>(0);
 
@@ -228,6 +230,11 @@ internal class Game
 
         if (freeDefendingHeroes.Count > 0)
         {
+            // If there are monsters in the base
+            // attack them
+            // else
+            // head towards an enemy on the outskirts
+
             monstersThreateningBase = _monsters.Where(m => m.NearBase && m.ThreatFor == ThreatFor.Player)
                                                .OrderBy(m => CalculateDistance(m.Position, _playerBaseLocation))
                                                .ToList();
@@ -242,6 +249,25 @@ internal class Game
                 {
                     hero.CurrentMonster = closestMonster.Id;
                 }
+            }
+            else
+            {
+                // Monsters on outskirts might have to be considered
+
+                foreach (var freeDefendingHero in freeDefendingHeroes)
+                {
+                    var monsterWithinRange = _monsters.Select(m => new { m, distance = CalculateDistance(m.Position, freeDefendingHero.Position)})
+                                                      .Where(m => m.distance <= _heroRange)
+                                                      .OrderBy(m => m.distance)
+                                                      .Select(m => m.m)
+                                                      .FirstOrDefault();
+
+                    if (monsterWithinRange != null)
+                    {
+                        freeDefendingHero.CurrentMonster = monsterWithinRange.Id;
+                    }
+                }
+
             }
         }
 

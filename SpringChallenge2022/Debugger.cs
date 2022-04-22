@@ -12,7 +12,7 @@ internal static class Debugger
 
         foreach (var monster in monsters)
         {
-            Console.Error.WriteLine($"{monster.Id}: Position-{monster.Position.X},{monster.Position.Y} Trajectory -{monster.XTrajectory},{monster.YTrajectory}");
+            Console.Error.WriteLine($"{monster.Id}: Position-{monster.Position.X},{monster.Position.Y} Trajectory={monster.XTrajectory},{monster.YTrajectory} IsControlled={monster.IsControlled}");
         }
 
         Console.Error.WriteLine("------------------------");

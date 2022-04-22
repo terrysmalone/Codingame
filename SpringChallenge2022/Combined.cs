@@ -20,7 +20,7 @@ internal static class Debugger
 
         foreach (var monster in monsters)
         {
-            Console.Error.WriteLine($"{monster.Id}: Position-{monster.Position.X},{monster.Position.Y} Trajectory -{monster.XTrajectory},{monster.YTrajectory}");
+            Console.Error.WriteLine($"{monster.Id}: Position-{monster.Position.X},{monster.Position.Y} Trajectory={monster.XTrajectory},{monster.YTrajectory} IsControlled={monster.IsControlled}");
         }
 
         Console.Error.WriteLine("------------------------");
@@ -405,7 +405,7 @@ internal class Game
                 return;
             }
 
-            var monsterWithinSpellRange = _monsters.Where(m => m.Health > healthCutOff)
+            var monsterWithinSpellRange = _monsters.Where(m => m.Health > healthCutOff && m.IsControlled == false)
                                                    .Select(m => new { m, distance = CalculateDistance(m.Position, defendingHeroOutsideOfBase.Position)})
                                                    .Where(m => m.distance <= _controlSpellange)
                                                    .OrderBy(m => m.distance)
@@ -609,8 +609,9 @@ internal sealed class Monster
     public int YTrajectory { get; }
     public bool NearBase { get; }
     public ThreatFor ThreatFor { get; }
+    public bool IsControlled { get; }
     
-    public Monster(int id, Point position, int health, int xTrajectory, int yTrajectory, bool nearBase, ThreatFor threatFor)
+    public Monster(int id, Point position, int health, int xTrajectory, int yTrajectory, bool nearBase, ThreatFor threatFor, bool isControlled)
     {
         Id = id;
         Position = position;
@@ -619,6 +620,7 @@ internal sealed class Monster
         YTrajectory = yTrajectory;
         NearBase = nearBase;
         ThreatFor = threatFor;
+        IsControlled = isControlled;
     }
 }
 
@@ -704,7 +706,7 @@ internal sealed class Player
                             threatForEnum = ThreatFor.None;
                             break;
                     }
-                    game.AddMonster(new Monster(id, new Point(x, y), health, vx, vy, nearBase != 0, threatForEnum));
+                    game.AddMonster(new Monster(id, new Point(x, y), health, vx, vy, nearBase != 0, threatForEnum, isControlled == 1));
                 }
                 else
                 {

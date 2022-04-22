@@ -356,7 +356,7 @@ internal class Game
                 return;
             }
 
-            var monsterWithinSpellRange = _monsters.Where(m => m.Health > healthCutOff)
+            var monsterWithinSpellRange = _monsters.Where(m => m.Health > healthCutOff && m.IsControlled == false)
                                                    .Select(m => new { m, distance = CalculateDistance(m.Position, defendingHeroOutsideOfBase.Position)})
                                                    .Where(m => m.distance <= _controlSpellange)
                                                    .OrderBy(m => m.distance)

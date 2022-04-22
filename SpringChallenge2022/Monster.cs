@@ -11,8 +11,9 @@ internal sealed class Monster
     public int YTrajectory { get; }
     public bool NearBase { get; }
     public ThreatFor ThreatFor { get; }
+    public bool IsControlled { get; }
     
-    public Monster(int id, Point position, int health, int xTrajectory, int yTrajectory, bool nearBase, ThreatFor threatFor)
+    public Monster(int id, Point position, int health, int xTrajectory, int yTrajectory, bool nearBase, ThreatFor threatFor, bool isControlled)
     {
         Id = id;
         Position = position;
@@ -21,5 +22,6 @@ internal sealed class Monster
         YTrajectory = yTrajectory;
         NearBase = nearBase;
         ThreatFor = threatFor;
+        IsControlled = isControlled;
     }
 }

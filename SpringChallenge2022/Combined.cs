@@ -74,6 +74,9 @@ internal class Game
 
     private const int _windSpellDistance = 1280;
 
+    private const int _outskirtsMinDist = 5000;
+    private const int _outskirtsMaxDist = 7000;
+
     private List<Strategy> _defaultStrategies = new List<Strategy>(0);
 
     internal Game(Point playerBaseLocation, int heroesPerPlayer)
@@ -103,6 +106,7 @@ internal class Game
 
         // If a monster has died clear it from the current monser ID
         ClearDeadMonsters();
+        ClearMonstersFromEnemyOutskirts();
 
         // At a basic level we want all heros to move towards someone to attack
         AssignMonstersToAttack();
@@ -173,39 +177,39 @@ internal class Game
         {
             if (_playerBaseLocation.X == 0)
             {
-                defendPoints.Add(new Point(3000, 3000));
+                defendPoints.Add(new Point(4000, 4000));
             }
             else
             {
-                defendPoints.Add(new Point(_xMax - 3000, _yMax - 3000));
+                defendPoints.Add(new Point(_xMax - 4000, _yMax - 4000));
             }
         }
         else if (numberOfDefenders == 2)
         {
             if (_playerBaseLocation.X == 0)
             {
-                defendPoints.Add(new Point(3500, 2000));
-                defendPoints.Add(new Point(2000, 3500));
+                defendPoints.Add(new Point(5700, 2500));
+                defendPoints.Add(new Point(2500, 5700));
             }
             else
             {
-                defendPoints.Add(new Point(_xMax - 3500, _yMax - 2000));
-                defendPoints.Add(new Point(_xMax - 2000, _yMax - 3500));
+                defendPoints.Add(new Point(_xMax - 5000, _yMax - 3500));
+                defendPoints.Add(new Point(_xMax - 3500, _yMax - 5000));
             }
         }
         else if (numberOfDefenders == 3)
         {
             if (_playerBaseLocation.X == 0)
             {
-                defendPoints.Add(new Point(4000, 1000));
-                defendPoints.Add(new Point(3000, 3000));
-                defendPoints.Add(new Point(1000, 4000));
+                defendPoints.Add(new Point(5000, 2000));
+                defendPoints.Add(new Point(4000, 4000));
+                defendPoints.Add(new Point(2000, 5000));
             }
             else
             {
-                defendPoints.Add(new Point(_xMax - 4000, _yMax - 1000));
-                defendPoints.Add(new Point(_xMax - 3000, _yMax - 3000));
-                defendPoints.Add(new Point(_xMax - 1000, _yMax - 4000));
+                defendPoints.Add(new Point(_xMax - 5000, _yMax - 2000));
+                defendPoints.Add(new Point(_xMax - 4000, _yMax - 4000));
+                defendPoints.Add(new Point(_xMax - 2000, _yMax - 5000));
             }
         }
 
@@ -247,6 +251,23 @@ internal class Game
         }
     }
 
+    private void ClearMonstersFromEnemyOutskirts()
+    {
+        foreach (var hero in _playerHeroes.Where(h => h.Strategy == Strategy.Attack))
+        {
+            if (hero.CurrentMonster >= 0)
+            {
+                var currentMonster = _monsters.First(m => m.Id == hero.CurrentMonster);
+
+                if (CalculateDistance(currentMonster.Position, _enemyBaseLocation) < _outskirtsMinDist
+                    || CalculateDistance(currentMonster.Position, _enemyBaseLocation) > _outskirtsMaxDist)
+                {
+                    hero.CurrentMonster = -1;
+                }
+            }
+        }
+    }
+
     private void AssignMonstersToAttack()
     {
         List<Monster> monstersThreateningBase;
@@ -279,8 +300,19 @@ internal class Game
         if (freeAttackingHeroes.Count > 0)
         {
             // Get any monsters on the edge of the enemies base
-            var monstersOnOutskirts = _monsters.Where(m => CalculateDistance(m.Position, _enemyBaseLocation) > 5000
-                                                           && CalculateDistance(m.Position, _enemyBaseLocation) < 7000).ToList();
+            Console.Error.WriteLine($"Monster count: {_monsters.Count}");
+
+            foreach (var monster in _monsters)
+            {
+                Console.Error.WriteLine($"Distance to enemy base for {monster.Id}: {CalculateDistance(monster.Position, _enemyBaseLocation)}");
+            }
+
+            var monstersOnOutskirts = _monsters.Where(m => CalculateDistance(m.Position, _enemyBaseLocation) > _outskirtsMinDist
+                                                           && CalculateDistance(m.Position, _enemyBaseLocation) < _outskirtsMaxDist).ToList();
+
+            Console.Error.WriteLine($"monstersOnOutskirts: {monstersOnOutskirts.Count}");
+
+            Debugger.DisplayMonsters(monstersOnOutskirts);
 
             // Go to them
             if (monstersOnOutskirts.Count > 1)

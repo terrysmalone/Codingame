@@ -14,6 +14,8 @@ internal sealed class Hero
 
     internal string CurrentAction { get; set; } = "WAIT";
 
+    internal bool UsingSpell {get; set; } = false;
+
     internal Strategy Strategy { get; set;} = Strategy.Defend;
 
     public Hero(int id, Point position)

@@ -20,7 +20,7 @@ internal static class Debugger
 
         foreach (var monster in monsters)
         {
-            Console.Error.WriteLine($"{monster.Id}: Position-{monster.Position.X},{monster.Position.Y} Trajectory={monster.XTrajectory},{monster.YTrajectory} IsControlled={monster.IsControlled}");
+            Console.Error.WriteLine($"{monster.Id}: Position-{monster.Position.X},{monster.Position.Y} - ThreatFor:{monster.ThreatFor} - IsControlled={monster.IsControlled}");
         }
 
         Console.Error.WriteLine("------------------------");
@@ -108,12 +108,13 @@ internal class Game
         //Debugger.DisplayEnemyHeroes(_enemyHeroes);
         //Debugger.DisplayMonsters(_monsters);
 
-        // Check if we want to change any strategy
-            // When we change strategy reset the guard points
+        foreach (var hero in _playerHeroes)
+        {
+            hero.CurrentAction = string.Empty;
+            hero.UsingSpell = false;
+        }
 
         SetGuardPoints();
-
-        // If a monster has died clear it from the current monser ID
         ClearStaleAttacks();
 
         // At a basic level we want all heros to move towards someone to attack
@@ -122,9 +123,9 @@ internal class Game
         // Defending the base is priority one. See if we need to fire a defensive wind spell
         AssignDefensiveWindSpell();
 
-        AssignAttackSpells();
-
         AssignDefenderControlSpells();
+
+        AssignAttackSpells();
 
         for (var i = 0; i < moves.Length; i++)
         {
@@ -392,16 +393,19 @@ internal class Game
 
         if (_estimatedManaLeft < 10)
         {
+            Console.Error.WriteLine($"No estimated mana cutting out early");
             return;
         }
 
         var defendingHeroesOutsideOfBase = _playerHeroes.Where(h => h.Strategy == Strategy.Defend
                                                                                        && CalculateDistance(h.Position, _playerBaseLocation) > _baseRadius);
 
+
         foreach (var defendingHeroOutsideOfBase in defendingHeroesOutsideOfBase)
         {
             if (_estimatedManaLeft < 10)
             {
+                Console.Error.WriteLine($"No estimated mana. Cutting out in for loop");
                 return;
             }
 
@@ -414,6 +418,7 @@ internal class Game
 
             if (monsterWithinSpellRange != null)
             {
+                Debugger.DisplayMonsters(new List<Monster> { monsterWithinSpellRange });
                 PerformSpell(defendingHeroOutsideOfBase, $"SPELL CONTROL {monsterWithinSpellRange.Id} {_enemyBaseLocation.X} {_enemyBaseLocation.Y}");
             }
         }
@@ -495,22 +500,7 @@ internal class Game
 
             if (CalculateDistance(closestHero.Position, closestMonster.Position) <= _windSpellRange)
             {
-                int xNew, yNew;
-
-                Console.Error.WriteLine($"_playerBaseLocation.X:{_playerBaseLocation.X}");
-                // very crude vector calc
-                if (_playerBaseLocation.X == 0)
-                {
-                    xNew = closestHero.Position.X + 1;
-                    yNew = closestHero.Position.Y + 1;
-                }
-                else
-                {
-                    xNew = closestHero.Position.X - 1;
-                    yNew = closestHero.Position.Y - 1;
-                }
-
-                PerformSpell(closestHero, $"SPELL WIND {xNew} {yNew}");
+                PerformSpell(closestHero, $"SPELL WIND {_enemyBaseLocation.X} {_enemyBaseLocation.Y}");
             }
         }
     }
@@ -575,7 +565,12 @@ internal class Game
     {
         hero.CurrentAction = action;
         hero.CurrentMonster = -1;
-        _estimatedManaLeft -= 10;
+
+        if (hero.UsingSpell == false)
+        {
+            _estimatedManaLeft -= 10;
+            hero.UsingSpell = true;
+        }
     }
 }
 
@@ -590,6 +585,8 @@ internal sealed class Hero
     internal int CurrentMonster { get; set; } = -1;
 
     internal string CurrentAction { get; set; } = "WAIT";
+
+    internal bool UsingSpell {get; set; } = false;
 
     internal Strategy Strategy { get; set;} = Strategy.Defend;
 
@@ -606,19 +603,19 @@ internal sealed class Monster
     public int Id { get; }
     public Point Position { get; }
     public int Health { get; }
-    public int XTrajectory { get; }
-    public int YTrajectory { get; }
+    public int SpeedX { get; }
+    public int SpeedY { get; }
     public bool NearBase { get; }
     public ThreatFor ThreatFor { get; }
     public bool IsControlled { get; }
     
-    public Monster(int id, Point position, int health, int xTrajectory, int yTrajectory, bool nearBase, ThreatFor threatFor, bool isControlled)
+    public Monster(int id, Point position, int health, int speedX, int speedY, bool nearBase, ThreatFor threatFor, bool isControlled)
     {
         Id = id;
         Position = position;
         Health = health;
-        XTrajectory = xTrajectory;
-        YTrajectory = yTrajectory;
+        SpeedX = speedX;
+        SpeedY = speedY;
         NearBase = nearBase;
         ThreatFor = threatFor;
         IsControlled = isControlled;

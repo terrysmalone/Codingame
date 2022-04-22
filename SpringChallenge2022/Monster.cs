@@ -7,19 +7,19 @@ internal sealed class Monster
     public int Id { get; }
     public Point Position { get; }
     public int Health { get; }
-    public int XTrajectory { get; }
-    public int YTrajectory { get; }
+    public int SpeedX { get; }
+    public int SpeedY { get; }
     public bool NearBase { get; }
     public ThreatFor ThreatFor { get; }
     public bool IsControlled { get; }
     
-    public Monster(int id, Point position, int health, int xTrajectory, int yTrajectory, bool nearBase, ThreatFor threatFor, bool isControlled)
+    public Monster(int id, Point position, int health, int speedX, int speedY, bool nearBase, ThreatFor threatFor, bool isControlled)
     {
         Id = id;
         Position = position;
         Health = health;
-        XTrajectory = xTrajectory;
-        YTrajectory = yTrajectory;
+        SpeedX = speedX;
+        SpeedY = speedY;
         NearBase = nearBase;
         ThreatFor = threatFor;
         IsControlled = isControlled;

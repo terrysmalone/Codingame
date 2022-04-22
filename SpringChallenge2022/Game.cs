@@ -5,6 +5,7 @@ using System.Linq;
 
 namespace SpringChallenge2022;
 
+// Best rank so far 260
 internal class Game
 {
     private readonly Point _playerBaseLocation;

@@ -54,6 +54,7 @@ internal static class Debugger
 }
 
 
+// Best rank so far 260
 internal class Game
 {
     private readonly Point _playerBaseLocation;

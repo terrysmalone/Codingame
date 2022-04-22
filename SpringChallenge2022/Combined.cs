@@ -75,6 +75,7 @@ internal class Game
 
     private const int _windSpellRange = 1280;
     private const int _controlSpellange = 2200;
+    private const int _shieldSpellRange = 2200;
 
     private const int _outskirtsMinDist = 5000;
     private const int _outskirtsMaxDist = 7000;
@@ -105,7 +106,7 @@ internal class Game
 
         //Debugger.DisplayPlayerHeroes(_playerHeroes);
         //Debugger.DisplayEnemyHeroes(_enemyHeroes);
-        Debugger.DisplayMonsters(_monsters);
+        //Debugger.DisplayMonsters(_monsters);
 
         // Check if we want to change any strategy
             // When we change strategy reset the guard points
@@ -421,6 +422,7 @@ internal class Game
 
     private void AssignAttackSpells()
     {
+        Debugger.DisplayMonsters(_monsters);
         foreach (var attackingHero in _playerHeroes.Where(h => h.Strategy == Strategy.Attack))
         {
             if (_estimatedManaLeft < 10)
@@ -428,14 +430,26 @@ internal class Game
                 return;
             }
 
-            var closeMonster = _monsters.FirstOrDefault(m => CalculateDistance(m.Position, attackingHero.Position) <= _windSpellRange);
+            var closeEnoughForWindMonster = _monsters.FirstOrDefault(m => CalculateDistance(m.Position, attackingHero.Position) <= _windSpellRange);
 
-            if (closeMonster != null)
+            if (closeEnoughForWindMonster != null)
             {
-                Console.Error.WriteLine($"Atacking hero {attackingHero.Id} to cast WIND on monster {closeMonster.Id}");
+                Console.Error.WriteLine($"Atacking hero {attackingHero.Id} to cast WIND on monster {closeEnoughForWindMonster.Id}");
 
                 attackingHero.CurrentAction = $"SPELL WIND {_enemyBaseLocation.X} {_enemyBaseLocation.Y}";
                 attackingHero.CurrentMonster = -1;
+            }
+            else // If we're not close enough for a wind spell try a shield
+            {
+                var closeEnoughForShieldMonster = _monsters.FirstOrDefault(m => CalculateDistance(m.Position, attackingHero.Position) <= _shieldSpellRange);
+
+                if (closeEnoughForShieldMonster != null)
+                {
+                    Console.Error.WriteLine($"Atacking hero {attackingHero.Id} to cast SHIELD on monster {closeEnoughForShieldMonster.Id}");
+
+                    attackingHero.CurrentAction = $"SPELL SHIELD {closeEnoughForShieldMonster.Id}";
+                    attackingHero.CurrentMonster = -1;
+                }
             }
         }
     }

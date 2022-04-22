@@ -56,10 +56,6 @@ internal class Game
 
         var moves = new string[_heroesPerPlayer];
 
-        //Debugger.DisplayPlayerHeroes(_playerHeroes);
-        //Debugger.DisplayEnemyHeroes(_enemyHeroes);
-        //Debugger.DisplayMonsters(_monsters);
-
         foreach (var hero in _playerHeroes)
         {
             hero.CurrentAction = string.Empty;
@@ -400,9 +396,10 @@ internal class Game
             }
             else // If we're not close enough for a wind spell try a shield
             {
-                var closeEnoughForShieldMonster = _monsters.FirstOrDefault(m => CalculateDistance(m.Position, attackingHero.Position) <= _shieldSpellRange
+                var closeEnoughForShieldMonster = _monsters.FirstOrDefault(m => m.ShieldLife == 0
                                                                                     && m.ThreatFor == ThreatFor.Enemy
-                                                                                    && m.ShieldLife == 0);
+                                                                                    && CalculateDistance(m.Position, attackingHero.Position) <= _shieldSpellRange
+                                                                                    && CalculateDistance(m.Position, _enemyBaseLocation) <= _outskirtsMinDist);
 
                 if (closeEnoughForShieldMonster != null)
                 {

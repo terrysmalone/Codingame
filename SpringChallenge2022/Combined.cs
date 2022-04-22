@@ -163,19 +163,15 @@ internal class Game
 
     private void SetGuardPoints()
     {
-        if (_playerHeroes[0].GuardPoint.X == 0 && _playerHeroes[0].GuardPoint.Y == 0)   // or we've changed a Strategy
+        if (_playerHeroes[0].GetNumberOfGuardPoints() == 0)   // or we've changed a Strategy
         {
-            var guardPoints = new List<Point>();
+            var guardPoints = new List<List<Point>>();
 
             // Assign defenders
             guardPoints.AddRange(GetDefenders());
 
-            Console.Error.WriteLine($"guardPoints.Count: {guardPoints.Count}");
-
             // Assign others
             guardPoints.AddRange(GetAttackers());
-
-            Console.Error.WriteLine($"guardPoints.Count: {guardPoints.Count}");
 
             // Set guard points
             if (_playerHeroes.Count != guardPoints.Count)
@@ -191,54 +187,54 @@ internal class Game
             {
                 Console.Error.WriteLine($"i: {i}");
                 var hero = _playerHeroes[i];
-                hero.GuardPoint = guardPoints[i];
+                hero.SetGuardPoints(guardPoints[i]);
             }
         }
     }
 
-    private IEnumerable<Point> GetDefenders()
+    private List<List<Point>> GetDefenders()
     {
-        var defendPoints = new List<Point>();
-
         var numberOfDefenders = _playerHeroes.Count(h => h.Strategy == Strategy.Defend);
+
+        var defendPoints = new List<List<Point>>();
 
         if (numberOfDefenders == 1)
         {
             if (_playerBaseLocation.X == 0)
             {
-                defendPoints.Add(new Point(4000, 4000));
+                defendPoints.Add(new List<Point> { new Point(4000, 4000) });
             }
             else
             {
-                defendPoints.Add(new Point(_xMax - 4000, _yMax - 4000));
+                defendPoints.Add(new List<Point> { new Point(_xMax - 4000, _yMax - 4000) });
             }
         }
         else if (numberOfDefenders == 2)
         {
             if (_playerBaseLocation.X == 0)
             {
-                defendPoints.Add(new Point(5700, 2500));
-                defendPoints.Add(new Point(2500, 5700));
+                defendPoints.Add(new List<Point> { new Point(5700, 2500) });
+                defendPoints.Add(new List<Point> { new Point(2500, 5700) });
             }
             else
             {
-                defendPoints.Add(new Point(_xMax - 5700, _yMax - 2500));
-                defendPoints.Add(new Point(_xMax - 2500, _yMax - 5700));
+                defendPoints.Add(new List<Point> { new Point(_xMax - 5700, _yMax - 2500) });
+                defendPoints.Add(new List<Point> { new Point(_xMax - 2500, _yMax - 5700) });
             }
         }
         else if (numberOfDefenders == 3)
         {
             if (_playerBaseLocation.X == 0)
             {
-                defendPoints.Add(new Point(5000, 2000));
-                defendPoints.Add(new Point(4000, 4000));
-                defendPoints.Add(new Point(2000, 5000));
+                defendPoints.Add(new List<Point> { new Point(5000, 2000) });
+                defendPoints.Add(new List<Point> { new Point(4000, 4000) });
+                defendPoints.Add(new List<Point> { new Point(2000, 5000) });
             }
             else
             {
-                defendPoints.Add(new Point(_xMax - 5000, _yMax - 2000));
-                defendPoints.Add(new Point(_xMax - 4000, _yMax - 4000));
-                defendPoints.Add(new Point(_xMax - 2000, _yMax - 5000));
+                defendPoints.Add(new List<Point> { new Point(_xMax - 5000, _yMax - 2000) });
+                defendPoints.Add(new List<Point> { new Point(_xMax - 4000, _yMax - 4000) });
+                defendPoints.Add(new List<Point> { new Point(_xMax - 2000, _yMax - 5000) });
             }
         }
 
@@ -322,21 +318,21 @@ internal class Game
         }
     }
 
-    private IEnumerable<Point> GetAttackers()
+    private List<List<Point>> GetAttackers()
     {
         var numberOfAttackers = _playerHeroes.Count(h => h.Strategy == Strategy.Attack);
 
-        var attackPoints = new List<Point>();
+        var attackPoints = new List<List<Point>>();
 
         if (numberOfAttackers == 1)
         {
             if (_playerBaseLocation.X == 0)
             {
-                attackPoints.Add(new Point(_xMax - 3750, _yMax - 3750));
+                attackPoints.Add(new List<Point> { new Point(_xMax - 3750, _yMax - 3750)});
             }
             else
             {
-                attackPoints.Add(new Point(3750, 3750));
+                attackPoints.Add(new List<Point> { new Point(3750, 3750)});
             }
         }
 
@@ -427,8 +423,8 @@ internal class Game
                 hero.CurrentAction = $"MOVE {monsterToAttack.Position.X} {monsterToAttack.Position.Y}";
             }
             else
-            {
-                hero.CurrentAction = $"MOVE {hero.GuardPoint.X} {hero.GuardPoint.Y}";
+            {   var nextGuardPoint = hero.GetCurrentGuardPoint();
+                hero.CurrentAction = $"MOVE {nextGuardPoint.X} {nextGuardPoint.Y}";
             }
         }
     }
@@ -605,10 +601,11 @@ internal class Game
 
 internal sealed class Hero
 {
+    private int _currentGuardPoint = 0;
+    private List<Point> _guardPoints;
+
     public int Id { get; }
     public Point Position { get; set; }
-
-    public Point GuardPoint { get; set; }
 
     internal int CurrentMonster { get; set; } = -1;
 
@@ -629,6 +626,36 @@ internal sealed class Hero
         Position = position;
         IsControlled = isControlled;
         ShieldLife = shieldLife;
+
+        _guardPoints = new List<Point>();
+    }
+
+
+    public void SetGuardPoints(List<Point> guardPoints)
+    {
+        Console.Error.WriteLine($"guardPoints.Count: {guardPoints.Count}");
+        _guardPoints = new List<Point>(guardPoints);
+    }
+
+    public Point GetCurrentGuardPoint()
+    {
+        var guardPointToReturn = new Point(_guardPoints[_currentGuardPoint].X, _guardPoints[_currentGuardPoint].Y);
+
+        if (_currentGuardPoint >= _guardPoints.Count - 1)
+        {
+            _currentGuardPoint = 0;
+        }
+        else
+        {
+            _currentGuardPoint++;
+        }
+
+        return guardPointToReturn;
+    }
+
+    public int GetNumberOfGuardPoints()
+    {
+        return _guardPoints.Count;
     }
 }
 

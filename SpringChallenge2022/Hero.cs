@@ -1,14 +1,17 @@
-﻿using System.Drawing;
+﻿using System;
+using System.Collections.Generic;
+using System.Drawing;
 using System.Runtime.InteropServices;
 
 namespace SpringChallenge2022;
 
 internal sealed class Hero
 {
+    private int _currentGuardPoint = 0;
+    private List<Point> _guardPoints;
+
     public int Id { get; }
     public Point Position { get; set; }
-
-    public Point GuardPoint { get; set; }
 
     internal int CurrentMonster { get; set; } = -1;
 
@@ -29,5 +32,35 @@ internal sealed class Hero
         Position = position;
         IsControlled = isControlled;
         ShieldLife = shieldLife;
+
+        _guardPoints = new List<Point>();
+    }
+
+
+    public void SetGuardPoints(List<Point> guardPoints)
+    {
+        Console.Error.WriteLine($"guardPoints.Count: {guardPoints.Count}");
+        _guardPoints = new List<Point>(guardPoints);
+    }
+
+    public Point GetCurrentGuardPoint()
+    {
+        var guardPointToReturn = new Point(_guardPoints[_currentGuardPoint].X, _guardPoints[_currentGuardPoint].Y);
+
+        if (_currentGuardPoint >= _guardPoints.Count - 1)
+        {
+            _currentGuardPoint = 0;
+        }
+        else
+        {
+            _currentGuardPoint++;
+        }
+
+        return guardPointToReturn;
+    }
+
+    public int GetNumberOfGuardPoints()
+    {
+        return _guardPoints.Count;
     }
 }

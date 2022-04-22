@@ -398,7 +398,7 @@ internal class Game
             return;
         }
 
-        var closeDistance = 2000;
+        var closeDistance = 3000;
 
         var closestMonster = _monsters.FirstOrDefault(m => CalculateDistance(m.Position, _playerBaseLocation) <= closeDistance);
 

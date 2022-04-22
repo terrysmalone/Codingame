@@ -361,7 +361,10 @@ internal class Game
                 return;
             }
 
-            var monsterWithinSpellRange = _monsters.Where(m => m.Health > healthCutOff && m.IsControlled == false && m.ThreatFor != ThreatFor.Enemy)
+            var monsterWithinSpellRange = _monsters.Where(m => m.Health > healthCutOff
+                                                                      && m.IsControlled == false
+                                                                      && m.ThreatFor != ThreatFor.Enemy
+                                                                      && m.ShieldLife == 0)
                                                    .Select(m => new { m, distance = CalculateDistance(m.Position, defendingHeroOutsideOfBase.Position)})
                                                    .Where(m => m.distance <= _controlSpellange)
                                                    .OrderBy(m => m.distance)
@@ -386,7 +389,8 @@ internal class Game
                 return;
             }
 
-            var closeEnoughForWindMonster = _monsters.FirstOrDefault(m => CalculateDistance(m.Position, attackingHero.Position) <= _windSpellRange);
+            var closeEnoughForWindMonster = _monsters.FirstOrDefault(m => CalculateDistance(m.Position, attackingHero.Position) <= _windSpellRange
+                                                                                 && m.ShieldLife == 0);
 
             if (closeEnoughForWindMonster != null)
             {
@@ -418,36 +422,11 @@ internal class Game
 
         var closeDistance = 3000;
 
-        var closestMonster = _monsters.FirstOrDefault(m => CalculateDistance(m.Position, _playerBaseLocation) <= closeDistance);
+        var closestMonster = _monsters.FirstOrDefault(m => CalculateDistance(m.Position, _playerBaseLocation) <= closeDistance
+                                                               && m.ShieldLife == 0);
 
         if (closestMonster != null)
         {
-            var closeHeroes = _playerHeroes.Where(h => h.Strategy == Strategy.Defend)
-                                                               .OrderBy(h => CalculateDistance(h.Position, closestMonster.Position));
-
-            // All defenders to use wind
-            // foreach (var closeHero in closeHeroes)
-            // {
-            //     if (CalculateDistance(closeHero.Position, closestMonster.Position) <= windSpellDistance)
-            //     {
-            //         int xNew, yNew;
-            //
-            //         // very crude vector calc
-            //         if (_playerBaseLocation.X == 0)
-            //         {
-            //             xNew = closeHero.Position.X + 1;
-            //             yNew = closeHero.Position.Y + 1;
-            //         }
-            //         else
-            //         {
-            //             xNew = closeHero.Position.X - 1;
-            //             yNew = closeHero.Position.Y - 1;
-            //         }
-            //
-            //         closeHero.CurrentAction = $"SPELL WIND {xNew} {yNew}";
-            //     }
-            // }
-
             var closestHero = _playerHeroes.Where(h => h.Strategy == Strategy.Defend)
                                            .OrderBy(h => CalculateDistance(h.Position, closestMonster.Position))
                                            .First();

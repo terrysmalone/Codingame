@@ -446,7 +446,8 @@ internal class Game
             else // If we're not close enough for a wind spell try a shield
             {
                 var closeEnoughForShieldMonster = _monsters.FirstOrDefault(m => CalculateDistance(m.Position, attackingHero.Position) <= _shieldSpellRange
-                                                                                    && m.ThreatFor == ThreatFor.Enemy);
+                                                                                    && m.ThreatFor == ThreatFor.Enemy
+                                                                                    && m.ShieldLife == 0);
 
                 if (closeEnoughForShieldMonster != null)
                 {
@@ -609,9 +610,10 @@ internal sealed class Monster
     public int SpeedY { get; }
     public bool NearBase { get; }
     public ThreatFor ThreatFor { get; }
+    public int ShieldLife { get; }
     public bool IsControlled { get; }
     
-    public Monster(int id, Point position, int health, int speedX, int speedY, bool nearBase, ThreatFor threatFor, bool isControlled)
+    public Monster(int id, Point position, int health, int speedX, int speedY, bool nearBase, ThreatFor threatFor, bool isControlled, int shieldLife)
     {
         Id = id;
         Position = position;
@@ -621,6 +623,7 @@ internal sealed class Monster
         NearBase = nearBase;
         ThreatFor = threatFor;
         IsControlled = isControlled;
+        ShieldLife = shieldLife;
     }
 }
 
@@ -706,7 +709,7 @@ internal sealed class Player
                             threatForEnum = ThreatFor.None;
                             break;
                     }
-                    game.AddMonster(new Monster(id, new Point(x, y), health, vx, vy, nearBase != 0, threatForEnum, isControlled == 1));
+                    game.AddMonster(new Monster(id, new Point(x, y), health, vx, vy, nearBase != 0, threatForEnum, isControlled == 1, shieldLife));
                 }
                 else
                 {

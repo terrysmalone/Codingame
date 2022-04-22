@@ -397,7 +397,8 @@ internal class Game
             else // If we're not close enough for a wind spell try a shield
             {
                 var closeEnoughForShieldMonster = _monsters.FirstOrDefault(m => CalculateDistance(m.Position, attackingHero.Position) <= _shieldSpellRange
-                                                                                    && m.ThreatFor == ThreatFor.Enemy);
+                                                                                    && m.ThreatFor == ThreatFor.Enemy
+                                                                                    && m.ShieldLife == 0);
 
                 if (closeEnoughForShieldMonster != null)
                 {

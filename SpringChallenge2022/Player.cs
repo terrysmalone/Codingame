@@ -34,8 +34,6 @@ internal sealed class Player
             var playerMana = int.Parse(inputs[1]); // Ignore in the first league; Spend ten mana to cast a spell
             game.SetMana(playerMana);
 
-            Console.Error.WriteLine($"playerMana: {playerMana}");
-
             game.SetPlayerBaseHealth(playerBaseHealth);
 
             // enemy base stats

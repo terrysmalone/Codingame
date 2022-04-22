@@ -176,7 +176,10 @@ internal class Game
     private void ClearStaleAttacks()
     {
         ClearDeadMonsters();
+
         ClearMonstersIfDefenderIsTooFarAway();
+        ClearMonstersIfTheyreAThreatForTheEnemy();
+
         ClearMonstersFromEnemyOutskirts();
     }
 
@@ -201,6 +204,20 @@ internal class Game
             if (hero.CurrentMonster >= 0)
             {
                 if (CalculateDistance(hero.Position, _playerBaseLocation) > _maxDefenderDistanceFromBase)
+                {
+                    hero.CurrentMonster = -1;
+                }
+            }
+        }
+    }
+
+    private void ClearMonstersIfTheyreAThreatForTheEnemy()
+    {
+        foreach (var hero in _playerHeroes)
+        {
+            if (hero.CurrentMonster >= 0)
+            {
+                if (_monsters.Any(m => m.Id == hero.CurrentMonster && m.ThreatFor == ThreatFor.Enemy))
                 {
                     hero.CurrentMonster = -1;
                 }
@@ -281,7 +298,8 @@ internal class Game
 
                 foreach (var freeDefendingHero in freeDefendingHeroes)
                 {
-                    var monsterWithinRange = _monsters.Where(m => CalculateDistance(m.Position, _playerBaseLocation) <= _maxDefenderDistanceFromBase)
+                    var monsterWithinRange = _monsters.Where(m => CalculateDistance(m.Position, _playerBaseLocation) <= _maxDefenderDistanceFromBase
+                                                                      && m.ThreatFor != ThreatFor.Enemy)
                                                       .Select(m => new { m, distance = CalculateDistance(m.Position, freeDefendingHero.Position)})
                                                       .Where(m => m.distance <= _heroRange)
                                                       .OrderBy(m => m.distance)
@@ -341,7 +359,6 @@ internal class Game
 
         if (_estimatedManaLeft < 10)
         {
-            Console.Error.WriteLine($"No estimated mana cutting out early");
             return;
         }
 
@@ -353,14 +370,14 @@ internal class Game
         {
             if (_estimatedManaLeft < 10)
             {
-                Console.Error.WriteLine($"No estimated mana. Cutting out in for loop");
                 return;
             }
 
             var monsterWithinSpellRange = _monsters.Where(m => m.Health > healthCutOff
                                                                       && m.IsControlled == false
                                                                       && m.ThreatFor != ThreatFor.Enemy
-                                                                      && m.ShieldLife == 0)
+                                                                      && m.ShieldLife == 0
+                                                                      && CalculateDistance(m.Position, _playerBaseLocation) > _baseRadius)
                                                    .Select(m => new { m, distance = CalculateDistance(m.Position, defendingHeroOutsideOfBase.Position)})
                                                    .Where(m => m.distance <= _controlSpellange)
                                                    .OrderBy(m => m.distance)
@@ -369,7 +386,6 @@ internal class Game
 
             if (monsterWithinSpellRange != null)
             {
-                Debugger.DisplayMonsters(new List<Monster> { monsterWithinSpellRange });
                 PerformSpell(defendingHeroOutsideOfBase, $"SPELL CONTROL {monsterWithinSpellRange.Id} {_enemyBaseLocation.X} {_enemyBaseLocation.Y}");
             }
         }
@@ -377,7 +393,6 @@ internal class Game
 
     private void AssignAttackSpells()
     {
-        Debugger.DisplayMonsters(_monsters);
         foreach (var attackingHero in _playerHeroes.Where(h => h.Strategy == Strategy.Attack))
         {
             if (_estimatedManaLeft < 10)

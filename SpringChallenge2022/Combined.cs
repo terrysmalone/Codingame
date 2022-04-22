@@ -409,7 +409,7 @@ internal class Game
                 return;
             }
 
-            var monsterWithinSpellRange = _monsters.Where(m => m.Health > healthCutOff && m.IsControlled == false)
+            var monsterWithinSpellRange = _monsters.Where(m => m.Health > healthCutOff && m.IsControlled == false && m.ThreatFor != ThreatFor.Enemy)
                                                    .Select(m => new { m, distance = CalculateDistance(m.Position, defendingHeroOutsideOfBase.Position)})
                                                    .Where(m => m.distance <= _controlSpellange)
                                                    .OrderBy(m => m.distance)
@@ -444,7 +444,8 @@ internal class Game
             }
             else // If we're not close enough for a wind spell try a shield
             {
-                var closeEnoughForShieldMonster = _monsters.FirstOrDefault(m => CalculateDistance(m.Position, attackingHero.Position) <= _shieldSpellRange);
+                var closeEnoughForShieldMonster = _monsters.FirstOrDefault(m => CalculateDistance(m.Position, attackingHero.Position) <= _shieldSpellRange
+                                                                                    && m.ThreatFor == ThreatFor.Enemy);
 
                 if (closeEnoughForShieldMonster != null)
                 {

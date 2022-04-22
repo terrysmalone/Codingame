@@ -28,6 +28,8 @@ internal class Game
     private const int _outskirtsMinDist = 5000;
     private const int _outskirtsMaxDist = 7000;
     private const int _heroRange = 2200;
+    private const int _maxDefenderDistanceFromBase = 7500;
+    private const int _baseRadius = 5000;
 
 
     private List<Strategy> _defaultStrategies = new List<Strategy>(0);
@@ -58,8 +60,7 @@ internal class Game
         SetGuardPoints();
 
         // If a monster has died clear it from the current monser ID
-        ClearDeadMonsters();
-        ClearMonstersFromEnemyOutskirts();
+        ClearStaleAttacks();
 
         // At a basic level we want all heros to move towards someone to attack
         AssignMonstersToAttack();
@@ -169,25 +170,11 @@ internal class Game
         return defendPoints;
     }
 
-    private IEnumerable<Point> GetAttackers()
+    private void ClearStaleAttacks()
     {
-        var numberOfAttackers = _playerHeroes.Count(h => h.Strategy == Strategy.Attack);
-
-        var attackPoints = new List<Point>();
-
-        if (numberOfAttackers == 1)
-        {
-            if (_playerBaseLocation.X == 0)
-            {
-                attackPoints.Add(new Point(_xMax - 3750, _yMax - 3750));
-            }
-            else
-            {
-                attackPoints.Add(new Point(3750, 3750));
-            }
-        }
-
-        return attackPoints;
+        ClearDeadMonsters();
+        ClearMonstersIfDefenderIsTooFarAway();
+        ClearMonstersFromEnemyOutskirts();
     }
 
     private void ClearDeadMonsters()
@@ -197,6 +184,20 @@ internal class Game
             if (hero.CurrentMonster >= 0)
             {
                 if (!_monsters.Any(m => m.Id == hero.CurrentMonster))
+                {
+                    hero.CurrentMonster = -1;
+                }
+            }
+        }
+    }
+
+    private void ClearMonstersIfDefenderIsTooFarAway()
+    {
+        foreach (var hero in _playerHeroes.Where(h => h.Strategy == Strategy.Defend))
+        {
+            if (hero.CurrentMonster >= 0)
+            {
+                if (CalculateDistance(hero.Position, _playerBaseLocation) > _maxDefenderDistanceFromBase)
                 {
                     hero.CurrentMonster = -1;
                 }
@@ -221,9 +222,43 @@ internal class Game
         }
     }
 
+    private IEnumerable<Point> GetAttackers()
+    {
+        var numberOfAttackers = _playerHeroes.Count(h => h.Strategy == Strategy.Attack);
+
+        var attackPoints = new List<Point>();
+
+        if (numberOfAttackers == 1)
+        {
+            if (_playerBaseLocation.X == 0)
+            {
+                attackPoints.Add(new Point(_xMax - 3750, _yMax - 3750));
+            }
+            else
+            {
+                attackPoints.Add(new Point(3750, 3750));
+            }
+        }
+
+        return attackPoints;
+    }
+
     private void AssignMonstersToAttack()
     {
         List<Monster> monstersThreateningBase;
+
+        // if a hero is not in the base, and a spider is, drop everything and defend
+        monstersThreateningBase = _monsters.Where(m => m.NearBase && m.ThreatFor == ThreatFor.Player)
+                                           .OrderBy(m => CalculateDistance(m.Position, _playerBaseLocation))
+                                           .ToList();
+
+        var defendingHeroesOutsideOfBase = _playerHeroes.Where(h => h.Strategy == Strategy.Defend
+                                                                                    && CalculateDistance(h.Position, _playerBaseLocation) > _baseRadius);
+
+        foreach (var defendingHeroOutsideOfBase in defendingHeroesOutsideOfBase)
+        {
+            defendingHeroOutsideOfBase.CurrentMonster = -1;
+        }
 
         // Define defenders attacks
         var freeDefendingHeroes = _playerHeroes.Where(h => h.Strategy == Strategy.Defend && h.CurrentMonster == -1).ToList();
@@ -234,12 +269,6 @@ internal class Game
             // attack them
             // else
             // head towards an enemy on the outskirts
-
-            monstersThreateningBase = _monsters.Where(m => m.NearBase && m.ThreatFor == ThreatFor.Player)
-                                               .OrderBy(m => CalculateDistance(m.Position, _playerBaseLocation))
-                                               .ToList();
-
-            var monsterIndex = 0;
 
             if (monstersThreateningBase.Count > 0)
             {
@@ -256,7 +285,8 @@ internal class Game
 
                 foreach (var freeDefendingHero in freeDefendingHeroes)
                 {
-                    var monsterWithinRange = _monsters.Select(m => new { m, distance = CalculateDistance(m.Position, freeDefendingHero.Position)})
+                    var monsterWithinRange = _monsters.Where(m => CalculateDistance(m.Position, _playerBaseLocation) <= _maxDefenderDistanceFromBase)
+                                                      .Select(m => new { m, distance = CalculateDistance(m.Position, freeDefendingHero.Position)})
                                                       .Where(m => m.distance <= _heroRange)
                                                       .OrderBy(m => m.distance)
                                                       .Select(m => m.m)

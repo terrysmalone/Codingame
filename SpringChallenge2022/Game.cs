@@ -56,7 +56,7 @@ internal class Game
 
         //Debugger.DisplayPlayerHeroes(_playerHeroes);
         //Debugger.DisplayEnemyHeroes(_enemyHeroes);
-        //Debugger.DisplayMonsters(_monsters);
+        Debugger.DisplayMonsters(_monsters);
 
         // Check if we want to change any strategy
             // When we change strategy reset the guard points
@@ -72,11 +72,9 @@ internal class Game
         // Defending the base is priority one. See if we need to fire a defensive wind spell
         AssignDefensiveWindSpell();
 
-        AssignDefenderControlSpells();
-
         AssignAttackSpells();
 
-        Debugger.DisplayPlayerHeroes(_playerHeroes);
+        AssignDefenderControlSpells();
 
         for (var i = 0; i < moves.Length; i++)
         {
@@ -306,19 +304,8 @@ internal class Game
         if (freeAttackingHeroes.Count > 0)
         {
             // Get any monsters on the edge of the enemies base
-            Console.Error.WriteLine($"Monster count: {_monsters.Count}");
-
-            foreach (var monster in _monsters)
-            {
-                Console.Error.WriteLine($"Distance to enemy base for {monster.Id}: {CalculateDistance(monster.Position, _enemyBaseLocation)}");
-            }
-
             var monstersOnOutskirts = _monsters.Where(m => CalculateDistance(m.Position, _enemyBaseLocation) > _outskirtsMinDist
                                                            && CalculateDistance(m.Position, _enemyBaseLocation) < _outskirtsMaxDist).ToList();
-
-            Console.Error.WriteLine($"monstersOnOutskirts: {monstersOnOutskirts.Count}");
-
-            Debugger.DisplayMonsters(monstersOnOutskirts);
 
             // Go to them
             if (monstersOnOutskirts.Count > 1)
@@ -327,8 +314,6 @@ internal class Game
                 {
                     var closestMonster = monstersOnOutskirts.OrderBy(m => CalculateDistance(freeAttackingHero.Position, m.Position))
                                                             .First();
-
-                    Console.Error.WriteLine($"Moving atacking hero {freeAttackingHero.Id} to monster {closestMonster.Id}");
 
                     freeAttackingHero.CurrentMonster = closestMonster.Id;
                 }
@@ -353,6 +338,8 @@ internal class Game
 
     private void AssignDefenderControlSpells()
     {
+        var healthCutOff = 10;
+
         if (_estimatedManaLeft < 10)
         {
             return;
@@ -368,7 +355,8 @@ internal class Game
                 return;
             }
 
-            var monsterWithinSpellRange = _monsters.Select(m => new { m, distance = CalculateDistance(m.Position, defendingHeroOutsideOfBase.Position)})
+            var monsterWithinSpellRange = _monsters.Where(m => m.Health > healthCutOff)
+                                                   .Select(m => new { m, distance = CalculateDistance(m.Position, defendingHeroOutsideOfBase.Position)})
                                                    .Where(m => m.distance <= _controlSpellange)
                                                    .OrderBy(m => m.distance)
                                                    .Select(m => m.m)

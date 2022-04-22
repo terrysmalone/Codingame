@@ -414,8 +414,7 @@ internal class Game
 
             if (monsterWithinSpellRange != null)
             {
-                defendingHeroOutsideOfBase.CurrentAction = $"SPELL CONTROL {monsterWithinSpellRange.Id} {_enemyBaseLocation.X} {_enemyBaseLocation.Y}";
-                defendingHeroOutsideOfBase.CurrentMonster = -1;
+                PerformSpell(defendingHeroOutsideOfBase, $"SPELL CONTROL {monsterWithinSpellRange.Id} {_enemyBaseLocation.X} {_enemyBaseLocation.Y}");
             }
         }
     }
@@ -436,8 +435,7 @@ internal class Game
             {
                 Console.Error.WriteLine($"Atacking hero {attackingHero.Id} to cast WIND on monster {closeEnoughForWindMonster.Id}");
 
-                attackingHero.CurrentAction = $"SPELL WIND {_enemyBaseLocation.X} {_enemyBaseLocation.Y}";
-                attackingHero.CurrentMonster = -1;
+                PerformSpell(attackingHero, $"SPELL WIND {_enemyBaseLocation.X} {_enemyBaseLocation.Y}");
             }
             else // If we're not close enough for a wind spell try a shield
             {
@@ -446,9 +444,7 @@ internal class Game
                 if (closeEnoughForShieldMonster != null)
                 {
                     Console.Error.WriteLine($"Atacking hero {attackingHero.Id} to cast SHIELD on monster {closeEnoughForShieldMonster.Id}");
-
-                    attackingHero.CurrentAction = $"SPELL SHIELD {closeEnoughForShieldMonster.Id}";
-                    attackingHero.CurrentMonster = -1;
+                    PerformSpell(attackingHero, $"SPELL SHIELD {closeEnoughForShieldMonster.Id}");
                 }
             }
         }
@@ -514,9 +510,7 @@ internal class Game
                     yNew = closestHero.Position.Y - 1;
                 }
 
-                _estimatedManaLeft -= 10;
-
-                closestHero.CurrentAction = $"SPELL WIND {xNew} {yNew}";
+                PerformSpell(closestHero, $"SPELL WIND {xNew} {yNew}");
             }
         }
     }
@@ -575,6 +569,13 @@ internal class Game
     internal void ClearMonsters()
     {
         _monsters.Clear();
+    }
+
+    private void PerformSpell(Hero hero, string action)
+    {
+        hero.CurrentAction = action;
+        hero.CurrentMonster = -1;
+        _estimatedManaLeft -= 10;
     }
 }
 

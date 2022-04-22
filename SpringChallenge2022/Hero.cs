@@ -16,11 +16,18 @@ internal sealed class Hero
 
     internal bool UsingSpell {get; set; } = false;
 
-    internal Strategy Strategy { get; set;} = Strategy.Defend;
+    internal bool IsControlled { get; set; } = false;
 
-    public Hero(int id, Point position)
+    internal int ShieldLife { get; set; }
+
+    internal Strategy Strategy { get; set;} = Strategy.Defend;
+    internal  bool IsShielding { get; set; }
+
+    public Hero(int id, Point position, bool isControlled, int shieldLife)
     {
         Id = id;
         Position = position;
+        IsControlled = isControlled;
+        ShieldLife = shieldLife;
     }
 }

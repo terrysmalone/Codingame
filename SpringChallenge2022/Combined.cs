@@ -54,7 +54,6 @@ internal static class Debugger
 }
 
 
-// Best rank so far 260
 internal class Game
 {
     private readonly Point _playerBaseLocation;
@@ -84,6 +83,8 @@ internal class Game
     private const int _maxDefenderDistanceFromBase = 7500;
     private const int _baseRadius = 5000;
 
+    private bool _weGotAController = false; // If our opponent likes to control our defenders make sure they're always shielded
+
 
     private List<Strategy> _defaultStrategies = new List<Strategy>(0);
 
@@ -109,15 +110,37 @@ internal class Game
         {
             hero.CurrentAction = string.Empty;
             hero.UsingSpell = false;
+            hero.IsShielding = false;
         }
 
         SetGuardPoints();
+
+        CheckForController();
         ClearStaleAttacks();
 
         // At a basic level we want all heros to move towards someone to attack
         AssignMonstersToAttack();
 
         // Defending the base is priority one. See if we need to fire a defensive wind spell
+
+        if (_weGotAController)
+        {
+            foreach (var defendingHero in _playerHeroes.Where(h => h.Strategy == Strategy.Defend))
+            {
+                if (_estimatedManaLeft < 10)
+                {
+                    break;
+                }
+
+                if (defendingHero.ShieldLife == 0)
+                {
+                    PerformSpell(defendingHero, $"SPELL SHIELD {defendingHero.Id}");
+
+                    defendingHero.IsShielding = true;
+                }
+            }
+        }
+
         AssignDefensiveWindSpell();
 
         AssignDefenderControlSpells();
@@ -220,6 +243,14 @@ internal class Game
         }
 
         return defendPoints;
+    }
+
+    private void CheckForController()
+    {
+        if (!_weGotAController && _playerHeroes.Any(h => h.IsControlled))
+        {
+            _weGotAController = true;
+        }
     }
 
     private void ClearStaleAttacks()
@@ -412,7 +443,8 @@ internal class Game
         }
 
         var defendingHeroesOutsideOfBase = _playerHeroes.Where(h => h.Strategy == Strategy.Defend
-                                                                                       && CalculateDistance(h.Position, _playerBaseLocation) > _baseRadius);
+                                                                                    && h.IsShielding == false
+                                                                                    && CalculateDistance(h.Position, _playerBaseLocation) > _baseRadius);
 
 
         foreach (var defendingHeroOutsideOfBase in defendingHeroesOutsideOfBase)
@@ -488,7 +520,7 @@ internal class Game
 
         if (closestMonster != null)
         {
-            var closestHero = _playerHeroes.Where(h => h.Strategy == Strategy.Defend)
+            var closestHero = _playerHeroes.Where(h => h.Strategy == Strategy.Defend && h.IsShielding == false)
                                            .OrderBy(h => CalculateDistance(h.Position, closestMonster.Position))
                                            .First();
 
@@ -529,6 +561,8 @@ internal class Game
         else
         {
             playerHero.Position = hero.Position;
+            playerHero.IsControlled = hero.IsControlled;
+            playerHero.ShieldLife = hero.ShieldLife;
         }
     }
     public void UpdateEnemyHero(Hero hero)
@@ -582,12 +616,19 @@ internal sealed class Hero
 
     internal bool UsingSpell {get; set; } = false;
 
-    internal Strategy Strategy { get; set;} = Strategy.Defend;
+    internal bool IsControlled { get; set; } = false;
 
-    public Hero(int id, Point position)
+    internal int ShieldLife { get; set; }
+
+    internal Strategy Strategy { get; set;} = Strategy.Defend;
+    internal  bool IsShielding { get; set; }
+
+    public Hero(int id, Point position, bool isControlled, int shieldLife)
     {
         Id = id;
         Position = position;
+        IsControlled = isControlled;
+        ShieldLife = shieldLife;
     }
 }
 
@@ -702,7 +743,7 @@ internal sealed class Player
                 }
                 else
                 {
-                    var hero = new Hero(id, new Point(x, y));
+                    var hero = new Hero(id, new Point(x, y), isControlled == 1, shieldLife);
 
                     if (type == 1)
                     {

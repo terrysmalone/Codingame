@@ -19,6 +19,9 @@ internal class Game
     private List<Hero> _playerHeroes = new List<Hero>();
     private List<Hero> _enemyHeroes = new List<Hero>();
 
+    private const int _xMax = 17630;
+    private const int _yMax = 9000;
+
     internal Game(Point playerBaseLocation, int heroesPerPlayer)
     {
         _playerBaseLocation = playerBaseLocation;
@@ -62,32 +65,15 @@ internal class Game
 
     private void SetGuardPoints()
     {
-        const int xMax = 17630;
-        const int yMax = 9000;
-
         if (_playerHeroes[0].GuardPoint.X == 0 && _playerHeroes[0].GuardPoint.Y == 0)   // or we've changed a Strategy
         {
-            var numberOfDefenders = _playerHeroes.Count(h => h.Strategy == Strategy.Defend);
+
 
             var guardPoints = new List<Point>();
 
             // Assign defenders
-            if (numberOfDefenders == 3)
-            {
-                if (_playerBaseLocation.X == 0)
-                {
-                    guardPoints.Add(new Point(4000, 1000));
-                    guardPoints.Add(new Point(3000, 3000));
-                    guardPoints.Add(new Point(1000, 4000));
-                }
-                else
-                {
-                     guardPoints.Add(new Point(xMax - 4000, yMax - 1000));
-                     guardPoints.Add(new Point(xMax - 3000, yMax - 3000));
-                     guardPoints.Add(new Point(xMax - 1000, yMax - 4000));
-                }
-            }
-            
+            guardPoints.AddRange(GetDefenders());
+
             // Assign others
 
             // Set guard points
@@ -104,6 +90,30 @@ internal class Game
                 hero.GuardPoint = guardPoints[i];
             }
         }
+    }
+
+    private IEnumerable<Point> GetDefenders()
+    {
+        var defendPoints = new List<Point>();
+
+        var numberOfDefenders = _playerHeroes.Count(h => h.Strategy == Strategy.Defend);
+        if (numberOfDefenders == 3)
+        {
+            if (_playerBaseLocation.X == 0)
+            {
+                defendPoints.Add(new Point(4000, 1000));
+                defendPoints.Add(new Point(3000, 3000));
+                defendPoints.Add(new Point(1000, 4000));
+            }
+            else
+            {
+                defendPoints.Add(new Point(_xMax - 4000, _yMax - 1000));
+                defendPoints.Add(new Point(_xMax - 3000, _yMax - 3000));
+                defendPoints.Add(new Point(_xMax - 1000, _yMax - 4000));
+            }
+        }
+
+        return defendPoints;
     }
 
     private void ClearDeadMonsters()

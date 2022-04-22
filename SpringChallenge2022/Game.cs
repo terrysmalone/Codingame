@@ -98,7 +98,7 @@ internal class Game
     {
         List<Monster> viableMonsters;
 
-        viableMonsters = _monsters.Where(m => m.NearBase && m.ThreatFor == 1)
+        viableMonsters = _monsters.Where(m => m.NearBase && m.ThreatFor == ThreatFor.Player)
                                   .OrderBy(m => CalculateDistance(m.Position, _playerBaseLocation))
                                   .ToList();
 

@@ -68,7 +68,24 @@ internal sealed class Player
 
                 if (type == 0)
                 {
-                    game.AddMonster(new Monster(id, new Point(x, y), health, vx, vy, nearBase != 0, threatFor));
+                    var threatForEnum = ThreatFor.None;
+
+                    switch (threatFor)
+                    {
+                        case 0:
+                            threatForEnum = ThreatFor.None;
+                            break;
+                        case 1:
+                            threatForEnum = ThreatFor.Player;
+                            break;
+                        case 2:
+                            threatForEnum = ThreatFor.Enemy;
+                            break;
+                        default:
+                            threatForEnum = ThreatFor.None;
+                            break;
+                    }
+                    game.AddMonster(new Monster(id, new Point(x, y), health, vx, vy, nearBase != 0, threatForEnum));
                 }
                 else
                 {
@@ -97,4 +114,11 @@ internal sealed class Player
             }
         }
     }
+}
+
+internal enum ThreatFor
+{
+    None,
+    Player,
+    Enemy
 }

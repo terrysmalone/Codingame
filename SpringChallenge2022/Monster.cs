@@ -10,9 +10,9 @@ internal sealed class Monster
     public int XTrajectory { get; }
     public int YTrajectory { get; }
     public bool NearBase { get; }
-    public int ThreatFor { get; }
+    public ThreatFor ThreatFor { get; }
     
-    public Monster(int id, Point position, int health, int xTrajectory, int yTrajectory, bool nearBase, int threatFor)
+    public Monster(int id, Point position, int health, int xTrajectory, int yTrajectory, bool nearBase, ThreatFor threatFor)
     {
         Id = id;
         Position = position;

@@ -146,7 +146,7 @@ internal class Game
     {
         List<Monster> viableMonsters;
 
-        viableMonsters = _monsters.Where(m => m.NearBase && m.ThreatFor == 1)
+        viableMonsters = _monsters.Where(m => m.NearBase && m.ThreatFor == ThreatFor.Player)
                                   .OrderBy(m => CalculateDistance(m.Position, _playerBaseLocation))
                                   .ToList();
 
@@ -318,9 +318,9 @@ internal sealed class Monster
     public int XTrajectory { get; }
     public int YTrajectory { get; }
     public bool NearBase { get; }
-    public int ThreatFor { get; }
+    public ThreatFor ThreatFor { get; }
     
-    public Monster(int id, Point position, int health, int xTrajectory, int yTrajectory, bool nearBase, int threatFor)
+    public Monster(int id, Point position, int health, int xTrajectory, int yTrajectory, bool nearBase, ThreatFor threatFor)
     {
         Id = id;
         Position = position;
@@ -331,6 +331,7 @@ internal sealed class Monster
         ThreatFor = threatFor;
     }
 }
+
 
 /**
  * Auto-generated code below aims at helping you parse
@@ -396,7 +397,24 @@ internal sealed class Player
 
                 if (type == 0)
                 {
-                    game.AddMonster(new Monster(id, new Point(x, y), health, vx, vy, nearBase != 0, threatFor));
+                    var threatForEnum = ThreatFor.None;
+
+                    switch (threatFor)
+                    {
+                        case 0:
+                            threatForEnum = ThreatFor.None;
+                            break;
+                        case 1:
+                            threatForEnum = ThreatFor.Player;
+                            break;
+                        case 2:
+                            threatForEnum = ThreatFor.Enemy;
+                            break;
+                        default:
+                            threatForEnum = ThreatFor.None;
+                            break;
+                    }
+                    game.AddMonster(new Monster(id, new Point(x, y), health, vx, vy, nearBase != 0, threatForEnum));
                 }
                 else
                 {
@@ -425,4 +443,11 @@ internal sealed class Player
             }
         }
     }
+}
+
+internal enum ThreatFor
+{
+    None,
+    Player,
+    Enemy
 }

@@ -116,7 +116,7 @@ internal class Game
 
         if (_inCollectionPhase)
         {
-            if(_mana > 200)
+            if(_mana > 300)
             {
                 _inCollectionPhase = false;
 
@@ -156,9 +156,12 @@ internal class Game
 
         AssignDefensiveWindSpell();
 
-        AssignDefenderControlSpells();
+        if (!_inCollectionPhase)
+        {
+            AssignDefenderControlSpells();
 
-        AssignAttackSpells();
+            AssignAttackSpells();
+        }
 
         for (var i = 0; i < moves.Length; i++)
         {

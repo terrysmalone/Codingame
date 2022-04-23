@@ -37,7 +37,7 @@ internal sealed class MovementGenerator
         _heroRange = heroRange;
     }
 
-    internal void AssignHeroMovement(List<Hero> playerHeroes, List<Monster> monsters)
+    internal void AssignHeroMovement(List<Hero> playerHeroes, IEnumerable<Monster> monsters)
     {
         // if a hero is not in the base, and a spider is, drop everything and defend
         var monstersThreateningBase = monsters.Where(m => m.NearBase && m.ThreatFor == ThreatFor.Player)
@@ -109,7 +109,7 @@ internal sealed class MovementGenerator
         }
     }
 
-    private void CalculateDefenderMovement(IEnumerable<Hero> playerHeroes, IReadOnlyCollection<Monster> monsters, IReadOnlyCollection<Monster> monstersThreateningBase)
+    private void CalculateDefenderMovement(IEnumerable<Hero> playerHeroes, IEnumerable<Monster> monsters, IReadOnlyCollection<Monster> monstersThreateningBase)
     {
         var freeDefendingHeroes = playerHeroes.Where(h => h.Strategy == Strategy.Defend && h.CurrentMonster == -1).ToList();
 
@@ -149,7 +149,7 @@ internal sealed class MovementGenerator
         }
     }
 
-    private void CalculateCollectorMovement(IEnumerable<Hero> playerHeroes, IReadOnlyCollection<Monster> monsters)
+    private void CalculateCollectorMovement(IEnumerable<Hero> playerHeroes, IEnumerable<Monster> monsters)
     {
 
         var collectingHeroes = playerHeroes.Where(h => h.Strategy == Strategy.Collect && h.CurrentMonster == -1).ToList();

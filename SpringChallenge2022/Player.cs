@@ -26,8 +26,8 @@ internal sealed class Player
         {
             // Don't bother persisting monsters. It's quicker just to re-add them every time.
             // At least until we need to persist them
-            game.ClearMonsters();
-            game.ClearEnemyHeroes();
+            var enemyHeroes = new List<Hero>();
+            var monsters = new List<Monster>();
 
             // Player base stats
             inputs = Console.ReadLine().Split(' ');
@@ -76,7 +76,8 @@ internal sealed class Player
                             threatForEnum = ThreatFor.None;
                             break;
                     }
-                    game.AddMonster(new Monster(id, new Point(x, y), health, vx, vy, nearBase != 0, threatForEnum, isControlled == 1, shieldLife));
+
+                    monsters.Add(new Monster(id, new Point(x, y), health, vx, vy, nearBase != 0, threatForEnum, isControlled == 1, shieldLife));
                 }
                 else
                 {
@@ -88,12 +89,12 @@ internal sealed class Player
                     }
                     else
                     {
-                        game.AddEnemyHero(hero);
+                        enemyHeroes.Add(hero);
                     }
                 }
             }
 
-            var moves = game.GetMoves(playerMana);
+            var moves = game.GetMoves(enemyHeroes, monsters, playerMana);
 
             for (var i = 0; i < moves.Length; i++)
             {

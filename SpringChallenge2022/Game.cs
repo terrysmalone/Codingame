@@ -35,6 +35,7 @@ internal class Game
     private const int _heroRange = 2200;
     private const int _maxDefenderDistanceFromBase = 7500;
     private const int _baseRadius = 5000;
+    private const int _closeToBaseRange = 1000;
 
     private bool _weGotAController = false; // If our opponent likes to control our defenders make sure they're always shielded
 
@@ -257,28 +258,14 @@ internal class Game
             {
                 attackPoints.Add(new List<Point>
                 {
-                    new Point(_xMax - 3750, _yMax - 3750), // Middle
-                    new Point(_xMax - 2000, _yMax - 4500),
-                    //new Point(_xMax - 1000, _yMax - 5000),
-                    //new Point(_xMax - 2000, _yMax - 4500),
-                    new Point(_xMax - 3750, _yMax - 3750), // Middle
-                    new Point(_xMax - 4500, _yMax - 2000),
-                    new Point(_xMax - 5000, _yMax - 1000),
-                    new Point(_xMax - 4500, _yMax - 2000)
+                    new Point(_xMax - 3000, _yMax - 2500)
                 });
             }
             else
             {
                 attackPoints.Add(new List<Point>
                 {
-                    new Point(3750, 3750), // Middle
-                    new Point(2000, 4500),
-                    //new Point(1000, 5000),
-                    //new Point(2000, 4500),
-                    new Point(3750, 3750), // Middle
-                    new Point(4500, 2000),
-                    new Point(5000, 1000),
-                    new Point(4500, 2000)
+                    new Point(3000, 2500)
                 });
             }
         }
@@ -415,14 +402,15 @@ internal class Game
             }
         }
 
-        // Define controller moves
+        // Define collector moves
         var collectingHeroes = _playerHeroes.Where(h => h.Strategy == Strategy.Collect && h.CurrentMonster == -1).ToList();
 
         if (collectingHeroes.Count > 0)
         {
             foreach (var collectingHero in collectingHeroes)
             {
-                var closestMonster = _monsters.Select(m => new { m, distance = CalculateDistance(m.Position, collectingHero.Position)})
+                var closestMonster = _monsters.Where(m => CalculateDistance(m.Position, _playerBaseLocation) > _outskirtsMaxDist)
+                                              .Select(m => new { m, distance = CalculateDistance(m.Position, collectingHero.Position)})
                                               .Where(m => m.distance <= _heroRange)
                                               .OrderBy(m => m.distance)
                                               .Select(m => m.m)
@@ -563,8 +551,8 @@ internal class Game
             {
                 var closeEnoughForControlEnemy = _enemyHeroes.Where(e => e.ShieldLife == 0
                                                                                 && CalculateDistance(e.Position, attackingHero.Position) <= _controlSpellange)
-                                                                            .OrderBy(e => CalculateDistance(e.Position, _enemyBaseLocation))
-                                                                            .FirstOrDefault();
+                                                                  .OrderBy(e => CalculateDistance(e.Position, _enemyBaseLocation))
+                                                                  .FirstOrDefault();
 
                 var closeEnoughForSpellMonster = _monsters.FirstOrDefault(m => m.ShieldLife == 0
                                                                                     && m.ThreatFor == ThreatFor.Enemy
@@ -614,7 +602,31 @@ internal class Game
 
             if (CalculateDistance(closestHero.Position, closestMonster.Position) <= _windSpellRange)
             {
+                Console.Error.WriteLine("Hero casting wind");
                 PerformSpell(closestHero, $"SPELL WIND {_enemyBaseLocation.X} {_enemyBaseLocation.Y}");
+            }
+            else
+            {
+                // Too far away for wind to work
+
+                // If he's close and we can control that little shit away do it
+                if (CalculateDistance(closestMonster.Position, _playerBaseLocation) <= _closeToBaseRange
+                    && CalculateDistance(closestHero.Position, closestMonster.Position) <= _controlSpellange)
+                {
+                    Console.Error.WriteLine("Hero casting control");
+                    PerformSpell(closestHero, $"SPELL CONTROL {closestMonster.Id} {_enemyBaseLocation.X} {_enemyBaseLocation.Y}");
+
+                    // Also get the other defender to do a WIND spell just to be sure. At some point lets check if there are other
+                    // monsters close to the base too
+                    // var otherDefender = _playerHeroes.SingleOrDefault(h => h.Strategy == Strategy.Defend
+                    //                                                        && h.Id != closestHero.Id);
+                    //
+                    // if (otherDefender != null)
+                    // {
+                    //     Console.Error.WriteLine("Hero casting defensive windwind");
+                    //     PerformSpell(otherDefender, $"SPELL WIND {_enemyBaseLocation.X} {_enemyBaseLocation.Y}");
+                    // }
+                }
             }
         }
     }
@@ -653,18 +665,9 @@ internal class Game
             playerHero.ShieldLife = hero.ShieldLife;
         }
     }
-    public void UpdateEnemyHero(Hero hero)
+    public void AddEnemyHero(Hero hero)
     {
-        var enemyHero = _enemyHeroes.SingleOrDefault(h => h.Id == hero.Id);
-
-        if (enemyHero == null)
-        {
             _enemyHeroes.Add(hero);
-        }
-        else
-        {
-            enemyHero.Position = hero.Position;
-        }
     }
 
     internal void AddMonster(Monster monster)
@@ -675,6 +678,11 @@ internal class Game
     internal void ClearMonsters()
     {
         _monsters.Clear();
+    }
+
+    public void ClearEnemyHeroes()
+    {
+        _enemyHeroes.Clear();
     }
 
     private void PerformSpell(Hero hero, string action)

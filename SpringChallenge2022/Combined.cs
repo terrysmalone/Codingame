@@ -80,8 +80,8 @@ internal class Game
     private const int _baseRadius = 5000;
     private const int _closeToBaseRange = 1000;
 
-    private bool _weGotAController; // If our opponent likes to control our defenders make sure they're always shielded
-
+    private bool _weGotADefenderController; // If our opponent likes to control our defenders make sure they're always shielded
+    private bool _weGotAnAttackerController; // If our opponent likes to control our attackers make sure they're always shielded
 
     private readonly List<Strategy> _defaultStrategies = new List<Strategy>(0);
 
@@ -143,9 +143,14 @@ internal class Game
 
         _movementGenerator.AssignHeroMovement(_playerHeroes, monsters);
 
-        if (_weGotAController)
+        if (_weGotADefenderController)
         {
-            _spellGenerator.CastProtectiveShieldSpells(_playerHeroes);
+            _spellGenerator.CastProtectiveShieldSpells(_playerHeroes, Strategy.Defend);
+        }
+
+        if (_weGotAnAttackerController)
+        {
+            _spellGenerator.CastProtectiveShieldSpells(_playerHeroes, Strategy.Attack);
         }
 
         _spellGenerator.AssignDefensiveWindSpell(_playerHeroes, monsters);
@@ -209,9 +214,14 @@ internal class Game
 
     private void CheckForController()
     {
-        if (!_weGotAController && _playerHeroes.Any(h => h.IsControlled && h.Strategy == Strategy.Defend))
+        if (!_weGotADefenderController && _playerHeroes.Any(h => h.IsControlled && h.Strategy == Strategy.Defend))
         {
-            _weGotAController = true;
+            _weGotADefenderController = true;
+        }
+
+        if (!_weGotAnAttackerController && _playerHeroes.Any(h => h.IsControlled && h.Strategy == Strategy.Attack))
+        {
+            _weGotAnAttackerController = true;
         }
     }
 
@@ -873,20 +883,20 @@ internal sealed class SpellGenerator
         _shieldSpellRange = shieldSpellRange;
     }
 
-    internal void CastProtectiveShieldSpells(IEnumerable<Hero> playerHeroes)
+    internal void CastProtectiveShieldSpells(IEnumerable<Hero> playerHeroes, Strategy strategy)
     {
-        foreach (var defendingHero in playerHeroes.Where(h => h.Strategy == Strategy.Defend))
+        foreach (var hero in playerHeroes.Where(h => h.Strategy == strategy))
         {
             if (_estimatedManaLeft < 10)
             {
                 break;
             }
 
-            if (defendingHero.ShieldLife == 0)
+            if (hero.ShieldLife == 0)
             {
-                PerformSpell(defendingHero, $"SPELL SHIELD {defendingHero.Id}");
+                PerformSpell(hero, $"SPELL SHIELD {hero.Id}");
 
-                defendingHero.IsShielding = true;
+                hero.IsShielding = true;
             }
         }
     }

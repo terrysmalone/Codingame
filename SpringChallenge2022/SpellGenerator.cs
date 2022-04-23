@@ -42,20 +42,20 @@ internal sealed class SpellGenerator
         _shieldSpellRange = shieldSpellRange;
     }
 
-    internal void CastProtectiveShieldSpells(IEnumerable<Hero> playerHeroes)
+    internal void CastProtectiveShieldSpells(IEnumerable<Hero> playerHeroes, Strategy strategy)
     {
-        foreach (var defendingHero in playerHeroes.Where(h => h.Strategy == Strategy.Defend))
+        foreach (var hero in playerHeroes.Where(h => h.Strategy == strategy))
         {
             if (_estimatedManaLeft < 10)
             {
                 break;
             }
 
-            if (defendingHero.ShieldLife == 0)
+            if (hero.ShieldLife == 0)
             {
-                PerformSpell(defendingHero, $"SPELL SHIELD {defendingHero.Id}");
+                PerformSpell(hero, $"SPELL SHIELD {hero.Id}");
 
-                defendingHero.IsShielding = true;
+                hero.IsShielding = true;
             }
         }
     }

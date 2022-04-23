@@ -3,5 +3,6 @@
 internal enum Strategy
 {
     Defend,
-    Attack
+    Attack,
+    Collect
 }

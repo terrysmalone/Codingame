@@ -14,6 +14,8 @@ internal class Game
     private int _playerBaseHealth;
     private int _enemyBaseHealth;
 
+    private bool _inCollectionPhase = true;
+
     private int _mana;
     private int _estimatedManaLeft;
 
@@ -48,7 +50,7 @@ internal class Game
 
         _defaultStrategies.Add(Strategy.Defend);
         _defaultStrategies.Add(Strategy.Defend);
-        _defaultStrategies.Add(Strategy.Attack);
+        _defaultStrategies.Add(Strategy.Collect);
     }
 
     internal string[] GetMoves()
@@ -62,6 +64,18 @@ internal class Game
             hero.CurrentAction = string.Empty;
             hero.UsingSpell = false;
             hero.IsShielding = false;
+        }
+
+        if (_inCollectionPhase)
+        {
+            if(_mana > 200)
+            {
+                _inCollectionPhase = false;
+
+                ClearGuardPoints();
+                ChangeCollectorToAttacker();
+
+            }
         }
 
         SetGuardPoints();
@@ -106,6 +120,24 @@ internal class Game
         return moves;
     }
 
+    private void ClearGuardPoints()
+    {
+        foreach (var hero in _playerHeroes)
+        {
+            hero.ClearGuardPoints();
+        }
+    }
+
+    private void ChangeCollectorToAttacker()
+    {
+        var heroes = _playerHeroes.Where(h => h.Strategy == Strategy.Collect);
+
+        foreach (var hero in heroes)
+        {
+            hero.Strategy = Strategy.Attack;
+        }
+    }
+
     private static double CalculateDistance(Point position, Point position2)
     {
         return Math.Sqrt(Math.Pow(position.X - position2.X, 2)
@@ -118,10 +150,11 @@ internal class Game
         {
             var guardPoints = new List<List<Point>>();
 
-            // Assign defenders
+
             guardPoints.AddRange(GetDefenders());
 
-            // Assign others
+            guardPoints.AddRange(GetCollectors());
+
             guardPoints.AddRange(GetAttackers());
 
             // Set guard points
@@ -190,6 +223,64 @@ internal class Game
         }
 
         return defendPoints;
+    }
+
+    private IEnumerable<List<Point>> GetCollectors()
+    {
+        var numberOfCollectors = _playerHeroes.Count(h => h.Strategy == Strategy.Collect);
+
+        var collectPoints = new List<List<Point>>();
+
+        if (numberOfCollectors == 1)
+        {
+            collectPoints.Add(new List<Point>
+            {
+                new Point(_xMax / 2, _yMax / 2)
+            });
+        }
+
+        return collectPoints;
+    }
+
+    private List<List<Point>> GetAttackers()
+    {
+        var numberOfAttackers = _playerHeroes.Count(h => h.Strategy == Strategy.Attack);
+
+        var attackPoints = new List<List<Point>>();
+
+        if (numberOfAttackers == 1)
+        {
+            if (_playerBaseLocation.X == 0)
+            {
+                attackPoints.Add(new List<Point>
+                {
+                    new Point(_xMax - 3750, _yMax - 3750), // Middle
+                    new Point(_xMax - 2000, _yMax - 4500),
+                    //new Point(_xMax - 1000, _yMax - 5000),
+                    //new Point(_xMax - 2000, _yMax - 4500),
+                    new Point(_xMax - 3750, _yMax - 3750), // Middle
+                    new Point(_xMax - 4500, _yMax - 2000),
+                    new Point(_xMax - 5000, _yMax - 1000),
+                    new Point(_xMax - 4500, _yMax - 2000)
+                });
+            }
+            else
+            {
+                attackPoints.Add(new List<Point>
+                {
+                    new Point(3750, 3750), // Middle
+                    new Point(2000, 4500),
+                    //new Point(1000, 5000),
+                    //new Point(2000, 4500),
+                    new Point(3750, 3750), // Middle
+                    new Point(4500, 2000),
+                    new Point(5000, 1000),
+                    new Point(4500, 2000)
+                });
+            }
+        }
+
+        return attackPoints;
     }
 
     private void CheckForController()
@@ -269,47 +360,6 @@ internal class Game
         }
     }
 
-    private List<List<Point>> GetAttackers()
-    {
-        var numberOfAttackers = _playerHeroes.Count(h => h.Strategy == Strategy.Attack);
-
-        var attackPoints = new List<List<Point>>();
-
-        if (numberOfAttackers == 1)
-        {
-            if (_playerBaseLocation.X == 0)
-            {
-                attackPoints.Add(new List<Point>
-                {
-                    new Point(_xMax - 3750, _yMax - 3750), // Middle
-                    new Point(_xMax - 2000, _yMax - 4500),
-                    //new Point(_xMax - 1000, _yMax - 5000),
-                    //new Point(_xMax - 2000, _yMax - 4500),
-                    new Point(_xMax - 3750, _yMax - 3750), // Middle
-                    new Point(_xMax - 4500, _yMax - 2000),
-                    new Point(_xMax - 5000, _yMax - 1000),
-                    new Point(_xMax - 4500, _yMax - 2000)
-                });
-            }
-            else
-            {
-                attackPoints.Add(new List<Point>
-                {
-                    new Point(3750, 3750), // Middle
-                    new Point(2000, 4500),
-                    //new Point(1000, 5000),
-                    //new Point(2000, 4500),
-                    new Point(3750, 3750), // Middle
-                    new Point(4500, 2000),
-                    new Point(5000, 1000),
-                    new Point(4500, 2000)
-                });
-            }
-        }
-
-        return attackPoints;
-    }
-
     private void AssignMonstersToAttack()
     {
         // if a hero is not in the base, and a spider is, drop everything and defend
@@ -359,6 +409,40 @@ internal class Game
                     }
                 }
 
+            }
+        }
+
+        // Define controller moves
+        var collectingHeroes = _playerHeroes.Where(h => h.Strategy == Strategy.Collect && h.CurrentMonster == -1).ToList();
+
+        if (collectingHeroes.Count > 0)
+        {
+            foreach (var collectingHero in collectingHeroes)
+            {
+                var closestMonster = _monsters.Select(m => new { m, distance = CalculateDistance(m.Position, collectingHero.Position)})
+                                              .Where(m => m.distance <= _heroRange)
+                                              .OrderBy(m => m.distance)
+                                              .Select(m => m.m)
+                                              .FirstOrDefault();
+
+                if (closestMonster != null)
+                {
+                    collectingHero.CurrentMonster = closestMonster.Id;
+                }
+                else
+                {
+                    var currentGuardPoint = collectingHero.GetCurrentGuardPoint();
+
+                    if (!(collectingHero.Position.X == currentGuardPoint.X && collectingHero.Position.Y == currentGuardPoint.Y))
+                    {
+                        collectingHero.CurrentAction = $"MOVE {currentGuardPoint.X} {currentGuardPoint.Y}";
+                    }
+                    else
+                    {
+                        var nextGuardPoint = collectingHero.GetNextGuardPoint();
+                        collectingHero.CurrentAction = $"MOVE {nextGuardPoint.X} {nextGuardPoint.Y}";
+                    }
+                }
             }
         }
 

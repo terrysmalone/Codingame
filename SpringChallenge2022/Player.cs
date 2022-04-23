@@ -35,19 +35,12 @@ internal sealed class Player
             var playerMana = int.Parse(inputs[1]); // Ignore in the first league; Spend ten mana to cast a spell
             game.SetMana(playerMana);
 
-            game.SetPlayerBaseHealth(playerBaseHealth);
-
             // enemy base stats
             inputs = Console.ReadLine().Split(' ');
             var enemyBaseHealth = int.Parse(inputs[0]); // Your base health
             var enemyMana = int.Parse(inputs[1]); // Ignore in the first league; Spend ten mana to cast a spell
 
-            game.SetEnemyBaseHealth(playerBaseHealth);
-
             var entityCount = int.Parse(Console.ReadLine()); // Amount of heros and monsters you can see
-
-            var playerHeroes = new List<Hero>();
-            var enemyHeroes = new List<Hero>();
 
             for (var i = 0; i < entityCount; i++)
             {
@@ -67,7 +60,7 @@ internal sealed class Player
 
                 if (type == 0)
                 {
-                    var threatForEnum = ThreatFor.None;
+                    ThreatFor threatForEnum;
 
                     switch (threatFor)
                     {

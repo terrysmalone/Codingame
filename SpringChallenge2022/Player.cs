@@ -27,6 +27,7 @@ internal sealed class Player
             // Don't bother persisting monsters. It's quicker just to re-add them every time.
             // At least until we need to persist them
             game.ClearMonsters();
+            game.ClearEnemyHeroes();
 
             // Player base stats
             inputs = Console.ReadLine().Split(' ');
@@ -87,7 +88,7 @@ internal sealed class Player
                 }
                 else
                 {
-                    var hero = new Hero(id, new Point(x, y));
+                    var hero = new Hero(id, new Point(x, y), isControlled == 1, shieldLife);
 
                     if (type == 1)
                     {
@@ -95,7 +96,7 @@ internal sealed class Player
                     }
                     else
                     {
-                        game.UpdateEnemyHero(hero);
+                        game.AddEnemyHero(hero);
                     }
                 }
             }

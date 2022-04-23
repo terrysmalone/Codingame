@@ -1,26 +1,74 @@
-﻿using System.Drawing;
-using System.Runtime.InteropServices;
+﻿using System;
+using System.Collections.Generic;
+using System.Drawing;
 
 namespace SpringChallenge2022;
 
 internal sealed class Hero
 {
-    public int Id { get; }
-    public Point Position { get; set; }
+    private int _currentGuardPoint = 0;
+    private List<Point> _guardPoints;
 
-    public Point GuardPoint { get; set; }
+    internal int Id { get; }
+    internal Point Position { get; set; }
 
     internal int CurrentMonster { get; set; } = -1;
 
     internal string CurrentAction { get; set; } = "WAIT";
 
-    internal bool UsingSpell {get; set; } = false;
+    internal bool UsingSpell {get; set; }
+
+    internal bool IsControlled { get; set; }
+
+    internal int ShieldLife { get; set; }
 
     internal Strategy Strategy { get; set;} = Strategy.Defend;
 
-    public Hero(int id, Point position)
+    internal  bool IsShielding { get; set; }
+
+    internal Hero(int id, Point position, bool isControlled, int shieldLife)
     {
         Id = id;
         Position = position;
+        IsControlled = isControlled;
+        ShieldLife = shieldLife;
+
+        _guardPoints = new List<Point>();
+    }
+
+
+    internal void SetGuardPoints(List<Point> guardPoints)
+    {
+        Console.Error.WriteLine($"guardPoints.Count: {guardPoints.Count}");
+        _guardPoints = new List<Point>(guardPoints);
+    }
+
+    internal Point GetCurrentGuardPoint()
+    {
+        return new Point(_guardPoints[_currentGuardPoint].X, _guardPoints[_currentGuardPoint].Y);
+    }
+
+    internal Point GetNextGuardPoint()
+    {
+        if (_currentGuardPoint >= _guardPoints.Count - 1)
+        {
+            _currentGuardPoint = 0;
+        }
+        else
+        {
+            _currentGuardPoint++;
+        }
+
+        return new Point(_guardPoints[_currentGuardPoint].X, _guardPoints[_currentGuardPoint].Y);
+    }
+
+    internal int GetNumberOfGuardPoints()
+    {
+        return _guardPoints.Count;
+    }
+
+    internal void ClearGuardPoints()
+    {
+        _guardPoints = new List<Point>();
     }
 }

@@ -8,7 +8,6 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
-using System.Runtime.InteropServices;
 
 
 internal static class Debugger
@@ -33,7 +32,7 @@ internal static class Debugger
 
         foreach (var hero in heroes)
         {
-            Console.Error.WriteLine($"{hero.Id}: Postion:({hero.Position.X},{hero.Position.Y}) - Current monster:{hero.CurrentMonster}");
+            Console.Error.WriteLine($"{hero.Id}: Postion:({hero.Position.X},{hero.Position.Y}) - Current monster:{hero.CurrentMonster} - isShielding:{hero.IsShielding}");
         }
 
         Console.Error.WriteLine("------------------------");
@@ -54,7 +53,6 @@ internal static class Debugger
 }
 
 
-// Best rank so far 260
 internal class Game
 {
     private readonly Point _playerBaseLocation;
@@ -63,6 +61,8 @@ internal class Game
 
     private int _playerBaseHealth;
     private int _enemyBaseHealth;
+
+    private bool _inCollectionPhase = true;
 
     private int _mana;
     private int _estimatedManaLeft;
@@ -83,6 +83,9 @@ internal class Game
     private const int _heroRange = 2200;
     private const int _maxDefenderDistanceFromBase = 7500;
     private const int _baseRadius = 5000;
+    private const int _closeToBaseRange = 1000;
+
+    private bool _weGotAController = false; // If our opponent likes to control our defenders make sure they're always shielded
 
 
     private List<Strategy> _defaultStrategies = new List<Strategy>(0);
@@ -96,7 +99,7 @@ internal class Game
 
         _defaultStrategies.Add(Strategy.Defend);
         _defaultStrategies.Add(Strategy.Defend);
-        _defaultStrategies.Add(Strategy.Attack);
+        _defaultStrategies.Add(Strategy.Collect);
     }
 
     internal string[] GetMoves()
@@ -109,20 +112,57 @@ internal class Game
         {
             hero.CurrentAction = string.Empty;
             hero.UsingSpell = false;
+            hero.IsShielding = false;
+        }
+
+        if (_inCollectionPhase)
+        {
+            if(_mana > 300)
+            {
+                _inCollectionPhase = false;
+
+                ClearGuardPoints();
+                ChangeCollectorToAttacker();
+
+            }
         }
 
         SetGuardPoints();
+
+        CheckForController();
         ClearStaleAttacks();
 
         // At a basic level we want all heros to move towards someone to attack
         AssignMonstersToAttack();
 
         // Defending the base is priority one. See if we need to fire a defensive wind spell
+
+        if (_weGotAController)
+        {
+            foreach (var defendingHero in _playerHeroes.Where(h => h.Strategy == Strategy.Defend))
+            {
+                if (_estimatedManaLeft < 10)
+                {
+                    break;
+                }
+
+                if (defendingHero.ShieldLife == 0)
+                {
+                    PerformSpell(defendingHero, $"SPELL SHIELD {defendingHero.Id}");
+
+                    defendingHero.IsShielding = true;
+                }
+            }
+        }
+
         AssignDefensiveWindSpell();
 
-        AssignDefenderControlSpells();
+        if (!_inCollectionPhase)
+        {
+            AssignDefenderControlSpells();
 
-        AssignAttackSpells();
+            AssignAttackSpells();
+        }
 
         for (var i = 0; i < moves.Length; i++)
         {
@@ -130,6 +170,24 @@ internal class Game
         }
 
         return moves;
+    }
+
+    private void ClearGuardPoints()
+    {
+        foreach (var hero in _playerHeroes)
+        {
+            hero.ClearGuardPoints();
+        }
+    }
+
+    private void ChangeCollectorToAttacker()
+    {
+        var heroes = _playerHeroes.Where(h => h.Strategy == Strategy.Collect);
+
+        foreach (var hero in heroes)
+        {
+            hero.Strategy = Strategy.Attack;
+        }
     }
 
     private static double CalculateDistance(Point position, Point position2)
@@ -140,19 +198,16 @@ internal class Game
 
     private void SetGuardPoints()
     {
-        if (_playerHeroes[0].GuardPoint.X == 0 && _playerHeroes[0].GuardPoint.Y == 0)   // or we've changed a Strategy
+        if (_playerHeroes[0].GetNumberOfGuardPoints() == 0)   // or we've changed a Strategy
         {
-            var guardPoints = new List<Point>();
+            var guardPoints = new List<List<Point>>();
 
-            // Assign defenders
+
             guardPoints.AddRange(GetDefenders());
 
-            Console.Error.WriteLine($"guardPoints.Count: {guardPoints.Count}");
+            guardPoints.AddRange(GetCollectors());
 
-            // Assign others
             guardPoints.AddRange(GetAttackers());
-
-            Console.Error.WriteLine($"guardPoints.Count: {guardPoints.Count}");
 
             // Set guard points
             if (_playerHeroes.Count != guardPoints.Count)
@@ -168,58 +223,110 @@ internal class Game
             {
                 Console.Error.WriteLine($"i: {i}");
                 var hero = _playerHeroes[i];
-                hero.GuardPoint = guardPoints[i];
+                hero.SetGuardPoints(guardPoints[i]);
             }
         }
     }
 
-    private IEnumerable<Point> GetDefenders()
+    private List<List<Point>> GetDefenders()
     {
-        var defendPoints = new List<Point>();
-
         var numberOfDefenders = _playerHeroes.Count(h => h.Strategy == Strategy.Defend);
+
+        var defendPoints = new List<List<Point>>();
 
         if (numberOfDefenders == 1)
         {
             if (_playerBaseLocation.X == 0)
             {
-                defendPoints.Add(new Point(4000, 4000));
+                defendPoints.Add(new List<Point> { new Point(4000, 4000) });
             }
             else
             {
-                defendPoints.Add(new Point(_xMax - 4000, _yMax - 4000));
+                defendPoints.Add(new List<Point> { new Point(_xMax - 4000, _yMax - 4000) });
             }
         }
         else if (numberOfDefenders == 2)
         {
             if (_playerBaseLocation.X == 0)
             {
-                defendPoints.Add(new Point(5700, 2500));
-                defendPoints.Add(new Point(2500, 5700));
+                defendPoints.Add(new List<Point> { new Point(5700, 2500) });
+                defendPoints.Add(new List<Point> { new Point(2500, 5700) });
             }
             else
             {
-                defendPoints.Add(new Point(_xMax - 5700, _yMax - 2500));
-                defendPoints.Add(new Point(_xMax - 2500, _yMax - 5700));
+                defendPoints.Add(new List<Point> { new Point(_xMax - 5700, _yMax - 2500) });
+                defendPoints.Add(new List<Point> { new Point(_xMax - 2500, _yMax - 5700) });
             }
         }
         else if (numberOfDefenders == 3)
         {
             if (_playerBaseLocation.X == 0)
             {
-                defendPoints.Add(new Point(5000, 2000));
-                defendPoints.Add(new Point(4000, 4000));
-                defendPoints.Add(new Point(2000, 5000));
+                defendPoints.Add(new List<Point> { new Point(5000, 2000) });
+                defendPoints.Add(new List<Point> { new Point(4000, 4000) });
+                defendPoints.Add(new List<Point> { new Point(2000, 5000) });
             }
             else
             {
-                defendPoints.Add(new Point(_xMax - 5000, _yMax - 2000));
-                defendPoints.Add(new Point(_xMax - 4000, _yMax - 4000));
-                defendPoints.Add(new Point(_xMax - 2000, _yMax - 5000));
+                defendPoints.Add(new List<Point> { new Point(_xMax - 5000, _yMax - 2000) });
+                defendPoints.Add(new List<Point> { new Point(_xMax - 4000, _yMax - 4000) });
+                defendPoints.Add(new List<Point> { new Point(_xMax - 2000, _yMax - 5000) });
             }
         }
 
         return defendPoints;
+    }
+
+    private IEnumerable<List<Point>> GetCollectors()
+    {
+        var numberOfCollectors = _playerHeroes.Count(h => h.Strategy == Strategy.Collect);
+
+        var collectPoints = new List<List<Point>>();
+
+        if (numberOfCollectors == 1)
+        {
+            collectPoints.Add(new List<Point>
+            {
+                new Point(_xMax / 2, _yMax / 2)
+            });
+        }
+
+        return collectPoints;
+    }
+
+    private List<List<Point>> GetAttackers()
+    {
+        var numberOfAttackers = _playerHeroes.Count(h => h.Strategy == Strategy.Attack);
+
+        var attackPoints = new List<List<Point>>();
+
+        if (numberOfAttackers == 1)
+        {
+            if (_playerBaseLocation.X == 0)
+            {
+                attackPoints.Add(new List<Point>
+                {
+                    new Point(_xMax - 3000, _yMax - 2500)
+                });
+            }
+            else
+            {
+                attackPoints.Add(new List<Point>
+                {
+                    new Point(3000, 2500)
+                });
+            }
+        }
+
+        return attackPoints;
+    }
+
+    private void CheckForController()
+    {
+        if (!_weGotAController && _playerHeroes.Any(h => h.IsControlled && h.Strategy == Strategy.Defend))
+        {
+            _weGotAController = true;
+        }
     }
 
     private void ClearStaleAttacks()
@@ -291,27 +398,6 @@ internal class Game
         }
     }
 
-    private IEnumerable<Point> GetAttackers()
-    {
-        var numberOfAttackers = _playerHeroes.Count(h => h.Strategy == Strategy.Attack);
-
-        var attackPoints = new List<Point>();
-
-        if (numberOfAttackers == 1)
-        {
-            if (_playerBaseLocation.X == 0)
-            {
-                attackPoints.Add(new Point(_xMax - 3750, _yMax - 3750));
-            }
-            else
-            {
-                attackPoints.Add(new Point(3750, 3750));
-            }
-        }
-
-        return attackPoints;
-    }
-
     private void AssignMonstersToAttack()
     {
         // if a hero is not in the base, and a spider is, drop everything and defend
@@ -364,6 +450,41 @@ internal class Game
             }
         }
 
+        // Define collector moves
+        var collectingHeroes = _playerHeroes.Where(h => h.Strategy == Strategy.Collect && h.CurrentMonster == -1).ToList();
+
+        if (collectingHeroes.Count > 0)
+        {
+            foreach (var collectingHero in collectingHeroes)
+            {
+                var closestMonster = _monsters.Where(m => CalculateDistance(m.Position, _playerBaseLocation) > _outskirtsMaxDist)
+                                              .Select(m => new { m, distance = CalculateDistance(m.Position, collectingHero.Position)})
+                                              .Where(m => m.distance <= _heroRange)
+                                              .OrderBy(m => m.distance)
+                                              .Select(m => m.m)
+                                              .FirstOrDefault();
+
+                if (closestMonster != null)
+                {
+                    collectingHero.CurrentMonster = closestMonster.Id;
+                }
+                else
+                {
+                    var currentGuardPoint = collectingHero.GetCurrentGuardPoint();
+
+                    if (!(collectingHero.Position.X == currentGuardPoint.X && collectingHero.Position.Y == currentGuardPoint.Y))
+                    {
+                        collectingHero.CurrentAction = $"MOVE {currentGuardPoint.X} {currentGuardPoint.Y}";
+                    }
+                    else
+                    {
+                        var nextGuardPoint = collectingHero.GetNextGuardPoint();
+                        collectingHero.CurrentAction = $"MOVE {nextGuardPoint.X} {nextGuardPoint.Y}";
+                    }
+                }
+            }
+        }
+
         // Define Attacker moves
         var freeAttackingHeroes = _playerHeroes.Where(h => h.Strategy == Strategy.Attack && h.CurrentMonster == -1).ToList();
 
@@ -397,7 +518,17 @@ internal class Game
             }
             else
             {
-                hero.CurrentAction = $"MOVE {hero.GuardPoint.X} {hero.GuardPoint.Y}";
+                var currentGuardPoint = hero.GetCurrentGuardPoint();
+
+                if (!(hero.Position.X == currentGuardPoint.X && hero.Position.Y == currentGuardPoint.Y))
+                {
+                    hero.CurrentAction = $"MOVE {currentGuardPoint.X} {currentGuardPoint.Y}";
+                }
+                else
+                {
+                    var nextGuardPoint = hero.GetNextGuardPoint();
+                    hero.CurrentAction = $"MOVE {nextGuardPoint.X} {nextGuardPoint.Y}";
+                }
             }
         }
     }
@@ -412,7 +543,8 @@ internal class Game
         }
 
         var defendingHeroesOutsideOfBase = _playerHeroes.Where(h => h.Strategy == Strategy.Defend
-                                                                                       && CalculateDistance(h.Position, _playerBaseLocation) > _baseRadius);
+                                                                                    && h.IsShielding == false
+                                                                                    && CalculateDistance(h.Position, _playerBaseLocation) > _baseRadius);
 
 
         foreach (var defendingHeroOutsideOfBase in defendingHeroesOutsideOfBase)
@@ -449,6 +581,11 @@ internal class Game
                 return;
             }
 
+            if (CalculateDistance(attackingHero.Position, _enemyBaseLocation) > _outskirtsMaxDist)
+            {
+                continue;
+            }
+
             var closeEnoughForWindMonster = _monsters.FirstOrDefault(m => CalculateDistance(m.Position, attackingHero.Position) <= _windSpellRange
                                                                                  && m.ShieldLife == 0);
 
@@ -458,17 +595,36 @@ internal class Game
 
                 PerformSpell(attackingHero, $"SPELL WIND {_enemyBaseLocation.X} {_enemyBaseLocation.Y}");
             }
-            else // If we're not close enough for a wind spell try a shield
+            else // If we're not close enough for a wind spell try a shield or control
             {
-                var closeEnoughForShieldMonster = _monsters.FirstOrDefault(m => m.ShieldLife == 0
+                var closeEnoughForControlEnemy = _enemyHeroes.Where(e => e.ShieldLife == 0
+                                                                                && CalculateDistance(e.Position, attackingHero.Position) <= _controlSpellange)
+                                                                  .OrderBy(e => CalculateDistance(e.Position, _enemyBaseLocation))
+                                                                  .FirstOrDefault();
+
+                var closeEnoughForSpellMonster = _monsters.FirstOrDefault(m => m.ShieldLife == 0
                                                                                     && m.ThreatFor == ThreatFor.Enemy
                                                                                     && CalculateDistance(m.Position, attackingHero.Position) <= _shieldSpellRange
                                                                                     && CalculateDistance(m.Position, _enemyBaseLocation) <= _outskirtsMinDist);
 
-                if (closeEnoughForShieldMonster != null)
+                if (closeEnoughForControlEnemy != null && closeEnoughForSpellMonster != null)
                 {
-                    Console.Error.WriteLine($"Atacking hero {attackingHero.Id} to cast SHIELD on monster {closeEnoughForShieldMonster.Id}");
-                    PerformSpell(attackingHero, $"SPELL SHIELD {closeEnoughForShieldMonster.Id}");
+                    if (new Random().Next(1) == 0)
+                    {
+                        PerformSpell(attackingHero, $"SPELL SHIELD {closeEnoughForSpellMonster.Id}");
+                    }
+                    else
+                    {
+                        PerformSpell(attackingHero, $"SPELL CONTROL {closeEnoughForControlEnemy.Id} {_playerBaseLocation.X} {_playerBaseLocation.Y}");
+                    }
+                }
+                else if (closeEnoughForSpellMonster != null)
+                {
+                    PerformSpell(attackingHero, $"SPELL SHIELD {closeEnoughForSpellMonster.Id}");
+                }
+                else if (closeEnoughForControlEnemy != null)
+                {
+                    PerformSpell(attackingHero, $"SPELL CONTROL {closeEnoughForControlEnemy.Id} {_playerBaseLocation.X} {_playerBaseLocation.Y}");
                 }
             }
         }
@@ -488,13 +644,43 @@ internal class Game
 
         if (closestMonster != null)
         {
-            var closestHero = _playerHeroes.Where(h => h.Strategy == Strategy.Defend)
-                                           .OrderBy(h => CalculateDistance(h.Position, closestMonster.Position))
-                                           .First();
+            Debugger.DisplayPlayerHeroes(_playerHeroes);
 
-            if (CalculateDistance(closestHero.Position, closestMonster.Position) <= _windSpellRange)
+            var availableHeroes = _playerHeroes.Where(h => h.Strategy == Strategy.Defend && h.IsShielding == false).ToList();
+
+            if (availableHeroes.Count > 0)
             {
-                PerformSpell(closestHero, $"SPELL WIND {_enemyBaseLocation.X} {_enemyBaseLocation.Y}");
+                var closestHero = availableHeroes.OrderBy(h => CalculateDistance(h.Position, closestMonster.Position))
+                                                 .First();
+
+                if (CalculateDistance(closestHero.Position, closestMonster.Position) <= _windSpellRange)
+                {
+                    Console.Error.WriteLine("Hero casting wind");
+                    PerformSpell(closestHero, $"SPELL WIND {_enemyBaseLocation.X} {_enemyBaseLocation.Y}");
+                }
+                else
+                {
+                    // Too far away for wind to work
+
+                    // If he's close and we can control that little shit away do it
+                    if (CalculateDistance(closestMonster.Position, _playerBaseLocation) <= _closeToBaseRange
+                        && CalculateDistance(closestHero.Position, closestMonster.Position) <= _controlSpellange)
+                    {
+                        Console.Error.WriteLine("Hero casting control");
+                        PerformSpell(closestHero, $"SPELL CONTROL {closestMonster.Id} {_enemyBaseLocation.X} {_enemyBaseLocation.Y}");
+
+                        // Also get the other defender to do a WIND spell just to be sure. At some point lets check if there are other
+                        // monsters close to the base too
+                        // var otherDefender = _playerHeroes.SingleOrDefault(h => h.Strategy == Strategy.Defend
+                        //                                                        && h.Id != closestHero.Id);
+                        //
+                        // if (otherDefender != null)
+                        // {
+                        //     Console.Error.WriteLine("Hero casting defensive windwind");
+                        //     PerformSpell(otherDefender, $"SPELL WIND {_enemyBaseLocation.X} {_enemyBaseLocation.Y}");
+                        // }
+                    }
+                }
             }
         }
     }
@@ -529,20 +715,13 @@ internal class Game
         else
         {
             playerHero.Position = hero.Position;
+            playerHero.IsControlled = hero.IsControlled;
+            playerHero.ShieldLife = hero.ShieldLife;
         }
     }
-    public void UpdateEnemyHero(Hero hero)
+    public void AddEnemyHero(Hero hero)
     {
-        var enemyHero = _enemyHeroes.SingleOrDefault(h => h.Id == hero.Id);
-
-        if (enemyHero == null)
-        {
             _enemyHeroes.Add(hero);
-        }
-        else
-        {
-            enemyHero.Position = hero.Position;
-        }
     }
 
     internal void AddMonster(Monster monster)
@@ -553,6 +732,11 @@ internal class Game
     internal void ClearMonsters()
     {
         _monsters.Clear();
+    }
+
+    public void ClearEnemyHeroes()
+    {
+        _enemyHeroes.Clear();
     }
 
     private void PerformSpell(Hero hero, string action)
@@ -571,23 +755,70 @@ internal class Game
 
 internal sealed class Hero
 {
-    public int Id { get; }
-    public Point Position { get; set; }
+    private int _currentGuardPoint = 0;
+    private List<Point> _guardPoints;
 
-    public Point GuardPoint { get; set; }
+    internal int Id { get; }
+    internal Point Position { get; set; }
 
     internal int CurrentMonster { get; set; } = -1;
 
     internal string CurrentAction { get; set; } = "WAIT";
 
-    internal bool UsingSpell {get; set; } = false;
+    internal bool UsingSpell {get; set; }
+
+    internal bool IsControlled { get; set; }
+
+    internal int ShieldLife { get; set; }
 
     internal Strategy Strategy { get; set;} = Strategy.Defend;
 
-    public Hero(int id, Point position)
+    internal  bool IsShielding { get; set; }
+
+    internal Hero(int id, Point position, bool isControlled, int shieldLife)
     {
         Id = id;
         Position = position;
+        IsControlled = isControlled;
+        ShieldLife = shieldLife;
+
+        _guardPoints = new List<Point>();
+    }
+
+
+    internal void SetGuardPoints(List<Point> guardPoints)
+    {
+        Console.Error.WriteLine($"guardPoints.Count: {guardPoints.Count}");
+        _guardPoints = new List<Point>(guardPoints);
+    }
+
+    internal Point GetCurrentGuardPoint()
+    {
+        return new Point(_guardPoints[_currentGuardPoint].X, _guardPoints[_currentGuardPoint].Y);
+    }
+
+    internal Point GetNextGuardPoint()
+    {
+        if (_currentGuardPoint >= _guardPoints.Count - 1)
+        {
+            _currentGuardPoint = 0;
+        }
+        else
+        {
+            _currentGuardPoint++;
+        }
+
+        return new Point(_guardPoints[_currentGuardPoint].X, _guardPoints[_currentGuardPoint].Y);
+    }
+
+    internal int GetNumberOfGuardPoints()
+    {
+        return _guardPoints.Count;
+    }
+
+    internal void ClearGuardPoints()
+    {
+        _guardPoints = new List<Point>();
     }
 }
 
@@ -642,6 +873,7 @@ internal sealed class Player
             // Don't bother persisting monsters. It's quicker just to re-add them every time.
             // At least until we need to persist them
             game.ClearMonsters();
+            game.ClearEnemyHeroes();
 
             // Player base stats
             inputs = Console.ReadLine().Split(' ');
@@ -702,7 +934,7 @@ internal sealed class Player
                 }
                 else
                 {
-                    var hero = new Hero(id, new Point(x, y));
+                    var hero = new Hero(id, new Point(x, y), isControlled == 1, shieldLife);
 
                     if (type == 1)
                     {
@@ -710,7 +942,7 @@ internal sealed class Player
                     }
                     else
                     {
-                        game.UpdateEnemyHero(hero);
+                        game.AddEnemyHero(hero);
                     }
                 }
             }
@@ -733,7 +965,8 @@ internal sealed class Player
 internal enum Strategy
 {
     Defend,
-    Attack
+    Attack,
+    Collect
 }
 
 

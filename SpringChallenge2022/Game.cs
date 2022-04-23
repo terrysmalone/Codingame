@@ -12,6 +12,7 @@ internal class Game
     private readonly int _heroesPerPlayer;
     private readonly MovementGenerator _movementGenerator;
     private readonly SpellGenerator _spellGenerator;
+    private readonly GuardPointGenerator _guardPointGenerator;
 
     private bool _inCollectionPhase = true;
 
@@ -61,6 +62,8 @@ internal class Game
                                              _controlSpellange,
                                              _shieldSpellRange);
 
+        _guardPointGenerator = new GuardPointGenerator(_playerBaseLocation, _xMax, _yMax);
+
         _defaultStrategies.Add(Strategy.Defend);
         _defaultStrategies.Add(Strategy.Defend);
         _defaultStrategies.Add(Strategy.Collect);
@@ -76,7 +79,16 @@ internal class Game
 
         CheckForPhaseChange(playerMana);
 
-        SetGuardPoints();
+        if (_playerHeroes[0].GetNumberOfGuardPoints() == 0) // or we've changed a Strategy
+        {
+            var guardPoints = _guardPointGenerator.GetGuardPoints(_playerHeroes);
+
+            for (var i = 0; i < _playerHeroes.Count; i++)
+            {
+                var hero = _playerHeroes[i];
+                hero.SetGuardPoints(guardPoints[i]);
+            }
+        }
 
         CheckForController();
         ClearStaleAttacks(monsters);
@@ -145,131 +157,6 @@ internal class Game
         {
             hero.Strategy = Strategy.Attack;
         }
-    }
-
-    private void SetGuardPoints()
-    {
-        if (_playerHeroes[0].GetNumberOfGuardPoints() == 0)   // or we've changed a Strategy
-        {
-            var guardPoints = new List<List<Point>>();
-
-
-            guardPoints.AddRange(GetDefenders());
-
-            guardPoints.AddRange(GetCollectors());
-
-            guardPoints.AddRange(GetAttackers());
-
-            // Set guard points
-            if (_playerHeroes.Count != guardPoints.Count)
-            {
-                Console.Error.WriteLine("ERROR: Player heroes count doesn't match guard point count");
-            }
-
-            // At some point we need to make sure we move heroes around to minimise travel to new spots
-
-            Console.Error.WriteLine($"_playerHeroes.Count: {_playerHeroes.Count}");
-
-            for (var i = 0; i < _playerHeroes.Count; i++)
-            {
-                Console.Error.WriteLine($"i: {i}");
-                var hero = _playerHeroes[i];
-                hero.SetGuardPoints(guardPoints[i]);
-            }
-        }
-    }
-
-    private List<List<Point>> GetDefenders()
-    {
-        var numberOfDefenders = _playerHeroes.Count(h => h.Strategy == Strategy.Defend);
-
-        var defendPoints = new List<List<Point>>();
-
-        if (numberOfDefenders == 1)
-        {
-            if (_playerBaseLocation.X == 0)
-            {
-                defendPoints.Add(new List<Point> { new Point(4000, 4000) });
-            }
-            else
-            {
-                defendPoints.Add(new List<Point> { new Point(_xMax - 4000, _yMax - 4000) });
-            }
-        }
-        else if (numberOfDefenders == 2)
-        {
-            if (_playerBaseLocation.X == 0)
-            {
-                defendPoints.Add(new List<Point> { new Point(5700, 2500) });
-                defendPoints.Add(new List<Point> { new Point(2500, 5700) });
-            }
-            else
-            {
-                defendPoints.Add(new List<Point> { new Point(_xMax - 5700, _yMax - 2500) });
-                defendPoints.Add(new List<Point> { new Point(_xMax - 2500, _yMax - 5700) });
-            }
-        }
-        else if (numberOfDefenders == 3)
-        {
-            if (_playerBaseLocation.X == 0)
-            {
-                defendPoints.Add(new List<Point> { new Point(5000, 2000) });
-                defendPoints.Add(new List<Point> { new Point(4000, 4000) });
-                defendPoints.Add(new List<Point> { new Point(2000, 5000) });
-            }
-            else
-            {
-                defendPoints.Add(new List<Point> { new Point(_xMax - 5000, _yMax - 2000) });
-                defendPoints.Add(new List<Point> { new Point(_xMax - 4000, _yMax - 4000) });
-                defendPoints.Add(new List<Point> { new Point(_xMax - 2000, _yMax - 5000) });
-            }
-        }
-
-        return defendPoints;
-    }
-
-    private IEnumerable<List<Point>> GetCollectors()
-    {
-        var numberOfCollectors = _playerHeroes.Count(h => h.Strategy == Strategy.Collect);
-
-        var collectPoints = new List<List<Point>>();
-
-        if (numberOfCollectors == 1)
-        {
-            collectPoints.Add(new List<Point>
-            {
-                new Point(_xMax / 2, _yMax / 2)
-            });
-        }
-
-        return collectPoints;
-    }
-
-    private List<List<Point>> GetAttackers()
-    {
-        var numberOfAttackers = _playerHeroes.Count(h => h.Strategy == Strategy.Attack);
-
-        var attackPoints = new List<List<Point>>();
-
-        if (numberOfAttackers == 1)
-        {
-            if (_playerBaseLocation.X == 0)
-            {
-                attackPoints.Add(new List<Point>
-                {
-                    new Point(_xMax - 3000, _yMax - 2500)
-                });
-            }
-            else
-            {
-                attackPoints.Add(new List<Point>
-                {
-                    new Point(3000, 2500)
-                });
-            }
-        }
-
-        return attackPoints;
     }
 
     private void CheckForController()

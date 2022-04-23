@@ -323,7 +323,7 @@ internal class Game
 
     private void CheckForController()
     {
-        if (!_weGotAController && _playerHeroes.Any(h => h.IsControlled))
+        if (!_weGotAController && _playerHeroes.Any(h => h.IsControlled && h.Strategy == Strategy.Defend))
         {
             _weGotAController = true;
         }
@@ -644,36 +644,42 @@ internal class Game
 
         if (closestMonster != null)
         {
-            var closestHero = _playerHeroes.Where(h => h.Strategy == Strategy.Defend && h.IsShielding == false)
-                                           .OrderBy(h => CalculateDistance(h.Position, closestMonster.Position))
-                                           .First();
+            Debugger.DisplayPlayerHeroes(_playerHeroes);
 
-            if (CalculateDistance(closestHero.Position, closestMonster.Position) <= _windSpellRange)
-            {
-                Console.Error.WriteLine("Hero casting wind");
-                PerformSpell(closestHero, $"SPELL WIND {_enemyBaseLocation.X} {_enemyBaseLocation.Y}");
-            }
-            else
-            {
-                // Too far away for wind to work
+            var availableHeroes = _playerHeroes.Where(h => h.Strategy == Strategy.Defend && h.IsShielding == false).ToList();
 
-                // If he's close and we can control that little shit away do it
-                if (CalculateDistance(closestMonster.Position, _playerBaseLocation) <= _closeToBaseRange
-                    && CalculateDistance(closestHero.Position, closestMonster.Position) <= _controlSpellange)
+            if (availableHeroes.Count > 0)
+            {
+                var closestHero = availableHeroes.OrderBy(h => CalculateDistance(h.Position, closestMonster.Position))
+                                                 .First();
+
+                if (CalculateDistance(closestHero.Position, closestMonster.Position) <= _windSpellRange)
                 {
-                    Console.Error.WriteLine("Hero casting control");
-                    PerformSpell(closestHero, $"SPELL CONTROL {closestMonster.Id} {_enemyBaseLocation.X} {_enemyBaseLocation.Y}");
+                    Console.Error.WriteLine("Hero casting wind");
+                    PerformSpell(closestHero, $"SPELL WIND {_enemyBaseLocation.X} {_enemyBaseLocation.Y}");
+                }
+                else
+                {
+                    // Too far away for wind to work
 
-                    // Also get the other defender to do a WIND spell just to be sure. At some point lets check if there are other
-                    // monsters close to the base too
-                    // var otherDefender = _playerHeroes.SingleOrDefault(h => h.Strategy == Strategy.Defend
-                    //                                                        && h.Id != closestHero.Id);
-                    //
-                    // if (otherDefender != null)
-                    // {
-                    //     Console.Error.WriteLine("Hero casting defensive windwind");
-                    //     PerformSpell(otherDefender, $"SPELL WIND {_enemyBaseLocation.X} {_enemyBaseLocation.Y}");
-                    // }
+                    // If he's close and we can control that little shit away do it
+                    if (CalculateDistance(closestMonster.Position, _playerBaseLocation) <= _closeToBaseRange
+                        && CalculateDistance(closestHero.Position, closestMonster.Position) <= _controlSpellange)
+                    {
+                        Console.Error.WriteLine("Hero casting control");
+                        PerformSpell(closestHero, $"SPELL CONTROL {closestMonster.Id} {_enemyBaseLocation.X} {_enemyBaseLocation.Y}");
+
+                        // Also get the other defender to do a WIND spell just to be sure. At some point lets check if there are other
+                        // monsters close to the base too
+                        // var otherDefender = _playerHeroes.SingleOrDefault(h => h.Strategy == Strategy.Defend
+                        //                                                        && h.Id != closestHero.Id);
+                        //
+                        // if (otherDefender != null)
+                        // {
+                        //     Console.Error.WriteLine("Hero casting defensive windwind");
+                        //     PerformSpell(otherDefender, $"SPELL WIND {_enemyBaseLocation.X} {_enemyBaseLocation.Y}");
+                        // }
+                    }
                 }
             }
         }
@@ -766,6 +772,7 @@ internal sealed class Hero
     internal int ShieldLife { get; set; }
 
     internal Strategy Strategy { get; set;} = Strategy.Defend;
+
     internal  bool IsShielding { get; set; }
 
     internal Hero(int id, Point position, bool isControlled, int shieldLife)

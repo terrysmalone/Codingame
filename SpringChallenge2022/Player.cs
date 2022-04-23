@@ -33,7 +33,6 @@ internal sealed class Player
             inputs = Console.ReadLine().Split(' ');
             var playerBaseHealth = int.Parse(inputs[0]); // Your base health
             var playerMana = int.Parse(inputs[1]); // Ignore in the first league; Spend ten mana to cast a spell
-            game.SetMana(playerMana);
 
             // enemy base stats
             inputs = Console.ReadLine().Split(' ');
@@ -94,7 +93,7 @@ internal sealed class Player
                 }
             }
 
-            var moves = game.GetMoves();
+            var moves = game.GetMoves(playerMana);
 
             for (var i = 0; i < moves.Length; i++)
             {

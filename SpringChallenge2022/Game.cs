@@ -11,11 +11,9 @@ internal class Game
     private readonly Point _enemyBaseLocation;
     private readonly int _heroesPerPlayer;
     private readonly MovementGenerator _movementGenerator;
+    private readonly SpellGenerator _spellGenerator;
 
     private bool _inCollectionPhase = true;
-
-    private int _mana;
-    private int _estimatedManaLeft;
 
     private readonly List<Monster> _monsters = new List<Monster>();
     private readonly List<Hero> _playerHeroes = new List<Hero>();
@@ -35,7 +33,7 @@ internal class Game
     private const int _baseRadius = 5000;
     private const int _closeToBaseRange = 1000;
 
-    private bool _weGotAController = false; // If our opponent likes to control our defenders make sure they're always shielded
+    private bool _weGotAController; // If our opponent likes to control our defenders make sure they're always shielded
 
 
     private List<Strategy> _defaultStrategies = new List<Strategy>(0);
@@ -55,20 +53,30 @@ internal class Game
                                                    _outskirtsMaxDist,
                                                    _heroRange);
 
+        _spellGenerator = new SpellGenerator(_playerBaseLocation,
+                                             _enemyBaseLocation,
+                                             _baseRadius,
+                                             _closeToBaseRange,
+                                             _outskirtsMinDist,
+                                             _outskirtsMaxDist,
+                                             _windSpellRange,
+                                             _controlSpellange,
+                                             _shieldSpellRange);
+
         _defaultStrategies.Add(Strategy.Defend);
         _defaultStrategies.Add(Strategy.Defend);
         _defaultStrategies.Add(Strategy.Collect);
     }
 
-    internal string[] GetMoves()
+    internal string[] GetMoves(int playerMana)
     {
-        _estimatedManaLeft = _mana;
+        _spellGenerator.SetEstimatedMana(playerMana);
 
         var moves = new string[_heroesPerPlayer];
 
         ResetHeroes();
 
-        CheckForPhaseChange();
+        CheckForPhaseChange(playerMana);
 
         SetGuardPoints();
 
@@ -79,16 +87,16 @@ internal class Game
 
         if (_weGotAController)
         {
-            CastProtectiveShieldSpells();
+            _spellGenerator.CastProtectiveShieldSpells(_playerHeroes);
         }
 
-        AssignDefensiveWindSpell();
+        _spellGenerator.AssignDefensiveWindSpell(_playerHeroes, _monsters);
 
         if (!_inCollectionPhase)
         {
-            AssignDefenderControlSpells();
+            _spellGenerator.AssignDefenderControlSpells(_playerHeroes, _monsters);
 
-            AssignAttackSpells();
+            _spellGenerator.AssignAttackSpells(_playerHeroes, _enemyHeroes, _monsters);
         }
 
         for (var i = 0; i < moves.Length; i++)
@@ -109,11 +117,11 @@ internal class Game
         }
     }
 
-    private void CheckForPhaseChange()
+    private void CheckForPhaseChange(int mana)
     {
         if (_inCollectionPhase)
         {
-            if(_mana > 300)
+            if(mana > 300)
             {
                 _inCollectionPhase = false;
 
@@ -290,188 +298,6 @@ internal class Game
                          + Math.Pow(position.Y - position2.Y, 2));
     }
 
-    private void CastProtectiveShieldSpells()
-    {
-        foreach (var defendingHero in _playerHeroes.Where(h => h.Strategy == Strategy.Defend))
-        {
-            if (_estimatedManaLeft < 10)
-            {
-                break;
-            }
-
-            if (defendingHero.ShieldLife == 0)
-            {
-                PerformSpell(defendingHero, $"SPELL SHIELD {defendingHero.Id}");
-
-                defendingHero.IsShielding = true;
-            }
-        }
-    }
-
-    private void PerformSpell(Hero hero, string action)
-    {
-        hero.CurrentAction = action;
-        hero.CurrentMonster = -1;
-
-        if (hero.UsingSpell == false)
-        {
-            _estimatedManaLeft -= 10;
-            hero.UsingSpell = true;
-        }
-    }
-
-    private void AssignDefensiveWindSpell()
-    {
-        if (_estimatedManaLeft < 10)
-        {
-            return;
-        }
-
-        var closeDistance = 3000;
-
-        var closestMonster = _monsters.FirstOrDefault(m => CalculateDistance(m.Position, _playerBaseLocation) <= closeDistance
-                                                               && m.ShieldLife == 0);
-
-        if (closestMonster != null)
-        {
-            Debugger.DisplayPlayerHeroes(_playerHeroes);
-
-            var availableHeroes = _playerHeroes.Where(h => h.Strategy == Strategy.Defend && h.IsShielding == false).ToList();
-
-            if (availableHeroes.Count > 0)
-            {
-                var closestHero = availableHeroes.OrderBy(h => CalculateDistance(h.Position, closestMonster.Position))
-                                                 .First();
-
-                if (CalculateDistance(closestHero.Position, closestMonster.Position) <= _windSpellRange)
-                {
-                    Console.Error.WriteLine("Hero casting wind");
-                    PerformSpell(closestHero, $"SPELL WIND {_enemyBaseLocation.X} {_enemyBaseLocation.Y}");
-                }
-                else
-                {
-                    // Too far away for wind to work
-
-                    // If he's close and we can control that little shit away do it
-                    if (CalculateDistance(closestMonster.Position, _playerBaseLocation) <= _closeToBaseRange
-                        && CalculateDistance(closestHero.Position, closestMonster.Position) <= _controlSpellange)
-                    {
-                        Console.Error.WriteLine("Hero casting control");
-                        PerformSpell(closestHero, $"SPELL CONTROL {closestMonster.Id} {_enemyBaseLocation.X} {_enemyBaseLocation.Y}");
-
-                        // Also get the other defender to do a WIND spell just to be sure. At some point lets check if there are other
-                        // monsters close to the base too
-                        // var otherDefender = _playerHeroes.SingleOrDefault(h => h.Strategy == Strategy.Defend
-                        //                                                        && h.Id != closestHero.Id);
-                        //
-                        // if (otherDefender != null)
-                        // {
-                        //     Console.Error.WriteLine("Hero casting defensive windwind");
-                        //     PerformSpell(otherDefender, $"SPELL WIND {_enemyBaseLocation.X} {_enemyBaseLocation.Y}");
-                        // }
-                    }
-                }
-            }
-        }
-    }
-
-    private void AssignDefenderControlSpells()
-    {
-        var healthCutOff = 10;
-
-        if (_estimatedManaLeft < 10)
-        {
-            return;
-        }
-
-        var defendingHeroesOutsideOfBase = _playerHeroes.Where(h => h.Strategy == Strategy.Defend
-                                                                    && h.IsShielding == false
-                                                                    && CalculateDistance(h.Position, _playerBaseLocation) > _baseRadius);
-
-
-        foreach (var defendingHeroOutsideOfBase in defendingHeroesOutsideOfBase)
-        {
-            if (_estimatedManaLeft < 10)
-            {
-                return;
-            }
-
-            var monsterWithinSpellRange = _monsters.Where(m => m.Health > healthCutOff
-                                                               && m.IsControlled == false
-                                                               && m.ThreatFor != ThreatFor.Enemy
-                                                               && m.ShieldLife == 0
-                                                               && CalculateDistance(m.Position, _playerBaseLocation) > _baseRadius)
-                                                   .Select(m => new { m, distance = CalculateDistance(m.Position, defendingHeroOutsideOfBase.Position)})
-                                                   .Where(m => m.distance <= _controlSpellange)
-                                                   .OrderBy(m => m.distance)
-                                                   .Select(m => m.m)
-                                                   .FirstOrDefault();
-
-            if (monsterWithinSpellRange != null)
-            {
-                PerformSpell(defendingHeroOutsideOfBase, $"SPELL CONTROL {monsterWithinSpellRange.Id} {_enemyBaseLocation.X} {_enemyBaseLocation.Y}");
-            }
-        }
-    }
-
-    private void AssignAttackSpells()
-    {
-        foreach (var attackingHero in _playerHeroes.Where(h => h.Strategy == Strategy.Attack))
-        {
-            if (_estimatedManaLeft < 10)
-            {
-                return;
-            }
-
-            if (CalculateDistance(attackingHero.Position, _enemyBaseLocation) > _outskirtsMaxDist)
-            {
-                continue;
-            }
-
-            var closeEnoughForWindMonster = _monsters.FirstOrDefault(m => CalculateDistance(m.Position, attackingHero.Position) <= _windSpellRange
-                                                                                 && m.ShieldLife == 0);
-
-            if (closeEnoughForWindMonster != null)
-            {
-                Console.Error.WriteLine($"Atacking hero {attackingHero.Id} to cast WIND on monster {closeEnoughForWindMonster.Id}");
-
-                PerformSpell(attackingHero, $"SPELL WIND {_enemyBaseLocation.X} {_enemyBaseLocation.Y}");
-            }
-            else // If we're not close enough for a wind spell try a shield or control
-            {
-                var closeEnoughForControlEnemy = _enemyHeroes.Where(e => e.ShieldLife == 0
-                                                                                && CalculateDistance(e.Position, attackingHero.Position) <= _controlSpellange)
-                                                                  .OrderBy(e => CalculateDistance(e.Position, _enemyBaseLocation))
-                                                                  .FirstOrDefault();
-
-                var closeEnoughForSpellMonster = _monsters.FirstOrDefault(m => m.ShieldLife == 0
-                                                                                    && m.ThreatFor == ThreatFor.Enemy
-                                                                                    && CalculateDistance(m.Position, attackingHero.Position) <= _shieldSpellRange
-                                                                                    && CalculateDistance(m.Position, _enemyBaseLocation) <= _outskirtsMinDist);
-
-                if (closeEnoughForControlEnemy != null && closeEnoughForSpellMonster != null)
-                {
-                    if (new Random().Next(1) == 0)
-                    {
-                        PerformSpell(attackingHero, $"SPELL SHIELD {closeEnoughForSpellMonster.Id}");
-                    }
-                    else
-                    {
-                        PerformSpell(attackingHero, $"SPELL CONTROL {closeEnoughForControlEnemy.Id} {_playerBaseLocation.X} {_playerBaseLocation.Y}");
-                    }
-                }
-                else if (closeEnoughForSpellMonster != null)
-                {
-                    PerformSpell(attackingHero, $"SPELL SHIELD {closeEnoughForSpellMonster.Id}");
-                }
-                else if (closeEnoughForControlEnemy != null)
-                {
-                    PerformSpell(attackingHero, $"SPELL CONTROL {closeEnoughForControlEnemy.Id} {_playerBaseLocation.X} {_playerBaseLocation.Y}");
-                }
-            }
-        }
-    }
-
     private void ClearDeadMonsters()
     {
         foreach (var hero in _playerHeroes)
@@ -529,11 +355,6 @@ internal class Game
                 }
             }
         }
-    }
-
-    internal void SetMana(int mana)
-    {
-        _mana = mana;
     }
 
     internal void UpdatePlayerHero(Hero hero)

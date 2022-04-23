@@ -593,6 +593,11 @@ internal class Game
                 return;
             }
 
+            if (CalculateDistance(attackingHero.Position, _enemyBaseLocation) > _outskirtsMaxDist)
+            {
+                continue;
+            }
+
             var closeEnoughForWindMonster = _monsters.FirstOrDefault(m => CalculateDistance(m.Position, attackingHero.Position) <= _windSpellRange
                                                                                  && m.ShieldLife == 0);
 
@@ -602,17 +607,36 @@ internal class Game
 
                 PerformSpell(attackingHero, $"SPELL WIND {_enemyBaseLocation.X} {_enemyBaseLocation.Y}");
             }
-            else // If we're not close enough for a wind spell try a shield
+            else // If we're not close enough for a wind spell try a shield or control
             {
-                var closeEnoughForShieldMonster = _monsters.FirstOrDefault(m => m.ShieldLife == 0
+                var closeEnoughForControlEnemy = _enemyHeroes.Where(e => e.ShieldLife == 0
+                                                                                && CalculateDistance(e.Position, attackingHero.Position) <= _controlSpellange)
+                                                                            .OrderBy(e => CalculateDistance(e.Position, _enemyBaseLocation))
+                                                                            .FirstOrDefault();
+
+                var closeEnoughForSpellMonster = _monsters.FirstOrDefault(m => m.ShieldLife == 0
                                                                                     && m.ThreatFor == ThreatFor.Enemy
                                                                                     && CalculateDistance(m.Position, attackingHero.Position) <= _shieldSpellRange
                                                                                     && CalculateDistance(m.Position, _enemyBaseLocation) <= _outskirtsMinDist);
 
-                if (closeEnoughForShieldMonster != null)
+                if (closeEnoughForControlEnemy != null && closeEnoughForSpellMonster != null)
                 {
-                    Console.Error.WriteLine($"Atacking hero {attackingHero.Id} to cast SHIELD on monster {closeEnoughForShieldMonster.Id}");
-                    PerformSpell(attackingHero, $"SPELL SHIELD {closeEnoughForShieldMonster.Id}");
+                    if (new Random().Next(1) == 0)
+                    {
+                        PerformSpell(attackingHero, $"SPELL SHIELD {closeEnoughForSpellMonster.Id}");
+                    }
+                    else
+                    {
+                        PerformSpell(attackingHero, $"SPELL CONTROL {closeEnoughForControlEnemy.Id} {_playerBaseLocation.X} {_playerBaseLocation.Y}");
+                    }
+                }
+                else if (closeEnoughForSpellMonster != null)
+                {
+                    PerformSpell(attackingHero, $"SPELL SHIELD {closeEnoughForSpellMonster.Id}");
+                }
+                else if (closeEnoughForControlEnemy != null)
+                {
+                    PerformSpell(attackingHero, $"SPELL CONTROL {closeEnoughForControlEnemy.Id} {_playerBaseLocation.X} {_playerBaseLocation.Y}");
                 }
             }
         }

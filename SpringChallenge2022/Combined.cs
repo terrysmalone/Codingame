@@ -1012,7 +1012,8 @@ internal sealed class SpellGenerator
             {
                 var closeEnoughForControlEnemy =
                         enemyHeroes.Where(e => e.ShieldLife == 0
-                                                 && CalculateDistance(e.Position, attackingHero.Position) <= _controlSpellange)
+                                                 && CalculateDistance(e.Position, attackingHero.Position) <= _controlSpellange
+                                                 && CalculateDistance(e.Position, _enemyBaseLocation) <= _baseRadius)
                                    .OrderBy(e => CalculateDistance(e.Position, _enemyBaseLocation))
                                    .FirstOrDefault();
 

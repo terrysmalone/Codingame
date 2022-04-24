@@ -584,20 +584,15 @@ internal sealed class MovementGenerator
 
     internal void AssignHeroMovement(List<Hero> playerHeroes, IEnumerable<Monster> monsters)
     {
-        // if a hero is not in the base, and a spider is, drop everything and defend
-        var monstersThreateningBase = monsters.Where(m => m.NearBase && m.ThreatFor == ThreatFor.Player)
-                                              .OrderBy(m => CalculateDistance(m.Position, _playerBaseLocation))
-                                              .ToList();
-
         var defendingHeroesOutsideOfBase = playerHeroes.Where(h => h.Strategy == Strategy.Defend
-                                                                                    && CalculateDistance(h.Position, _playerBaseLocation) > _baseRadius);
+                                                                   && CalculateDistance(h.Position, _playerBaseLocation) > _baseRadius);
 
         foreach (var defendingHeroOutsideOfBase in defendingHeroesOutsideOfBase)
         {
             defendingHeroOutsideOfBase.CurrentMonster = -1;
         }
 
-        CalculateDefenderMovement(playerHeroes, monsters, monstersThreateningBase);
+        CalculateDefenderMovement(playerHeroes, monsters);
 
         CalculateCollectorMovement(playerHeroes, monsters);
 
@@ -654,7 +649,7 @@ internal sealed class MovementGenerator
         }
     }
 
-    private void CalculateDefenderMovement(IEnumerable<Hero> playerHeroes, IEnumerable<Monster> monsters, IReadOnlyCollection<Monster> monstersThreateningBase)
+    private void CalculateDefenderMovement(IEnumerable<Hero> playerHeroes, IEnumerable<Monster> monsters)
     {
         var freeDefendingHeroes = playerHeroes.Where(h => h.Strategy == Strategy.Defend && h.CurrentMonster == -1).ToList();
 
@@ -662,6 +657,11 @@ internal sealed class MovementGenerator
         {
             return;
         }
+
+        // if a hero is not in the base, and a spider is, drop everything and defend
+        var monstersThreateningBase = monsters.Where(m => m.NearBase && m.ThreatFor == ThreatFor.Player)
+                                              .OrderBy(m => CalculateDistance(m.Position, _playerBaseLocation))
+                                              .ToList();
 
         if (monstersThreateningBase.Count > 0)
         {

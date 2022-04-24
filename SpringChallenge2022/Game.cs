@@ -69,7 +69,7 @@ internal class Game
         _defaultStrategies.Add(Strategy.Collect);
     }
 
-    internal string[] GetMoves(IReadOnlyCollection<Hero> enemyHeroes, IReadOnlyCollection<Monster> monsters, int playerMana)
+    internal string[] GetMoves(IReadOnlyCollection<Hero> enemyHeroes, List<Monster> monsters, int playerMana)
     {
         _spellGenerator.SetEstimatedMana(playerMana);
 

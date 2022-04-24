@@ -19,7 +19,7 @@ internal static class Debugger
 
         foreach (var monster in monsters)
         {
-            Console.Error.WriteLine($"{monster.Id}: Position-{monster.Position.X},{monster.Position.Y} - ThreatFor:{monster.ThreatFor} - IsControlled={monster.IsControlled}");
+            Console.Error.WriteLine($"{monster.Id}: Position-{monster.Position.X},{monster.Position.Y} - ThreatFor:{monster.ThreatFor} - IsControlled={monster.IsControlled} - near base:{monster.NearBase} - ThreatFor:{monster.ThreatFor}");
         }
 
         Console.Error.WriteLine("------------------------");
@@ -117,7 +117,7 @@ internal class Game
         _defaultStrategies.Add(Strategy.Collect);
     }
 
-    internal string[] GetMoves(IReadOnlyCollection<Hero> enemyHeroes, IReadOnlyCollection<Monster> monsters, int playerMana)
+    internal string[] GetMoves(IReadOnlyCollection<Hero> enemyHeroes, List<Monster> monsters, int playerMana)
     {
         _spellGenerator.SetEstimatedMana(playerMana);
 
@@ -582,7 +582,7 @@ internal sealed class MovementGenerator
         _heroRange = heroRange;
     }
 
-    internal void AssignHeroMovement(List<Hero> playerHeroes, IEnumerable<Monster> monsters)
+    internal void AssignHeroMovement(List<Hero> playerHeroes, List<Monster> monsters)
     {
         var defendingHeroesOutsideOfBase = playerHeroes.Where(h => h.Strategy == Strategy.Defend
                                                                    && CalculateDistance(h.Position, _playerBaseLocation) > _baseRadius);
@@ -649,19 +649,22 @@ internal sealed class MovementGenerator
         }
     }
 
-    private void CalculateDefenderMovement(IEnumerable<Hero> playerHeroes, IEnumerable<Monster> monsters)
+    private void CalculateDefenderMovement(IReadOnlyCollection<Hero> playerHeroes, List<Monster> monsters)
     {
+        Debugger.DisplayMonsters(monsters);
+
+        // if a hero is not in the base, and a spider is, drop everything and defend
+        var monstersThreateningBase = monsters.Where(m => m.ThreatFor == ThreatFor.Player
+                                                                         && CalculateDistance(m.Position, _playerBaseLocation) <= 6000)
+                                                         .OrderBy(m => CalculateDistance(m.Position, _playerBaseLocation))
+                                                         .ToList();
+
         var freeDefendingHeroes = playerHeroes.Where(h => h.Strategy == Strategy.Defend && h.CurrentMonster == -1).ToList();
 
-        if (freeDefendingHeroes.Count <= 0)
+        if (monstersThreateningBase.Count == 0 && freeDefendingHeroes.Count <= 0)
         {
             return;
         }
-
-        // if a hero is not in the base, and a spider is, drop everything and defend
-        var monstersThreateningBase = monsters.Where(m => m.NearBase && m.ThreatFor == ThreatFor.Player)
-                                              .OrderBy(m => CalculateDistance(m.Position, _playerBaseLocation))
-                                              .ToList();
 
         if (monstersThreateningBase.Count > 0)
         {

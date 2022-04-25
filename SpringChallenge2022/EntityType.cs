@@ -2,6 +2,7 @@
 
 internal enum EntityType
 {
+    None,
     Hero,
     Enemy,
     Monster

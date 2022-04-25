@@ -45,17 +45,17 @@ internal static class Debugger
         Console.Error.WriteLine("------------------------");
     }
 
-    internal static void DisplayPossibleAction(List<PossibleAction> possibleActions)
+    internal static void DisplayPossibleAction(List<PossibleAction> possibleActions, int playerOffset)
     {
         Console.Error.WriteLine("Possible actions");
         Console.Error.WriteLine("------------------------");
 
         for (var i = 0; i < 3; i++)
         {
-            Console.Error.WriteLine($"Hero {i}");
+            Console.Error.WriteLine($"Hero {i + playerOffset}");
 
-            var heroActions = possibleActions.Where(a => a.HeroId == 1)
-                                                                  .OrderByDescending(a => a.Priority);
+            var heroActions = possibleActions.Where(a => a.HeroId == i + playerOffset)
+                                                                       .OrderByDescending(a => a.Priority);
 
             foreach (var action in heroActions)
             {

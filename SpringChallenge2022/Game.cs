@@ -10,10 +10,12 @@ internal class Game
     private readonly Point _playerBaseLocation;
     private readonly Point _enemyBaseLocation;
     private readonly int _heroesPerPlayer;
+
+    private readonly ActionManager _actionManager;
+    private readonly ValuesProvider _valuesProvider;
     private readonly MovementGenerator _movementGenerator;
     private readonly SpellGenerator _spellGenerator;
     private readonly GuardPointGenerator _guardPointGenerator;
-    private readonly ValuesProvider _valuesProvider;
 
     private bool _inCollectionPhase = true;
 
@@ -31,7 +33,16 @@ internal class Game
 
         _valuesProvider = new ValuesProvider();
 
-        _enemyBaseLocation = new Point(playerBaseLocation.X == 0 ? _valuesProvider.XMax : 0, playerBaseLocation.Y == 0 ? _valuesProvider.YMax : 0);
+        if (playerBaseLocation.X == 0)
+        {
+            _enemyBaseLocation = new Point(_valuesProvider.XMax, _valuesProvider.YMax);
+            _actionManager = new ActionManager(true);
+        }
+        else
+        {
+            _enemyBaseLocation = new Point(0, 0);
+            _actionManager = new ActionManager(false);
+        }
 
         _movementGenerator = new MovementGenerator(_playerBaseLocation,
                                                    _enemyBaseLocation,
@@ -50,6 +61,7 @@ internal class Game
 
     internal string[] GetMoves(IReadOnlyCollection<Hero> enemyHeroes, List<Monster> monsters, int playerMana)
     {
+        _actionManager.ClearPossibleActions();
         _spellGenerator.SetEstimatedMana(playerMana);
 
         var moves = new string[_heroesPerPlayer];
@@ -72,45 +84,38 @@ internal class Game
         CheckForController();
         ClearStaleAttacks(monsters);
 
-        _movementGenerator.AssignHeroMovement(_playerHeroes, monsters);
+        _movementGenerator.AssignHeroMovement(_playerHeroes, monsters, _actionManager);
 
         if (_weGotADefenderController)
         {
-            _spellGenerator.CastProtectiveShieldSpells(_playerHeroes, Strategy.Defend);
+            _spellGenerator.CastProtectiveShieldSpells(_playerHeroes, Strategy.Defend, _actionManager);
         }
 
         if (_weGotAnAttackerController)
         {
-            _spellGenerator.CastProtectiveShieldSpells(_playerHeroes, Strategy.Attack);
+            _spellGenerator.CastProtectiveShieldSpells(_playerHeroes, Strategy.Attack, _actionManager);
         }
 
-        _spellGenerator.AssignDefensiveWindSpell(_playerHeroes, monsters);
+        _spellGenerator.AssignDefensiveWindSpell(_playerHeroes, monsters, _actionManager);
 
-        Console.Error.WriteLine($"_inCollectionPhase:{_inCollectionPhase}");
         if (!_inCollectionPhase)
         {
             if (playerMana > 100)
             {
-                _spellGenerator.AssignDefenderControlSpells(_playerHeroes, monsters);
+                _spellGenerator.AssignDefenderControlSpells(_playerHeroes, monsters, _actionManager);
             }
 
-            _spellGenerator.AssignAttackSpells(_playerHeroes, enemyHeroes, monsters);
+            _spellGenerator.AssignAttackSpells(_playerHeroes, enemyHeroes, monsters, _actionManager);
 
         }
 
-        for (var i = 0; i < moves.Length; i++)
-        {
-            moves[i] = _playerHeroes[i].CurrentAction;
-        }
-
-        return moves;
+        return _actionManager.GetBestActions();
     }
 
     private void ResetHeroes()
     {
         foreach (var hero in _playerHeroes)
         {
-            hero.CurrentAction = string.Empty;
             hero.UsingSpell = false;
             hero.IsShielding = false;
         }

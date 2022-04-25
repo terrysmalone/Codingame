@@ -8,7 +8,13 @@ namespace SpringChallenge2022;
 
 public class ActionManager
 {
+    private readonly bool _player1;
     List<PossibleAction> _possibleActions = new List<PossibleAction>();
+
+    public ActionManager(bool player1)
+    {
+        _player1 = player1;
+    }
 
     internal void ClearPossibleActions()
     {
@@ -24,19 +30,20 @@ public class ActionManager
     {
         var actions = new string[3];
 
-        Debugger.DisplayPossibleAction(_possibleActions);
+        var playerOffset = _player1 ? 0 : 3;
+
+        Debugger.DisplayPossibleAction(_possibleActions, playerOffset);
 
         for (var i = 0; i < 3; i++)
         {
-            var bestAction = _possibleActions.Where(a => a.HeroId == i)
+            var bestAction = _possibleActions.Where(a => a.HeroId == i + playerOffset)
                                              .OrderByDescending(a => a.Priority)
                                              .FirstOrDefault();
 
             if (bestAction != null)
             {
                 var stringBuilder = new StringBuilder();
-                
-                stringBuilder.Append($"{bestAction.HeroId} ");
+
                 stringBuilder.Append($"{GetActionType(bestAction.ActionType)} ");
 
                 if (bestAction.ActionType == ActionType.ShieldSpell

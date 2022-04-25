@@ -6,10 +6,103 @@
 ***************************************************************/
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
+using System.Linq.Expressions;
+using System.Text;
+using System.Drawing;
 using System.Dynamic;
 
+
+public class ActionManager
+{
+    private readonly bool _player1;
+    List<PossibleAction> _possibleActions = new List<PossibleAction>();
+
+    public ActionManager(bool player1)
+    {
+        _player1 = player1;
+    }
+
+    internal void ClearPossibleActions()
+    {
+        _possibleActions.Clear();
+    }
+
+    internal void AddPossibleAction(int heroId, int priority, ActionType actionType, EntityType entityType, int? targetId, int? targetXPos, int? targetYPos)
+    {
+        _possibleActions.Add(new PossibleAction(heroId, priority, actionType, entityType, targetId, targetXPos, targetYPos));
+    }
+
+    internal string[] GetBestActions()
+    {
+        var actions = new string[3];
+
+        var playerOffset = _player1 ? 0 : 3;
+
+        Debugger.DisplayPossibleAction(_possibleActions, playerOffset);
+
+        for (var i = 0; i < 3; i++)
+        {
+            var bestAction = _possibleActions.Where(a => a.HeroId == i + playerOffset)
+                                             .OrderByDescending(a => a.Priority)
+                                             .FirstOrDefault();
+
+            if (bestAction != null)
+            {
+                var stringBuilder = new StringBuilder();
+
+                stringBuilder.Append($"{GetActionType(bestAction.ActionType)} ");
+
+                if (bestAction.ActionType == ActionType.ShieldSpell
+                    || bestAction.ActionType == ActionType.ControlSpell)
+                {
+                    stringBuilder.Append($"{bestAction.TargetId} ");
+                }
+
+                if (bestAction.ActionType == ActionType.Move
+                    || bestAction.ActionType == ActionType.ControlSpell
+                    || bestAction.ActionType == ActionType.WindSpell)
+                {
+                    stringBuilder.Append($"{bestAction.TargetXPos} {bestAction.TargetYPos}");
+                }
+
+                actions[i] = stringBuilder.ToString();
+            }
+            else
+            {
+                actions[i] = "WAIT";
+            }
+        }
+
+        return actions;
+    }
+
+    private static string GetActionType(ActionType actionType)
+    {
+        switch (actionType)
+        {
+            case ActionType.Move:
+                return "MOVE";
+            case ActionType.ControlSpell:
+                return "SPELL CONTROL";
+            case ActionType.ShieldSpell:
+                return "SPELL SHIELD";
+            case ActionType.WindSpell:
+                return "SPELL WIND";
+            default:
+                return "Incorrect action type";
+        }
+    }
+}
+
+
+internal enum ActionType
+{
+    Move,
+    ControlSpell,
+    ShieldSpell,
+    WindSpell
+}
 
 internal static class Debugger
 {
@@ -51,6 +144,36 @@ internal static class Debugger
 
         Console.Error.WriteLine("------------------------");
     }
+
+    internal static void DisplayPossibleAction(List<PossibleAction> possibleActions, int playerOffset)
+    {
+        Console.Error.WriteLine("Possible actions");
+        Console.Error.WriteLine("------------------------");
+
+        for (var i = 0; i < 3; i++)
+        {
+            Console.Error.WriteLine($"Hero {i + playerOffset}");
+
+            var heroActions = possibleActions.Where(a => a.HeroId == i + playerOffset)
+                                                                       .OrderByDescending(a => a.Priority);
+
+            foreach (var action in heroActions)
+            {
+                Console.Error.WriteLine($"{action.Priority}:{action.ActionType} {action.EntityType} {action.TargetId} {action.TargetXPos} {action.TargetYPos}");
+            }
+        }
+
+        Console.Error.WriteLine("------------------------");
+    }
+}
+
+
+internal enum EntityType
+{
+    None,
+    Hero,
+    Enemy,
+    Monster
 }
 
 
@@ -59,10 +182,12 @@ internal class Game
     private readonly Point _playerBaseLocation;
     private readonly Point _enemyBaseLocation;
     private readonly int _heroesPerPlayer;
+
+    private readonly ActionManager _actionManager;
+    private readonly ValuesProvider _valuesProvider;
     private readonly MovementGenerator _movementGenerator;
     private readonly SpellGenerator _spellGenerator;
     private readonly GuardPointGenerator _guardPointGenerator;
-    private readonly ValuesProvider _valuesProvider;
 
     private bool _inCollectionPhase = true;
 
@@ -80,7 +205,16 @@ internal class Game
 
         _valuesProvider = new ValuesProvider();
 
-        _enemyBaseLocation = new Point(playerBaseLocation.X == 0 ? _valuesProvider.XMax : 0, playerBaseLocation.Y == 0 ? _valuesProvider.YMax : 0);
+        if (playerBaseLocation.X == 0)
+        {
+            _enemyBaseLocation = new Point(_valuesProvider.XMax, _valuesProvider.YMax);
+            _actionManager = new ActionManager(true);
+        }
+        else
+        {
+            _enemyBaseLocation = new Point(0, 0);
+            _actionManager = new ActionManager(false);
+        }
 
         _movementGenerator = new MovementGenerator(_playerBaseLocation,
                                                    _enemyBaseLocation,
@@ -99,6 +233,7 @@ internal class Game
 
     internal string[] GetMoves(IReadOnlyCollection<Hero> enemyHeroes, List<Monster> monsters, int playerMana)
     {
+        _actionManager.ClearPossibleActions();
         _spellGenerator.SetEstimatedMana(playerMana);
 
         var moves = new string[_heroesPerPlayer];
@@ -121,45 +256,38 @@ internal class Game
         CheckForController();
         ClearStaleAttacks(monsters);
 
-        _movementGenerator.AssignHeroMovement(_playerHeroes, monsters);
+        _movementGenerator.AssignHeroMovement(_playerHeroes, monsters, _actionManager);
 
         if (_weGotADefenderController)
         {
-            _spellGenerator.CastProtectiveShieldSpells(_playerHeroes, Strategy.Defend);
+            _spellGenerator.CastProtectiveShieldSpells(_playerHeroes, Strategy.Defend, _actionManager);
         }
 
         if (_weGotAnAttackerController)
         {
-            _spellGenerator.CastProtectiveShieldSpells(_playerHeroes, Strategy.Attack);
+            _spellGenerator.CastProtectiveShieldSpells(_playerHeroes, Strategy.Attack, _actionManager);
         }
 
-        _spellGenerator.AssignDefensiveWindSpell(_playerHeroes, monsters);
+        _spellGenerator.AssignDefensiveWindSpell(_playerHeroes, monsters, _actionManager);
 
-        Console.Error.WriteLine($"_inCollectionPhase:{_inCollectionPhase}");
         if (!_inCollectionPhase)
         {
             if (playerMana > 100)
             {
-                _spellGenerator.AssignDefenderControlSpells(_playerHeroes, monsters);
+                _spellGenerator.AssignDefenderControlSpells(_playerHeroes, monsters, _actionManager);
             }
 
-            _spellGenerator.AssignAttackSpells(_playerHeroes, enemyHeroes, monsters);
+            _spellGenerator.AssignAttackSpells(_playerHeroes, enemyHeroes, monsters, _actionManager);
 
         }
 
-        for (var i = 0; i < moves.Length; i++)
-        {
-            moves[i] = _playerHeroes[i].CurrentAction;
-        }
-
-        return moves;
+        return _actionManager.GetBestActions();
     }
 
     private void ResetHeroes()
     {
         foreach (var hero in _playerHeroes)
         {
-            hero.CurrentAction = string.Empty;
             hero.UsingSpell = false;
             hero.IsShielding = false;
         }
@@ -509,8 +637,6 @@ internal sealed class Hero
 
     internal int CurrentMonster { get; set; } = -1;
 
-    internal string CurrentAction { get; set; } = "WAIT";
-
     internal bool UsingSpell {get; set; }
 
     internal bool IsControlled { get; set; }
@@ -612,10 +738,10 @@ internal sealed class MovementGenerator
         _valuesProvider = valuesProvider;
     }
 
-    internal void AssignHeroMovement(List<Hero> playerHeroes, List<Monster> monsters)
+    internal void AssignHeroMovement(List<Hero> playerHeroes, List<Monster> monsters, ActionManager actionManager)
     {
         var defendingHeroesOutsideOfBase = playerHeroes.Where(h => h.Strategy == Strategy.Defend
-                                                                   && CalculateDistance(h.Position, _playerBaseLocation) > _valuesProvider.BaseRadius);
+                                                                                   && CalculateDistance(h.Position, _playerBaseLocation) > _valuesProvider.BaseRadius);
 
         foreach (var defendingHeroOutsideOfBase in defendingHeroesOutsideOfBase)
         {
@@ -635,7 +761,7 @@ internal sealed class MovementGenerator
             {
                 var monsterToAttack = monsters.Single(m => m.Id == hero.CurrentMonster);
 
-                hero.CurrentAction = $"MOVE {monsterToAttack.Position.X} {monsterToAttack.Position.Y}";
+                actionManager.AddPossibleAction(hero.Id, 0, ActionType.Move, EntityType.Monster, null, monsterToAttack.Position.X, monsterToAttack.Position.Y);
             }
             else
             {
@@ -643,16 +769,17 @@ internal sealed class MovementGenerator
 
                 if (!(hero.Position.X == currentGuardPoint.X && hero.Position.Y == currentGuardPoint.Y))
                 {
-                    hero.CurrentAction = $"MOVE {currentGuardPoint.X} {currentGuardPoint.Y}";
+                    actionManager.AddPossibleAction(hero.Id, 0, ActionType.Move, EntityType.None, null, currentGuardPoint.X, currentGuardPoint.Y);
                 }
                 else
                 {
                     var nextGuardPoint = hero.GetNextGuardPoint();
-                    hero.CurrentAction = $"MOVE {nextGuardPoint.X} {nextGuardPoint.Y}";
+                    actionManager.AddPossibleAction(hero.Id, 0, ActionType.Move, EntityType.None, null, nextGuardPoint.X, nextGuardPoint.Y);
                 }
             }
         }
     }
+
     private void CalculateAttackerMovement(IEnumerable<Hero> playerHeroes, IEnumerable<Monster> monsters)
     {
         var freeAttackingHeroes = playerHeroes.Where(h => h.Strategy == Strategy.Attack && h.CurrentMonster == -1).ToList();
@@ -705,10 +832,6 @@ internal sealed class MovementGenerator
         }
         else
         {
-            // Monsters on outskirts might have to be considered
-
-            Console.Error.WriteLine($"freeDefendingHeroes.Count: {freeDefendingHeroes.Count}");
-
             foreach (var freeDefendingHero in freeDefendingHeroes)
             {
                 var monsterWithinRange = monsters.Where(m => CalculateDistance(m.Position, _playerBaseLocation) <= _valuesProvider.MaxDefenderDistanceFromBase
@@ -721,7 +844,6 @@ internal sealed class MovementGenerator
 
                 if (monsterWithinRange != null)
                 {
-                    Console.Error.WriteLine($"Hero {freeDefendingHero.Id} attacking monster {monsterWithinRange.Id}");
                     freeDefendingHero.CurrentMonster = monsterWithinRange.Id;
                 }
             }
@@ -747,20 +869,6 @@ internal sealed class MovementGenerator
                 if (closestMonster != null)
                 {
                     collectingHero.CurrentMonster = closestMonster.Id;
-                }
-                else
-                {
-                    var currentGuardPoint = collectingHero.GetCurrentGuardPoint();
-
-                    if (!(collectingHero.Position.X == currentGuardPoint.X && collectingHero.Position.Y == currentGuardPoint.Y))
-                    {
-                        collectingHero.CurrentAction = $"MOVE {currentGuardPoint.X} {currentGuardPoint.Y}";
-                    }
-                    else
-                    {
-                        var nextGuardPoint = collectingHero.GetNextGuardPoint();
-                        collectingHero.CurrentAction = $"MOVE {nextGuardPoint.X} {nextGuardPoint.Y}";
-                    }
                 }
             }
         }
@@ -880,6 +988,29 @@ internal sealed class Player
 }
 
 
+internal sealed class PossibleAction
+{
+    internal int HeroId { get; }
+    internal int Priority { get; }
+    internal ActionType ActionType { get; }
+    internal EntityType EntityType { get; }
+    internal int? TargetId { get; }
+    internal int? TargetXPos { get; }
+    internal int? TargetYPos { get; }
+
+    internal PossibleAction(int heroId, int priority, ActionType actionType, EntityType entityType, int? targetId, int? targetXPos, int? targetYPos)
+    {
+        HeroId = heroId;
+        Priority = priority;
+        ActionType = actionType;
+        EntityType = entityType;
+        TargetId = targetId;
+        TargetXPos = targetXPos;
+        TargetYPos = targetYPos;
+    }
+}
+
+
 internal sealed class SpellGenerator
 {
     private int _estimatedManaLeft;
@@ -897,7 +1028,7 @@ internal sealed class SpellGenerator
         _valuesProvider = valuesProvider;
     }
 
-    internal void CastProtectiveShieldSpells(IEnumerable<Hero> playerHeroes, Strategy strategy)
+    internal void CastProtectiveShieldSpells(IEnumerable<Hero> playerHeroes, Strategy strategy, ActionManager actionManager)
     {
         foreach (var hero in playerHeroes.Where(h => h.Strategy == strategy))
         {
@@ -908,14 +1039,15 @@ internal sealed class SpellGenerator
 
             if (hero.ShieldLife == 0)
             {
-                PerformSpell(hero, $"SPELL SHIELD {hero.Id}");
+                actionManager.AddPossibleAction(hero.Id, 90, ActionType.ShieldSpell, EntityType.Hero, hero.Id, null, null);
+                PerformSpell(hero);
 
                 hero.IsShielding = true;
             }
         }
     }
 
-    internal void AssignDefensiveWindSpell(List<Hero> playerHeroes, IEnumerable<Monster> monsters)
+    internal void AssignDefensiveWindSpell(List<Hero> playerHeroes, IEnumerable<Monster> monsters, ActionManager actionManager)
     {
         if (_estimatedManaLeft < 10)
         {
@@ -929,8 +1061,6 @@ internal sealed class SpellGenerator
 
         if (closestMonster != null)
         {
-            Debugger.DisplayPlayerHeroes(playerHeroes);
-
             var availableHeroes = playerHeroes.Where(h => h.Strategy == Strategy.Defend && h.IsShielding == false).ToList();
 
             if (availableHeroes.Count > 0)
@@ -938,10 +1068,10 @@ internal sealed class SpellGenerator
                 var closestHero = availableHeroes.OrderBy(h => CalculateDistance(h.Position, closestMonster.Position))
                                                  .First();
 
-                if (CalculateDistance(closestHero.Position, closestMonster.Position) <= _valuesProvider.WindSpellRange)
+                if (CalculateDistance(closestHero.Position, closestMonster.Position) <= ValuesProvider.WindSpellRange)
                 {
-                    Console.Error.WriteLine("Hero casting wind");
-                    PerformSpell(closestHero, $"SPELL WIND {_enemyBaseLocation.X} {_enemyBaseLocation.Y}");
+                    actionManager.AddPossibleAction(closestHero.Id, 50, ActionType.WindSpell, EntityType.None, null, _enemyBaseLocation.X, _enemyBaseLocation.Y);
+                    PerformSpell(closestHero);
                 }
                 else
                 {
@@ -951,15 +1081,15 @@ internal sealed class SpellGenerator
                     if (CalculateDistance(closestMonster.Position, _playerBaseLocation) <= _valuesProvider.CloseToBaseRange
                         && CalculateDistance(closestHero.Position, closestMonster.Position) <= _valuesProvider.ControlSpellange)
                     {
-                        Console.Error.WriteLine("Hero casting control");
-                        PerformSpell(closestHero, $"SPELL CONTROL {closestMonster.Id} {_enemyBaseLocation.X} {_enemyBaseLocation.Y}");
+                        actionManager.AddPossibleAction(closestHero.Id, 50, ActionType.ControlSpell, EntityType.Monster, closestMonster.Id, _enemyBaseLocation.X, _enemyBaseLocation.Y);
+                        PerformSpell(closestHero);
                     }
                 }
             }
         }
     }
 
-    internal void AssignDefenderControlSpells(IEnumerable<Hero> playerHeroes, IEnumerable<Monster> monsters)
+    internal void AssignDefenderControlSpells(IEnumerable<Hero> playerHeroes, IEnumerable<Monster> monsters, ActionManager actionManager)
     {
         const int healthCutOff = 10;
 
@@ -994,17 +1124,16 @@ internal sealed class SpellGenerator
 
             if (monsterWithinSpellRange != null)
             {
-                PerformSpell(defendingHeroOutsideOfBase, $"SPELL CONTROL {monsterWithinSpellRange.Id} {_enemyBaseLocation.X} {_enemyBaseLocation.Y}");
+                actionManager.AddPossibleAction(defendingHeroOutsideOfBase.Id, 50, ActionType.ControlSpell, EntityType.Monster, monsterWithinSpellRange.Id, _enemyBaseLocation.X, _enemyBaseLocation.Y);
+                PerformSpell(defendingHeroOutsideOfBase);
             }
         }
     }
 
-    internal void AssignAttackSpells(IEnumerable<Hero> playerHeroes, IEnumerable<Hero> enemyHeroes, IEnumerable<Monster> monsters)
+    internal void AssignAttackSpells(IEnumerable<Hero> playerHeroes, IEnumerable<Hero> enemyHeroes, IEnumerable<Monster> monsters, ActionManager actionManager)
     {
         foreach (var attackingHero in playerHeroes.Where(h => h.Strategy == Strategy.Attack))
         {
-            Console.Error.WriteLine($"_estimatedManaLeft: {_estimatedManaLeft}");
-
             if (_estimatedManaLeft < 10)
             {
                 return;
@@ -1015,14 +1144,14 @@ internal sealed class SpellGenerator
                 continue;
             }
 
-            var closeEnoughForWindMonster = monsters.FirstOrDefault(m => CalculateDistance(m.Position, attackingHero.Position) <= _valuesProvider.WindSpellRange
+            var closeEnoughForWindMonster = monsters.FirstOrDefault(m => CalculateDistance(m.Position, attackingHero.Position) <= ValuesProvider.WindSpellRange
                                                                                  && m.ShieldLife == 0);
 
             if (closeEnoughForWindMonster != null)
             {
-                Console.Error.WriteLine($"Atacking hero {attackingHero.Id} to cast WIND on monster {closeEnoughForWindMonster.Id}");
+                actionManager.AddPossibleAction(attackingHero.Id, 50, ActionType.WindSpell, EntityType.None, null, _enemyBaseLocation.X, _enemyBaseLocation.Y);
 
-                PerformSpell(attackingHero, $"SPELL WIND {_enemyBaseLocation.X} {_enemyBaseLocation.Y}");
+                PerformSpell(attackingHero);
             }
             else // If we're not close enough for a wind spell try a shield or control
             {
@@ -1043,28 +1172,32 @@ internal sealed class SpellGenerator
                 {
                     if (new Random().Next(1) == 0)
                     {
-                        PerformSpell(attackingHero, $"SPELL SHIELD {closeEnoughForSpellMonster.Id}");
+                        actionManager.AddPossibleAction(attackingHero.Id, 50, ActionType.ShieldSpell, EntityType.Monster, closeEnoughForSpellMonster.Id, null, null);
+                        PerformSpell(attackingHero);
                     }
                     else
                     {
-                        PerformSpell(attackingHero, $"SPELL CONTROL {closeEnoughForControlEnemy.Id} {_playerBaseLocation.X} {_playerBaseLocation.Y}");
+                        actionManager.AddPossibleAction(attackingHero.Id, 50, ActionType.ControlSpell, EntityType.Monster, closeEnoughForSpellMonster.Id, _playerBaseLocation.X, _playerBaseLocation.Y);
+                        PerformSpell(attackingHero);
                     }
                 }
                 else if (closeEnoughForSpellMonster != null)
                 {
-                    PerformSpell(attackingHero, $"SPELL SHIELD {closeEnoughForSpellMonster.Id}");
+                    actionManager.AddPossibleAction(attackingHero.Id, 50, ActionType.ShieldSpell, EntityType.Monster, closeEnoughForSpellMonster.Id, null, null);
+                    PerformSpell(attackingHero);
                 }
                 else if (closeEnoughForControlEnemy != null)
                 {
-                    PerformSpell(attackingHero, $"SPELL CONTROL {closeEnoughForControlEnemy.Id} {_playerBaseLocation.X} {_playerBaseLocation.Y}");
+                    actionManager.AddPossibleAction(attackingHero.Id, 50, ActionType.ControlSpell, EntityType.Enemy, closeEnoughForControlEnemy.Id, _playerBaseLocation.X, _playerBaseLocation.Y);
+
+                    PerformSpell(attackingHero);
                 }
             }
         }
     }
 
-    private void PerformSpell(Hero hero, string action)
+    private void PerformSpell(Hero hero)
     {
-        hero.CurrentAction = action;
         hero.CurrentMonster = -1;
 
         if (hero.UsingSpell == false)
@@ -1104,17 +1237,17 @@ internal enum ThreatFor
 
 internal sealed class ValuesProvider
 {
-    public int XMax { get; } = 17630;
-    public int YMax { get; } = 9000;
+    public int XMax => 17630;
+    public int YMax => 9000;
 
-    public int WindSpellRange { get; } = 1280;
-    public int ControlSpellange { get; } = 2200;
-    public int ShieldSpellRange { get; } = 2200;
+    public static int WindSpellRange => 1280;
+    public int ControlSpellange => 2200;
+    public int ShieldSpellRange => 2200;
 
-    public int OutskirtsMinDist { get; } = 5000;
-    public int OutskirtsMaxDist { get; } = 7000;
-    public int HeroRange { get; } = 2200;
-    public int MaxDefenderDistanceFromBase { get; } = 9000;
-    public int BaseRadius { get; } = 5000;
-    public int CloseToBaseRange { get; } = 1000;
+    public int OutskirtsMinDist => 5000;
+    public int OutskirtsMaxDist => 7000;
+    public int HeroRange => 2200;
+    public int MaxDefenderDistanceFromBase => 9000;
+    public int BaseRadius => 5000;
+    public int CloseToBaseRange => 1000;
 }

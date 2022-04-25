@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace SpringChallenge2022;
 
@@ -39,6 +40,27 @@ internal static class Debugger
         foreach (var hero in heroes)
         {
             Console.Error.WriteLine($"{hero.Id}: {hero.Position.X}, {hero.Position.Y}");
+        }
+
+        Console.Error.WriteLine("------------------------");
+    }
+
+    internal static void DisplayPossibleAction(List<PossibleAction> possibleActions)
+    {
+        Console.Error.WriteLine("Possible actions");
+        Console.Error.WriteLine("------------------------");
+
+        for (var i = 0; i < 3; i++)
+        {
+            Console.Error.WriteLine($"Hero {i}");
+
+            var heroActions = possibleActions.Where(a => a.HeroId == 1)
+                                                                  .OrderByDescending(a => a.Priority);
+
+            foreach (var action in heroActions)
+            {
+                Console.Error.WriteLine($"{action.Priority}:{action.ActionType} {action.EntityType} {action.TargetId} {action.TargetXPos} {action.TargetYPos}");
+            }
         }
 
         Console.Error.WriteLine("------------------------");

@@ -107,9 +107,13 @@ internal class Game
 
         _spellGenerator.AssignDefensiveWindSpell(_playerHeroes, monsters);
 
+        Console.Error.WriteLine($"_inCollectionPhase:{_inCollectionPhase}");
         if (!_inCollectionPhase)
         {
-            _spellGenerator.AssignDefenderControlSpells(_playerHeroes, monsters);
+            if (playerMana > 100)
+            {
+                _spellGenerator.AssignDefenderControlSpells(_playerHeroes, monsters);
+            }
 
             _spellGenerator.AssignAttackSpells(_playerHeroes, enemyHeroes, monsters);
 
@@ -145,16 +149,16 @@ internal class Game
                 ChangeCollectorToAttacker();
             }
         }
-        else
-        {
-            if(mana < 100)
-            {
-                _inCollectionPhase = true;
-
-                ClearGuardPoints();
-                ChangeAttackerToCollector();
-            }
-        }
+        // else
+        // {
+        //     if(mana <= 10)
+        //     {
+        //         _inCollectionPhase = true;
+        //
+        //         ClearGuardPoints();
+        //         ChangeAttackerToCollector();
+        //     }
+        // }
     }
 
     private void ClearGuardPoints()

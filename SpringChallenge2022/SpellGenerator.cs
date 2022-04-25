@@ -148,6 +148,8 @@ internal sealed class SpellGenerator
     {
         foreach (var attackingHero in playerHeroes.Where(h => h.Strategy == Strategy.Attack))
         {
+            Console.Error.WriteLine($"_estimatedManaLeft: {_estimatedManaLeft}");
+
             if (_estimatedManaLeft < 10)
             {
                 return;

@@ -106,8 +106,6 @@ internal sealed class MovementGenerator
 
     private void CalculateDefenderMovement(IReadOnlyCollection<Hero> playerHeroes, List<Monster> monsters)
     {
-        Debugger.DisplayMonsters(monsters);
-
         // if a hero is not in the base, and a spider is, drop everything and defend
         var monstersThreateningBase = monsters.Where(m => m.ThreatFor == ThreatFor.Player
                                                                          && CalculateDistance(m.Position, _playerBaseLocation) <= 6000)

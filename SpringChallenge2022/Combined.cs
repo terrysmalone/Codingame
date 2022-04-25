@@ -155,9 +155,13 @@ internal class Game
 
         _spellGenerator.AssignDefensiveWindSpell(_playerHeroes, monsters);
 
+        Console.Error.WriteLine($"_inCollectionPhase:{_inCollectionPhase}");
         if (!_inCollectionPhase)
         {
-            _spellGenerator.AssignDefenderControlSpells(_playerHeroes, monsters);
+            if (playerMana > 100)
+            {
+                _spellGenerator.AssignDefenderControlSpells(_playerHeroes, monsters);
+            }
 
             _spellGenerator.AssignAttackSpells(_playerHeroes, enemyHeroes, monsters);
 
@@ -193,16 +197,16 @@ internal class Game
                 ChangeCollectorToAttacker();
             }
         }
-        else
-        {
-            if(mana < 100)
-            {
-                _inCollectionPhase = true;
-
-                ClearGuardPoints();
-                ChangeAttackerToCollector();
-            }
-        }
+        // else
+        // {
+        //     if(mana <= 10)
+        //     {
+        //         _inCollectionPhase = true;
+        //
+        //         ClearGuardPoints();
+        //         ChangeAttackerToCollector();
+        //     }
+        // }
     }
 
     private void ClearGuardPoints()
@@ -492,14 +496,21 @@ internal sealed class GuardPointGenerator
             {
                 attackPoints.Add(new List<Point>
                 {
-                    new Point(_xMax - 3000, _yMax - 2500)
+                    new Point(_xMax - 3000, _yMax - 2500),
+                    new Point(_xMax - 4500, _yMax - 3500),
+                    new Point(_xMax - 3000, _yMax - 2500),
+                    new Point(_xMax - 2500, _yMax - 2000),
                 });
             }
             else
             {
                 attackPoints.Add(new List<Point>
                 {
-                    new Point(3000, 2500)
+                    new Point(3000, 2500),
+                    new Point(4500, 3500),
+                    new Point(3000, 2500),
+                    new Point(2500, 2000),
+
                 });
             }
         }
@@ -709,8 +720,6 @@ internal sealed class MovementGenerator
 
     private void CalculateDefenderMovement(IReadOnlyCollection<Hero> playerHeroes, List<Monster> monsters)
     {
-        Debugger.DisplayMonsters(monsters);
-
         // if a hero is not in the base, and a spider is, drop everything and defend
         var monstersThreateningBase = monsters.Where(m => m.ThreatFor == ThreatFor.Player
                                                                          && CalculateDistance(m.Position, _playerBaseLocation) <= 6000)
@@ -1053,6 +1062,8 @@ internal sealed class SpellGenerator
     {
         foreach (var attackingHero in playerHeroes.Where(h => h.Strategy == Strategy.Attack))
         {
+            Console.Error.WriteLine($"_estimatedManaLeft: {_estimatedManaLeft}");
+
             if (_estimatedManaLeft < 10)
             {
                 return;

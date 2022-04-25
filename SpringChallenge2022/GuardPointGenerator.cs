@@ -154,14 +154,21 @@ internal sealed class GuardPointGenerator
             {
                 attackPoints.Add(new List<Point>
                 {
-                    new Point(_xMax - 3000, _yMax - 2500)
+                    new Point(_xMax - 3000, _yMax - 2500),
+                    new Point(_xMax - 4500, _yMax - 3500),
+                    new Point(_xMax - 3000, _yMax - 2500),
+                    new Point(_xMax - 2500, _yMax - 2000),
                 });
             }
             else
             {
                 attackPoints.Add(new List<Point>
                 {
-                    new Point(3000, 2500)
+                    new Point(3000, 2500),
+                    new Point(4500, 3500),
+                    new Point(3000, 2500),
+                    new Point(2500, 2000),
+
                 });
             }
         }

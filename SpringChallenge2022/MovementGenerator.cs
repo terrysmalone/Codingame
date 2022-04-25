@@ -43,7 +43,7 @@ internal sealed class MovementGenerator
             {
                 var monsterToAttack = monsters.Single(m => m.Id == hero.CurrentMonster);
 
-                actionManager.AddPossibleAction(hero.Id, 0, ActionType.Move, EntityType.Monster, null, monsterToAttack.Position.X, monsterToAttack.Position.Y);
+                actionManager.AddPossibleAction(hero.Id, 0, ActionType.Move, EntityType.None, null, monsterToAttack.Position.X, monsterToAttack.Position.Y);
             }
             else
             {

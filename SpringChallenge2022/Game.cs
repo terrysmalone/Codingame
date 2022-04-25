@@ -62,7 +62,7 @@ internal class Game
     internal string[] GetMoves(IReadOnlyCollection<Hero> enemyHeroes, List<Monster> monsters, int playerMana)
     {
         _actionManager.ClearPossibleActions();
-        _spellGenerator.SetEstimatedMana(playerMana);
+        _actionManager.SetMana(playerMana);
 
         var moves = new string[_heroesPerPlayer];
 
@@ -116,7 +116,6 @@ internal class Game
     {
         foreach (var hero in _playerHeroes)
         {
-            hero.UsingSpell = false;
             hero.IsShielding = false;
         }
     }

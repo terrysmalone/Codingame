@@ -14,8 +14,6 @@ internal sealed class Hero
 
     internal int CurrentMonster { get; set; } = -1;
 
-    internal bool UsingSpell {get; set; }
-
     internal bool IsControlled { get; set; }
 
     internal int ShieldLife { get; set; }

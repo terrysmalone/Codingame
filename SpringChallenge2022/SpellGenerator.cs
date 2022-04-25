@@ -7,8 +7,6 @@ namespace SpringChallenge2022;
 
 internal sealed class SpellGenerator
 {
-    private int _estimatedManaLeft;
-    
     private readonly Point _playerBaseLocation;
     private readonly Point _enemyBaseLocation;
     private readonly ValuesProvider _valuesProvider;
@@ -26,11 +24,6 @@ internal sealed class SpellGenerator
     {
         foreach (var hero in playerHeroes.Where(h => h.Strategy == strategy))
         {
-            if (_estimatedManaLeft < 10)
-            {
-                break;
-            }
-
             if (hero.ShieldLife == 0)
             {
                 actionManager.AddPossibleAction(hero.Id, 90, ActionType.ShieldSpell, EntityType.Hero, hero.Id, null, null);
@@ -43,11 +36,6 @@ internal sealed class SpellGenerator
 
     internal void AssignDefensiveWindSpell(List<Hero> playerHeroes, IEnumerable<Monster> monsters, ActionManager actionManager)
     {
-        if (_estimatedManaLeft < 10)
-        {
-            return;
-        }
-
         var closeDistance = 3000;
 
         var closestMonster = monsters.FirstOrDefault(m => CalculateDistance(m.Position, _playerBaseLocation) <= closeDistance
@@ -64,7 +52,7 @@ internal sealed class SpellGenerator
 
                 if (CalculateDistance(closestHero.Position, closestMonster.Position) <= ValuesProvider.WindSpellRange)
                 {
-                    actionManager.AddPossibleAction(closestHero.Id, 50, ActionType.WindSpell, EntityType.None, null, _enemyBaseLocation.X, _enemyBaseLocation.Y);
+                    actionManager.AddPossibleAction(closestHero.Id, 60, ActionType.WindSpell, EntityType.None, null, _enemyBaseLocation.X, _enemyBaseLocation.Y);
                     PerformSpell(closestHero);
                 }
                 else
@@ -75,7 +63,7 @@ internal sealed class SpellGenerator
                     if (CalculateDistance(closestMonster.Position, _playerBaseLocation) <= _valuesProvider.CloseToBaseRange
                         && CalculateDistance(closestHero.Position, closestMonster.Position) <= _valuesProvider.ControlSpellange)
                     {
-                        actionManager.AddPossibleAction(closestHero.Id, 50, ActionType.ControlSpell, EntityType.Monster, closestMonster.Id, _enemyBaseLocation.X, _enemyBaseLocation.Y);
+                        actionManager.AddPossibleAction(closestHero.Id, 60, ActionType.ControlSpell, EntityType.Monster, closestMonster.Id, _enemyBaseLocation.X, _enemyBaseLocation.Y);
                         PerformSpell(closestHero);
                     }
                 }
@@ -87,11 +75,6 @@ internal sealed class SpellGenerator
     {
         const int healthCutOff = 10;
 
-        if (_estimatedManaLeft < 10)
-        {
-            return;
-        }
-
         var defendingHeroesOutsideOfBase =
             playerHeroes.Where(h => h.Strategy == Strategy.Defend
                                       && h.IsShielding == false
@@ -99,11 +82,6 @@ internal sealed class SpellGenerator
 
         foreach (var defendingHeroOutsideOfBase in defendingHeroesOutsideOfBase)
         {
-            if (_estimatedManaLeft < 10)
-            {
-                return;
-            }
-
             var monsterWithinSpellRange =
                 monsters.Where(m => m.Health > healthCutOff
                                         && m.IsControlled == false
@@ -118,7 +96,7 @@ internal sealed class SpellGenerator
 
             if (monsterWithinSpellRange != null)
             {
-                actionManager.AddPossibleAction(defendingHeroOutsideOfBase.Id, 50, ActionType.ControlSpell, EntityType.Monster, monsterWithinSpellRange.Id, _enemyBaseLocation.X, _enemyBaseLocation.Y);
+                actionManager.AddPossibleAction(defendingHeroOutsideOfBase.Id, 60, ActionType.ControlSpell, EntityType.Monster, monsterWithinSpellRange.Id, _enemyBaseLocation.X, _enemyBaseLocation.Y);
                 PerformSpell(defendingHeroOutsideOfBase);
             }
         }
@@ -128,11 +106,6 @@ internal sealed class SpellGenerator
     {
         foreach (var attackingHero in playerHeroes.Where(h => h.Strategy == Strategy.Attack))
         {
-            if (_estimatedManaLeft < 10)
-            {
-                return;
-            }
-
             if (CalculateDistance(attackingHero.Position, _enemyBaseLocation) > _valuesProvider.OutskirtsMaxDist)
             {
                 continue;
@@ -143,7 +116,7 @@ internal sealed class SpellGenerator
 
             if (closeEnoughForWindMonster != null)
             {
-                actionManager.AddPossibleAction(attackingHero.Id, 50, ActionType.WindSpell, EntityType.None, null, _enemyBaseLocation.X, _enemyBaseLocation.Y);
+                actionManager.AddPossibleAction(attackingHero.Id, 40, ActionType.WindSpell, EntityType.None, null, _enemyBaseLocation.X, _enemyBaseLocation.Y);
 
                 PerformSpell(attackingHero);
             }
@@ -166,23 +139,23 @@ internal sealed class SpellGenerator
                 {
                     if (new Random().Next(1) == 0)
                     {
-                        actionManager.AddPossibleAction(attackingHero.Id, 50, ActionType.ShieldSpell, EntityType.Monster, closeEnoughForSpellMonster.Id, null, null);
+                        actionManager.AddPossibleAction(attackingHero.Id, 40, ActionType.ShieldSpell, EntityType.Monster, closeEnoughForSpellMonster.Id, null, null);
                         PerformSpell(attackingHero);
                     }
                     else
                     {
-                        actionManager.AddPossibleAction(attackingHero.Id, 50, ActionType.ControlSpell, EntityType.Monster, closeEnoughForSpellMonster.Id, _playerBaseLocation.X, _playerBaseLocation.Y);
+                        actionManager.AddPossibleAction(attackingHero.Id, 40, ActionType.ControlSpell, EntityType.Monster, closeEnoughForSpellMonster.Id, _playerBaseLocation.X, _playerBaseLocation.Y);
                         PerformSpell(attackingHero);
                     }
                 }
                 else if (closeEnoughForSpellMonster != null)
                 {
-                    actionManager.AddPossibleAction(attackingHero.Id, 50, ActionType.ShieldSpell, EntityType.Monster, closeEnoughForSpellMonster.Id, null, null);
+                    actionManager.AddPossibleAction(attackingHero.Id, 40, ActionType.ShieldSpell, EntityType.Monster, closeEnoughForSpellMonster.Id, null, null);
                     PerformSpell(attackingHero);
                 }
                 else if (closeEnoughForControlEnemy != null)
                 {
-                    actionManager.AddPossibleAction(attackingHero.Id, 50, ActionType.ControlSpell, EntityType.Enemy, closeEnoughForControlEnemy.Id, _playerBaseLocation.X, _playerBaseLocation.Y);
+                    actionManager.AddPossibleAction(attackingHero.Id, 40, ActionType.ControlSpell, EntityType.Enemy, closeEnoughForControlEnemy.Id, _playerBaseLocation.X, _playerBaseLocation.Y);
 
                     PerformSpell(attackingHero);
                 }
@@ -193,22 +166,11 @@ internal sealed class SpellGenerator
     private void PerformSpell(Hero hero)
     {
         hero.CurrentMonster = -1;
-
-        if (hero.UsingSpell == false)
-        {
-            _estimatedManaLeft -= 10;
-            hero.UsingSpell = true;
-        }
     }
     
     private static double CalculateDistance(Point position, Point position2)
     {
         return Math.Sqrt(Math.Pow(position.X - position2.X, 2)
                          + Math.Pow(position.Y - position2.Y, 2));
-    }
-
-    internal void SetEstimatedMana(int estimate)
-    {
-        _estimatedManaLeft = estimate;
     }
 }

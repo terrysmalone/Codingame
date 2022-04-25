@@ -26,28 +26,20 @@ internal sealed class Player
         {
             // Don't bother persisting monsters. It's quicker just to re-add them every time.
             // At least until we need to persist them
-            game.ClearMonsters();
-            game.ClearEnemyHeroes();
+            var enemyHeroes = new List<Hero>();
+            var monsters = new List<Monster>();
 
             // Player base stats
             inputs = Console.ReadLine().Split(' ');
             var playerBaseHealth = int.Parse(inputs[0]); // Your base health
             var playerMana = int.Parse(inputs[1]); // Ignore in the first league; Spend ten mana to cast a spell
-            game.SetMana(playerMana);
-
-            game.SetPlayerBaseHealth(playerBaseHealth);
 
             // enemy base stats
             inputs = Console.ReadLine().Split(' ');
             var enemyBaseHealth = int.Parse(inputs[0]); // Your base health
             var enemyMana = int.Parse(inputs[1]); // Ignore in the first league; Spend ten mana to cast a spell
 
-            game.SetEnemyBaseHealth(playerBaseHealth);
-
             var entityCount = int.Parse(Console.ReadLine()); // Amount of heros and monsters you can see
-
-            var playerHeroes = new List<Hero>();
-            var enemyHeroes = new List<Hero>();
 
             for (var i = 0; i < entityCount; i++)
             {
@@ -67,7 +59,7 @@ internal sealed class Player
 
                 if (type == 0)
                 {
-                    var threatForEnum = ThreatFor.None;
+                    ThreatFor threatForEnum;
 
                     switch (threatFor)
                     {
@@ -84,7 +76,8 @@ internal sealed class Player
                             threatForEnum = ThreatFor.None;
                             break;
                     }
-                    game.AddMonster(new Monster(id, new Point(x, y), health, vx, vy, nearBase != 0, threatForEnum, isControlled == 1, shieldLife));
+
+                    monsters.Add(new Monster(id, new Point(x, y), health, vx, vy, nearBase != 0, threatForEnum, isControlled == 1, shieldLife));
                 }
                 else
                 {
@@ -96,12 +89,12 @@ internal sealed class Player
                     }
                     else
                     {
-                        game.AddEnemyHero(hero);
+                        enemyHeroes.Add(hero);
                     }
                 }
             }
 
-            var moves = game.GetMoves();
+            var moves = game.GetMoves(enemyHeroes, monsters, playerMana);
 
             for (var i = 0; i < moves.Length; i++)
             {

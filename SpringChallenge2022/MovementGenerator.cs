@@ -9,38 +9,21 @@ internal sealed class MovementGenerator
 {
     private readonly Point _playerBaseLocation;
     private readonly Point _enemyBaseLocation;
-
-    private readonly int _baseRadius;
-    private readonly int _maxDefenderDistanceFromBase;
-
-    private readonly int _outskirtsMinDist;
-    private readonly int _outskirtsMaxDist;
-
-    private readonly int _heroRange;
-
-
+    private readonly ValuesProvider _valuesProvider;
 
     public MovementGenerator(Point playerBaseLocation,
                              Point enemyBaseLocation,
-                             int baseRadius,
-                             int maxDefenderDistanceFromBase,
-                             int outskirtsMinDist,
-                             int outskirtsMaxDist,
-                             int heroRange)
+                             ValuesProvider valuesProvider)
     {
         _playerBaseLocation = playerBaseLocation;
         _enemyBaseLocation = enemyBaseLocation;
-        _baseRadius = baseRadius;
-        _maxDefenderDistanceFromBase = maxDefenderDistanceFromBase;
-        _outskirtsMinDist = outskirtsMinDist;
-        _outskirtsMaxDist = outskirtsMaxDist;
-        _heroRange = heroRange;
+        _valuesProvider = valuesProvider;
     }
 
     internal void AssignHeroMovement(List<Hero> playerHeroes, List<Monster> monsters)
     {
         var defendingHeroesOutsideOfBase = playerHeroes.Where(h => h.Strategy == Strategy.Defend
-                                                                   && CalculateDistance(h.Position, _playerBaseLocation) > _baseRadius);
+                                                                   && CalculateDistance(h.Position, _playerBaseLocation) > _valuesProvider.BaseRadius);
 
         foreach (var defendingHeroOutsideOfBase in defendingHeroesOutsideOfBase)
         {
@@ -88,8 +71,8 @@ internal sealed class MovementGenerator
         }
 
         // Get any monsters on the edge of the enemies base
-        var monstersOnOutskirts = monsters.Where(m => CalculateDistance(m.Position, _enemyBaseLocation) > _outskirtsMinDist
-                                                      && CalculateDistance(m.Position, _enemyBaseLocation) < _outskirtsMaxDist).ToList();
+        var monstersOnOutskirts = monsters.Where(m => CalculateDistance(m.Position, _enemyBaseLocation) > _valuesProvider.OutskirtsMinDist
+                                                      && CalculateDistance(m.Position, _enemyBaseLocation) < _valuesProvider.OutskirtsMaxDist).ToList();
 
         // Go to them
         if (monstersOnOutskirts.Count > 1)
@@ -136,10 +119,10 @@ internal sealed class MovementGenerator
 
             foreach (var freeDefendingHero in freeDefendingHeroes)
             {
-                var monsterWithinRange = monsters.Where(m => CalculateDistance(m.Position, _playerBaseLocation) <= _maxDefenderDistanceFromBase
+                var monsterWithinRange = monsters.Where(m => CalculateDistance(m.Position, _playerBaseLocation) <= _valuesProvider.MaxDefenderDistanceFromBase
                                                              && m.ThreatFor != ThreatFor.Enemy)
                                                  .Select(m => new { m, distance = CalculateDistance(m.Position, freeDefendingHero.Position) })
-                                                 .Where(m => m.distance <= _heroRange)
+                                                 .Where(m => m.distance <= _valuesProvider.HeroRange)
                                                  .OrderBy(m => m.distance)
                                                  .Select(m => m.m)
                                                  .FirstOrDefault();
@@ -162,9 +145,9 @@ internal sealed class MovementGenerator
         {
             foreach (var collectingHero in collectingHeroes)
             {
-                var closestMonster = monsters.Where(m => CalculateDistance(m.Position, _playerBaseLocation) > _outskirtsMaxDist)
+                var closestMonster = monsters.Where(m => CalculateDistance(m.Position, _playerBaseLocation) > _valuesProvider.OutskirtsMaxDist)
                                              .Select(m => new { m, distance = CalculateDistance(m.Position, collectingHero.Position) })
-                                             .Where(m => m.distance <= _heroRange)
+                                             .Where(m => m.distance <= _valuesProvider.HeroRange)
                                              .OrderBy(m => m.distance)
                                              .Select(m => m.m)
                                              .FirstOrDefault();

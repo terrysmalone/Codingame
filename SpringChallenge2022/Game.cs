@@ -13,24 +13,11 @@ internal class Game
     private readonly MovementGenerator _movementGenerator;
     private readonly SpellGenerator _spellGenerator;
     private readonly GuardPointGenerator _guardPointGenerator;
+    private readonly ValuesProvider _valuesProvider;
 
     private bool _inCollectionPhase = true;
 
     private readonly List<Hero> _playerHeroes = new List<Hero>();
-
-    private const int _xMax = 17630;
-    private const int _yMax = 9000;
-
-    private const int _windSpellRange = 1280;
-    private const int _controlSpellange = 2200;
-    private const int _shieldSpellRange = 2200;
-
-    private const int _outskirtsMinDist = 5000;
-    private const int _outskirtsMaxDist = 7000;
-    private const int _heroRange = 2200;
-    private const int _maxDefenderDistanceFromBase = 9000;
-    private const int _baseRadius = 5000;
-    private const int _closeToBaseRange = 1000;
 
     private bool _weGotADefenderController; // If our opponent likes to control our defenders make sure they're always shielded
     private bool _weGotAnAttackerController; // If our opponent likes to control our attackers make sure they're always shielded
@@ -42,27 +29,19 @@ internal class Game
         _playerBaseLocation = playerBaseLocation;
         _heroesPerPlayer = heroesPerPlayer;
 
-        _enemyBaseLocation = new Point(playerBaseLocation.X == 0 ? _xMax : 0, playerBaseLocation.Y == 0 ? _yMax : 0);
+        _valuesProvider = new ValuesProvider();
+
+        _enemyBaseLocation = new Point(playerBaseLocation.X == 0 ? _valuesProvider.XMax : 0, playerBaseLocation.Y == 0 ? _valuesProvider.YMax : 0);
 
         _movementGenerator = new MovementGenerator(_playerBaseLocation,
                                                    _enemyBaseLocation,
-                                                   _baseRadius,
-                                                   _maxDefenderDistanceFromBase,
-                                                   _outskirtsMinDist,
-                                                   _outskirtsMaxDist,
-                                                   _heroRange);
+                                                   _valuesProvider);
 
         _spellGenerator = new SpellGenerator(_playerBaseLocation,
                                              _enemyBaseLocation,
-                                             _baseRadius,
-                                             _closeToBaseRange,
-                                             _outskirtsMinDist,
-                                             _outskirtsMaxDist,
-                                             _windSpellRange,
-                                             _controlSpellange,
-                                             _shieldSpellRange);
+                                             _valuesProvider);
 
-        _guardPointGenerator = new GuardPointGenerator(_playerBaseLocation, _xMax, _yMax);
+        _guardPointGenerator = new GuardPointGenerator(_playerBaseLocation, _valuesProvider);
 
         _defaultStrategies.Add(Strategy.Defend);
         _defaultStrategies.Add(Strategy.Defend);
@@ -238,7 +217,7 @@ internal class Game
         {
             if (hero.CurrentMonster >= 0)
             {
-                if (CalculateDistance(hero.Position, _playerBaseLocation) > _maxDefenderDistanceFromBase)
+                if (CalculateDistance(hero.Position, _playerBaseLocation) > _valuesProvider.MaxDefenderDistanceFromBase)
                 {
                     hero.CurrentMonster = -1;
                 }
@@ -268,8 +247,8 @@ internal class Game
             {
                 var currentMonster = monsters.First(m => m.Id == hero.CurrentMonster);
 
-                if (CalculateDistance(currentMonster.Position, _enemyBaseLocation) < _outskirtsMinDist
-                    || CalculateDistance(currentMonster.Position, _enemyBaseLocation) > _outskirtsMaxDist)
+                if (CalculateDistance(currentMonster.Position, _enemyBaseLocation) < _valuesProvider.OutskirtsMinDist
+                    || CalculateDistance(currentMonster.Position, _enemyBaseLocation) > _valuesProvider.OutskirtsMaxDist)
                 {
                     hero.CurrentMonster = -1;
                 }

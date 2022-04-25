@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Dynamic;
 
 
 internal static class Debugger
@@ -61,24 +62,11 @@ internal class Game
     private readonly MovementGenerator _movementGenerator;
     private readonly SpellGenerator _spellGenerator;
     private readonly GuardPointGenerator _guardPointGenerator;
+    private readonly ValuesProvider _valuesProvider;
 
     private bool _inCollectionPhase = true;
 
     private readonly List<Hero> _playerHeroes = new List<Hero>();
-
-    private const int _xMax = 17630;
-    private const int _yMax = 9000;
-
-    private const int _windSpellRange = 1280;
-    private const int _controlSpellange = 2200;
-    private const int _shieldSpellRange = 2200;
-
-    private const int _outskirtsMinDist = 5000;
-    private const int _outskirtsMaxDist = 7000;
-    private const int _heroRange = 2200;
-    private const int _maxDefenderDistanceFromBase = 9000;
-    private const int _baseRadius = 5000;
-    private const int _closeToBaseRange = 1000;
 
     private bool _weGotADefenderController; // If our opponent likes to control our defenders make sure they're always shielded
     private bool _weGotAnAttackerController; // If our opponent likes to control our attackers make sure they're always shielded
@@ -90,27 +78,19 @@ internal class Game
         _playerBaseLocation = playerBaseLocation;
         _heroesPerPlayer = heroesPerPlayer;
 
-        _enemyBaseLocation = new Point(playerBaseLocation.X == 0 ? _xMax : 0, playerBaseLocation.Y == 0 ? _yMax : 0);
+        _valuesProvider = new ValuesProvider();
+
+        _enemyBaseLocation = new Point(playerBaseLocation.X == 0 ? _valuesProvider.XMax : 0, playerBaseLocation.Y == 0 ? _valuesProvider.YMax : 0);
 
         _movementGenerator = new MovementGenerator(_playerBaseLocation,
                                                    _enemyBaseLocation,
-                                                   _baseRadius,
-                                                   _maxDefenderDistanceFromBase,
-                                                   _outskirtsMinDist,
-                                                   _outskirtsMaxDist,
-                                                   _heroRange);
+                                                   _valuesProvider);
 
         _spellGenerator = new SpellGenerator(_playerBaseLocation,
                                              _enemyBaseLocation,
-                                             _baseRadius,
-                                             _closeToBaseRange,
-                                             _outskirtsMinDist,
-                                             _outskirtsMaxDist,
-                                             _windSpellRange,
-                                             _controlSpellange,
-                                             _shieldSpellRange);
+                                             _valuesProvider);
 
-        _guardPointGenerator = new GuardPointGenerator(_playerBaseLocation, _xMax, _yMax);
+        _guardPointGenerator = new GuardPointGenerator(_playerBaseLocation, _valuesProvider);
 
         _defaultStrategies.Add(Strategy.Defend);
         _defaultStrategies.Add(Strategy.Defend);
@@ -286,7 +266,7 @@ internal class Game
         {
             if (hero.CurrentMonster >= 0)
             {
-                if (CalculateDistance(hero.Position, _playerBaseLocation) > _maxDefenderDistanceFromBase)
+                if (CalculateDistance(hero.Position, _playerBaseLocation) > _valuesProvider.MaxDefenderDistanceFromBase)
                 {
                     hero.CurrentMonster = -1;
                 }
@@ -316,8 +296,8 @@ internal class Game
             {
                 var currentMonster = monsters.First(m => m.Id == hero.CurrentMonster);
 
-                if (CalculateDistance(currentMonster.Position, _enemyBaseLocation) < _outskirtsMinDist
-                    || CalculateDistance(currentMonster.Position, _enemyBaseLocation) > _outskirtsMaxDist)
+                if (CalculateDistance(currentMonster.Position, _enemyBaseLocation) < _valuesProvider.OutskirtsMinDist
+                    || CalculateDistance(currentMonster.Position, _enemyBaseLocation) > _valuesProvider.OutskirtsMaxDist)
                 {
                     hero.CurrentMonster = -1;
                 }
@@ -350,14 +330,12 @@ internal class Game
 internal sealed class GuardPointGenerator
 {
     private readonly Point _playerBaseLocation;
+    private readonly ValuesProvider _valuesProvider;
 
-    private int _xMax;
-    private int _yMax;
-    public GuardPointGenerator(Point playerBaseLocation, int xMax, int yMax)
+    public GuardPointGenerator(Point playerBaseLocation, ValuesProvider valuesProvider)
     {
         _playerBaseLocation = playerBaseLocation;
-        _xMax = xMax;
-        _yMax = yMax;
+        _valuesProvider = valuesProvider;
     }
 
     internal List<List<Point>> GetGuardPoints(List<Hero> playerHeroes)
@@ -396,7 +374,7 @@ internal sealed class GuardPointGenerator
             }
             else
             {
-                defendPoints.Add(new List<Point> { new Point(_xMax - 4000, _yMax - 4000) });
+                defendPoints.Add(new List<Point> { new Point(_valuesProvider.XMax - 4000, _valuesProvider.YMax - 4000) });
             }
         }
         else if (numberOfDefenders == 2)
@@ -420,15 +398,15 @@ internal sealed class GuardPointGenerator
             {
                 defendPoints.Add(new List<Point>
                 {
-                    new Point(_xMax - 5700, _yMax - 2500),
-                    new Point(_xMax - 8000, _yMax - 2000),
-                    new Point(_xMax - 6500, _yMax - 4500)
+                    new Point(_valuesProvider.XMax - 5700, _valuesProvider.YMax - 2500),
+                    new Point(_valuesProvider.XMax - 8000, _valuesProvider.YMax - 2000),
+                    new Point(_valuesProvider.XMax - 6500, _valuesProvider.YMax - 4500)
                 });
                 defendPoints.Add(new List<Point>
                 {
-                    new Point(_xMax - 2500, _yMax - 5700),
-                    new Point(_xMax - 4500, _yMax - 6500),
-                    new Point(_xMax - 2000, _yMax - 8000)
+                    new Point(_valuesProvider.XMax - 2500, _valuesProvider.YMax - 5700),
+                    new Point(_valuesProvider.XMax - 4500, _valuesProvider.YMax - 6500),
+                    new Point(_valuesProvider.XMax - 2000, _valuesProvider.YMax - 8000)
                 });
             }
         }
@@ -442,9 +420,9 @@ internal sealed class GuardPointGenerator
             }
             else
             {
-                defendPoints.Add(new List<Point> { new Point(_xMax - 5000, _yMax - 2000) });
-                defendPoints.Add(new List<Point> { new Point(_xMax - 4000, _yMax - 4000) });
-                defendPoints.Add(new List<Point> { new Point(_xMax - 2000, _yMax - 5000) });
+                defendPoints.Add(new List<Point> { new Point(_valuesProvider.XMax - 5000, _valuesProvider.YMax - 2000) });
+                defendPoints.Add(new List<Point> { new Point(_valuesProvider.XMax - 4000, _valuesProvider.YMax - 4000) });
+                defendPoints.Add(new List<Point> { new Point(_valuesProvider.XMax - 2000, _valuesProvider.YMax - 5000) });
             }
         }
 
@@ -463,9 +441,9 @@ internal sealed class GuardPointGenerator
             {
                 collectPoints.Add(new List<Point>
                 {
-                    new Point(_xMax / 2, _yMax / 2),
+                    new Point(_valuesProvider.XMax / 2, _valuesProvider.YMax / 2),
                     new Point(10000, 6000),
-                    new Point(_xMax / 2, _yMax / 2),
+                    new Point(_valuesProvider.XMax / 2, _valuesProvider.YMax / 2),
                     new Point(12000, 3000)
                 });
             }
@@ -473,10 +451,10 @@ internal sealed class GuardPointGenerator
             {
                 collectPoints.Add(new List<Point>
                 {
-                    new Point(_xMax / 2, _yMax / 2),
-                    new Point(_xMax - 10000, _yMax - 6000),
-                    new Point(_xMax / 2, _yMax / 2),
-                    new Point(_xMax - 12000, _yMax - 3000)
+                    new Point(_valuesProvider.XMax / 2, _valuesProvider.YMax / 2),
+                    new Point(_valuesProvider.XMax - 10000, _valuesProvider.YMax - 6000),
+                    new Point(_valuesProvider.XMax / 2, _valuesProvider.YMax / 2),
+                    new Point(_valuesProvider.XMax - 12000, _valuesProvider.YMax - 3000)
                 });
             }
         }
@@ -496,10 +474,10 @@ internal sealed class GuardPointGenerator
             {
                 attackPoints.Add(new List<Point>
                 {
-                    new Point(_xMax - 3000, _yMax - 2500),
-                    new Point(_xMax - 4500, _yMax - 3500),
-                    new Point(_xMax - 3000, _yMax - 2500),
-                    new Point(_xMax - 2500, _yMax - 2000),
+                    new Point(_valuesProvider.XMax - 3000, _valuesProvider.YMax - 2500),
+                    new Point(_valuesProvider.XMax - 4500, _valuesProvider.YMax - 3500),
+                    new Point(_valuesProvider.XMax - 3000, _valuesProvider.YMax - 2500),
+                    new Point(_valuesProvider.XMax - 2500, _valuesProvider.YMax - 2000),
                 });
             }
             else
@@ -623,38 +601,21 @@ internal sealed class MovementGenerator
 {
     private readonly Point _playerBaseLocation;
     private readonly Point _enemyBaseLocation;
-
-    private readonly int _baseRadius;
-    private readonly int _maxDefenderDistanceFromBase;
-
-    private readonly int _outskirtsMinDist;
-    private readonly int _outskirtsMaxDist;
-
-    private readonly int _heroRange;
-
-
+    private readonly ValuesProvider _valuesProvider;
 
     public MovementGenerator(Point playerBaseLocation,
                              Point enemyBaseLocation,
-                             int baseRadius,
-                             int maxDefenderDistanceFromBase,
-                             int outskirtsMinDist,
-                             int outskirtsMaxDist,
-                             int heroRange)
+                             ValuesProvider valuesProvider)
     {
         _playerBaseLocation = playerBaseLocation;
         _enemyBaseLocation = enemyBaseLocation;
-        _baseRadius = baseRadius;
-        _maxDefenderDistanceFromBase = maxDefenderDistanceFromBase;
-        _outskirtsMinDist = outskirtsMinDist;
-        _outskirtsMaxDist = outskirtsMaxDist;
-        _heroRange = heroRange;
+        _valuesProvider = valuesProvider;
     }
 
     internal void AssignHeroMovement(List<Hero> playerHeroes, List<Monster> monsters)
     {
         var defendingHeroesOutsideOfBase = playerHeroes.Where(h => h.Strategy == Strategy.Defend
-                                                                   && CalculateDistance(h.Position, _playerBaseLocation) > _baseRadius);
+                                                                   && CalculateDistance(h.Position, _playerBaseLocation) > _valuesProvider.BaseRadius);
 
         foreach (var defendingHeroOutsideOfBase in defendingHeroesOutsideOfBase)
         {
@@ -702,8 +663,8 @@ internal sealed class MovementGenerator
         }
 
         // Get any monsters on the edge of the enemies base
-        var monstersOnOutskirts = monsters.Where(m => CalculateDistance(m.Position, _enemyBaseLocation) > _outskirtsMinDist
-                                                      && CalculateDistance(m.Position, _enemyBaseLocation) < _outskirtsMaxDist).ToList();
+        var monstersOnOutskirts = monsters.Where(m => CalculateDistance(m.Position, _enemyBaseLocation) > _valuesProvider.OutskirtsMinDist
+                                                      && CalculateDistance(m.Position, _enemyBaseLocation) < _valuesProvider.OutskirtsMaxDist).ToList();
 
         // Go to them
         if (monstersOnOutskirts.Count > 1)
@@ -750,10 +711,10 @@ internal sealed class MovementGenerator
 
             foreach (var freeDefendingHero in freeDefendingHeroes)
             {
-                var monsterWithinRange = monsters.Where(m => CalculateDistance(m.Position, _playerBaseLocation) <= _maxDefenderDistanceFromBase
+                var monsterWithinRange = monsters.Where(m => CalculateDistance(m.Position, _playerBaseLocation) <= _valuesProvider.MaxDefenderDistanceFromBase
                                                              && m.ThreatFor != ThreatFor.Enemy)
                                                  .Select(m => new { m, distance = CalculateDistance(m.Position, freeDefendingHero.Position) })
-                                                 .Where(m => m.distance <= _heroRange)
+                                                 .Where(m => m.distance <= _valuesProvider.HeroRange)
                                                  .OrderBy(m => m.distance)
                                                  .Select(m => m.m)
                                                  .FirstOrDefault();
@@ -776,9 +737,9 @@ internal sealed class MovementGenerator
         {
             foreach (var collectingHero in collectingHeroes)
             {
-                var closestMonster = monsters.Where(m => CalculateDistance(m.Position, _playerBaseLocation) > _outskirtsMaxDist)
+                var closestMonster = monsters.Where(m => CalculateDistance(m.Position, _playerBaseLocation) > _valuesProvider.OutskirtsMaxDist)
                                              .Select(m => new { m, distance = CalculateDistance(m.Position, collectingHero.Position) })
-                                             .Where(m => m.distance <= _heroRange)
+                                             .Where(m => m.distance <= _valuesProvider.HeroRange)
                                              .OrderBy(m => m.distance)
                                              .Select(m => m.m)
                                              .FirstOrDefault();
@@ -925,35 +886,15 @@ internal sealed class SpellGenerator
     
     private readonly Point _playerBaseLocation;
     private readonly Point _enemyBaseLocation;
-
-    private readonly int _baseRadius;
-    private readonly int _closeToBaseRange;
-    private readonly int _outskirtsMinDist;
-    private readonly int _outskirtsMaxDist;
-
-    private readonly int _windSpellRange;
-    private readonly int _controlSpellange;
-    private readonly int _shieldSpellRange;
+    private readonly ValuesProvider _valuesProvider;
 
     public SpellGenerator(Point playerBaseLocation,
                           Point enemyBaseLocation,
-                          int baseRadius,
-                          int closeToBaseRange,
-                          int outskirtsMinDist,
-                          int outskirtsMaxDist,
-                          int windSpellRange,
-                          int controlSpellange,
-                          int shieldSpellRange)
+                          ValuesProvider valuesProvider)
     {
         _playerBaseLocation = playerBaseLocation;
         _enemyBaseLocation = enemyBaseLocation;
-        _baseRadius = baseRadius;
-        _closeToBaseRange = closeToBaseRange;
-        _outskirtsMinDist = outskirtsMinDist;
-        _outskirtsMaxDist = outskirtsMaxDist;
-        _windSpellRange = windSpellRange;
-        _controlSpellange = controlSpellange;
-        _shieldSpellRange = shieldSpellRange;
+        _valuesProvider = valuesProvider;
     }
 
     internal void CastProtectiveShieldSpells(IEnumerable<Hero> playerHeroes, Strategy strategy)
@@ -997,7 +938,7 @@ internal sealed class SpellGenerator
                 var closestHero = availableHeroes.OrderBy(h => CalculateDistance(h.Position, closestMonster.Position))
                                                  .First();
 
-                if (CalculateDistance(closestHero.Position, closestMonster.Position) <= _windSpellRange)
+                if (CalculateDistance(closestHero.Position, closestMonster.Position) <= _valuesProvider.WindSpellRange)
                 {
                     Console.Error.WriteLine("Hero casting wind");
                     PerformSpell(closestHero, $"SPELL WIND {_enemyBaseLocation.X} {_enemyBaseLocation.Y}");
@@ -1007,8 +948,8 @@ internal sealed class SpellGenerator
                     // Too far away for wind to work
 
                     // If he's close and we can control that little shit away do it
-                    if (CalculateDistance(closestMonster.Position, _playerBaseLocation) <= _closeToBaseRange
-                        && CalculateDistance(closestHero.Position, closestMonster.Position) <= _controlSpellange)
+                    if (CalculateDistance(closestMonster.Position, _playerBaseLocation) <= _valuesProvider.CloseToBaseRange
+                        && CalculateDistance(closestHero.Position, closestMonster.Position) <= _valuesProvider.ControlSpellange)
                     {
                         Console.Error.WriteLine("Hero casting control");
                         PerformSpell(closestHero, $"SPELL CONTROL {closestMonster.Id} {_enemyBaseLocation.X} {_enemyBaseLocation.Y}");
@@ -1030,7 +971,7 @@ internal sealed class SpellGenerator
         var defendingHeroesOutsideOfBase =
             playerHeroes.Where(h => h.Strategy == Strategy.Defend
                                       && h.IsShielding == false
-                                      && CalculateDistance(h.Position, _playerBaseLocation) > _baseRadius);
+                                      && CalculateDistance(h.Position, _playerBaseLocation) > _valuesProvider.BaseRadius);
 
         foreach (var defendingHeroOutsideOfBase in defendingHeroesOutsideOfBase)
         {
@@ -1044,9 +985,9 @@ internal sealed class SpellGenerator
                                         && m.IsControlled == false
                                         && m.ThreatFor != ThreatFor.Enemy
                                         && m.ShieldLife == 0
-                                        && CalculateDistance(m.Position, _playerBaseLocation) > _baseRadius)
+                                        && CalculateDistance(m.Position, _playerBaseLocation) > _valuesProvider.BaseRadius)
                         .Select(m => new { m, distance = CalculateDistance(m.Position, defendingHeroOutsideOfBase.Position)})
-                        .Where(m => m.distance <= _controlSpellange)
+                        .Where(m => m.distance <= _valuesProvider.ControlSpellange)
                         .OrderBy(m => m.distance)
                         .Select(m => m.m)
                         .FirstOrDefault();
@@ -1069,12 +1010,12 @@ internal sealed class SpellGenerator
                 return;
             }
 
-            if (CalculateDistance(attackingHero.Position, _enemyBaseLocation) > _outskirtsMaxDist)
+            if (CalculateDistance(attackingHero.Position, _enemyBaseLocation) > _valuesProvider.OutskirtsMaxDist)
             {
                 continue;
             }
 
-            var closeEnoughForWindMonster = monsters.FirstOrDefault(m => CalculateDistance(m.Position, attackingHero.Position) <= _windSpellRange
+            var closeEnoughForWindMonster = monsters.FirstOrDefault(m => CalculateDistance(m.Position, attackingHero.Position) <= _valuesProvider.WindSpellRange
                                                                                  && m.ShieldLife == 0);
 
             if (closeEnoughForWindMonster != null)
@@ -1087,16 +1028,16 @@ internal sealed class SpellGenerator
             {
                 var closeEnoughForControlEnemy =
                         enemyHeroes.Where(e => e.ShieldLife == 0
-                                                 && CalculateDistance(e.Position, attackingHero.Position) <= _controlSpellange
-                                                 && CalculateDistance(e.Position, _enemyBaseLocation) <= _baseRadius)
+                                                 && CalculateDistance(e.Position, attackingHero.Position) <= _valuesProvider.ControlSpellange
+                                                 && CalculateDistance(e.Position, _enemyBaseLocation) <= _valuesProvider.BaseRadius)
                                    .OrderBy(e => CalculateDistance(e.Position, _enemyBaseLocation))
                                    .FirstOrDefault();
 
                 var closeEnoughForSpellMonster =
                         monsters.FirstOrDefault(m => m.ShieldLife == 0
                                                          && m.ThreatFor == ThreatFor.Enemy
-                                                         && CalculateDistance(m.Position, attackingHero.Position) <= _shieldSpellRange
-                                                         && CalculateDistance(m.Position, _enemyBaseLocation) <= _outskirtsMinDist);
+                                                         && CalculateDistance(m.Position, attackingHero.Position) <= _valuesProvider.ShieldSpellRange
+                                                         && CalculateDistance(m.Position, _enemyBaseLocation) <= _valuesProvider.OutskirtsMinDist);
 
                 if (closeEnoughForControlEnemy != null && closeEnoughForSpellMonster != null)
                 {
@@ -1159,4 +1100,21 @@ internal enum ThreatFor
     None,
     Player,
     Enemy
+}
+
+internal sealed class ValuesProvider
+{
+    public int XMax { get; } = 17630;
+    public int YMax { get; } = 9000;
+
+    public int WindSpellRange { get; } = 1280;
+    public int ControlSpellange { get; } = 2200;
+    public int ShieldSpellRange { get; } = 2200;
+
+    public int OutskirtsMinDist { get; } = 5000;
+    public int OutskirtsMaxDist { get; } = 7000;
+    public int HeroRange { get; } = 2200;
+    public int MaxDefenderDistanceFromBase { get; } = 9000;
+    public int BaseRadius { get; } = 5000;
+    public int CloseToBaseRange { get; } = 1000;
 }

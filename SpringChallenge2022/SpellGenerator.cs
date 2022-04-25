@@ -11,35 +11,15 @@ internal sealed class SpellGenerator
     
     private readonly Point _playerBaseLocation;
     private readonly Point _enemyBaseLocation;
-
-    private readonly int _baseRadius;
-    private readonly int _closeToBaseRange;
-    private readonly int _outskirtsMinDist;
-    private readonly int _outskirtsMaxDist;
-
-    private readonly int _windSpellRange;
-    private readonly int _controlSpellange;
-    private readonly int _shieldSpellRange;
+    private readonly ValuesProvider _valuesProvider;
 
     public SpellGenerator(Point playerBaseLocation,
                           Point enemyBaseLocation,
-                          int baseRadius,
-                          int closeToBaseRange,
-                          int outskirtsMinDist,
-                          int outskirtsMaxDist,
-                          int windSpellRange,
-                          int controlSpellange,
-                          int shieldSpellRange)
+                          ValuesProvider valuesProvider)
     {
         _playerBaseLocation = playerBaseLocation;
         _enemyBaseLocation = enemyBaseLocation;
-        _baseRadius = baseRadius;
-        _closeToBaseRange = closeToBaseRange;
-        _outskirtsMinDist = outskirtsMinDist;
-        _outskirtsMaxDist = outskirtsMaxDist;
-        _windSpellRange = windSpellRange;
-        _controlSpellange = controlSpellange;
-        _shieldSpellRange = shieldSpellRange;
+        _valuesProvider = valuesProvider;
     }
 
     internal void CastProtectiveShieldSpells(IEnumerable<Hero> playerHeroes, Strategy strategy)
@@ -83,7 +63,7 @@ internal sealed class SpellGenerator
                 var closestHero = availableHeroes.OrderBy(h => CalculateDistance(h.Position, closestMonster.Position))
                                                  .First();
 
-                if (CalculateDistance(closestHero.Position, closestMonster.Position) <= _windSpellRange)
+                if (CalculateDistance(closestHero.Position, closestMonster.Position) <= ValuesProvider.WindSpellRange)
                 {
                     Console.Error.WriteLine("Hero casting wind");
                     PerformSpell(closestHero, $"SPELL WIND {_enemyBaseLocation.X} {_enemyBaseLocation.Y}");
@@ -93,8 +73,8 @@ internal sealed class SpellGenerator
                     // Too far away for wind to work
 
                     // If he's close and we can control that little shit away do it
-                    if (CalculateDistance(closestMonster.Position, _playerBaseLocation) <= _closeToBaseRange
-                        && CalculateDistance(closestHero.Position, closestMonster.Position) <= _controlSpellange)
+                    if (CalculateDistance(closestMonster.Position, _playerBaseLocation) <= _valuesProvider.CloseToBaseRange
+                        && CalculateDistance(closestHero.Position, closestMonster.Position) <= _valuesProvider.ControlSpellange)
                     {
                         Console.Error.WriteLine("Hero casting control");
                         PerformSpell(closestHero, $"SPELL CONTROL {closestMonster.Id} {_enemyBaseLocation.X} {_enemyBaseLocation.Y}");
@@ -116,7 +96,7 @@ internal sealed class SpellGenerator
         var defendingHeroesOutsideOfBase =
             playerHeroes.Where(h => h.Strategy == Strategy.Defend
                                       && h.IsShielding == false
-                                      && CalculateDistance(h.Position, _playerBaseLocation) > _baseRadius);
+                                      && CalculateDistance(h.Position, _playerBaseLocation) > _valuesProvider.BaseRadius);
 
         foreach (var defendingHeroOutsideOfBase in defendingHeroesOutsideOfBase)
         {
@@ -130,9 +110,9 @@ internal sealed class SpellGenerator
                                         && m.IsControlled == false
                                         && m.ThreatFor != ThreatFor.Enemy
                                         && m.ShieldLife == 0
-                                        && CalculateDistance(m.Position, _playerBaseLocation) > _baseRadius)
+                                        && CalculateDistance(m.Position, _playerBaseLocation) > _valuesProvider.BaseRadius)
                         .Select(m => new { m, distance = CalculateDistance(m.Position, defendingHeroOutsideOfBase.Position)})
-                        .Where(m => m.distance <= _controlSpellange)
+                        .Where(m => m.distance <= _valuesProvider.ControlSpellange)
                         .OrderBy(m => m.distance)
                         .Select(m => m.m)
                         .FirstOrDefault();
@@ -155,12 +135,12 @@ internal sealed class SpellGenerator
                 return;
             }
 
-            if (CalculateDistance(attackingHero.Position, _enemyBaseLocation) > _outskirtsMaxDist)
+            if (CalculateDistance(attackingHero.Position, _enemyBaseLocation) > _valuesProvider.OutskirtsMaxDist)
             {
                 continue;
             }
 
-            var closeEnoughForWindMonster = monsters.FirstOrDefault(m => CalculateDistance(m.Position, attackingHero.Position) <= _windSpellRange
+            var closeEnoughForWindMonster = monsters.FirstOrDefault(m => CalculateDistance(m.Position, attackingHero.Position) <= ValuesProvider.WindSpellRange
                                                                                  && m.ShieldLife == 0);
 
             if (closeEnoughForWindMonster != null)
@@ -173,16 +153,16 @@ internal sealed class SpellGenerator
             {
                 var closeEnoughForControlEnemy =
                         enemyHeroes.Where(e => e.ShieldLife == 0
-                                                 && CalculateDistance(e.Position, attackingHero.Position) <= _controlSpellange
-                                                 && CalculateDistance(e.Position, _enemyBaseLocation) <= _baseRadius)
+                                                 && CalculateDistance(e.Position, attackingHero.Position) <= _valuesProvider.ControlSpellange
+                                                 && CalculateDistance(e.Position, _enemyBaseLocation) <= _valuesProvider.BaseRadius)
                                    .OrderBy(e => CalculateDistance(e.Position, _enemyBaseLocation))
                                    .FirstOrDefault();
 
                 var closeEnoughForSpellMonster =
                         monsters.FirstOrDefault(m => m.ShieldLife == 0
                                                          && m.ThreatFor == ThreatFor.Enemy
-                                                         && CalculateDistance(m.Position, attackingHero.Position) <= _shieldSpellRange
-                                                         && CalculateDistance(m.Position, _enemyBaseLocation) <= _outskirtsMinDist);
+                                                         && CalculateDistance(m.Position, attackingHero.Position) <= _valuesProvider.ShieldSpellRange
+                                                         && CalculateDistance(m.Position, _enemyBaseLocation) <= _valuesProvider.OutskirtsMinDist);
 
                 if (closeEnoughForControlEnemy != null && closeEnoughForSpellMonster != null)
                 {

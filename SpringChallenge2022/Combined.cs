@@ -76,7 +76,7 @@ internal class Game
     private const int _outskirtsMinDist = 5000;
     private const int _outskirtsMaxDist = 7000;
     private const int _heroRange = 2200;
-    private const int _maxDefenderDistanceFromBase = 7500;
+    private const int _maxDefenderDistanceFromBase = 9000;
     private const int _baseRadius = 5000;
     private const int _closeToBaseRange = 1000;
 
@@ -160,6 +160,7 @@ internal class Game
             _spellGenerator.AssignDefenderControlSpells(_playerHeroes, monsters);
 
             _spellGenerator.AssignAttackSpells(_playerHeroes, enemyHeroes, monsters);
+
         }
 
         for (var i = 0; i < moves.Length; i++)
@@ -192,6 +193,16 @@ internal class Game
                 ChangeCollectorToAttacker();
             }
         }
+        else
+        {
+            if(mana < 100)
+            {
+                _inCollectionPhase = true;
+
+                ClearGuardPoints();
+                ChangeAttackerToCollector();
+            }
+        }
     }
 
     private void ClearGuardPoints()
@@ -209,6 +220,16 @@ internal class Game
         foreach (var hero in heroes)
         {
             hero.Strategy = Strategy.Attack;
+        }
+    }
+
+    private void ChangeAttackerToCollector()
+    {
+        var heroes = _playerHeroes.Where(h => h.Strategy == Strategy.Attack);
+
+        foreach (var hero in heroes)
+        {
+            hero.Strategy = Strategy.Collect;
         }
     }
 
@@ -378,13 +399,33 @@ internal sealed class GuardPointGenerator
         {
             if (_playerBaseLocation.X == 0)
             {
-                defendPoints.Add(new List<Point> { new Point(5700, 2500) });
-                defendPoints.Add(new List<Point> { new Point(2500, 5700) });
+                defendPoints.Add(new List<Point>
+                {
+                    new Point(5700, 2500),
+                    new Point(8000, 2000),
+                    new Point(6500, 4500)
+                });
+                defendPoints.Add(new List<Point>
+                {
+                    new Point(2500, 5700),
+                    new Point(4500, 6500),
+                    new Point(2000, 8000)
+                });
             }
             else
             {
-                defendPoints.Add(new List<Point> { new Point(_xMax - 5700, _yMax - 2500) });
-                defendPoints.Add(new List<Point> { new Point(_xMax - 2500, _yMax - 5700) });
+                defendPoints.Add(new List<Point>
+                {
+                    new Point(_xMax - 5700, _yMax - 2500),
+                    new Point(_xMax - 8000, _yMax - 2000),
+                    new Point(_xMax - 6500, _yMax - 4500)
+                });
+                defendPoints.Add(new List<Point>
+                {
+                    new Point(_xMax - 2500, _yMax - 5700),
+                    new Point(_xMax - 4500, _yMax - 6500),
+                    new Point(_xMax - 2000, _yMax - 8000)
+                });
             }
         }
         else if (numberOfDefenders == 3)
@@ -414,10 +455,26 @@ internal sealed class GuardPointGenerator
 
         if (numberOfCollectors == 1)
         {
-            collectPoints.Add(new List<Point>
+            if (_playerBaseLocation.X == 0)
             {
-                new Point(_xMax / 2, _yMax / 2)
-            });
+                collectPoints.Add(new List<Point>
+                {
+                    new Point(_xMax / 2, _yMax / 2),
+                    new Point(10000, 6000),
+                    new Point(_xMax / 2, _yMax / 2),
+                    new Point(12000, 3000)
+                });
+            }
+            else
+            {
+                collectPoints.Add(new List<Point>
+                {
+                    new Point(_xMax / 2, _yMax / 2),
+                    new Point(_xMax - 10000, _yMax - 6000),
+                    new Point(_xMax / 2, _yMax / 2),
+                    new Point(_xMax - 12000, _yMax - 3000)
+                });
+            }
         }
 
         return collectPoints;
@@ -488,8 +545,8 @@ internal sealed class Hero
 
     internal void SetGuardPoints(List<Point> guardPoints)
     {
-        Console.Error.WriteLine($"guardPoints.Count: {guardPoints.Count}");
         _guardPoints = new List<Point>(guardPoints);
+        _currentGuardPoint = 0;
     }
 
     internal Point GetCurrentGuardPoint()
@@ -519,6 +576,7 @@ internal sealed class Hero
     internal void ClearGuardPoints()
     {
         _guardPoints = new List<Point>();
+        _currentGuardPoint = 0;
     }
 }
 
@@ -679,6 +737,8 @@ internal sealed class MovementGenerator
         {
             // Monsters on outskirts might have to be considered
 
+            Console.Error.WriteLine($"freeDefendingHeroes.Count: {freeDefendingHeroes.Count}");
+
             foreach (var freeDefendingHero in freeDefendingHeroes)
             {
                 var monsterWithinRange = monsters.Where(m => CalculateDistance(m.Position, _playerBaseLocation) <= _maxDefenderDistanceFromBase
@@ -691,6 +751,7 @@ internal sealed class MovementGenerator
 
                 if (monsterWithinRange != null)
                 {
+                    Console.Error.WriteLine($"Hero {freeDefendingHero.Id} attacking monster {monsterWithinRange.Id}");
                     freeDefendingHero.CurrentMonster = monsterWithinRange.Id;
                 }
             }

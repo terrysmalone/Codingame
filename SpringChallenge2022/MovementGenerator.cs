@@ -134,6 +134,8 @@ internal sealed class MovementGenerator
         {
             // Monsters on outskirts might have to be considered
 
+            Console.Error.WriteLine($"freeDefendingHeroes.Count: {freeDefendingHeroes.Count}");
+
             foreach (var freeDefendingHero in freeDefendingHeroes)
             {
                 var monsterWithinRange = monsters.Where(m => CalculateDistance(m.Position, _playerBaseLocation) <= _maxDefenderDistanceFromBase
@@ -146,6 +148,7 @@ internal sealed class MovementGenerator
 
                 if (monsterWithinRange != null)
                 {
+                    Console.Error.WriteLine($"Hero {freeDefendingHero.Id} attacking monster {monsterWithinRange.Id}");
                     freeDefendingHero.CurrentMonster = monsterWithinRange.Id;
                 }
             }

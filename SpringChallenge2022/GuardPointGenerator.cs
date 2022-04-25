@@ -61,13 +61,33 @@ internal sealed class GuardPointGenerator
         {
             if (_playerBaseLocation.X == 0)
             {
-                defendPoints.Add(new List<Point> { new Point(5700, 2500) });
-                defendPoints.Add(new List<Point> { new Point(2500, 5700) });
+                defendPoints.Add(new List<Point>
+                {
+                    new Point(5700, 2500),
+                    new Point(8000, 2000),
+                    new Point(6500, 4500)
+                });
+                defendPoints.Add(new List<Point>
+                {
+                    new Point(2500, 5700),
+                    new Point(4500, 6500),
+                    new Point(2000, 8000)
+                });
             }
             else
             {
-                defendPoints.Add(new List<Point> { new Point(_xMax - 5700, _yMax - 2500) });
-                defendPoints.Add(new List<Point> { new Point(_xMax - 2500, _yMax - 5700) });
+                defendPoints.Add(new List<Point>
+                {
+                    new Point(_xMax - 5700, _yMax - 2500),
+                    new Point(_xMax - 8000, _yMax - 2000),
+                    new Point(_xMax - 6500, _yMax - 4500)
+                });
+                defendPoints.Add(new List<Point>
+                {
+                    new Point(_xMax - 2500, _yMax - 5700),
+                    new Point(_xMax - 4500, _yMax - 6500),
+                    new Point(_xMax - 2000, _yMax - 8000)
+                });
             }
         }
         else if (numberOfDefenders == 3)
@@ -97,10 +117,26 @@ internal sealed class GuardPointGenerator
 
         if (numberOfCollectors == 1)
         {
-            collectPoints.Add(new List<Point>
+            if (_playerBaseLocation.X == 0)
             {
-                new Point(_xMax / 2, _yMax / 2)
-            });
+                collectPoints.Add(new List<Point>
+                {
+                    new Point(_xMax / 2, _yMax / 2),
+                    new Point(10000, 6000),
+                    new Point(_xMax / 2, _yMax / 2),
+                    new Point(12000, 3000)
+                });
+            }
+            else
+            {
+                collectPoints.Add(new List<Point>
+                {
+                    new Point(_xMax / 2, _yMax / 2),
+                    new Point(_xMax - 10000, _yMax - 6000),
+                    new Point(_xMax / 2, _yMax / 2),
+                    new Point(_xMax - 12000, _yMax - 3000)
+                });
+            }
         }
 
         return collectPoints;

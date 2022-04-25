@@ -28,7 +28,7 @@ internal class Game
     private const int _outskirtsMinDist = 5000;
     private const int _outskirtsMaxDist = 7000;
     private const int _heroRange = 2200;
-    private const int _maxDefenderDistanceFromBase = 7500;
+    private const int _maxDefenderDistanceFromBase = 9000;
     private const int _baseRadius = 5000;
     private const int _closeToBaseRange = 1000;
 
@@ -112,6 +112,7 @@ internal class Game
             _spellGenerator.AssignDefenderControlSpells(_playerHeroes, monsters);
 
             _spellGenerator.AssignAttackSpells(_playerHeroes, enemyHeroes, monsters);
+
         }
 
         for (var i = 0; i < moves.Length; i++)
@@ -144,6 +145,16 @@ internal class Game
                 ChangeCollectorToAttacker();
             }
         }
+        else
+        {
+            if(mana < 100)
+            {
+                _inCollectionPhase = true;
+
+                ClearGuardPoints();
+                ChangeAttackerToCollector();
+            }
+        }
     }
 
     private void ClearGuardPoints()
@@ -161,6 +172,16 @@ internal class Game
         foreach (var hero in heroes)
         {
             hero.Strategy = Strategy.Attack;
+        }
+    }
+
+    private void ChangeAttackerToCollector()
+    {
+        var heroes = _playerHeroes.Where(h => h.Strategy == Strategy.Attack);
+
+        foreach (var hero in heroes)
+        {
+            hero.Strategy = Strategy.Collect;
         }
     }
 

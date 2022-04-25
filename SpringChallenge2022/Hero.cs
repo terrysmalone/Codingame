@@ -39,8 +39,8 @@ internal sealed class Hero
 
     internal void SetGuardPoints(List<Point> guardPoints)
     {
-        Console.Error.WriteLine($"guardPoints.Count: {guardPoints.Count}");
         _guardPoints = new List<Point>(guardPoints);
+        _currentGuardPoint = 0;
     }
 
     internal Point GetCurrentGuardPoint()
@@ -70,5 +70,6 @@ internal sealed class Hero
     internal void ClearGuardPoints()
     {
         _guardPoints = new List<Point>();
+        _currentGuardPoint = 0;
     }
 }

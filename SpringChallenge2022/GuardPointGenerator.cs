@@ -8,14 +8,12 @@ namespace SpringChallenge2022;
 internal sealed class GuardPointGenerator
 {
     private readonly Point _playerBaseLocation;
+    private readonly ValuesProvider _valuesProvider;
 
-    private int _xMax;
-    private int _yMax;
-    public GuardPointGenerator(Point playerBaseLocation, int xMax, int yMax)
+    public GuardPointGenerator(Point playerBaseLocation, ValuesProvider valuesProvider)
     {
         _playerBaseLocation = playerBaseLocation;
-        _xMax = xMax;
-        _yMax = yMax;
+        _valuesProvider = valuesProvider;
     }
 
     internal List<List<Point>> GetGuardPoints(List<Hero> playerHeroes)
@@ -54,7 +52,7 @@ internal sealed class GuardPointGenerator
             }
             else
             {
-                defendPoints.Add(new List<Point> { new Point(_xMax - 4000, _yMax - 4000) });
+                defendPoints.Add(new List<Point> { new Point(_valuesProvider.XMax - 4000, _valuesProvider.YMax - 4000) });
             }
         }
         else if (numberOfDefenders == 2)
@@ -78,15 +76,15 @@ internal sealed class GuardPointGenerator
             {
                 defendPoints.Add(new List<Point>
                 {
-                    new Point(_xMax - 5700, _yMax - 2500),
-                    new Point(_xMax - 8000, _yMax - 2000),
-                    new Point(_xMax - 6500, _yMax - 4500)
+                    new Point(_valuesProvider.XMax - 5700, _valuesProvider.YMax - 2500),
+                    new Point(_valuesProvider.XMax - 8000, _valuesProvider.YMax - 2000),
+                    new Point(_valuesProvider.XMax - 6500, _valuesProvider.YMax - 4500)
                 });
                 defendPoints.Add(new List<Point>
                 {
-                    new Point(_xMax - 2500, _yMax - 5700),
-                    new Point(_xMax - 4500, _yMax - 6500),
-                    new Point(_xMax - 2000, _yMax - 8000)
+                    new Point(_valuesProvider.XMax - 2500, _valuesProvider.YMax - 5700),
+                    new Point(_valuesProvider.XMax - 4500, _valuesProvider.YMax - 6500),
+                    new Point(_valuesProvider.XMax - 2000, _valuesProvider.YMax - 8000)
                 });
             }
         }
@@ -100,9 +98,9 @@ internal sealed class GuardPointGenerator
             }
             else
             {
-                defendPoints.Add(new List<Point> { new Point(_xMax - 5000, _yMax - 2000) });
-                defendPoints.Add(new List<Point> { new Point(_xMax - 4000, _yMax - 4000) });
-                defendPoints.Add(new List<Point> { new Point(_xMax - 2000, _yMax - 5000) });
+                defendPoints.Add(new List<Point> { new Point(_valuesProvider.XMax - 5000, _valuesProvider.YMax - 2000) });
+                defendPoints.Add(new List<Point> { new Point(_valuesProvider.XMax - 4000, _valuesProvider.YMax - 4000) });
+                defendPoints.Add(new List<Point> { new Point(_valuesProvider.XMax - 2000, _valuesProvider.YMax - 5000) });
             }
         }
 
@@ -121,9 +119,9 @@ internal sealed class GuardPointGenerator
             {
                 collectPoints.Add(new List<Point>
                 {
-                    new Point(_xMax / 2, _yMax / 2),
+                    new Point(_valuesProvider.XMax / 2, _valuesProvider.YMax / 2),
                     new Point(10000, 6000),
-                    new Point(_xMax / 2, _yMax / 2),
+                    new Point(_valuesProvider.XMax / 2, _valuesProvider.YMax / 2),
                     new Point(12000, 3000)
                 });
             }
@@ -131,10 +129,10 @@ internal sealed class GuardPointGenerator
             {
                 collectPoints.Add(new List<Point>
                 {
-                    new Point(_xMax / 2, _yMax / 2),
-                    new Point(_xMax - 10000, _yMax - 6000),
-                    new Point(_xMax / 2, _yMax / 2),
-                    new Point(_xMax - 12000, _yMax - 3000)
+                    new Point(_valuesProvider.XMax / 2, _valuesProvider.YMax / 2),
+                    new Point(_valuesProvider.XMax - 10000, _valuesProvider.YMax - 6000),
+                    new Point(_valuesProvider.XMax / 2, _valuesProvider.YMax / 2),
+                    new Point(_valuesProvider.XMax - 12000, _valuesProvider.YMax - 3000)
                 });
             }
         }
@@ -154,10 +152,10 @@ internal sealed class GuardPointGenerator
             {
                 attackPoints.Add(new List<Point>
                 {
-                    new Point(_xMax - 3000, _yMax - 2500),
-                    new Point(_xMax - 4500, _yMax - 3500),
-                    new Point(_xMax - 3000, _yMax - 2500),
-                    new Point(_xMax - 2500, _yMax - 2000),
+                    new Point(_valuesProvider.XMax - 3000, _valuesProvider.YMax - 2500),
+                    new Point(_valuesProvider.XMax - 4500, _valuesProvider.YMax - 3500),
+                    new Point(_valuesProvider.XMax - 3000, _valuesProvider.YMax - 2500),
+                    new Point(_valuesProvider.XMax - 2500, _valuesProvider.YMax - 2000),
                 });
             }
             else

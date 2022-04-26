@@ -38,25 +38,36 @@ internal sealed class SpellGenerator
     {
         var closeDistance = 3000;
 
-        var closestMonster = monsters.FirstOrDefault(m => CalculateDistance(m.Position, _playerBaseLocation) <= closeDistance
-                                                               && m.ShieldLife == 0);
+        var closestMonster = monsters.Where(m => m.ShieldLife == 0)
+                                                         .Select(m => new { m, distance = CalculateDistance(m.Position, _playerBaseLocation)})
+                                                         .Where(m => m.distance <= closeDistance)
+                                                         .OrderBy(m => m.distance)
+                                                         .Select(m => m.m)
+                                                         .FirstOrDefault();
 
         if (closestMonster != null)
         {
             var availableHeroes = playerHeroes.Where(h => h.Strategy == Strategy.Defend && h.IsShielding == false).ToList();
+
+            Console.Error.WriteLine($"availableHeroes.Count:{availableHeroes.Count}");
 
             if (availableHeroes.Count > 0)
             {
                 var closestHero = availableHeroes.OrderBy(h => CalculateDistance(h.Position, closestMonster.Position))
                                                  .First();
 
+                Console.Error.WriteLine($"closestHero:{closestHero.Id}");
+                Console.Error.WriteLine($"closestMonster:{closestMonster.Id}");
+
                 if (CalculateDistance(closestHero.Position, closestMonster.Position) <= ValuesProvider.WindSpellRange)
                 {
+                    Console.Error.WriteLine("CloseEnough");
                     actionManager.AddPossibleAction(closestHero.Id, 60, ActionType.WindSpell, EntityType.None, null, _enemyBaseLocation.X, _enemyBaseLocation.Y);
                     PerformSpell(closestHero);
                 }
                 else
                 {
+                    Console.Error.WriteLine("Not close enough");
                     // Too far away for wind to work
 
                     // If he's close and we can control that little shit away do it

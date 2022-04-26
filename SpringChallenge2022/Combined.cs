@@ -12,7 +12,6 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Drawing;
 using System.Dynamic;
-namespace Codingame;
 
 
 public class ActionManager
@@ -32,6 +31,8 @@ public class ActionManager
         var actions = new string[3];
 
         PerformManaChecks();
+
+        // Don't control the same monster/enemy
 
         var playerOffset = _player1 ? 0 : 3;
 
@@ -321,6 +322,7 @@ internal class Game
     private readonly GuardPointGenerator _guardPointGenerator;
 
     private bool _inCollectionPhase = true;
+    private bool alreadyAttacked = false;
 
     private readonly List<Hero> _playerHeroes = new List<Hero>();
 
@@ -409,7 +411,6 @@ internal class Game
             }
 
             _spellGenerator.AssignAttackSpells(_playerHeroes, enemyHeroes, monsters, _actionManager);
-
         }
 
         return _actionManager.GetBestActions();
@@ -427,24 +428,26 @@ internal class Game
     {
         if (_inCollectionPhase)
         {
-            if(mana > 300)
+
+            if(mana > 300 || (alreadyAttacked && mana > 100))
             {
                 _inCollectionPhase = false;
+                alreadyAttacked = true;
 
                 ClearGuardPoints();
                 ChangeCollectorToAttacker();
             }
         }
-        // else
-        // {
-        //     if(mana <= 10)
-        //     {
-        //         _inCollectionPhase = true;
-        //
-        //         ClearGuardPoints();
-        //         ChangeAttackerToCollector();
-        //     }
-        // }
+        else
+        {
+            if(mana <= 10)
+            {
+                _inCollectionPhase = true;
+
+                ClearGuardPoints();
+                ChangeAttackerToCollector();
+            }
+        }
     }
 
     private void ClearGuardPoints()
@@ -1172,25 +1175,36 @@ internal sealed class SpellGenerator
     {
         var closeDistance = 3000;
 
-        var closestMonster = monsters.FirstOrDefault(m => CalculateDistance(m.Position, _playerBaseLocation) <= closeDistance
-                                                               && m.ShieldLife == 0);
+        var closestMonster = monsters.Where(m => m.ShieldLife == 0)
+                                                         .Select(m => new { m, distance = CalculateDistance(m.Position, _playerBaseLocation)})
+                                                         .Where(m => m.distance <= closeDistance)
+                                                         .OrderBy(m => m.distance)
+                                                         .Select(m => m.m)
+                                                         .FirstOrDefault();
 
         if (closestMonster != null)
         {
             var availableHeroes = playerHeroes.Where(h => h.Strategy == Strategy.Defend && h.IsShielding == false).ToList();
+
+            Console.Error.WriteLine($"availableHeroes.Count:{availableHeroes.Count}");
 
             if (availableHeroes.Count > 0)
             {
                 var closestHero = availableHeroes.OrderBy(h => CalculateDistance(h.Position, closestMonster.Position))
                                                  .First();
 
+                Console.Error.WriteLine($"closestHero:{closestHero.Id}");
+                Console.Error.WriteLine($"closestMonster:{closestMonster.Id}");
+
                 if (CalculateDistance(closestHero.Position, closestMonster.Position) <= ValuesProvider.WindSpellRange)
                 {
+                    Console.Error.WriteLine("CloseEnough");
                     actionManager.AddPossibleAction(closestHero.Id, 60, ActionType.WindSpell, EntityType.None, null, _enemyBaseLocation.X, _enemyBaseLocation.Y);
                     PerformSpell(closestHero);
                 }
                 else
                 {
+                    Console.Error.WriteLine("Not close enough");
                     // Too far away for wind to work
 
                     // If he's close and we can control that little shit away do it

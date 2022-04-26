@@ -18,6 +18,7 @@ internal class Game
     private readonly GuardPointGenerator _guardPointGenerator;
 
     private bool _inCollectionPhase = true;
+    private bool alreadyAttacked = false;
 
     private readonly List<Hero> _playerHeroes = new List<Hero>();
 
@@ -106,7 +107,6 @@ internal class Game
             }
 
             _spellGenerator.AssignAttackSpells(_playerHeroes, enemyHeroes, monsters, _actionManager);
-
         }
 
         return _actionManager.GetBestActions();
@@ -124,24 +124,26 @@ internal class Game
     {
         if (_inCollectionPhase)
         {
-            if(mana > 300)
+
+            if(mana > 300 || (alreadyAttacked && mana > 100))
             {
                 _inCollectionPhase = false;
+                alreadyAttacked = true;
 
                 ClearGuardPoints();
                 ChangeCollectorToAttacker();
             }
         }
-        // else
-        // {
-        //     if(mana <= 10)
-        //     {
-        //         _inCollectionPhase = true;
-        //
-        //         ClearGuardPoints();
-        //         ChangeAttackerToCollector();
-        //     }
-        // }
+        else
+        {
+            if(mana <= 10)
+            {
+                _inCollectionPhase = true;
+
+                ClearGuardPoints();
+                ChangeAttackerToCollector();
+            }
+        }
     }
 
     private void ClearGuardPoints()

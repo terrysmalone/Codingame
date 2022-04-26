@@ -27,6 +27,8 @@ public class ActionManager
 
         PerformManaChecks();
 
+        // Don't control the same monster/enemy
+
         var playerOffset = _player1 ? 0 : 3;
 
         for (var i = 0; i < 3; i++)

@@ -1,11 +1,36 @@
-# TODO
+## TODO
 
-* Work on making defenders more active
-  * Give them a number of breakpoints so they go further out
 * Defenders shouldn't be going for the same monster so often
 * Defenders shouldn't attempt to control the same monster
+* When mana hits 0 switch attacker back to collect0r for a while
+* Only control enemies going for my base
+
+## Priorities
+
+Movement
 
 
-* Attacker needs to be more active
-  * He sits in the base even if nothing is going on. 
-  * He should start outside the base and move in with the monsters
+
+Control Spell
+
+
+
+Shield spell 
+
+
+
+Wind Spell
+
+
+
+## Versions
+
+### Submitted at 23:00 - 25/04/2022
+
+* Move mana checks to ActionManager
+* Fixed bug in closestMonster for AssignDefenderControlSpells
+* When mana drops go back into collection phase for a while
+
+### Submitted at 23:00 - 26/04/2022
+
+* Fixed a bug where two heroes would attack the same entity

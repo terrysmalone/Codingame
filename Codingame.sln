@@ -47,6 +47,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinamaxGolfTests", "Winamax
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SpringChallenge2022", "SpringChallenge2022\SpringChallenge2022.csproj", "{A19FB00D-FC72-48D6-8F4C-D63EA6734EF0}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SpringChallenge2022Tests", "SpringChallenge2022Tests\SpringChallenge2022Tests.csproj", "{41F5D9FC-AA85-48C3-A3E2-6B3D0E33EEE9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -141,6 +143,10 @@ Global
 		{A19FB00D-FC72-48D6-8F4C-D63EA6734EF0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A19FB00D-FC72-48D6-8F4C-D63EA6734EF0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A19FB00D-FC72-48D6-8F4C-D63EA6734EF0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{41F5D9FC-AA85-48C3-A3E2-6B3D0E33EEE9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{41F5D9FC-AA85-48C3-A3E2-6B3D0E33EEE9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{41F5D9FC-AA85-48C3-A3E2-6B3D0E33EEE9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{41F5D9FC-AA85-48C3-A3E2-6B3D0E33EEE9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

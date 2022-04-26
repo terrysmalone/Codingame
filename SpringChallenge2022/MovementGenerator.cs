@@ -20,10 +20,10 @@ internal sealed class MovementGenerator
         _valuesProvider = valuesProvider;
     }
 
-    internal void AssignHeroMovement(List<Hero> playerHeroes, List<Monster> monsters)
+    internal void AssignHeroMovement(List<Hero> playerHeroes, List<Monster> monsters, ActionManager actionManager)
     {
         var defendingHeroesOutsideOfBase = playerHeroes.Where(h => h.Strategy == Strategy.Defend
-                                                                   && CalculateDistance(h.Position, _playerBaseLocation) > _valuesProvider.BaseRadius);
+                                                                                   && CalculateDistance(h.Position, _playerBaseLocation) > _valuesProvider.BaseRadius);
 
         foreach (var defendingHeroOutsideOfBase in defendingHeroesOutsideOfBase)
         {
@@ -43,7 +43,7 @@ internal sealed class MovementGenerator
             {
                 var monsterToAttack = monsters.Single(m => m.Id == hero.CurrentMonster);
 
-                hero.CurrentAction = $"MOVE {monsterToAttack.Position.X} {monsterToAttack.Position.Y}";
+                actionManager.AddPossibleAction(hero.Id, 0, ActionType.Move, EntityType.None, null, monsterToAttack.Position.X, monsterToAttack.Position.Y);
             }
             else
             {
@@ -51,16 +51,17 @@ internal sealed class MovementGenerator
 
                 if (!(hero.Position.X == currentGuardPoint.X && hero.Position.Y == currentGuardPoint.Y))
                 {
-                    hero.CurrentAction = $"MOVE {currentGuardPoint.X} {currentGuardPoint.Y}";
+                    actionManager.AddPossibleAction(hero.Id, 0, ActionType.Move, EntityType.None, null, currentGuardPoint.X, currentGuardPoint.Y);
                 }
                 else
                 {
                     var nextGuardPoint = hero.GetNextGuardPoint();
-                    hero.CurrentAction = $"MOVE {nextGuardPoint.X} {nextGuardPoint.Y}";
+                    actionManager.AddPossibleAction(hero.Id, 0, ActionType.Move, EntityType.None, null, nextGuardPoint.X, nextGuardPoint.Y);
                 }
             }
         }
     }
+
     private void CalculateAttackerMovement(IEnumerable<Hero> playerHeroes, IEnumerable<Monster> monsters)
     {
         var freeAttackingHeroes = playerHeroes.Where(h => h.Strategy == Strategy.Attack && h.CurrentMonster == -1).ToList();
@@ -113,10 +114,6 @@ internal sealed class MovementGenerator
         }
         else
         {
-            // Monsters on outskirts might have to be considered
-
-            Console.Error.WriteLine($"freeDefendingHeroes.Count: {freeDefendingHeroes.Count}");
-
             foreach (var freeDefendingHero in freeDefendingHeroes)
             {
                 var monsterWithinRange = monsters.Where(m => CalculateDistance(m.Position, _playerBaseLocation) <= _valuesProvider.MaxDefenderDistanceFromBase
@@ -129,7 +126,6 @@ internal sealed class MovementGenerator
 
                 if (monsterWithinRange != null)
                 {
-                    Console.Error.WriteLine($"Hero {freeDefendingHero.Id} attacking monster {monsterWithinRange.Id}");
                     freeDefendingHero.CurrentMonster = monsterWithinRange.Id;
                 }
             }
@@ -155,20 +151,6 @@ internal sealed class MovementGenerator
                 if (closestMonster != null)
                 {
                     collectingHero.CurrentMonster = closestMonster.Id;
-                }
-                else
-                {
-                    var currentGuardPoint = collectingHero.GetCurrentGuardPoint();
-
-                    if (!(collectingHero.Position.X == currentGuardPoint.X && collectingHero.Position.Y == currentGuardPoint.Y))
-                    {
-                        collectingHero.CurrentAction = $"MOVE {currentGuardPoint.X} {currentGuardPoint.Y}";
-                    }
-                    else
-                    {
-                        var nextGuardPoint = collectingHero.GetNextGuardPoint();
-                        collectingHero.CurrentAction = $"MOVE {nextGuardPoint.X} {nextGuardPoint.Y}";
-                    }
                 }
             }
         }

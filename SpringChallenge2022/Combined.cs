@@ -36,6 +36,10 @@ public class ActionManager
 
         var idOfEntityBeingControlled = -1;
 
+
+
+
+
         for (var i = 0; i < 3; i++)
         {
             var bestAction = _possibleActions.Where(a => a.HeroId == i + playerOffset)
@@ -44,6 +48,7 @@ public class ActionManager
 
             if (bestAction != null)
             {
+                // This is a very crude attempt at not controlling the same entity twice
                 if (idOfEntityBeingControlled != -1)
                 {
                     if (bestAction.ActionType == ActionType.ControlSpell && bestAction.TargetId == idOfEntityBeingControlled)
@@ -57,7 +62,6 @@ public class ActionManager
                 }
                 else
                 {
-                    // This is a very crude attempt at not controlling the same entity twice
                     if (bestAction.ActionType == ActionType.ControlSpell)
                     {
                         idOfEntityBeingControlled = bestAction.TargetId.Value;

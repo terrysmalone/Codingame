@@ -18,7 +18,7 @@ internal class Game
     private readonly GuardPointGenerator _guardPointGenerator;
 
     private bool _inCollectionPhase = true;
-    private bool alreadyAttacked = false;
+    private bool _alreadyAttacked;
 
     private readonly List<Hero> _playerHeroes = new List<Hero>();
 
@@ -125,10 +125,10 @@ internal class Game
         if (_inCollectionPhase)
         {
 
-            if(mana > 300 || (alreadyAttacked && mana > 100))
+            if(mana > 300 || (_alreadyAttacked && mana > 100))
             {
                 _inCollectionPhase = false;
-                alreadyAttacked = true;
+                _alreadyAttacked = true;
 
                 ClearGuardPoints();
                 ChangeCollectorToAttacker();

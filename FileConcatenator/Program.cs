@@ -113,6 +113,8 @@ namespace FileConcatenator
             {
                 textWriter.WriteLine(classUsing);
             }
+
+            textWriter.WriteLine("namespace Codingame;");
             
             // Add namespace
             //textWriter.WriteLine("");

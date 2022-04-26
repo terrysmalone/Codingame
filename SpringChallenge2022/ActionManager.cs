@@ -2,14 +2,17 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Runtime.CompilerServices;
 using System.Text;
+
+[assembly: InternalsVisibleTo("SpringChallenge2022Tests")]
 
 namespace SpringChallenge2022;
 
 public class ActionManager
 {
     private readonly bool _player1;
-    List<PossibleAction> _possibleActions = new List<PossibleAction>();
+    private readonly List<PossibleAction> _possibleActions = new List<PossibleAction>();
 
     private int _mana;
 
@@ -22,13 +25,30 @@ public class ActionManager
     {
         var actions = new string[3];
 
-        Console.Error.WriteLine($"Mana:{_mana}");
+        PerformManaChecks();
+
+        var playerOffset = _player1 ? 0 : 3;
+
+        for (var i = 0; i < 3; i++)
+        {
+            var bestAction = _possibleActions.Where(a => a.HeroId == i + playerOffset)
+                                             .OrderByDescending(a => a.Priority)
+                                             .FirstOrDefault();
+
+            actions[i] = GetActionString(bestAction);
+        }
+
+        return actions;
+    }
+    private void PerformManaChecks()
+    {
         var manaLeft = _mana;
 
         var allHeroActions = new List<PossibleAction>[3];
 
         // Split actions into different heroes
         var playerOffset = _player1 ? 0 : 3;
+
         Debugger.DisplayPossibleAction(_possibleActions, playerOffset);
 
         for (var i = 0; i < 3; i++)
@@ -91,9 +111,6 @@ public class ActionManager
                 var highestIndex = 0;
                 var highestValue = int.MinValue;
 
-                var totals = new int[3];
-
-                // if we remove 0
                 if (canRemoveSpell[0])
                 {
                     var total = nonSpellMax[0] + currentMax[1] + currentMax[2];
@@ -138,18 +155,8 @@ public class ActionManager
         }
 
         Debugger.DisplayPossibleAction(_possibleActions, playerOffset);
-
-        for (var i = 0; i < 3; i++)
-        {
-            var bestAction = _possibleActions.Where(a => a.HeroId == i + playerOffset)
-                                             .OrderByDescending(a => a.Priority)
-                                             .FirstOrDefault();
-
-            actions[i] = GetActionString(bestAction);
-        }
-
-        return actions;
     }
+
     private static string GetActionString(PossibleAction? bestAction)
     {
         if (bestAction != null)

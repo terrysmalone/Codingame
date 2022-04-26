@@ -96,7 +96,7 @@ internal sealed class SpellGenerator
             var monsterWithinSpellRange =
                 monsters.Where(m => m.Health > healthCutOff
                                         && m.IsControlled == false
-                                        && m.ThreatFor != ThreatFor.Enemy
+                                        && m.ThreatFor == ThreatFor.Player
                                         && m.ShieldLife == 0
                                         && CalculateDistance(m.Position, _playerBaseLocation) > _valuesProvider.BaseRadius)
                         .Select(m => new { m, distance = CalculateDistance(m.Position, defendingHeroOutsideOfBase.Position)})

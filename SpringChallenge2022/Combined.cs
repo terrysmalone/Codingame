@@ -32,9 +32,9 @@ public class ActionManager
 
         PerformManaChecks();
 
-        // Don't control the same monster/enemy
-
         var playerOffset = _player1 ? 0 : 3;
+
+        var idOfEntityBeingControlled = -1;
 
         for (var i = 0; i < 3; i++)
         {
@@ -42,11 +42,39 @@ public class ActionManager
                                              .OrderByDescending(a => a.Priority)
                                              .FirstOrDefault();
 
-            actions[i] = GetActionString(bestAction);
+            if (bestAction != null)
+            {
+                if (idOfEntityBeingControlled != -1)
+                {
+                    if (bestAction.ActionType == ActionType.ControlSpell && bestAction.TargetId == idOfEntityBeingControlled)
+                    {
+                        _possibleActions.Remove(bestAction);
+
+                        bestAction = _possibleActions.Where(a => a.HeroId == i + playerOffset)
+                                                     .OrderByDescending(a => a.Priority)
+                                                     .FirstOrDefault();
+                    }
+                }
+                else
+                {
+                    // This is a very crude attempt at not controlling the same entity twice
+                    if (bestAction.ActionType == ActionType.ControlSpell)
+                    {
+                        idOfEntityBeingControlled = bestAction.TargetId.Value;
+                    }
+                }
+
+                actions[i] = GetActionString(bestAction);
+            }
+            else
+            {
+                actions[i] = "WAIT";
+            }
         }
 
         return actions;
     }
+
     private void PerformManaChecks()
     {
         var manaLeft = _mana;
@@ -166,32 +194,24 @@ public class ActionManager
 
     private static string GetActionString(PossibleAction? bestAction)
     {
-        if (bestAction != null)
+        var stringBuilder = new StringBuilder();
+
+        stringBuilder.Append($"{GetActionType(bestAction.ActionType)} ");
+
+        if (bestAction.ActionType == ActionType.ShieldSpell
+            || bestAction.ActionType == ActionType.ControlSpell)
         {
-
-            var stringBuilder = new StringBuilder();
-
-            stringBuilder.Append($"{GetActionType(bestAction.ActionType)} ");
-
-            if (bestAction.ActionType == ActionType.ShieldSpell
-                || bestAction.ActionType == ActionType.ControlSpell)
-            {
-                stringBuilder.Append($"{bestAction.TargetId} ");
-            }
-
-            if (bestAction.ActionType == ActionType.Move
-                || bestAction.ActionType == ActionType.ControlSpell
-                || bestAction.ActionType == ActionType.WindSpell)
-            {
-                stringBuilder.Append($"{bestAction.TargetXPos} {bestAction.TargetYPos}");
-            }
-
-            return stringBuilder.ToString();
+            stringBuilder.Append($"{bestAction.TargetId} ");
         }
-        else
+
+        if (bestAction.ActionType == ActionType.Move
+            || bestAction.ActionType == ActionType.ControlSpell
+            || bestAction.ActionType == ActionType.WindSpell)
         {
-            return "WAIT";
+            stringBuilder.Append($"{bestAction.TargetXPos} {bestAction.TargetYPos}");
         }
+
+        return stringBuilder.ToString();
     }
 
     private static string GetActionType(ActionType actionType)
@@ -1233,7 +1253,7 @@ internal sealed class SpellGenerator
             var monsterWithinSpellRange =
                 monsters.Where(m => m.Health > healthCutOff
                                         && m.IsControlled == false
-                                        && m.ThreatFor != ThreatFor.Enemy
+                                        && m.ThreatFor == ThreatFor.Player
                                         && m.ShieldLife == 0
                                         && CalculateDistance(m.Position, _playerBaseLocation) > _valuesProvider.BaseRadius)
                         .Select(m => new { m, distance = CalculateDistance(m.Position, defendingHeroOutsideOfBase.Position)})

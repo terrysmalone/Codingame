@@ -1,9 +1,7 @@
 ## TODO
 
-* Defenders shouldn't be going for the same monster so often
-* Defenders shouldn't attempt to control the same monster
-* When mana hits 0 switch attacker back to collect0r for a while
-* Only control enemies going for my base
+* Defenders shouldn't be going for the same monster so often 
+* Don't control a monster if it's just hit the base
 
 ## Priorities
 

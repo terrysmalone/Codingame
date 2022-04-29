@@ -7,8 +7,8 @@ internal sealed class ValuesProvider
     public int XMax => 17630;
     public int YMax => 9000;
 
-    public static int WindSpellRange => 1280;
-    public int ControlSpellange => 2200;
+    public int WindSpellRange => 1280;
+    public int ControlSpellRange => 2200;
     public int ShieldSpellRange => 2200;
 
     public int OutskirtsMinDist => 5000;

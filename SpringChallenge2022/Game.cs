@@ -65,8 +65,6 @@ internal class Game
         _actionManager.ClearPossibleActions();
         _actionManager.SetMana(playerMana);
 
-        var moves = new string[_heroesPerPlayer];
-
         ResetHeroes();
 
         CheckForPhaseChange(playerMana);
@@ -80,6 +78,18 @@ internal class Game
                 var hero = _playerHeroes[i];
                 hero.SetGuardPoints(guardPoints[i]);
             }
+        }
+
+        if (enemyHeroes.Any(e => CalculateDistance(e.Position, _playerBaseLocation) <= 6000))
+        {
+            var closestHero = _playerHeroes.Where(h => h.Strategy == Strategy.Defend)
+                                                          .Select(h => new { h, distance = CalculateDistance(h.Position, _playerBaseLocation)})
+                                                          .OrderBy(h => h.distance)
+                                                          .Select(h => h.h)
+                                                          .First();
+            closestHero.ClearGuardPoints();
+            closestHero.SetGuardPoints(new List<Point> { new Point(_playerBaseLocation.X == 0 ? 2000 : _valuesProvider.XMax - 2000,
+                                                                   _playerBaseLocation.Y == 0 ? 2000 : _valuesProvider.YMax - 2000)});
         }
 
         CheckForController();
@@ -97,13 +107,15 @@ internal class Game
             _spellGenerator.CastProtectiveShieldSpells(_playerHeroes, Strategy.Attack, _actionManager);
         }
 
+        _spellGenerator.AssignDefensiveEnemyControlSpells(_playerHeroes, enemyHeroes, monsters, _actionManager);
+
         _spellGenerator.AssignDefensiveWindSpell(_playerHeroes, monsters, _actionManager);
 
         if (!_inCollectionPhase)
         {
             if (playerMana > 100)
             {
-                _spellGenerator.AssignDefenderControlSpells(_playerHeroes, monsters, _actionManager);
+                _spellGenerator.AssignDefenderMonsterControlSpells(_playerHeroes, monsters, _actionManager);
             }
 
             _spellGenerator.AssignAttackSpells(_playerHeroes, enemyHeroes, monsters, _actionManager);

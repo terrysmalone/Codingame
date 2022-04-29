@@ -34,6 +34,42 @@ internal sealed class SpellGenerator
         }
     }
 
+    internal void AssignDefensiveEnemyControlSpells(List<Hero> playerHeroes, IReadOnlyCollection<Hero> enemyHeroes, List<Monster> monsters, ActionManager actionManager)
+    {
+        // If both an enemy and monster is closer to my base than me
+        // and the enemy is within 2200 of the monster
+        // control the enemy away
+
+        if (playerHeroes.Any(h => CalculateDistance(h.Position, _playerBaseLocation) < 3500))
+        {
+            return;
+        }
+
+        var enemiesNearBase = enemyHeroes.Where(e => CalculateDistance(e.Position, _playerBaseLocation) <= 6000).ToList();
+
+        foreach (var enemyNearBase in enemiesNearBase)
+        {
+            var heroNearestEnemy = playerHeroes.Select(h => new { h, distance = CalculateDistance(h.Position, enemyNearBase.Position) })
+                                                                  .Where(h => h.distance <= _valuesProvider.ControlSpellRange)
+                                                                  .OrderBy(h => h.distance)
+                                                                  .Select(h => h.h)
+                                                                  .FirstOrDefault();
+
+            if (heroNearestEnemy == null)
+            {
+                continue;
+            }
+
+            var monstersNearEnemy = monsters.Any(m => CalculateDistance(m.Position, enemyNearBase.Position) <= _valuesProvider.WindSpellRange);
+
+            if (monstersNearEnemy == true)
+            {
+                actionManager.AddPossibleAction(heroNearestEnemy.Id, 65, ActionType.ControlSpell, EntityType.Enemy, enemyNearBase.Id, _enemyBaseLocation.X, _enemyBaseLocation.Y);
+                PerformSpell(heroNearestEnemy);
+            }
+        }
+    }
+
     internal void AssignDefensiveWindSpell(List<Hero> playerHeroes, IEnumerable<Monster> monsters, ActionManager actionManager)
     {
         var closeDistance = 3000;
@@ -59,7 +95,7 @@ internal sealed class SpellGenerator
                 Console.Error.WriteLine($"closestHero:{closestHero.Id}");
                 Console.Error.WriteLine($"closestMonster:{closestMonster.Id}");
 
-                if (CalculateDistance(closestHero.Position, closestMonster.Position) <= ValuesProvider.WindSpellRange)
+                if (CalculateDistance(closestHero.Position, closestMonster.Position) <= _valuesProvider.WindSpellRange)
                 {
                     Console.Error.WriteLine("CloseEnough");
                     actionManager.AddPossibleAction(closestHero.Id, 60, ActionType.WindSpell, EntityType.None, null, _enemyBaseLocation.X, _enemyBaseLocation.Y);
@@ -72,9 +108,9 @@ internal sealed class SpellGenerator
 
                     // If he's close and we can control that little shit away do it
                     if (CalculateDistance(closestMonster.Position, _playerBaseLocation) <= _valuesProvider.CloseToBaseRange
-                        && CalculateDistance(closestHero.Position, closestMonster.Position) <= _valuesProvider.ControlSpellange)
+                        && CalculateDistance(closestHero.Position, closestMonster.Position) <= _valuesProvider.ControlSpellRange)
                     {
-                        actionManager.AddPossibleAction(closestHero.Id, 60, ActionType.ControlSpell, EntityType.Monster, closestMonster.Id, _enemyBaseLocation.X, _enemyBaseLocation.Y);
+                        actionManager.AddPossibleAction(closestHero.Id, 70, ActionType.ControlSpell, EntityType.Monster, closestMonster.Id, _enemyBaseLocation.X, _enemyBaseLocation.Y);
                         PerformSpell(closestHero);
                     }
                 }
@@ -82,7 +118,7 @@ internal sealed class SpellGenerator
         }
     }
 
-    internal void AssignDefenderControlSpells(IEnumerable<Hero> playerHeroes, IEnumerable<Monster> monsters, ActionManager actionManager)
+    internal void AssignDefenderMonsterControlSpells(IEnumerable<Hero> playerHeroes, IEnumerable<Monster> monsters, ActionManager actionManager)
     {
         const int healthCutOff = 10;
 
@@ -100,7 +136,7 @@ internal sealed class SpellGenerator
                                         && m.ShieldLife == 0
                                         && CalculateDistance(m.Position, _playerBaseLocation) > _valuesProvider.BaseRadius)
                         .Select(m => new { m, distance = CalculateDistance(m.Position, defendingHeroOutsideOfBase.Position)})
-                        .Where(m => m.distance <= _valuesProvider.ControlSpellange)
+                        .Where(m => m.distance <= _valuesProvider.ControlSpellRange)
                         .OrderBy(m => m.distance)
                         .Select(m => m.m)
                         .FirstOrDefault();
@@ -122,7 +158,7 @@ internal sealed class SpellGenerator
                 continue;
             }
 
-            var closeEnoughForWindMonster = monsters.FirstOrDefault(m => CalculateDistance(m.Position, attackingHero.Position) <= ValuesProvider.WindSpellRange
+            var closeEnoughForWindMonster = monsters.FirstOrDefault(m => CalculateDistance(m.Position, attackingHero.Position) <= _valuesProvider.WindSpellRange
                                                                                  && m.ShieldLife == 0);
 
             if (closeEnoughForWindMonster != null)
@@ -135,7 +171,7 @@ internal sealed class SpellGenerator
             {
                 var closeEnoughForControlEnemy =
                         enemyHeroes.Where(e => e.ShieldLife == 0
-                                                 && CalculateDistance(e.Position, attackingHero.Position) <= _valuesProvider.ControlSpellange
+                                                 && CalculateDistance(e.Position, attackingHero.Position) <= _valuesProvider.ControlSpellRange
                                                  && CalculateDistance(e.Position, _enemyBaseLocation) <= _valuesProvider.BaseRadius)
                                    .OrderBy(e => CalculateDistance(e.Position, _enemyBaseLocation))
                                    .FirstOrDefault();

@@ -1,18 +1,17 @@
-﻿using System.Drawing;
+﻿namespace CodeVsZombies;
 
-namespace CodeVsZombies
+using System.Drawing;
+
+internal sealed class Zombie
 {
-    internal sealed class Zombie
-    {
-        public int Id { get; }
-        public Point Position { get; }
-        public Point NextPosition { get; }
+    public int Id { get; }
+    public Point Position { get; }
+    public Point NextPosition { get; }
     
-        internal Zombie(int id, Point position, Point nextPosition)
-        {
-            Id = id;
-            Position = position;
-            NextPosition = nextPosition;
-        }
+    internal Zombie(int id, Point position, Point nextPosition)
+    {
+        Id = id;
+        Position = position;
+        NextPosition = nextPosition;
     }
 }

@@ -63,9 +63,15 @@ internal sealed class Program
 
         var text = File.ReadAllText(fileToParse);
 
-        var classStart = text.Substring(0, text.IndexOf("class")).LastIndexOf("\n");
+        var blockIndex = text.IndexOf("class");
+        if (blockIndex == -1)
+        {
+            blockIndex = text.IndexOf("enum");
+        }
 
-        var classContent = text.Substring(classStart + 1);
+        var blockStart = text.Substring(0, blockIndex).LastIndexOf("\n");
+
+        var blockContent = text.Substring(blockStart + 1);
 
         // Get usings
         var index = 0;
@@ -73,7 +79,7 @@ internal sealed class Program
 
         while (!usingsFinished)
         {
-            var usingStartIndex = text.Substring(0, classStart).IndexOf("using", index, StringComparison.Ordinal);
+            var usingStartIndex = text.Substring(0, blockStart).IndexOf("using", index, StringComparison.Ordinal);
 
             if (usingStartIndex == -1)
             {
@@ -86,7 +92,7 @@ internal sealed class Program
             usings.Add(text.Substring(usingStartIndex, usingEndIndex - usingStartIndex + 1));
         }
 
-        return (usings, classContent);
+        return (usings, blockContent);
     }
         
     private static void CreateFile(string destinationFile, List<string> usings, List<string> classes)
@@ -113,6 +119,8 @@ internal sealed class Program
         foreach (var projectClass in classes)
         {
             textWriter.Write(projectClass);
+            textWriter.WriteLine();
+            textWriter.WriteLine();
         }
             
     }

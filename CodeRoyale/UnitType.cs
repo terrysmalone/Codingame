@@ -1,10 +1,9 @@
-﻿namespace CodeRoyale
+﻿namespace CodeRoyale;
+
+internal enum UnitType
 {
-    internal enum UnitType
-    {
-        Queen,
-        Knight,
-        Archer,
-        Giant
-    }
+    Queen,
+    Knight,
+    Archer,
+    Giant
 }

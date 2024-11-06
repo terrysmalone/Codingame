@@ -1,13 +1,12 @@
-﻿namespace CodeRoyale
+﻿namespace CodeRoyale;
+
+internal enum StructureType
 {
-    internal enum StructureType
-    {
-        BarracksArchers,
-        BarracksKnights,
-        BarracksGiant,
-        BarracksUnknown,
-        Empty,
-        Tower,
-        Mine
-    }
+    BarracksArchers,
+    BarracksKnights,
+    BarracksGiant,
+    BarracksUnknown,
+    Empty,
+    Tower,
+    Mine
 }

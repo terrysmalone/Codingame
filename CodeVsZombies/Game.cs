@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 
+// https://www.codingame.com/ide/puzzle/code-vs-zombies
 internal sealed class Game
 {
     Point _playerPosition;
@@ -98,4 +99,3 @@ internal sealed class Game
         _zombies = new List<Zombie>();
     }
 }
-

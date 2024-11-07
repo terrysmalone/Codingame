@@ -495,8 +495,6 @@ internal sealed class Game
                 }
             }
         }
-
-        return UnitType.Knight;
     }
 
     private void DebugAll()

@@ -71,6 +71,10 @@ internal sealed class Program
         {
             blockIndex = text.IndexOf("enum");
         }
+        if (blockIndex == -1)
+        {
+            blockIndex = text.IndexOf("struct");
+        }
 
         var blockStart = text.Substring(0, blockIndex).LastIndexOf("\n");
 

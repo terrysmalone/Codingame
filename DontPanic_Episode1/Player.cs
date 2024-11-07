@@ -5,10 +5,8 @@ using System.Text;
 using System.Collections;
 using System.Collections.Generic;
 
-/**
- * Auto-generated code below aims at helping you parse
- * the standard input according to the problem statement.
- **/
+
+// https://www.codingame.com/training/medium/don't-panic-episode-1
 class Player
 {
     static void Main(string[] args)

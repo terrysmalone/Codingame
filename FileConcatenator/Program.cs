@@ -28,6 +28,9 @@ internal sealed class Program
 
         foreach (var fileToParse in filesToParse)
         {
+            if (Path.GetFileName(fileToParse) == "AssemblyInfo.cs")
+                continue;
+
             var (fileUsings, fileContents) = GetClassContents(fileToParse);
                 
             usings.AddRange(fileUsings);

@@ -19,9 +19,9 @@ namespace GhostInTheCell
         }
         private List<Link> NormaliseLinks(List<Link> links)
         {
-            var normalisedLinks = new List<Link>();
+            List<Link> normalisedLinks = new List<Link>();
 
-            foreach (var link in links)
+            foreach (Link link in links)
             {
                 if(link.SourceFactory == Id)
                 {

@@ -48,7 +48,7 @@ namespace WinamaxGolf
 
             //DebugDisplayer.DisplayMoveIndexes(_movedIndexes);
 
-            var movedBall = _balls[_movedIndexes[^1]];
+            Ball movedBall = _balls[_movedIndexes[^1]];
 
             movedBall.Position = new Point(endPoint.X, endPoint.Y);
             movedBall.NumberOfHits--;
@@ -73,8 +73,8 @@ namespace WinamaxGolf
         {
             //DebugDisplayer.DisplayBallLocations(Contents.GetLength(0), Contents.GetLength(1), _balls);
 
-            var lastIndex = _movedIndexes[^1];
-            var movedBall = _balls[lastIndex];
+            int lastIndex = _movedIndexes[^1];
+            Ball movedBall = _balls[lastIndex];
 
             movedBall.Position = new Point(startPoint.X, startPoint.Y);
             movedBall.NumberOfHits++;

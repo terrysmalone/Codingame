@@ -1,164 +1,298 @@
-﻿using System;
+﻿namespace Fall2020Challenge; 
+
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Numerics;
+using System.Runtime.CompilerServices;
 
-namespace Fall2020Challenge
-{
-    internal sealed class Game
-    {   
-        internal List<Recipe> Recipes { get; private set; }
-        internal List<Spell> Spells { get; private set; }
-        internal Inventory PlayerInventory { get; private set; }
-        internal Inventory OpponentInventory { get; private set; }
-        
-        public Game()
+internal sealed class Game
+{   
+    internal List<Recipe> Recipes { get; private set; }
+    internal List<Spell> Spells { get; private set; }
+    internal Inventory PlayerInventory { get; private set; }
+    internal Inventory OpponentInventory { get; private set; }
+
+    private List<string> currentPath = new List<string>();
+    private int currentRecipe = -1;
+
+    private int maxDepth = 0;
+    
+    public Game()
+    {
+        Recipes = new List<Recipe>();
+    }
+    
+    public void SetRecipes(List<Recipe> recipes)
+    {
+        Recipes = recipes;
+    }
+    
+    public void SetSpells(List<Spell> spells)
+    {
+        Spells = spells;
+    }
+    
+    public void SetPlayerInventory(Inventory inventoryItems)
+    {
+        PlayerInventory = inventoryItems;
+    }
+    
+    public void SetOpponentInventory(Inventory inventoryItems)
+    {
+        OpponentInventory = inventoryItems;
+    }
+    public string GetAction()
+    {
+        if (currentRecipe == -1 || !Recipes.Exists(r => r.Id == currentRecipe))
         {
-            Recipes = new List<Recipe>();
-        }
-        
-        public void SetRecipes(List<Recipe> recipes)
-        {
-            Recipes = recipes;
-        }
-        
-        public void SetSpells(List<Spell> spells)
-        {
-            Spells = spells;
-        }
-        
-        public void SetPlayerInventory(Inventory inventoryItems)
-        {
-            PlayerInventory = inventoryItems;
-        }
-        
-        public void SetOpponentInventory(Inventory inventoryItems)
-        {
-            OpponentInventory = inventoryItems;
-        }
-        public string GetAction()
-        {
-            //DisplayRecipes();
-            //DisplaySpells();
-            
-            // Very basic implementation
-            foreach (var recipe in Recipes.Where(recipe =>    PlayerInventory.Ingredients[0] >= recipe.Ingredients[0] 
-                                                              && PlayerInventory.Ingredients[1] >= recipe.Ingredients[1] 
-                                                              && PlayerInventory.Ingredients[2] >= recipe.Ingredients[2] 
-                                                              && PlayerInventory.Ingredients[3] >= recipe.Ingredients[3]))
+            maxDepth = 6;
+
+            currentRecipe = -1;
+
+            List<string>[] paths = new List<string>[Recipes.Count];
+
+            // Go through each recipe, starting with the best scoring one
+            for (int i = 0; i < Recipes.Count; i++)
             {
-                return $"{Recipe.ActionType} {recipe.Id}";
+                Recipe currentRecipe = Recipes[i];
+
+                // If it can be brewed then brew it
+                if (CanRecipeBeBrewed(currentRecipe))
+                    return $"{Recipe.ActionType} {currentRecipe.Id}";
+
+                // Find shortest path to ingredients
+                paths[i] = FindShortestPath(PlayerInventory.Ingredients, currentRecipe.Ingredients, Spells);
             }
-            
-            // Pick the most expensive spell
-            var targetRecipe = Recipes.OrderByDescending(s => s.Price).First();
-            
-            Console.Error.WriteLine($"targetRecipe: {targetRecipe.Id}");
-            
-            //var neededForRecipe = CalculateNeededIngredients(targetRecipe.Ingredients);
 
-            //var  currentlyNeeded = neededForRecipe[0] + neededForRecipe[1] + neededForRecipe[2] + neededForRecipe[3];
-            
-            var bestSpellId = -1;
-            var lowestNeeds = int.MaxValue;
+            // Lets try going for quickest first
+            List<string> quickestPath = new List<string>();
+            int quickest = int.MaxValue;
+            int quickestRecipe = 0;
 
-            foreach (var spell in Spells.Where(s => s.Castable))
+            for (int i = 0; i < paths.Length; i++)
             {
-                if(!CanSpellBeCast(spell.IngredientsChange)) { continue; }
-
-                var needsAfterSpell = CalculateNeededIngredientsAfterChange(targetRecipe.Ingredients, spell.IngredientsChange);
-                
-                Console.Error.WriteLine($"Needs after spell {spell.Id}: [{needsAfterSpell[0]},{needsAfterSpell[1]},{needsAfterSpell[2]},{needsAfterSpell[3]}]");
-                var totalNeedsAfterSpell = needsAfterSpell[0] + needsAfterSpell[1] + needsAfterSpell[2] + needsAfterSpell[3];
-                
-                // If this spell makes it brewable just cast it
-                if(totalNeedsAfterSpell == 0)
+                if (paths[i].Count > 0 && paths[i].Count < quickest)
                 {
-                    return $"{Spell.ActionType} {spell.Id}";
-                }
-                
-                // Check if this spell makes it more castable
-                if(totalNeedsAfterSpell < lowestNeeds)
-                {
-                    lowestNeeds = totalNeedsAfterSpell;
-                    bestSpellId = spell.Id;
+                    quickest = paths[i].Count;
+                    quickestPath = paths[i];
+                    quickestRecipe = Recipes[i].Id;
                 }
             }
-            
-            if(bestSpellId != -1)
-            {
-                return $"{Spell.ActionType} {bestSpellId}";
-            }
 
-            //return $"{Spell.ActionType} {Spells.First(s => s.Castable).Id}";
+
+            if (quickestPath.Count > 0)
+            {
+                currentRecipe = quickestRecipe;
+                currentPath = quickestPath;
+            }
+        }
+
+        string action = string.Empty;
+
+        if (currentRecipe != -1)
+        {
+            if (currentPath.Count > 0)
+            {
+                action = currentPath[0];
+                currentPath.RemoveAt(0);
+            }
+            else
+            {
+                action = $"BREW {currentRecipe}";
+                currentPath = new List<string>();
+                currentRecipe = -1;
+
+            }
+        }
+
+        // If we haven't found an action just do something
+        if (action == "")
+        {
+            for (int i = 0; i < Spells.Count; i++)
+            {
+                if (Spells[i].Castable && CanSpellBeCast(Spells[i].IngredientsChange, PlayerInventory.Ingredients))
+                {
+                    return $"CAST {Spells[i].Id}";
+                }
+            }
+        }
+
+        if (action == "")
+        {
             return "REST";
-            
-        }
-        private bool CanSpellBeCast(int[] spellIngredientsChange)
-        {
-            var inventoryIngredients = PlayerInventory.Ingredients;
-            
-            return    inventoryIngredients[0] + spellIngredientsChange[0] >= 0
-                      && inventoryIngredients[1] + spellIngredientsChange[1] >= 0
-                      && inventoryIngredients[2] + spellIngredientsChange[2] >= 0
-                      && inventoryIngredients[3] + spellIngredientsChange[3] >= 0;
-
-        }
-
-        private int[] CalculateNeededIngredients(int[] targetIngredients)
-        {
-            return CalculateNeededIngredientsAfterChange(targetIngredients, new int[] { 0, 0, 0, 0 });
         }
         
-        private int[] CalculateNeededIngredientsAfterChange(IReadOnlyList<int> targetIngredients, IReadOnlyList<int> ingredientsChange)
-        {
-            var blueDiff = targetIngredients[0] - (PlayerInventory.Ingredients[0] + ingredientsChange[0]);
-            var greenDiff = targetIngredients[1] - (PlayerInventory.Ingredients[1] + ingredientsChange[1]);
-            var orangeDiff = targetIngredients[2] - (PlayerInventory.Ingredients[2] + ingredientsChange[2]);
-            var yellowDiff = targetIngredients[3] - (PlayerInventory.Ingredients[3] + ingredientsChange[3]);
-            
-            var blueNeeds = blueDiff >= 0 ? blueDiff : 0;
-            var greenNeeds = greenDiff >= 0 ? greenDiff : 0;
-            var orangeNeeds = orangeDiff >= 0 ? orangeDiff : 0;
-            var yellowNeeds = yellowDiff >= 0 ? yellowDiff : 0;
+        return action;
+    }
 
-            return new []
+    private bool CanRecipeBeBrewed(Recipe recipe)
+    {
+        return CanRecipeBeBrewed(recipe.Ingredients, PlayerInventory.Ingredients);
+    }
+
+    private static bool CanRecipeBeBrewed(int[] needed, int[] have)
+    {
+        if (have[0] >= needed[0]
+            && have[1] >= needed[1]
+            && have[2] >= needed[2]
+            && have[3] >= needed[3])
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool CanSpellBeCast(int[] spellIngredientsChange, int[] inventoryIngredients)
+    {
+        int total = GetTotal(spellIngredientsChange, inventoryIngredients);
+
+        bool haveIngredients = AreNeededIngredientsPresent(spellIngredientsChange, inventoryIngredients);
+        
+
+        if (total > 10 || !haveIngredients)
+        {
+            return false;
+        }
+
+        return true;
+
+    }
+
+    private static int GetTotal(int[] spellIngredientsChange, int[] inventoryIngredients)
+    {
+        int total = 0;
+
+        for (int i = 0; i < 4; i++)
+        {
+            if (inventoryIngredients[i] + spellIngredientsChange[i] >= 0)
             {
-                blueNeeds,
-                greenNeeds,
-                orangeNeeds,
-                yellowNeeds
-            };
+                total += inventoryIngredients[i] + spellIngredientsChange[i];
+            }
         }
 
-        private void DisplayRecipes()
+        return total;
+    }
+
+    private static bool AreNeededIngredientsPresent(int[] spellIngredientsChange, int[] inventoryIngredients)
+    {
+        return inventoryIngredients[0] + spellIngredientsChange[0] >= 0
+            && inventoryIngredients[1] + spellIngredientsChange[1] >= 0
+            && inventoryIngredients[2] + spellIngredientsChange[2] >= 0
+            && inventoryIngredients[3] + spellIngredientsChange[3] >= 0;
+    }
+
+    private List<string> FindShortestPath(int[] currentIngredients, int[] neededIngredients, List<Spell> availableSpells)
+    {
+        List<string> moves = new List<string>();
+
+        for (int i = 0; i <= maxDepth; i++)
         {
-            Console.Error.WriteLine("Recipes");
-            
-            foreach (var recipe in Recipes)
-            {  
-                Console.Error.WriteLine("actionId: " + recipe.Id);
-                Console.Error.WriteLine("blueIngredients:   " + recipe.Ingredients[0]);   
-                Console.Error.WriteLine("greenIngredients:  " + recipe.Ingredients[1]);   
-                Console.Error.WriteLine("orangeIngredients: " + recipe.Ingredients[2]);   
-                Console.Error.WriteLine("yellowIngredients: " + recipe.Ingredients[3]);   
-                Console.Error.WriteLine("Price: " + recipe.Price);  
-                Console.Error.WriteLine();                    
-            }   
+            moves.Clear();
+            int turns = MiniMax(currentIngredients, neededIngredients, availableSpells, 0, moves, i);
+
+            if (turns != int.MaxValue)
+            {
+                Console.Error.WriteLine($"Breaking at {i}");
+
+                // We care about the quickest ones right now. Don't look beyond something we've already found
+                maxDepth = i;
+                break;
+            }
         }
+
+        return moves;
+    }
+
+    public int MiniMax(int[] currentIngredients, int[] neededIngredients, List<Spell> availableSpells, int depth, List<string> moves, int maxDepth)
+    {
+        if (CanRecipeBeBrewed(neededIngredients, currentIngredients))
+            return 0;
         
-        private void DisplaySpells()
+        if (depth == maxDepth)
         {
-            Console.Error.WriteLine("Spells");
-            
-            foreach (var spell in Spells)
-            {  
-                Console.Error.WriteLine("actionId: " + spell.Id);
-                Console.Error.WriteLine("Blue Ingredients change:   " + spell.IngredientsChange[0]);   
-                Console.Error.WriteLine("Green Ingredients change:  " + spell.IngredientsChange[1]);   
-                Console.Error.WriteLine("Orange Ingredients change: " + spell.IngredientsChange[2]);   
-                Console.Error.WriteLine("Yellow Ingredients change: " + spell.IngredientsChange[3]);
-                Console.Error.WriteLine();        
-            }   
+            return int.MaxValue;
         }
+
+        int minTurns = int.MaxValue;
+        // Get all possible actions
+        for (int i = 0; i <= availableSpells.Count(); i++)
+        {
+            string currentMove = string.Empty;
+            int[] changedIngredients = currentIngredients.ToArray();
+
+            Spell[] copiedSpells = new Spell[availableSpells.Count];
+
+            availableSpells.CopyTo(copiedSpells);
+            List<Spell> changedSpells = copiedSpells.ToList();
+
+            if (i == changedSpells.Count())
+            {
+                if (changedSpells.Count(s => !s.Castable) > 0)
+                {
+                    for (int k = 0; k < changedSpells.Count(); k++)
+                    {
+                        Spell spellToChange = changedSpells[k];
+
+                        spellToChange.Castable = true;
+
+                        changedSpells.RemoveAt(k);
+                        changedSpells.Insert(k, spellToChange);
+                    }
+
+                    moves.Add("REST");
+                }
+                else
+                {
+                    // if all spells are active don't try this
+                    continue;
+                }
+            }
+            else
+            {
+                // do the changes from casting the spell
+                if (changedSpells[i].Castable == true && CanSpellBeCast(changedSpells[i].IngredientsChange, changedIngredients))
+                {
+                    Spell currentSpell = changedSpells[i];
+                    currentSpell.Castable = false;
+
+                    changedSpells.RemoveAt(i);
+                    changedSpells.Insert(i, currentSpell);
+
+                    for (int j = 0; j < 4; j++)
+                    {
+                        changedIngredients[j] += currentSpell.IngredientsChange[j];
+                        if (changedIngredients[j] < 0)
+                            changedIngredients[j] = 0;
+                    }
+
+                    moves.Add($"CAST {currentSpell.Id}");
+                }
+                else
+                {
+                    continue;
+                }
+            }
+
+            int turns = MiniMax(changedIngredients, neededIngredients, changedSpells, depth + 1, moves, maxDepth);
+
+            if (turns == 0)
+            {
+                return 0;
+            }
+
+            if (turns != int.MaxValue && turns + 1 < minTurns)
+            {
+                minTurns = turns + 1;
+            } 
+            else
+            {
+                moves.RemoveAt(depth);
+            }            
+        }
+
+        return minTurns;
     }
 }

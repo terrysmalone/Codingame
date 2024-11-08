@@ -30,13 +30,13 @@ namespace UltimateTicTacToe
         {
             _previousActiveBoard = ActiveBoard;
 
-            var localColumn = column % 3;
-            var localRow = row % 3;
+            int localColumn = column % 3;
+            int localRow = row % 3;
 
             SubBoards[column / 3, row / 3].AddMove(localColumn, localRow, piece);
 
             // update active board
-            var probablyNextActiveBoard = SubBoards[localColumn, localRow];
+            TicTacToe probablyNextActiveBoard = SubBoards[localColumn, localRow];
 
             if (!probablyNextActiveBoard.IsGameOver())
             {
@@ -73,9 +73,9 @@ namespace UltimateTicTacToe
         
         private int AvailableSpacesOnBoard()
         {
-            var availableSpaces = Board.AvailableSpacesOnBoard();
+            int availableSpaces = Board.AvailableSpacesOnBoard();
 
-            foreach (var board in SubBoards)
+            foreach (TicTacToe board in SubBoards)
             {
                 availableSpaces += board.AvailableSpacesOnBoard();
             }
@@ -87,11 +87,11 @@ namespace UltimateTicTacToe
         {
             Board.ClearBoard();
             
-            for(var column = 0; column < 3; column++)
+            for(int column = 0; column < 3; column++)
             {
-                for(var row = 0; row < 3; row++)
+                for(int row = 0; row < 3; row++)
                 {
-                    var evaluation = SubBoards[column, row].EvaluateBoard();
+                    int evaluation = SubBoards[column, row].EvaluateBoard();
 
                     if(evaluation > 0)
                     {
@@ -107,15 +107,15 @@ namespace UltimateTicTacToe
 
         public List<Move> CalculateValidMoves()
         {
-            var moves = new List<Move>();
+            List<Move> moves = new List<Move>();
 
             if (ActiveBoard.Column == -1)
             {
-                for (var column = 0; column < 3; column++)
+                for (int column = 0; column < 3; column++)
                 {
-                    for (var row = 0; row < 3; row++)
+                    for (int row = 0; row < 3; row++)
                     {
-                        var subBoard = SubBoards[column, row];
+                        TicTacToe subBoard = SubBoards[column, row];
 
                         if (!subBoard.IsGameOver())
                         {
@@ -134,9 +134,9 @@ namespace UltimateTicTacToe
 
         private static IEnumerable<Move> TranslateToGlobalMoves(List<Move> moves, Move activeBoard)
         {
-            var translatedMoves = new List<Move>();
+            List<Move> translatedMoves = new List<Move>();
 
-            foreach (var move in moves)
+            foreach (Move move in moves)
             {
                 translatedMoves.Add(TranslateToGlobalMove(move, activeBoard));
             }
@@ -151,9 +151,9 @@ namespace UltimateTicTacToe
 
         public int Evaluate(bool isX, int depth)
         {
-            var score = 0;
+            int score = 0;
 
-            foreach (var board in SubBoards)
+            foreach (TicTacToe board in SubBoards)
             {
                 score += board.Evaluate(isX, depth);
             }
@@ -164,9 +164,9 @@ namespace UltimateTicTacToe
         }
         public void PrintBoard()
         {
-            for (var i = 0; i < 3; i++)
+            for (int i = 0; i < 3; i++)
             {
-                for (var j = 0; j < 3; j++)
+                for (int j = 0; j < 3; j++)
                 {
                     Console.Error.WriteLine($"Board {i+j}");
                     SubBoards[j, i].PrintBoard();

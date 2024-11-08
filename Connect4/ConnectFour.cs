@@ -18,7 +18,7 @@ internal sealed class ConnectFour
     {
         _board = new List<int>[9];
 
-        for (var i = 0; i < _board.Length; i++)
+        for (int i = 0; i < _board.Length; i++)
         {
             _board[i] = new List<int>();
         }
@@ -26,9 +26,9 @@ internal sealed class ConnectFour
     
     public List<int> CalculateValidMoves()
     {
-        var validMoves = new List<int>();
+        List<int> validMoves = new List<int>();
 
-        for (var i = 0; i < _board.Length; i++)
+        for (int i = 0; i < _board.Length; i++)
         {
             if(_board[i].Count <= _boardMax)
             {
@@ -53,9 +53,9 @@ internal sealed class ConnectFour
     
     public void Steal(int playerId)
     {
-        var column = -1;
+        int column = -1;
         
-        for (var i = 0; i < _board.Length; i++)
+        for (int i = 0; i < _board.Length; i++)
         {
             if(_board[i].Count > 0)
             {
@@ -72,12 +72,12 @@ internal sealed class ConnectFour
     {
         const int winWeighting = 1000;
         const int potentialWinsWeighting = 100;
-        const int threeWeighting = 15; 
+        const int threeWeighting = 15;
 
 
         //var score = CountSequences(4) * (depth + 1) * winWeighting;     // Can we just cut off here? A win is probably trumps any other score
-        
-        var score = FindWin() * (depth + 1) * winWeighting;
+
+        int score = FindWin() * (depth + 1) * winWeighting;
         
         if(score == 0)
         {
@@ -95,16 +95,16 @@ internal sealed class ConnectFour
     // Returns as soon as there's a win
     private int FindWin()
     {
-        var sequenceLength = 4;
-        var numberOfSequences = 0;
+        int sequenceLength = 4;
+        int numberOfSequences = 0;
         
-        for (var column = 0; column < _board.Length; column++)
+        for (int column = 0; column < _board.Length; column++)
         {
-            var currentColumn = _board[column];
+            List<int> currentColumn = _board[column];
             
-            for (var row = 0; row < currentColumn.Count; row++)
+            for (int row = 0; row < currentColumn.Count; row++)
             {
-                var currentPiece = currentColumn[row];
+                int currentPiece = currentColumn[row];
                 
                 if(currentPiece == -1)
                 {
@@ -180,19 +180,19 @@ internal sealed class ConnectFour
     {
         const int maxRow = 6;
         const int maxColumn = 8;
-        
-        var numberOfSequences = 0;
-        var sequenceLength = 4;
 
-        for (var column = 0; column < _board.Length; column++)
+        int numberOfSequences = 0;
+        int sequenceLength = 4;
+
+        for (int column = 0; column < _board.Length; column++)
         {
-            var currentColumn = _board[column];
+            List<int> currentColumn = _board[column];
             
-            for (var row = 0; row < currentColumn.Count; row++)
+            for (int row = 0; row < currentColumn.Count; row++)
             {
-                var currentPiece = currentColumn[row];
-                
-                var increment = 0;
+                int currentPiece = currentColumn[row];
+
+                int increment = 0;
                 
                 if(currentPiece == 0)
                 {
@@ -219,7 +219,7 @@ internal sealed class ConnectFour
                 {
                     if(column > 0)
                     {
-                        var previousColumn = _board[column-1];
+                        List<int> previousColumn = _board[column-1];
                         
                         if(previousColumn.Count < row)
                         {
@@ -229,7 +229,7 @@ internal sealed class ConnectFour
                     
                     if(column <= maxColumn - (sequenceLength-1))
                     {
-                        var endColumn = _board[column+(sequenceLength-1)];
+                        List<int> endColumn = _board[column+(sequenceLength-1)];
                         
                         if(endColumn.Count < row)
                         {
@@ -246,7 +246,7 @@ internal sealed class ConnectFour
                     // Check down left for empty space
                     if(column > 0 && row > 0)
                     {
-                        var previousColumn = _board[column-1];
+                        List<int> previousColumn = _board[column-1];
                         
                         if(previousColumn.Count < row-1)
                         {
@@ -257,7 +257,7 @@ internal sealed class ConnectFour
                     // Check up right for empty space
                     if(row+(sequenceLength-1) <= maxRow && column <= maxColumn - (sequenceLength-1))
                     {
-                        var endColumn = _board[column+(sequenceLength-1)];
+                        List<int> endColumn = _board[column+(sequenceLength-1)];
                         
                         if(endColumn.Count < row + (sequenceLength-1))
                         {
@@ -273,7 +273,7 @@ internal sealed class ConnectFour
                     // Check up left for empty spaces
                     if(column > 0 && row+(sequenceLength-1) <= maxRow)
                     {
-                        var previousColumn = _board[column-1];
+                        List<int> previousColumn = _board[column-1];
                         
                         if(previousColumn.Count < row - 1)
                         {
@@ -284,7 +284,7 @@ internal sealed class ConnectFour
                     // Check down right
                     if(column <= maxColumn - (sequenceLength-1))
                     {
-                        var endColumn = _board[column+(sequenceLength-1)];
+                        List<int> endColumn = _board[column+(sequenceLength-1)];
                         
                         if(endColumn.Count < row - (sequenceLength-1))
                         {
@@ -301,15 +301,15 @@ internal sealed class ConnectFour
     
     private int CountSequences(int sequenceLength)
     {
-        var numberOfSequences = 0;
+        int numberOfSequences = 0;
         
-        for (var column = 0; column < _board.Length; column++)
+        for (int column = 0; column < _board.Length; column++)
         {
-            var currentColumn = _board[column];
+            List<int> currentColumn = _board[column];
             
-            for (var row = 0; row < currentColumn.Count; row++)
+            for (int row = 0; row < currentColumn.Count; row++)
             {
-                var currentPiece = currentColumn[row];
+                int currentPiece = currentColumn[row];
                 
                 if(currentPiece == -1)
                 {
@@ -380,9 +380,9 @@ internal sealed class ConnectFour
 
     private static bool CheckUp(List<int> column, int startPoisiton, int piece, int sequenceLength)
     {
-        var matchCount = 0;
+        int matchCount = 0;
         
-        for (var i = 1; i <= sequenceLength-1; i++)
+        for (int i = 1; i <= sequenceLength-1; i++)
         {
             if(column[startPoisiton+i] == piece)
             {
@@ -404,11 +404,11 @@ internal sealed class ConnectFour
     
     private bool CheckRight(int startColumn, int row, int piece, int sequenceLength)
     {
-        var matchCount = 0;
+        int matchCount = 0;
         
-        for (var i = 1; i <= sequenceLength-1; i++)
+        for (int i = 1; i <= sequenceLength-1; i++)
         {
-            var nextColumn = _board[startColumn+i];
+            List<int> nextColumn = _board[startColumn+i];
             
             if(nextColumn.Count >= row+1 && nextColumn[row] == piece)
             {
@@ -425,11 +425,11 @@ internal sealed class ConnectFour
     
     private bool CheckDiagonalUp(int startColumn, int startRow, int piece, int sequenceLength)
     {
-        var matchCount = 0;
+        int matchCount = 0;
         
-        for (var i = 1; i <= sequenceLength-1; i++)
+        for (int i = 1; i <= sequenceLength-1; i++)
         {
-            var nextColumn = _board[startColumn+i];
+            List<int> nextColumn = _board[startColumn+i];
             
             if(nextColumn.Count >= startRow+i+1 && nextColumn[startRow+i] == piece)
             {
@@ -446,11 +446,11 @@ internal sealed class ConnectFour
     
     private bool CheckDiagonalDown(int startColumn, int startRow, int piece, int sequenceLength)
     {
-        var matchCount = 0;
+        int matchCount = 0;
         
-        for (var i = 1; i <= sequenceLength-1; i++)
+        for (int i = 1; i <= sequenceLength-1; i++)
         {
-            var nextColumn = _board[startColumn+i];
+            List<int> nextColumn = _board[startColumn+i];
             
             if(nextColumn.Count >= startRow-i+1 && nextColumn[startRow-i] == piece)
             {
@@ -477,9 +477,9 @@ internal sealed class ConnectFour
     
     internal void SetMoveSequence(string moves)
     {
-        var isPlayer0 = true;
+        bool isPlayer0 = true;
         
-        foreach (var move in moves)
+        foreach (char move in moves)
         {
             AddMove(int.Parse(move.ToString()), isPlayer0 ? 0 : 1);
             
@@ -490,11 +490,11 @@ internal sealed class ConnectFour
     
     internal void PrintBoard()
     {
-        for (var i = 6; i >= 0; i--)            
+        for (int i = 6; i >= 0; i--)            
         {
-            var rowText = string.Empty;
+            string rowText = string.Empty;
             
-            for (var j = 0; j < 9; j++)
+            for (int j = 0; j < 9; j++)
             {
                 if (_board[j].Count >= i+1)
                 {
@@ -511,13 +511,13 @@ internal sealed class ConnectFour
     }
     public string DisplayBoard()
     {
-        var board = string.Empty;
+        string board = string.Empty;
         
-        for (var i = 6; i >= 0; i--)            
+        for (int i = 6; i >= 0; i--)            
         {
-            var rowText = string.Empty;
+            string rowText = string.Empty;
             
-            for (var j = 0; j < 9; j++)
+            for (int j = 0; j < 9; j++)
             {
                 if (_board[j].Count >= i+1)
                 {

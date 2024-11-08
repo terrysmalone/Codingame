@@ -35,7 +35,7 @@ namespace Spring2021ChallengeCombined
         
         public static Action Parse(string action)
         {
-            var parts = action.Split(" ");
+            string[] parts = action.Split(" ");
             
             switch (parts[0])
             {
@@ -104,12 +104,12 @@ namespace Spring2021ChallengeCombined
             }
     
             _hasBeenChecked = new bool[38];
-    
-            var cell1 = _cells.Find(c => c.Index == index1);
+
+            Cell cell1 = _cells.Find(c => c.Index == index1);
     
             _hasBeenChecked[cell1.Index] = true;
-    
-            var toCheck = new List<int>
+
+            List<int> toCheck = new List<int>
             {
                 cell1.Index
             };
@@ -120,7 +120,7 @@ namespace Spring2021ChallengeCombined
             while (distance <= 6)
             {
                 // get ones to check 
-                var neighbouringIndexes = GetNeighbouringIndexes(toCheck);
+                List<int> neighbouringIndexes = GetNeighbouringIndexes(toCheck);
     
                 // check them
                 if(neighbouringIndexes.Contains(index2))
@@ -145,12 +145,12 @@ namespace Spring2021ChallengeCombined
         }
     
         private List<int> GetNeighbouringIndexes(List<int> indexes)
-        {        
-            var neighbouringIndexes = new List<int>();
+        {
+            List<int> neighbouringIndexes = new List<int>();
     
             foreach(int index in indexes)
             {
-                var neighbourIndexes = _cells.Find(c => c.Index == index).Neighbours;
+                int[] neighbourIndexes = _cells.Find(c => c.Index == index).Neighbours;
     
                 foreach(int neighbourIndex in neighbourIndexes)
                 {
@@ -199,22 +199,22 @@ namespace Spring2021ChallengeCombined
         {
             Console.Error.WriteLine($"_moveNum: {_moveNum}");
             _sunDirection = Round % 6;
-            
+
             //------------------------------------------------------------------------
-            var nextSunDirection = _sunDirection + 1;
+            int nextSunDirection = _sunDirection + 1;
 
             if (nextSunDirection > 5)
             {
                 nextSunDirection = 0;
             }
-            
-            var sunPointCalculator = new SunPointCalculator(Board, Trees, nextSunDirection);
-            
+
+            SunPointCalculator sunPointCalculator = new SunPointCalculator(Board, Trees, nextSunDirection);
+
             //------------------------------------------------------------------------
-            
+
             //Console.Error.WriteLine("==========================================");
             //Console.Error.WriteLine($"Round: {Round}");
-            
+
             // TO Do
             // Try to complete and reseed in one move. If we can't, seed on the turn after a complete
             // Tidy up and refactor  
@@ -227,19 +227,19 @@ namespace Spring2021ChallengeCombined
             // Relax the no seed next door rule after a while. Maybe when there are a certain number of trees
             // If we have 2 points left spew seeds. It could win us a draw
 
-            var actionsWithScores = new List<Tuple<Action, double>>();
-    
-            var numberOfTrees = CountTreeSizes(); 
-    
+            List<Tuple<Action, double>> actionsWithScores = new List<Tuple<Action, double>>();
+
+            int[] numberOfTrees = CountTreeSizes();
+
             // If we can't get another complete before the end just wait        
-            var waitScore = 1.0;
+            double waitScore = 1.0;
             
             // Score every action and then order them
-            foreach(var action in PossibleActions)
-            {  
-                var actionScore = 1.0;
-    
-                var targetCell = Board.Find(b => b.Index == action.TargetCellIdx);
+            foreach(Action action in PossibleActions)
+            {
+                double actionScore = 1.0;
+
+                Cell targetCell = Board.Find(b => b.Index == action.TargetCellIdx);
                 
                 if(action.Type == "WAIT")
                 { 
@@ -255,9 +255,9 @@ namespace Spring2021ChallengeCombined
                     else
                     {
                         // Higher score for completing rich soil trees
-                        var richnessScore = GetScaledValue(targetCell.Richness, 1.0, 3.0, 1.0, 2.0);
+                        double richnessScore = GetScaledValue(targetCell.Richness, 1.0, 3.0, 1.0, 2.0);
                         actionScore *= richnessScore;
-                        
+
                         // Adding plus 3 is a simple way to scale it to 0, since completing seems like a loss. 
                         //var sunPointScore = CalculateSunPointScore(sunPointCalculator, action, false) + 3;
 
@@ -265,7 +265,7 @@ namespace Spring2021ChallengeCombined
 
                         // More likely to complete near the end of the game
                         // We don't want to scale this because it should be heavily biased towards completing at the end of the game
-                        var dayScore = 1.0;
+                        double dayScore = 1.0;
 
                         if (Round > 22)
                         {
@@ -311,24 +311,24 @@ namespace Spring2021ChallengeCombined
                     {
                         //Prefer planting seeds in the centre                
                         // The target cell can be 0-3 away. If 3 away we want a 1 * multiplier, if 0 away we want 2. 
-                        var distanceFromCentre = _distanceCalculator.GetDistanceFromCentre(action.TargetCellIdx);
-        
-                        var centreBonus = GetScaledValue(distanceFromCentre, 4.0, 0.0, 1.0, 2.0);
-                        actionScore *= centreBonus;  
-        
+                        int distanceFromCentre = _distanceCalculator.GetDistanceFromCentre(action.TargetCellIdx);
+
+                        double centreBonus = GetScaledValue(distanceFromCentre, 4.0, 0.0, 1.0, 2.0);
+                        actionScore *= centreBonus;
+
                         // Higher score for seeding far away from tree
-                        var distanceApart = _distanceCalculator.GetDistanceBetweenCells(action.SourceCellIdx, action.TargetCellIdx);
-                        var distanceApartScore = GetScaledValue(distanceApart, 1.0, 3.0, 1.0, 2.0);
+                        int distanceApart = _distanceCalculator.GetDistanceBetweenCells(action.SourceCellIdx, action.TargetCellIdx);
+                        double distanceApartScore = GetScaledValue(distanceApart, 1.0, 3.0, 1.0, 2.0);
                         actionScore *= distanceApartScore;
-        
+
                         // Try to plant on richer soil
-                        var richnessScore = GetScaledValue(targetCell.Richness, 1.0, 3.0, 1.0, 2.0);
+                        double richnessScore = GetScaledValue(targetCell.Richness, 1.0, 3.0, 1.0, 2.0);
                         actionScore *= richnessScore;
                     }
                 }
                 else if(action.Type == "GROW")
                 {
-                    var tree = Trees.Find(t => t.CellIndex == action.TargetCellIdx);    
+                    Tree tree = Trees.Find(t => t.CellIndex == action.TargetCellIdx);    
                                         
                     // Day    | t-5 | t-4 | t-3 | t-2 | t-1 |
                     // Action |  S  |  1  |  2  |  3  |  C  |
@@ -353,19 +353,19 @@ namespace Spring2021ChallengeCombined
                     // If we've hard blocked growing by this stage don't bother scoring it
                     if (actionScore != 0)
                     {
-                        var sunPointScore = CalculateSunPointScore(sunPointCalculator, action, false);
+                        int sunPointScore = CalculateSunPointScore(sunPointCalculator, action, false);
 
                         // We don't want any factors other than sun score moving this up by more than 1 decimal place.
                         // Scale all other scores between 0 and 0.99
 
                         // Prioritise growing by richness
-                        var nonSunScore = GetScaledValue(targetCell.Richness, 1.0, 3.0, 1.0, 2.0);
+                        double nonSunScore = GetScaledValue(targetCell.Richness, 1.0, 3.0, 1.0, 2.0);
 
                         // We prefer to grow fewer trees of the same size   
                         // get scaling min and max
-                        var minTreeCount = Math.Min(numberOfTrees[1], Math.Min(numberOfTrees[2], numberOfTrees[3]));
-                        var maxTreeCount = Math.Max(numberOfTrees[1], Math.Max(numberOfTrees[2], numberOfTrees[3]));
-                        var amountOfThisSize =  numberOfTrees[tree.Size + 1];
+                        int minTreeCount = Math.Min(numberOfTrees[1], Math.Min(numberOfTrees[2], numberOfTrees[3]));
+                        int maxTreeCount = Math.Max(numberOfTrees[1], Math.Max(numberOfTrees[2], numberOfTrees[3]));
+                        int amountOfThisSize =  numberOfTrees[tree.Size + 1];
 
                         // Invert it because smaller is better
                         nonSunScore += GetScaledValue(amountOfThisSize, maxTreeCount, minTreeCount, 1.0, 2.0);
@@ -394,8 +394,8 @@ namespace Spring2021ChallengeCombined
     
             // Output all actions with scores
             OutputActionsAndScores(actionsWithScores.OrderBy(a => a.Item2).ToList(), true);
-    
-            var highestScoringAction = actionsWithScores.OrderBy(a => a.Item2).Last().Item1;
+
+            Action highestScoringAction = actionsWithScores.OrderBy(a => a.Item2).Last().Item1;
 
             _moveNum++;
 
@@ -405,8 +405,8 @@ namespace Spring2021ChallengeCombined
         private static int CalculateSunPointScore(SunPointCalculator sunPointCalculator, Action action, bool outputDebugging)
         {
             // Baseline is how many points we'll get if we do nothing
-            var baseLineSunPoints = sunPointCalculator.CalculateSunPoints();
-            var baseLineScore = baseLineSunPoints.Item1 - baseLineSunPoints.Item2;
+            Tuple<int, int> baseLineSunPoints = sunPointCalculator.CalculateSunPoints();
+            int baseLineScore = baseLineSunPoints.Item1 - baseLineSunPoints.Item2;
 
             if (outputDebugging)
             {
@@ -415,7 +415,7 @@ namespace Spring2021ChallengeCombined
             }
 
             sunPointCalculator.DoAction(action);
-            var sunPoints = sunPointCalculator.CalculateSunPoints();
+            Tuple<int, int> sunPoints = sunPointCalculator.CalculateSunPoints();
 
             if (outputDebugging)
             {
@@ -437,7 +437,7 @@ namespace Spring2021ChallengeCombined
     
         private int[] CountTreeSizes()
         {
-            var numberOfTrees = new int[4];
+            int[] numberOfTrees = new int[4];
     
             numberOfTrees[0] = Trees.Count(t => t.Size == 0 && t.IsMine);
             numberOfTrees[1] = Trees.Count(t => t.Size == 1 && t.IsMine);
@@ -449,7 +449,7 @@ namespace Spring2021ChallengeCombined
         
         private bool SeedHasDirectNeighbour(Cell cell)
         {
-            foreach (var neighbourindex in cell.Neighbours)
+            foreach (int neighbourindex in cell.Neighbours)
             {
                 if(Trees.Find(t => t.CellIndex == neighbourindex && t.IsMine) != null)
                 {
@@ -462,9 +462,9 @@ namespace Spring2021ChallengeCombined
         
         private int NumberOfSurroundingTrees(Cell cell)
         {
-            var count = 0;
+            int count = 0;
             
-            foreach (var neighbourindex in cell.Neighbours)
+            foreach (int neighbourindex in cell.Neighbours)
             {
                 if(Trees.Find(t => t.CellIndex == neighbourindex && t.IsMine) != null)
                 {
@@ -488,7 +488,7 @@ namespace Spring2021ChallengeCombined
 
         private static void OutputActionsAndScores(List<Tuple<Action, double>> actionsWithScores, bool showZeroScoredActions = true)
         {
-            foreach(var actionWithScore in actionsWithScores)
+            foreach(Tuple<Action, double> actionWithScore in actionsWithScores)
             {
                 if(!showZeroScoredActions && actionWithScore.Item2 == 0) { continue; }
                 
@@ -524,25 +524,25 @@ namespace Spring2021ChallengeCombined
         static void Main(string[] args)
         {
             string[] inputs;
-    
-            var game = new Game();
-    
-            var  numberOfCells = int.Parse(Console.ReadLine()); // 37
+
+            Game game = new Game();
+
+            int numberOfCells = int.Parse(Console.ReadLine()); // 37
             
-            for (var i = 0; i < numberOfCells; i++)
+            for (int i = 0; i < numberOfCells; i++)
             {
                 inputs = Console.ReadLine().Split(' ');
-                var index = int.Parse(inputs[0]); // 0 is the center cell, the next cells spiral outwards
-                var richness = int.Parse(inputs[1]); // 0 if the cell is unusable, 1-3 for usable cells
-                var neigh0 = int.Parse(inputs[2]); // the index of the neighbouring cell for each direction
-                var neigh1 = int.Parse(inputs[3]);
-                var neigh2 = int.Parse(inputs[4]);
-                var neigh3 = int.Parse(inputs[5]);
-                var neigh4 = int.Parse(inputs[6]);
-                var neigh5 = int.Parse(inputs[7]);
-                var neighs = new int[] { neigh0, neigh1, neigh2, neigh3, neigh4, neigh5 };
-                
-                var cell = new Cell(index, richness, neighs);
+                int index = int.Parse(inputs[0]); // 0 is the center cell, the next cells spiral outwards
+                int richness = int.Parse(inputs[1]); // 0 if the cell is unusable, 1-3 for usable cells
+                int neigh0 = int.Parse(inputs[2]); // the index of the neighbouring cell for each direction
+                int neigh1 = int.Parse(inputs[3]);
+                int neigh2 = int.Parse(inputs[4]);
+                int neigh3 = int.Parse(inputs[5]);
+                int neigh4 = int.Parse(inputs[6]);
+                int neigh5 = int.Parse(inputs[7]);
+                int[] neighs = new int[] { neigh0, neigh1, neigh2, neigh3, neigh4, neigh5 };
+
+                Cell cell = new Cell(index, richness, neighs);
                 game.Board.Add(cell);
             }
     
@@ -560,29 +560,29 @@ namespace Spring2021ChallengeCombined
                 game.OpponentIsWaiting = inputs[2] != "0"; // whether your opponent is asleep until the next day
     
                 game.Trees.Clear();
-                var numberOfTrees = int.Parse(Console.ReadLine()); // the current amount of trees
-                for (var i = 0; i < numberOfTrees; i++)
+                int numberOfTrees = int.Parse(Console.ReadLine()); // the current amount of trees
+                for (int i = 0; i < numberOfTrees; i++)
                 {
                     inputs = Console.ReadLine().Split(' ');
-                    var cellIndex = int.Parse(inputs[0]); // location of this tree
-                    var size = int.Parse(inputs[1]); // size of this tree: 0-3
-                    var isMine = inputs[2] != "0"; // 1 if this is your tree
-                    var isDormant = inputs[3] != "0"; // 1 if this tree is dormant
-                    var tree = new Tree(cellIndex, size, isMine, isDormant);
+                    int cellIndex = int.Parse(inputs[0]); // location of this tree
+                    int size = int.Parse(inputs[1]); // size of this tree: 0-3
+                    bool isMine = inputs[2] != "0"; // 1 if this is your tree
+                    bool isDormant = inputs[3] != "0"; // 1 if this tree is dormant
+                    Tree tree = new Tree(cellIndex, size, isMine, isDormant);
                     game.Trees.Add(tree);
                 }
     
                 game.PossibleActions.Clear();
-    
-                var numberOfPossibleMoves = int.Parse(Console.ReadLine());
+
+                int numberOfPossibleMoves = int.Parse(Console.ReadLine());
                 
-                for (var i = 0; i < numberOfPossibleMoves; i++)
+                for (int i = 0; i < numberOfPossibleMoves; i++)
                 {
-                    var possibleMove = Console.ReadLine();
+                    string possibleMove = Console.ReadLine();
                     game.PossibleActions.Add(Action.Parse(possibleMove));
                 }
-    
-                var action = game.GetNextAction();
+
+                Action action = game.GetNextAction();
                 Console.WriteLine(action);
             }
         }
@@ -623,16 +623,16 @@ namespace Spring2021ChallengeCombined
         private void CalculateShadowedCells()
         {
             // foreach tree calculate it's shadow
-            foreach (var tree in _trees)
+            foreach (Tree tree in _trees)
             {
                 if (tree.Size > 0)
                 {
                     // Calculate first shadow
-                    var treeCell = _boardCells.Find(c => c.Index == tree.CellIndex);
+                    Cell treeCell = _boardCells.Find(c => c.Index == tree.CellIndex);
                     
                     if (treeCell == null) { continue; }
-                    
-                    var shadowIndex = treeCell.Neighbours[_sunDirection];
+
+                    int shadowIndex = treeCell.Neighbours[_sunDirection];
 
                     if (IsTreeInSpookyShadow(tree.Size, shadowIndex))
                     {
@@ -642,7 +642,7 @@ namespace Spring2021ChallengeCombined
                     // If size is 2 calculate 2nd shadow
                     if (tree.Size > 1)
                     {
-                        var shadowCell = _boardCells.Find(c => c.Index == shadowIndex);
+                        Cell shadowCell = _boardCells.Find(c => c.Index == shadowIndex);
 
                         if (shadowCell == null) { continue; }
                         
@@ -657,7 +657,7 @@ namespace Spring2021ChallengeCombined
                     // If size is 3 calculate 3rd shadow
                     if (tree.Size > 2)
                     {
-                        var shadowCell = _boardCells.Find(c => c.Index == shadowIndex);
+                        Cell shadowCell = _boardCells.Find(c => c.Index == shadowIndex);
                         
                         if (shadowCell == null) { continue; }
                         
@@ -686,10 +686,10 @@ namespace Spring2021ChallengeCombined
         
         private Tuple<int, int> CalculatePoints()
         {
-            var mySunPoints = 0;
-            var opponentSunPoints = 0;
+            int mySunPoints = 0;
+            int opponentSunPoints = 0;
             
-            foreach (var tree in _trees.Where(tree => !_inSpookyShadow[tree.CellIndex]))
+            foreach (Tree tree in _trees.Where(tree => !_inSpookyShadow[tree.CellIndex]))
             {
                 //Console.Error.WriteLine("============================================");
                 
@@ -736,7 +736,7 @@ namespace Spring2021ChallengeCombined
             }
             else if (action.Type == "GROW")
             {
-                var tree = _trees.Find(t => t.CellIndex == action.TargetCellIdx);
+                Tree tree = _trees.Find(t => t.CellIndex == action.TargetCellIdx);
 
                 tree.Size++;
             }
@@ -754,7 +754,7 @@ namespace Spring2021ChallengeCombined
             }
             else if (_lastAction.Type == "GROW")
             {
-                var tree = _trees.Find(t => t.CellIndex == _lastAction.TargetCellIdx);
+                Tree tree = _trees.Find(t => t.CellIndex == _lastAction.TargetCellIdx);
 
                 tree.Size--;
             }

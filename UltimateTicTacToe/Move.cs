@@ -19,7 +19,7 @@
             }
             else
             {
-                var m = (Move) obj;
+                Move m = (Move) obj;
                 return (Column == m.Column) && (Row == m.Row);
             }
         }

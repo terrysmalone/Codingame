@@ -16,16 +16,16 @@ internal sealed class Game
     
     internal Point GetAction()
     {
-        var closestZombieDistance = double.MaxValue;
-        var closestHumanPoint = new Point(0,0);
-        var closesZombiePoint = new Point(0,0);
+        double closestZombieDistance = double.MaxValue;
+        Point closestHumanPoint = new Point(0,0);
+        Point closesZombiePoint = new Point(0,0);
 
         // Find the player with the closest Zombie
-        foreach (var human in _humans)
+        foreach (Human human in _humans)
         {
-            foreach (var zombie in _zombies)
+            foreach (Zombie zombie in _zombies)
             {
-                var distance = CalculateDistance(human.Position, zombie.Position);
+                double distance = CalculateDistance(human.Position, zombie.Position);
             
                 if(distance < closestZombieDistance)
                 {
@@ -44,21 +44,21 @@ internal sealed class Game
 
     private bool CanHumanBeSaved(Human human, Zombie zombie)
     {
-        var myTurnsToTarget = CalculateDistance(_playerPosition, human.Position) / 1000;
+        double myTurnsToTarget = CalculateDistance(_playerPosition, human.Position) / 1000;
 
-        var zombieTurnsToTarget = CalculateDistance(human.Position, zombie.Position) / 400;
+        double zombieTurnsToTarget = CalculateDistance(human.Position, zombie.Position) / 400;
         
         return myTurnsToTarget <= zombieTurnsToTarget;
     }
 
     private Zombie GetClosestZombie(Human human)
     {
-        var closestZombieDistance = double.MaxValue;
+        double closestZombieDistance = double.MaxValue;
         Zombie closestZombie = null;
 
-        foreach (var zombie in _zombies)
+        foreach (Zombie zombie in _zombies)
         {
-            var distance = CalculateDistance(human.Position, zombie.Position);
+            double distance = CalculateDistance(human.Position, zombie.Position);
             
             if(distance < closestZombieDistance)
             {
@@ -117,7 +117,7 @@ class Player
 {
     static void Main(string[] args)
     {
-        var game = new Game();
+        Game game = new Game();
         
         string[] inputs;
 
@@ -125,41 +125,41 @@ class Player
         while (true)
         {
             inputs = Console.ReadLine().Split(' ');
-            var x = int.Parse(inputs[0]);
-            var y = int.Parse(inputs[1]);
+            int x = int.Parse(inputs[0]);
+            int y = int.Parse(inputs[1]);
             
             game.SetPlayerCoordinates(x, y);
             
             game.ClearHumans();
             game.ClearZombies();
 
-            var humanCount = int.Parse(Console.ReadLine());
-            for (var i = 0; i < humanCount; i++)
+            int humanCount = int.Parse(Console.ReadLine());
+            for (int i = 0; i < humanCount; i++)
             {
                 inputs = Console.ReadLine().Split(' ');
-                var humanId = int.Parse(inputs[0]);
-                var humanX = int.Parse(inputs[1]);
-                var humanY = int.Parse(inputs[2]);
+                int humanId = int.Parse(inputs[0]);
+                int humanX = int.Parse(inputs[1]);
+                int humanY = int.Parse(inputs[2]);
                 
                 game.AddHuman(humanId, humanX, humanY);
             }
 
-            var zombieCount = int.Parse(Console.ReadLine());
-            for (var i = 0; i < zombieCount; i++)
+            int zombieCount = int.Parse(Console.ReadLine());
+            for (int i = 0; i < zombieCount; i++)
             {
                 inputs = Console.ReadLine().Split(' ');
-                var zombieId = int.Parse(inputs[0]);
-                var zombieX = int.Parse(inputs[1]);
-                var zombieY = int.Parse(inputs[2]);
-                var zombieXNext = int.Parse(inputs[3]);
-                var zombieYNext = int.Parse(inputs[4]);
+                int zombieId = int.Parse(inputs[0]);
+                int zombieX = int.Parse(inputs[1]);
+                int zombieY = int.Parse(inputs[2]);
+                int zombieXNext = int.Parse(inputs[3]);
+                int zombieYNext = int.Parse(inputs[4]);
                 
                 game.AddZombie(zombieId, zombieX, zombieY, zombieXNext, zombieYNext);
             }
 
             // Write an action using Console.WriteLine()
             // To debug: Console.Error.WriteLine("Debug messages...");
-            var action = game.GetAction();
+            Point action = game.GetAction();
             
             Console.WriteLine($"{action.X} {action.Y}"); // Your destination coordinates
         }

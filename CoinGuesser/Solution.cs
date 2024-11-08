@@ -10,36 +10,36 @@ public class Solution
     {
         string[] inputs = Console.ReadLine().Split(' ');
 
-        var numberOfCoins = int.Parse(inputs[0]);
-        var numberOfConfigurations = int.Parse(inputs[1]);
+        int numberOfCoins = int.Parse(inputs[0]);
+        int numberOfConfigurations = int.Parse(inputs[1]);
 
-        var possibilities = new Dictionary<int, List<int>>();
+        Dictionary<int, List<int>> possibilities = new Dictionary<int, List<int>>();
 
-        var odd = 1;
+        int odd = 1;
 
-        for (var i=0; i < numberOfCoins; i++)
+        for (int i =0; i < numberOfCoins; i++)
         {
             possibilities.Add(odd, GetEvenNumbers(numberOfCoins));
 
             odd += 2;
         }
 
-        for (var i = 0; i < numberOfConfigurations; i++)
+        for (int i = 0; i < numberOfConfigurations; i++)
         {
             inputs = Console.ReadLine().Split(' ');
 
-            var tosses = new int[numberOfCoins];
+            int[] tosses = new int[numberOfCoins];
 
-            for (var j = 0; j < numberOfCoins; j++)
+            for (int j = 0; j < numberOfCoins; j++)
             {
                 tosses[j] = int.Parse(inputs[j]);
             }
 
-            foreach (var oddToss in tosses)
+            foreach (int oddToss in tosses)
             {
                 if (oddToss % 2 != 0) // if it's odd
                 {
-                    foreach (var evenToss in tosses)
+                    foreach (int evenToss in tosses)
                     {
                         if (evenToss % 2 == 0) // if it's even
                         {
@@ -50,12 +50,12 @@ public class Solution
             }
         }
 
-        var confirmed = new Dictionary<int, int>();
+        Dictionary<int, int> confirmed = new Dictionary<int, int>();
 
         while (confirmed.Count < possibilities.Count)
         {
             // Get confirmed moves
-            foreach (var possibility in possibilities)
+            foreach (KeyValuePair<int, List<int>> possibility in possibilities)
             {
                 if (possibility.Value.Count == 1 && !confirmed.ContainsKey(possibility.Key))
                 {
@@ -65,11 +65,11 @@ public class Solution
             }
 
             // Remove all narrowed down results
-            foreach (var possibility in possibilities)
+            foreach (KeyValuePair<int, List<int>> possibility in possibilities)
             {
                 if (!confirmed.ContainsKey(possibility.Key))
                 {
-                    foreach (var confirm in confirmed)
+                    foreach (KeyValuePair<int, int> confirm in confirmed)
                     {
                         possibility.Value.Remove(confirm.Value);
                     }
@@ -79,9 +79,9 @@ public class Solution
 
         confirmed = confirmed.OrderBy(x => x.Key).ToDictionary<KeyValuePair<int, int>, int, int>(c => c.Key, c => c.Value);
 
-        var result = string.Empty;
+        string result = string.Empty;
 
-        foreach (var confirm in confirmed)
+        foreach (KeyValuePair<int, int> confirm in confirmed)
         {
             result += confirm.Value + " ";
         }
@@ -91,11 +91,11 @@ public class Solution
 
     private static List<int> GetEvenNumbers(int numberOfCoins)
     {
-        var numbers = new List<int>();
+        List<int> numbers = new List<int>();
 
-        var even = 2;
+        int even = 2;
 
-        for (var i = 0; i < numberOfCoins; i++)
+        for (int i = 0; i < numberOfCoins; i++)
         {
             numbers.Add(even);
 

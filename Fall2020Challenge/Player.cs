@@ -1,103 +1,102 @@
-﻿using System;
+﻿namespace Fall2020Challenge; 
+
+using System;
 using System.IO;
 using System.Text;
 using System.Collections;
 using System.Collections.Generic;
 
-namespace Fall2020Challenge
+internal sealed class Player
 {
-    internal sealed class Player
+    static void Main(string[] args)
     {
-        static void Main(string[] args)
-        {
-            var game = new Game();
-            
-            // game loop
-            while (true)
-            {
-                ParseActions(game);
-
-                game.SetPlayerInventory(GetInventoryItems());
-                game.SetOpponentInventory(GetInventoryItems());
-                
-                //DisplayInventory(game.PlayerInventory, true);
-                //DisplayInventory(game.OpponentInventory, false);
-
-                var action = game.GetAction();
-                Console.WriteLine(action);
-
-                // Write an action using Console.WriteLine()
-                // To debug: Console.Error.WriteLine("Debug messages...");
-
-                // in the first league: BREW <id> | WAIT; later: BREW <id> | CAST <id> [<times>] | LEARN <id> | REST | WAIT
-                //Console.WriteLine(actionType + " " + recipeId);
-            }
-        }
-
-        private static void ParseActions(Game game)
-        {        
-            var actionCount = int.Parse(Console.ReadLine()); // the number of spells and recipes in play
-            
-            var recipes = new List<Recipe>();
-            var spells = new List<Spell>();
-            
-
-            for (var i = 0; i < actionCount; i++)
-            {               
-                var input = Console.ReadLine();
-                var inputs = input.Split(' ');
-                
-                if(inputs[1] == "BREW")
-                {
-                    recipes.Add(new Recipe(int.Parse(inputs[0]),
-                                           new int[] { Math.Abs(int.Parse(inputs[2])),
-                                                       Math.Abs(int.Parse(inputs[3])),
-                                                       Math.Abs(int.Parse(inputs[4])),
-                                                       Math.Abs(int.Parse(inputs[5]))},
-                                           int.Parse(inputs[6])));   
-                }
-                else if(inputs[1] == "CAST")
-                {
-                    spells.Add(new Spell(int.Parse(inputs[0]),
-                                         new int[] { int.Parse(inputs[2]),
-                                                     int.Parse(inputs[3]),
-                                                     int.Parse(inputs[4]),
-                                                     int.Parse(inputs[5])},
-                                         int.Parse(inputs[9]) == 1));   
-                }       
-            }
-            
-            game.SetRecipes(recipes);
-            game.SetSpells(spells);
-        }
+        Game game = new Game();
         
-        private static Inventory GetInventoryItems()
+        // game loop
+        while (true)
         {
-            var input = Console.ReadLine();
-            var inputs = input.Split(' ');
-            
-            var inventory = new Inventory(new int[] {Math.Abs(int.Parse(inputs[0])),
-                                          Math.Abs(int.Parse(inputs[1])),
-                                          Math.Abs(int.Parse(inputs[2])),
-                                          Math.Abs(int.Parse(inputs[3]))},
-                                          int.Parse(inputs[4]));
+            ParseActions(game);
 
-            return inventory;
-        }
+            game.SetPlayerInventory(GetInventoryItems());
+            game.SetOpponentInventory(GetInventoryItems());
 
-        private static void DisplayInventory (Inventory inventory, bool mine)
-        {
-            Console.Error.WriteLine(mine ? "My inventory" : "Opponent inventory");
-            Console.Error.WriteLine("-----------");
-            
-            Console.Error.WriteLine("blueIngredients: " + inventory.Ingredients[0]);   
-            Console.Error.WriteLine("greenIngredients: " + inventory.Ingredients[1]);   
-            Console.Error.WriteLine("orangeIngredients: " + inventory.Ingredients[2]);   
-            Console.Error.WriteLine("yellowIngredients: " + inventory.Ingredients[3]); 
+            //DisplayInventory(game.PlayerInventory, true);
+            //DisplayInventory(game.OpponentInventory, false);
+
+            string action = game.GetAction();
+            Console.WriteLine(action);
+
+            // Write an action using Console.WriteLine()
+            // To debug: Console.Error.WriteLine("Debug messages...");
+
+            // in the first league: BREW <id> | WAIT; later: BREW <id> | CAST <id> [<times>] | LEARN <id> | REST | WAIT
+            //Console.WriteLine(actionType + " " + recipeId);
         }
     }
+
+    private static void ParseActions(Game game)
+    {
+        int actionCount = int.Parse(Console.ReadLine()); // the number of spells and recipes in play
+
+        List<Recipe> recipes = new List<Recipe>();
+        List<Spell> spells = new List<Spell>();
+         
+        for (int i = 0; i < actionCount; i++)
+        {
+            string input = Console.ReadLine();
+            string[] inputs = input.Split(' ');
+            
+            if(inputs[1] == "BREW")
+            {
+                recipes.Add(new Recipe(int.Parse(inputs[0]),
+                                       new int[] { Math.Abs(int.Parse(inputs[2])),
+                                                   Math.Abs(int.Parse(inputs[3])),
+                                                   Math.Abs(int.Parse(inputs[4])),
+                                                   Math.Abs(int.Parse(inputs[5]))},
+                                       int.Parse(inputs[6])));   
+            }
+            else if(inputs[1] == "CAST")
+            {
+                spells.Add(new Spell(int.Parse(inputs[0]),
+                                     new int[] { int.Parse(inputs[2]),
+                                                 int.Parse(inputs[3]),
+                                                 int.Parse(inputs[4]),
+                                                 int.Parse(inputs[5])},
+                                     int.Parse(inputs[9]) == 1));   
+            }       
+        }
+        
+        game.SetRecipes(recipes);
+        game.SetSpells(spells);
+    }
     
-    // for (int i = 0; i < actionCount; i++)
+    private static Inventory GetInventoryItems()
+    {
+        string input = Console.ReadLine();
+        string[] inputs = input.Split(' ');
+
+        Inventory inventory = new Inventory(new int[] {Math.Abs(int.Parse(inputs[0])),
+                                      Math.Abs(int.Parse(inputs[1])),
+                                      Math.Abs(int.Parse(inputs[2])),
+                                      Math.Abs(int.Parse(inputs[3]))},
+                                      int.Parse(inputs[4]));
+
+        return inventory;
+    }
+
+    private static void DisplayInventory (Inventory inventory, bool mine)
+    {
+        Console.Error.WriteLine(mine ? "My inventory" : "Opponent inventory");
+        Console.Error.WriteLine("-----------");
+        
+        Console.Error.WriteLine("blueIngredients: " + inventory.Ingredients[0]);   
+        Console.Error.WriteLine("greenIngredients: " + inventory.Ingredients[1]);   
+        Console.Error.WriteLine("orangeIngredients: " + inventory.Ingredients[2]);   
+        Console.Error.WriteLine("yellowIngredients: " + inventory.Ingredients[3]); 
+    }
+}
+
+// for (int i = 0; i < actionCount; i++)
 // {
 //     inputs = Console.ReadLine().Split(' ');
 //     int actionId = int.Parse(inputs[0]); // the unique ID of this spell or recipe
@@ -121,4 +120,3 @@ namespace Fall2020Challenge
 //     int inv3 = int.Parse(inputs[3]);
 //     int score = int.Parse(inputs[4]); // amount of rupees
 // }
-}

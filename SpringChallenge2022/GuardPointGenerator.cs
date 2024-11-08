@@ -18,7 +18,7 @@ internal sealed class GuardPointGenerator
 
     internal List<List<Point>> GetGuardPoints(List<Hero> playerHeroes)
     {
-        var guardPoints = new List<List<Point>>();
+        List<List<Point>> guardPoints = new List<List<Point>>();
 
 
         guardPoints.AddRange(GetDefenders(playerHeroes));
@@ -40,9 +40,9 @@ internal sealed class GuardPointGenerator
 
     private List<List<Point>> GetDefenders(List<Hero> playerHeroes)
     {
-        var numberOfDefenders = playerHeroes.Count(h => h.Strategy == Strategy.Defend);
+        int numberOfDefenders = playerHeroes.Count(h => h.Strategy == Strategy.Defend);
 
-        var defendPoints = new List<List<Point>>();
+        List<List<Point>> defendPoints = new List<List<Point>>();
 
         if (numberOfDefenders == 1)
         {
@@ -109,9 +109,9 @@ internal sealed class GuardPointGenerator
 
     private IEnumerable<List<Point>> GetCollectors(List<Hero> playerHeroes)
     {
-        var numberOfCollectors = playerHeroes.Count(h => h.Strategy == Strategy.Collect);
+        int numberOfCollectors = playerHeroes.Count(h => h.Strategy == Strategy.Collect);
 
-        var collectPoints = new List<List<Point>>();
+        List<List<Point>> collectPoints = new List<List<Point>>();
 
         if (numberOfCollectors == 1)
         {
@@ -142,9 +142,9 @@ internal sealed class GuardPointGenerator
 
     private List<List<Point>> GetAttackers(List<Hero> playerHeroes)
     {
-        var numberOfAttackers = playerHeroes.Count(h => h.Strategy == Strategy.Attack);
+        int numberOfAttackers = playerHeroes.Count(h => h.Strategy == Strategy.Attack);
 
-        var attackPoints = new List<List<Point>>();
+        List<List<Point>> attackPoints = new List<List<Point>>();
 
         if (numberOfAttackers == 1)
         {

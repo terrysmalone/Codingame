@@ -15,20 +15,20 @@ namespace WinamaxGolf
         {
             _totalTimeStopwatch.Start();
 
-            var verifiedMoves = new List<(Point, Point)>();
-            var possibleMoves = new List<(Point, Point)>();
+            List<(Point, Point)> verifiedMoves = new List<(Point, Point)>();
+            List<(Point, Point)> possibleMoves = new List<(Point, Point)>();
 
-            var courseContents = course.Contents;
-            var moveBoard = CourseConverter.CreateMoveBoard(courseContents.GetLength(0), courseContents.GetLength(1), verifiedMoves);
+            CourseContent[,] courseContents = course.Contents;
+            char[,] moveBoard = CourseConverter.CreateMoveBoard(courseContents.GetLength(0), courseContents.GetLength(1), verifiedMoves);
 
-            foreach (var ball in course.GetBalls())
+            foreach (Ball ball in course.GetBalls())
             {
                 possibleMoves.AddRange(CalculateMovesForBall(courseContents, moveBoard, ball));
             }
 
             //Console.Error.WriteLine($"Base calculate move. {possibleMoves.Count} possible moves found");
 
-            foreach (var possibleMove in possibleMoves)
+            foreach ((Point, Point) possibleMove in possibleMoves)
             {
                 //Console.Error.WriteLine($"Attempting move {possibleMove.Item1.X},{possibleMove.Item1.Y} to {possibleMove.Item2.X},{possibleMove.Item2.Y}");
 
@@ -36,7 +36,7 @@ namespace WinamaxGolf
                 course.MoveBall(possibleMove.Item1, possibleMove.Item2);
                 verifiedMoves.Add(possibleMove);
 
-                var works = CalculateMoves(verifiedMoves, course);
+                bool works = CalculateMoves(verifiedMoves, course);
 
                 // Unmake move
                 course.UnMoveBall(possibleMove.Item1, possibleMove.Item2);
@@ -49,7 +49,7 @@ namespace WinamaxGolf
 
                     _totalTimeStopwatch.Stop();
 
-                    var timeSpan = _totalTimeStopwatch.Elapsed;
+                    TimeSpan timeSpan = _totalTimeStopwatch.Elapsed;
                     Console.Error.WriteLine($"Total time: {timeSpan}");
 
                     return CourseConverter.ConvertMoveBoardToString(CourseConverter.CreateMoveBoard(courseContents.GetLength(0), courseContents.GetLength(1), verifiedMoves));
@@ -83,13 +83,13 @@ namespace WinamaxGolf
                 return true;
             }
 
-            var possibleMoves = new List<(Point, Point)>();
+            List<(Point, Point)> possibleMoves = new List<(Point, Point)>();
 
-            var courseContents = course.Contents;
+            CourseContent[,] courseContents = course.Contents;
 
-            var moveBoard = CourseConverter.CreateMoveBoard(courseContents.GetLength(0), courseContents.GetLength(1), verifiedMoves);
+            char[,] moveBoard = CourseConverter.CreateMoveBoard(courseContents.GetLength(0), courseContents.GetLength(1), verifiedMoves);
 
-            foreach (var ball in course.GetBalls())
+            foreach (Ball ball in course.GetBalls())
             {
                 if (ball.NumberOfHits > 0)
                 {
@@ -111,7 +111,7 @@ namespace WinamaxGolf
             //DebugDisplayer.DisplayBallLocations(course.Contents.GetLength(0), course.Contents.GetLength(1), course.GetBalls());
 
 
-            foreach (var possibleMove in possibleMoves)
+            foreach ((Point, Point) possibleMove in possibleMoves)
             {
                 //Console.Error.WriteLine("=======================================");
                 //Console.Error.WriteLine("Before make move");
@@ -127,7 +127,7 @@ namespace WinamaxGolf
                 //DebugDisplayer.DisplayMoves(courseContents.GetLength(0), courseContents.GetLength(1), verifiedMoves);
                 //DebugDisplayer.DisplayBallLocations(course.Contents.GetLength(0), course.Contents.GetLength(1), course.GetBalls());
 
-                var works = CalculateMoves(verifiedMoves, course);
+                bool works = CalculateMoves(verifiedMoves, course);
 
                 if (works)
                 {
@@ -153,7 +153,7 @@ namespace WinamaxGolf
 
         private static bool AreAnyBallsInSameSpot(List<Ball> balls)
         {
-            var duplicates = balls.GroupBy(b => new { b.Position.X, b.Position.Y }).Where(x => x.Skip(1).Any()).Any();
+            bool duplicates = balls.GroupBy(b => new { b.Position.X, b.Position.Y }).Where(x => x.Skip(1).Any()).Any();
 
             if (duplicates)
             {
@@ -171,14 +171,14 @@ namespace WinamaxGolf
 
         private static IEnumerable<(Point, Point)> CalculateMovesForBall(CourseContent[,] courseContent, char[,] moveBoard, Ball ball)
         {
-            var xStart = ball.Position.X;
-            var yStart = ball.Position.Y;
-            var numberOfHits = ball.NumberOfHits;
-            var direction = ball.PeekMoveDirection();
+            int xStart = ball.Position.X;
+            int yStart = ball.Position.Y;
+            int numberOfHits = ball.NumberOfHits;
+            Direction direction = ball.PeekMoveDirection();
 
-            var allowedMoves = new List<(Point, Point)>();
+            List<(Point, Point)> allowedMoves = new List<(Point, Point)>();
 
-            var startPoint = new Point(xStart, yStart);
+            Point startPoint = new Point(xStart, yStart);
 
             int xPosition, yPosition;
 
@@ -190,16 +190,16 @@ namespace WinamaxGolf
 
                 if (xPosition >= 0)
                 {
-                    var blocked = false;
+                    bool blocked = false;
 
-                    for (var x = startPoint.X - 1; x >= startPoint.X - numberOfHits; x--)
+                    for (int x = startPoint.X - 1; x >= startPoint.X - numberOfHits; x--)
                     {
                         blocked = IsBlocked(moveBoard, x, yPosition);
                     }
 
                     if (!blocked)
                     {
-                        var gridContent = courseContent[xPosition, yPosition];
+                        CourseContent gridContent = courseContent[xPosition, yPosition];
 
                         if (gridContent == CourseContent.Hole)
                         {
@@ -221,16 +221,16 @@ namespace WinamaxGolf
 
                 if (xPosition < moveBoard.GetLength(0))
                 {
-                    var blocked = false;
+                    bool blocked = false;
 
-                    for (var x = startPoint.X + 1; x <= startPoint.X + numberOfHits; x++)
+                    for (int x = startPoint.X + 1; x <= startPoint.X + numberOfHits; x++)
                     {
                         blocked = IsBlocked(moveBoard, x, yPosition);
                     }
 
                     if (!blocked)
                     {
-                        var gridContent = courseContent[xPosition, yPosition];
+                        CourseContent gridContent = courseContent[xPosition, yPosition];
 
                         if (gridContent == CourseContent.Hole)
                         {
@@ -256,16 +256,16 @@ namespace WinamaxGolf
 
                 if (yPosition >= 0)
                 {
-                    var blocked = false;
+                    bool blocked = false;
 
-                    for (var y = startPoint.Y - 1; y >= startPoint.Y - numberOfHits; y--)
+                    for (int y = startPoint.Y - 1; y >= startPoint.Y - numberOfHits; y--)
                     {
                         blocked = IsBlocked(moveBoard, xPosition, y);
                     }
 
                     if (!blocked)
                     {
-                        var gridContent = courseContent[xPosition, yPosition];
+                        CourseContent gridContent = courseContent[xPosition, yPosition];
 
                         if (gridContent == CourseContent.Hole)
                         {
@@ -287,16 +287,16 @@ namespace WinamaxGolf
 
                 if (yPosition < moveBoard.GetLength(1))
                 {
-                    var blocked = false;
+                    bool blocked = false;
 
-                    for (var y = startPoint.Y + 1; y <= startPoint.Y + numberOfHits; y++)
+                    for (int y = startPoint.Y + 1; y <= startPoint.Y + numberOfHits; y++)
                     {
                         blocked = IsBlocked(moveBoard, xPosition, y);
                     }
 
                     if (!blocked)
                     {
-                        var gridContent = courseContent[xPosition, yPosition];
+                        CourseContent gridContent = courseContent[xPosition, yPosition];
 
                         if (gridContent == CourseContent.Hole)
                         {
@@ -332,10 +332,10 @@ namespace WinamaxGolf
 
         private static bool AreAllBallsInSeparateHoles(Course course)
         {
-            var balls = course.GetBalls();
-            var courseContents = course.Contents;
+            List<Ball> balls = course.GetBalls();
+            CourseContent[,] courseContents = course.Contents;
 
-            foreach (var ball in balls)
+            foreach (Ball ball in balls)
             {
                 //Console.Error.WriteLine($"Checking {ball.Item1.X},{ball.Item1.Y} - courseContents[ball.Item1.X, ball.Item1.Y]");
                 if (courseContents[ball.Position.X, ball.Position.Y] != CourseContent.Hole)

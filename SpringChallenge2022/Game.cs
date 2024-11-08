@@ -65,7 +65,7 @@ internal class Game
         _actionManager.ClearPossibleActions();
         _actionManager.SetMana(playerMana);
 
-        var moves = new string[_heroesPerPlayer];
+        string[] moves = new string[_heroesPerPlayer];
 
         ResetHeroes();
 
@@ -73,11 +73,11 @@ internal class Game
 
         if (_playerHeroes[0].GetNumberOfGuardPoints() == 0) // or we've changed a Strategy
         {
-            var guardPoints = _guardPointGenerator.GetGuardPoints(_playerHeroes);
+            List<List<Point>> guardPoints = _guardPointGenerator.GetGuardPoints(_playerHeroes);
 
-            for (var i = 0; i < _playerHeroes.Count; i++)
+            for (int i = 0; i < _playerHeroes.Count; i++)
             {
-                var hero = _playerHeroes[i];
+                Hero hero = _playerHeroes[i];
                 hero.SetGuardPoints(guardPoints[i]);
             }
         }
@@ -114,7 +114,7 @@ internal class Game
 
     private void ResetHeroes()
     {
-        foreach (var hero in _playerHeroes)
+        foreach (Hero hero in _playerHeroes)
         {
             hero.IsShielding = false;
         }
@@ -148,7 +148,7 @@ internal class Game
 
     private void ClearGuardPoints()
     {
-        foreach (var hero in _playerHeroes)
+        foreach (Hero hero in _playerHeroes)
         {
             hero.ClearGuardPoints();
         }
@@ -156,9 +156,9 @@ internal class Game
 
     private void ChangeCollectorToAttacker()
     {
-        var heroes = _playerHeroes.Where(h => h.Strategy == Strategy.Collect);
+        IEnumerable<Hero> heroes = _playerHeroes.Where(h => h.Strategy == Strategy.Collect);
 
-        foreach (var hero in heroes)
+        foreach (Hero? hero in heroes)
         {
             hero.Strategy = Strategy.Attack;
         }
@@ -166,9 +166,9 @@ internal class Game
 
     private void ChangeAttackerToCollector()
     {
-        var heroes = _playerHeroes.Where(h => h.Strategy == Strategy.Attack);
+        IEnumerable<Hero> heroes = _playerHeroes.Where(h => h.Strategy == Strategy.Attack);
 
-        foreach (var hero in heroes)
+        foreach (Hero? hero in heroes)
         {
             hero.Strategy = Strategy.Collect;
         }
@@ -205,7 +205,7 @@ internal class Game
 
     private void ClearDeadMonsters(IReadOnlyCollection<Monster> monsters)
     {
-        foreach (var hero in _playerHeroes)
+        foreach (Hero hero in _playerHeroes)
         {
             if (hero.CurrentMonster >= 0)
             {
@@ -219,7 +219,7 @@ internal class Game
 
     private void ClearMonstersIfDefenderIsTooFarAway()
     {
-        foreach (var hero in _playerHeroes.Where(h => h.Strategy == Strategy.Defend))
+        foreach (Hero? hero in _playerHeroes.Where(h => h.Strategy == Strategy.Defend))
         {
             if (hero.CurrentMonster >= 0)
             {
@@ -233,7 +233,7 @@ internal class Game
 
     private void ClearMonstersIfTheyreAThreatForTheEnemy(IReadOnlyCollection<Monster> monsters)
     {
-        foreach (var hero in _playerHeroes)
+        foreach (Hero hero in _playerHeroes)
         {
             if (hero.CurrentMonster >= 0)
             {
@@ -247,11 +247,11 @@ internal class Game
 
     private void ClearMonstersFromEnemyOutskirts(IReadOnlyCollection<Monster> monsters)
     {
-        foreach (var hero in _playerHeroes.Where(h => h.Strategy == Strategy.Attack))
+        foreach (Hero? hero in _playerHeroes.Where(h => h.Strategy == Strategy.Attack))
         {
             if (hero.CurrentMonster >= 0)
             {
-                var currentMonster = monsters.First(m => m.Id == hero.CurrentMonster);
+                Monster currentMonster = monsters.First(m => m.Id == hero.CurrentMonster);
 
                 if (CalculateDistance(currentMonster.Position, _enemyBaseLocation) < _valuesProvider.OutskirtsMinDist
                     || CalculateDistance(currentMonster.Position, _enemyBaseLocation) > _valuesProvider.OutskirtsMaxDist)
@@ -264,7 +264,7 @@ internal class Game
 
     internal void UpdatePlayerHero(Hero hero)
     {
-        var playerHero = _playerHeroes.SingleOrDefault(h => h.Id == hero.Id);
+        Hero? playerHero = _playerHeroes.SingleOrDefault(h => h.Id == hero.Id);
 
         if (playerHero == null)
         {

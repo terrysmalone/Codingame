@@ -8,7 +8,7 @@ public class ActionManagerTests
     [Test]
     public void CorrectNumberOfActionsAreReturned()
     {
-        var actionManager = new ActionManager(true);
+        ActionManager actionManager = new ActionManager(true);
 
         actionManager.AddPossibleAction(0, 10, ActionType.Move, EntityType.None, null, null, null);
         actionManager.AddPossibleAction(0, 10, ActionType.Move, EntityType.None, null, null, null);

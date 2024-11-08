@@ -10,7 +10,7 @@ namespace WinamaxGolfTests
         [Test]
         public void TestCase6()
         {
-            var course = new Course(8, 8);
+            Course course = new Course(8, 8);
 
             course.AddContent(4, 1, CourseContent.Hole);
             course.AddContent(5, 1, CourseContent.Hole);
@@ -40,13 +40,13 @@ namespace WinamaxGolfTests
             course.AddBall(7,0, 4);
             course.AddBall(2,2, 4);
 
-            var stopWatch = new Stopwatch();
+            Stopwatch stopWatch = new Stopwatch();
 
             stopWatch.Start();
-            var moves = new MoveCalculator().CalculateMoves(course);
+            string moves = new MoveCalculator().CalculateMoves(course);
             stopWatch.Stop();
 
-            var timeSpan = stopWatch.Elapsed;
+            TimeSpan timeSpan = stopWatch.Elapsed;
         }
     }
 }

@@ -8,15 +8,15 @@ namespace WinamaxGolf
     {
         internal static Course TextToCourse(char[,] courseText)
         {
-            var course = new Course(courseText.GetLength(0), courseText.GetLength(1));
+            Course course = new Course(courseText.GetLength(0), courseText.GetLength(1));
 
-            for (var y = 0; y < courseText.GetLength(1); y++)
+            for (int y = 0; y < courseText.GetLength(1); y++)
             {
-                for (var x = 0; x < courseText.GetLength(0); x++)
+                for (int x = 0; x < courseText.GetLength(0); x++)
                 {
-                    var character = courseText[x,y];
+                    char character = courseText[x,y];
 
-                    var result = 0;
+                    int result = 0;
 
                     if(int.TryParse(character.ToString(), out result))
                     {
@@ -25,7 +25,7 @@ namespace WinamaxGolf
                     }
                     else
                     {
-                        var courseContent = character switch
+                        CourseContent courseContent = character switch
                         {
                             '.' => CourseContent.Empty,
                             'X' => CourseContent.Water,
@@ -47,19 +47,19 @@ namespace WinamaxGolf
 
         internal static char[,] CourseToText(Course course)
         {
-            var contents = course.Contents;
+            CourseContent[,] contents = course.Contents;
 
-            var courseText = new char[contents.GetLength(0), contents.GetLength(1)];
+            char[,] courseText = new char[contents.GetLength(0), contents.GetLength(1)];
 
-            for (var y = 0; y < contents.GetLength(1); y++)
+            for (int y = 0; y < contents.GetLength(1); y++)
             {
-                for (var x = 0; x < contents.GetLength(0); x++)
+                for (int x = 0; x < contents.GetLength(0); x++)
                 {
-                    var content = contents[x,y];
+                    CourseContent content = contents[x,y];
 
-                    var result = 0;
+                    int result = 0;
 
-                    var character = contents[x,y] switch
+                    char character = contents[x,y] switch
                     {
                         CourseContent.Empty => '.',
                         CourseContent.Water => 'X',
@@ -76,11 +76,11 @@ namespace WinamaxGolf
 
         internal static char[,] CreateMoveBoard(int width, int height, List<(Point, Point)> verifiedMoves)
         {
-            var moveChars = new char[width, height];
+            char[,] moveChars = new char[width, height];
 
-            for (var y = 0; y < moveChars.GetLength(1); y++)
+            for (int y = 0; y < moveChars.GetLength(1); y++)
             {
-                for (var x = 0; x < moveChars.GetLength(0); x++)
+                for (int x = 0; x < moveChars.GetLength(0); x++)
                 {
                     moveChars[x, y] = '.';
                 }
@@ -88,27 +88,27 @@ namespace WinamaxGolf
 
             //TODO: Add arrows for the whole move, not just the start
 
-            foreach (var move in verifiedMoves)
+            foreach ((Point, Point) move in verifiedMoves)
             {
                 char arrowDirection;
 
                 if (move.Item2.X > move.Item1.X)
                 {
-                    for (var x = move.Item1.X; x < move.Item2.X; x++)
+                    for (int x = move.Item1.X; x < move.Item2.X; x++)
                     {
                         moveChars[x, move.Item1.Y] = '>';
                     }
                 }
                 else if (move.Item2.X < move.Item1.X)
                 {
-                    for (var x = move.Item1.X; x > move.Item2.X; x--)
+                    for (int x = move.Item1.X; x > move.Item2.X; x--)
                     {
                         moveChars[x, move.Item1.Y] = '<';
                     }
                 }
                 else if(move.Item2.Y < move.Item1.Y)
                 {
-                    for (var y = move.Item1.Y; y > move.Item2.Y; y--)
+                    for (int y = move.Item1.Y; y > move.Item2.Y; y--)
                     {
                         moveChars[move.Item1.X, y] = '^';
                     }
@@ -116,7 +116,7 @@ namespace WinamaxGolf
                 }
                 else if(move.Item2.Y > move.Item1.Y)
                 {
-                    for (var y = move.Item1.Y; y < move.Item2.Y; y++)
+                    for (int y = move.Item1.Y; y < move.Item2.Y; y++)
                     {
                         moveChars[move.Item1.X, y] = 'v';
                     }
@@ -128,11 +128,11 @@ namespace WinamaxGolf
 
         internal static string ConvertMoveBoardToString(char[,] moveBoard)
         {
-            var answer = string.Empty;
+            string answer = string.Empty;
 
-            for (var y = 0; y < moveBoard.GetLength(1); y++)
+            for (int y = 0; y < moveBoard.GetLength(1); y++)
             {
-                for (var x = 0; x < moveBoard.GetLength(0); x++)
+                for (int x = 0; x < moveBoard.GetLength(0); x++)
                 {
                     answer += moveBoard[x,y];
                 }

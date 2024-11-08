@@ -14,16 +14,16 @@ internal sealed class Game
     
     internal Point GetAction()
     {
-        var closestZombieDistance = double.MaxValue;
-        var closestHumanPoint = new Point(0,0);
-        var closesZombiePoint = new Point(0,0);
+        double closestZombieDistance = double.MaxValue;
+        Point closestHumanPoint = new Point(0,0);
+        Point closesZombiePoint = new Point(0,0);
 
         // Find the player with the closest Zombie
-        foreach (var human in _humans)
+        foreach (Human human in _humans)
         {
-            foreach (var zombie in _zombies)
+            foreach (Zombie zombie in _zombies)
             {
-                var distance = CalculateDistance(human.Position, zombie.Position);
+                double distance = CalculateDistance(human.Position, zombie.Position);
             
                 if(distance < closestZombieDistance)
                 {
@@ -42,21 +42,21 @@ internal sealed class Game
 
     private bool CanHumanBeSaved(Human human, Zombie zombie)
     {
-        var myTurnsToTarget = CalculateDistance(_playerPosition, human.Position) / 1000;
+        double myTurnsToTarget = CalculateDistance(_playerPosition, human.Position) / 1000;
 
-        var zombieTurnsToTarget = CalculateDistance(human.Position, zombie.Position) / 400;
+        double zombieTurnsToTarget = CalculateDistance(human.Position, zombie.Position) / 400;
         
         return myTurnsToTarget <= zombieTurnsToTarget;
     }
 
     private Zombie GetClosestZombie(Human human)
     {
-        var closestZombieDistance = double.MaxValue;
+        double closestZombieDistance = double.MaxValue;
         Zombie closestZombie = null;
 
-        foreach (var zombie in _zombies)
+        foreach (Zombie zombie in _zombies)
         {
-            var distance = CalculateDistance(human.Position, zombie.Position);
+            double distance = CalculateDistance(human.Position, zombie.Position);
             
             if(distance < closestZombieDistance)
             {

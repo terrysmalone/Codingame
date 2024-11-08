@@ -31,16 +31,16 @@ namespace Spring2021Challenge
         private void CalculateShadowedCells()
         {
             // foreach tree calculate it's shadow
-            foreach (var tree in _trees)
+            foreach (Tree tree in _trees)
             {
                 if (tree.Size > 0)
                 {
                     // Calculate first shadow
-                    var treeCell = _boardCells.Find(c => c.Index == tree.CellIndex);
+                    Cell treeCell = _boardCells.Find(c => c.Index == tree.CellIndex);
                     
                     if (treeCell == null) { continue; }
-                    
-                    var shadowIndex = treeCell.Neighbours[_sunDirection];
+
+                    int shadowIndex = treeCell.Neighbours[_sunDirection];
 
                     if (IsTreeInSpookyShadow(tree.Size, shadowIndex))
                     {
@@ -50,7 +50,7 @@ namespace Spring2021Challenge
                     // If size is 2 calculate 2nd shadow
                     if (tree.Size > 1)
                     {
-                        var shadowCell = _boardCells.Find(c => c.Index == shadowIndex);
+                        Cell shadowCell = _boardCells.Find(c => c.Index == shadowIndex);
 
                         if (shadowCell == null) { continue; }
                         
@@ -65,7 +65,7 @@ namespace Spring2021Challenge
                     // If size is 3 calculate 3rd shadow
                     if (tree.Size > 2)
                     {
-                        var shadowCell = _boardCells.Find(c => c.Index == shadowIndex);
+                        Cell shadowCell = _boardCells.Find(c => c.Index == shadowIndex);
                         
                         if (shadowCell == null) { continue; }
                         
@@ -94,10 +94,10 @@ namespace Spring2021Challenge
         
         private Tuple<int, int> CalculatePoints()
         {
-            var mySunPoints = 0;
-            var opponentSunPoints = 0;
+            int mySunPoints = 0;
+            int opponentSunPoints = 0;
             
-            foreach (var tree in _trees.Where(tree => !_inSpookyShadow[tree.CellIndex]))
+            foreach (Tree tree in _trees.Where(tree => !_inSpookyShadow[tree.CellIndex]))
             {
                 //Console.Error.WriteLine("============================================");
                 
@@ -144,7 +144,7 @@ namespace Spring2021Challenge
             }
             else if (action.Type == "GROW")
             {
-                var tree = _trees.Find(t => t.CellIndex == action.TargetCellIdx);
+                Tree tree = _trees.Find(t => t.CellIndex == action.TargetCellIdx);
 
                 tree.Size++;
             }
@@ -162,7 +162,7 @@ namespace Spring2021Challenge
             }
             else if (_lastAction.Type == "GROW")
             {
-                var tree = _trees.Find(t => t.CellIndex == _lastAction.TargetCellIdx);
+                Tree tree = _trees.Find(t => t.CellIndex == _lastAction.TargetCellIdx);
 
                 tree.Size--;
             }

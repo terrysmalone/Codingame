@@ -13,22 +13,22 @@ class Player
     {
         string[] inputs;
         inputs = Console.ReadLine().Split(' ');
-        var nbFloors = int.Parse(inputs[0]); // number of floors
-        var width = int.Parse(inputs[1]); // width of the area
-        var nbRounds = int.Parse(inputs[2]); // maximum number of rounds
-        var exitFloor = int.Parse(inputs[3]); // floor on which the exit is found
-        var exitPos = int.Parse(inputs[4]); // position of the exit on its floor
-        var nbTotalClones = int.Parse(inputs[5]); // number of generated clones
-        var nbAdditionalElevators = int.Parse(inputs[6]); // ignore (always zero)
-        var nbElevators = int.Parse(inputs[7]); // number of elevators
+        int nbFloors = int.Parse(inputs[0]); // number of floors
+        int width = int.Parse(inputs[1]); // width of the area
+        int nbRounds = int.Parse(inputs[2]); // maximum number of rounds
+        int exitFloor = int.Parse(inputs[3]); // floor on which the exit is found
+        int exitPos = int.Parse(inputs[4]); // position of the exit on its floor
+        int nbTotalClones = int.Parse(inputs[5]); // number of generated clones
+        int nbAdditionalElevators = int.Parse(inputs[6]); // ignore (always zero)
+        int nbElevators = int.Parse(inputs[7]); // number of elevators
+
+        Dictionary<int, int> elevators = new Dictionary<int,int>();
         
-        var elevators = new Dictionary<int,int>();
-        
-        for (var i = 0; i < nbElevators; i++)
+        for (int i = 0; i < nbElevators; i++)
         {
             inputs = Console.ReadLine().Split(' ');
-            var elevatorFloor = int.Parse(inputs[0]); // floor on which this elevator is found
-            var elevatorPos = int.Parse(inputs[1]); // position of the elevator on its floor
+            int elevatorFloor = int.Parse(inputs[0]); // floor on which this elevator is found
+            int elevatorPos = int.Parse(inputs[1]); // position of the elevator on its floor
             
             elevators.Add(elevatorFloor, elevatorPos);
         }
@@ -37,9 +37,9 @@ class Player
         while (true)
         {
             inputs = Console.ReadLine().Split(' ');
-            var cloneFloor = int.Parse(inputs[0]); // floor of the leading clone
-            var clonePos = int.Parse(inputs[1]); // position of the leading clone on its floor
-            var direction = inputs[2]; // direction of the leading clone: LEFT or RIGHT
+            int cloneFloor = int.Parse(inputs[0]); // floor of the leading clone
+            int clonePos = int.Parse(inputs[1]); // position of the leading clone on its floor
+            string direction = inputs[2]; // direction of the leading clone: LEFT or RIGHT
             
             if(cloneFloor == exitFloor)
             {
@@ -58,7 +58,7 @@ class Player
             }
             else
             {
-                var elevatorPos = -1;
+                int elevatorPos = -1;
                 
                 if(elevators.ContainsKey(cloneFloor))
                 {

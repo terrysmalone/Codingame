@@ -28,12 +28,12 @@ namespace Spring2021Challenge
             }
     
             _hasBeenChecked = new bool[38];
-    
-            var cell1 = _cells.Find(c => c.Index == index1);
+
+            Cell cell1 = _cells.Find(c => c.Index == index1);
     
             _hasBeenChecked[cell1.Index] = true;
-    
-            var toCheck = new List<int>
+
+            List<int> toCheck = new List<int>
             {
                 cell1.Index
             };
@@ -44,7 +44,7 @@ namespace Spring2021Challenge
             while (distance <= 6)
             {
                 // get ones to check 
-                var neighbouringIndexes = GetNeighbouringIndexes(toCheck);
+                List<int> neighbouringIndexes = GetNeighbouringIndexes(toCheck);
     
                 // check them
                 if(neighbouringIndexes.Contains(index2))
@@ -69,12 +69,12 @@ namespace Spring2021Challenge
         }
     
         private List<int> GetNeighbouringIndexes(List<int> indexes)
-        {        
-            var neighbouringIndexes = new List<int>();
+        {
+            List<int> neighbouringIndexes = new List<int>();
     
             foreach(int index in indexes)
             {
-                var neighbourIndexes = _cells.Find(c => c.Index == index).Neighbours;
+                int[] neighbourIndexes = _cells.Find(c => c.Index == index).Neighbours;
     
                 foreach(int neighbourIndex in neighbourIndexes)
                 {

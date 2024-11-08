@@ -28,21 +28,21 @@ public class ActionManager
 
     internal string[] GetBestActions()
     {
-        var actions = new string[3];
+        string[] actions = new string[3];
 
         PerformManaChecks();
 
-        var playerOffset = _player1 ? 0 : 3;
+        int playerOffset = _player1 ? 0 : 3;
 
-        var idOfEntityBeingControlled = -1;
-
-
+        int idOfEntityBeingControlled = -1;
 
 
 
-        for (var i = 0; i < 3; i++)
+
+
+        for (int i = 0; i < 3; i++)
         {
-            var bestAction = _possibleActions.Where(a => a.HeroId == i + playerOffset)
+            PossibleAction? bestAction = _possibleActions.Where(a => a.HeroId == i + playerOffset)
                                              .OrderByDescending(a => a.Priority)
                                              .FirstOrDefault();
 
@@ -81,16 +81,16 @@ public class ActionManager
 
     private void PerformManaChecks()
     {
-        var manaLeft = _mana;
+        int manaLeft = _mana;
 
-        var allHeroActions = new List<PossibleAction>[3];
+        List<PossibleAction>[] allHeroActions = new List<PossibleAction>[3];
 
         // Split actions into different heroes
-        var playerOffset = _player1 ? 0 : 3;
+        int playerOffset = _player1 ? 0 : 3;
 
         Debugger.DisplayPossibleAction(_possibleActions, playerOffset);
 
-        for (var i = 0; i < 3; i++)
+        for (int i = 0; i < 3; i++)
         {
             allHeroActions[i] = _possibleActions.Where(a => a.HeroId == i + playerOffset)
                                                 .OrderByDescending(a => a.Priority)
@@ -98,7 +98,7 @@ public class ActionManager
         }
 
         // Work out how many spells we have to get rid of
-        var possibleSpellCount = 3;
+        int possibleSpellCount = 3;
 
         if (manaLeft < 10)
         {
@@ -115,17 +115,17 @@ public class ActionManager
 
         if (possibleSpellCount != 3)
         {
-            var numberOfSpellsAsFirstChoice = 0;
+            int numberOfSpellsAsFirstChoice = 0;
 
-            var currentMax = new int[3];
-            var nonSpellMax = new int[3];
-            var canRemoveSpell = new bool[3];
+            int[] currentMax = new int[3];
+            int[] nonSpellMax = new int[3];
+            bool[] canRemoveSpell = new bool[3];
 
-            for (var i = 0; i < 3; i++)
+            for (int i = 0; i < 3; i++)
             {
-                var allPossibleActions = allHeroActions[i];
+                List<PossibleAction> allPossibleActions = allHeroActions[i];
 
-                var highestPriorityAction = allPossibleActions.First();
+                PossibleAction highestPriorityAction = allPossibleActions.First();
 
                 currentMax[i] = highestPriorityAction.Priority;
                 canRemoveSpell[i] = highestPriorityAction.ActionType != ActionType.Move;
@@ -147,12 +147,12 @@ public class ActionManager
 
             while (numberOfSpellsAsFirstChoice > possibleSpellCount)
             {
-                var highestIndex = 0;
-                var highestValue = int.MinValue;
+                int highestIndex = 0;
+                int highestValue = int.MinValue;
 
                 if (canRemoveSpell[0])
                 {
-                    var total = nonSpellMax[0] + currentMax[1] + currentMax[2];
+                    int total = nonSpellMax[0] + currentMax[1] + currentMax[2];
 
                     if (total > highestValue)
                     {
@@ -163,7 +163,7 @@ public class ActionManager
 
                 if (canRemoveSpell[1])
                 {
-                    var total =  currentMax[0] + nonSpellMax[1] + currentMax[2];
+                    int total =  currentMax[0] + nonSpellMax[1] + currentMax[2];
 
                     if (total > highestValue)
                     {
@@ -174,7 +174,7 @@ public class ActionManager
 
                 if (canRemoveSpell[2])
                 {
-                    var total =  currentMax[0] + currentMax[1] + nonSpellMax[2];
+                    int total =  currentMax[0] + currentMax[1] + nonSpellMax[2];
 
                     if (total > highestValue)
                     {
@@ -198,7 +198,7 @@ public class ActionManager
 
     private static string GetActionString(PossibleAction? bestAction)
     {
-        var stringBuilder = new StringBuilder();
+        StringBuilder stringBuilder = new StringBuilder();
 
         stringBuilder.Append($"{GetActionType(bestAction.ActionType)} ");
 
@@ -267,7 +267,7 @@ internal static class Debugger
         Console.Error.WriteLine("Monsters");
         Console.Error.WriteLine("------------------------");
 
-        foreach (var monster in monsters)
+        foreach (Monster monster in monsters)
         {
             Console.Error.WriteLine($"{monster.Id}: Position-{monster.Position.X},{monster.Position.Y} - ThreatFor:{monster.ThreatFor} - IsControlled={monster.IsControlled} - near base:{monster.NearBase} - ThreatFor:{monster.ThreatFor}");
         }
@@ -280,7 +280,7 @@ internal static class Debugger
         Console.Error.WriteLine("Player heroes");
         Console.Error.WriteLine("------------------------");
 
-        foreach (var hero in heroes)
+        foreach (Hero hero in heroes)
         {
             Console.Error.WriteLine($"{hero.Id}: Postion:({hero.Position.X},{hero.Position.Y}) - Current monster:{hero.CurrentMonster} - isShielding:{hero.IsShielding}");
         }
@@ -293,7 +293,7 @@ internal static class Debugger
         Console.Error.WriteLine("Enemy heroes");
         Console.Error.WriteLine("------------------------");
 
-        foreach (var hero in heroes)
+        foreach (Hero hero in heroes)
         {
             Console.Error.WriteLine($"{hero.Id}: {hero.Position.X}, {hero.Position.Y}");
         }
@@ -306,14 +306,14 @@ internal static class Debugger
         Console.Error.WriteLine("Possible actions");
         Console.Error.WriteLine("------------------------");
 
-        for (var i = 0; i < 3; i++)
+        for (int i = 0; i < 3; i++)
         {
             Console.Error.WriteLine($"Hero {i + playerOffset}");
 
-            var heroActions = possibleActions.Where(a => a.HeroId == i + playerOffset)
+            IOrderedEnumerable<PossibleAction> heroActions = possibleActions.Where(a => a.HeroId == i + playerOffset)
                                                                        .OrderByDescending(a => a.Priority);
 
-            foreach (var action in heroActions)
+            foreach (PossibleAction? action in heroActions)
             {
                 Console.Error.WriteLine($"{action.Priority}:{action.ActionType} {action.EntityType} {action.TargetId} {action.TargetXPos} {action.TargetYPos}");
             }
@@ -393,7 +393,7 @@ internal class Game
         _actionManager.ClearPossibleActions();
         _actionManager.SetMana(playerMana);
 
-        var moves = new string[_heroesPerPlayer];
+        string[] moves = new string[_heroesPerPlayer];
 
         ResetHeroes();
 
@@ -401,11 +401,11 @@ internal class Game
 
         if (_playerHeroes[0].GetNumberOfGuardPoints() == 0) // or we've changed a Strategy
         {
-            var guardPoints = _guardPointGenerator.GetGuardPoints(_playerHeroes);
+            List<List<Point>> guardPoints = _guardPointGenerator.GetGuardPoints(_playerHeroes);
 
-            for (var i = 0; i < _playerHeroes.Count; i++)
+            for (int i = 0; i < _playerHeroes.Count; i++)
             {
-                var hero = _playerHeroes[i];
+                Hero hero = _playerHeroes[i];
                 hero.SetGuardPoints(guardPoints[i]);
             }
         }
@@ -442,7 +442,7 @@ internal class Game
 
     private void ResetHeroes()
     {
-        foreach (var hero in _playerHeroes)
+        foreach (Hero hero in _playerHeroes)
         {
             hero.IsShielding = false;
         }
@@ -476,7 +476,7 @@ internal class Game
 
     private void ClearGuardPoints()
     {
-        foreach (var hero in _playerHeroes)
+        foreach (Hero hero in _playerHeroes)
         {
             hero.ClearGuardPoints();
         }
@@ -484,9 +484,9 @@ internal class Game
 
     private void ChangeCollectorToAttacker()
     {
-        var heroes = _playerHeroes.Where(h => h.Strategy == Strategy.Collect);
+        IEnumerable<Hero> heroes = _playerHeroes.Where(h => h.Strategy == Strategy.Collect);
 
-        foreach (var hero in heroes)
+        foreach (Hero? hero in heroes)
         {
             hero.Strategy = Strategy.Attack;
         }
@@ -494,9 +494,9 @@ internal class Game
 
     private void ChangeAttackerToCollector()
     {
-        var heroes = _playerHeroes.Where(h => h.Strategy == Strategy.Attack);
+        IEnumerable<Hero> heroes = _playerHeroes.Where(h => h.Strategy == Strategy.Attack);
 
-        foreach (var hero in heroes)
+        foreach (Hero? hero in heroes)
         {
             hero.Strategy = Strategy.Collect;
         }
@@ -533,7 +533,7 @@ internal class Game
 
     private void ClearDeadMonsters(IReadOnlyCollection<Monster> monsters)
     {
-        foreach (var hero in _playerHeroes)
+        foreach (Hero hero in _playerHeroes)
         {
             if (hero.CurrentMonster >= 0)
             {
@@ -547,7 +547,7 @@ internal class Game
 
     private void ClearMonstersIfDefenderIsTooFarAway()
     {
-        foreach (var hero in _playerHeroes.Where(h => h.Strategy == Strategy.Defend))
+        foreach (Hero? hero in _playerHeroes.Where(h => h.Strategy == Strategy.Defend))
         {
             if (hero.CurrentMonster >= 0)
             {
@@ -561,7 +561,7 @@ internal class Game
 
     private void ClearMonstersIfTheyreAThreatForTheEnemy(IReadOnlyCollection<Monster> monsters)
     {
-        foreach (var hero in _playerHeroes)
+        foreach (Hero hero in _playerHeroes)
         {
             if (hero.CurrentMonster >= 0)
             {
@@ -575,11 +575,11 @@ internal class Game
 
     private void ClearMonstersFromEnemyOutskirts(IReadOnlyCollection<Monster> monsters)
     {
-        foreach (var hero in _playerHeroes.Where(h => h.Strategy == Strategy.Attack))
+        foreach (Hero? hero in _playerHeroes.Where(h => h.Strategy == Strategy.Attack))
         {
             if (hero.CurrentMonster >= 0)
             {
-                var currentMonster = monsters.First(m => m.Id == hero.CurrentMonster);
+                Monster currentMonster = monsters.First(m => m.Id == hero.CurrentMonster);
 
                 if (CalculateDistance(currentMonster.Position, _enemyBaseLocation) < _valuesProvider.OutskirtsMinDist
                     || CalculateDistance(currentMonster.Position, _enemyBaseLocation) > _valuesProvider.OutskirtsMaxDist)
@@ -592,7 +592,7 @@ internal class Game
 
     internal void UpdatePlayerHero(Hero hero)
     {
-        var playerHero = _playerHeroes.SingleOrDefault(h => h.Id == hero.Id);
+        Hero? playerHero = _playerHeroes.SingleOrDefault(h => h.Id == hero.Id);
 
         if (playerHero == null)
         {
@@ -625,7 +625,7 @@ internal sealed class GuardPointGenerator
 
     internal List<List<Point>> GetGuardPoints(List<Hero> playerHeroes)
     {
-        var guardPoints = new List<List<Point>>();
+        List<List<Point>> guardPoints = new List<List<Point>>();
 
 
         guardPoints.AddRange(GetDefenders(playerHeroes));
@@ -647,9 +647,9 @@ internal sealed class GuardPointGenerator
 
     private List<List<Point>> GetDefenders(List<Hero> playerHeroes)
     {
-        var numberOfDefenders = playerHeroes.Count(h => h.Strategy == Strategy.Defend);
+        int numberOfDefenders = playerHeroes.Count(h => h.Strategy == Strategy.Defend);
 
-        var defendPoints = new List<List<Point>>();
+        List<List<Point>> defendPoints = new List<List<Point>>();
 
         if (numberOfDefenders == 1)
         {
@@ -716,9 +716,9 @@ internal sealed class GuardPointGenerator
 
     private IEnumerable<List<Point>> GetCollectors(List<Hero> playerHeroes)
     {
-        var numberOfCollectors = playerHeroes.Count(h => h.Strategy == Strategy.Collect);
+        int numberOfCollectors = playerHeroes.Count(h => h.Strategy == Strategy.Collect);
 
-        var collectPoints = new List<List<Point>>();
+        List<List<Point>> collectPoints = new List<List<Point>>();
 
         if (numberOfCollectors == 1)
         {
@@ -749,9 +749,9 @@ internal sealed class GuardPointGenerator
 
     private List<List<Point>> GetAttackers(List<Hero> playerHeroes)
     {
-        var numberOfAttackers = playerHeroes.Count(h => h.Strategy == Strategy.Attack);
+        int numberOfAttackers = playerHeroes.Count(h => h.Strategy == Strategy.Attack);
 
-        var attackPoints = new List<List<Point>>();
+        List<List<Point>> attackPoints = new List<List<Point>>();
 
         if (numberOfAttackers == 1)
         {
@@ -895,10 +895,10 @@ internal sealed class MovementGenerator
 
     internal void AssignHeroMovement(List<Hero> playerHeroes, List<Monster> monsters, ActionManager actionManager)
     {
-        var defendingHeroesOutsideOfBase = playerHeroes.Where(h => h.Strategy == Strategy.Defend
+        IEnumerable<Hero> defendingHeroesOutsideOfBase = playerHeroes.Where(h => h.Strategy == Strategy.Defend
                                                                                    && CalculateDistance(h.Position, _playerBaseLocation) > _valuesProvider.BaseRadius);
 
-        foreach (var defendingHeroOutsideOfBase in defendingHeroesOutsideOfBase)
+        foreach (Hero? defendingHeroOutsideOfBase in defendingHeroesOutsideOfBase)
         {
             defendingHeroOutsideOfBase.CurrentMonster = -1;
         }
@@ -910,17 +910,17 @@ internal sealed class MovementGenerator
         CalculateAttackerMovement(playerHeroes, monsters);
 
         // Assign actions
-        foreach (var hero in playerHeroes)
+        foreach (Hero hero in playerHeroes)
         {
             if (hero.CurrentMonster != -1)
             {
-                var monsterToAttack = monsters.Single(m => m.Id == hero.CurrentMonster);
+                Monster monsterToAttack = monsters.Single(m => m.Id == hero.CurrentMonster);
 
                 actionManager.AddPossibleAction(hero.Id, 0, ActionType.Move, EntityType.None, null, monsterToAttack.Position.X, monsterToAttack.Position.Y);
             }
             else
             {
-                var currentGuardPoint = hero.GetCurrentGuardPoint();
+                Point currentGuardPoint = hero.GetCurrentGuardPoint();
 
                 if (!(hero.Position.X == currentGuardPoint.X && hero.Position.Y == currentGuardPoint.Y))
                 {
@@ -928,7 +928,7 @@ internal sealed class MovementGenerator
                 }
                 else
                 {
-                    var nextGuardPoint = hero.GetNextGuardPoint();
+                    Point nextGuardPoint = hero.GetNextGuardPoint();
                     actionManager.AddPossibleAction(hero.Id, 0, ActionType.Move, EntityType.None, null, nextGuardPoint.X, nextGuardPoint.Y);
                 }
             }
@@ -937,7 +937,7 @@ internal sealed class MovementGenerator
 
     private void CalculateAttackerMovement(IEnumerable<Hero> playerHeroes, IEnumerable<Monster> monsters)
     {
-        var freeAttackingHeroes = playerHeroes.Where(h => h.Strategy == Strategy.Attack && h.CurrentMonster == -1).ToList();
+        List<Hero> freeAttackingHeroes = playerHeroes.Where(h => h.Strategy == Strategy.Attack && h.CurrentMonster == -1).ToList();
 
         if (freeAttackingHeroes.Count <= 0)
         {
@@ -945,15 +945,15 @@ internal sealed class MovementGenerator
         }
 
         // Get any monsters on the edge of the enemies base
-        var monstersOnOutskirts = monsters.Where(m => CalculateDistance(m.Position, _enemyBaseLocation) > _valuesProvider.OutskirtsMinDist
+        List<Monster> monstersOnOutskirts = monsters.Where(m => CalculateDistance(m.Position, _enemyBaseLocation) > _valuesProvider.OutskirtsMinDist
                                                       && CalculateDistance(m.Position, _enemyBaseLocation) < _valuesProvider.OutskirtsMaxDist).ToList();
 
         // Go to them
         if (monstersOnOutskirts.Count > 1)
         {
-            foreach (var freeAttackingHero in freeAttackingHeroes)
+            foreach (Hero? freeAttackingHero in freeAttackingHeroes)
             {
-                var closestMonster = monstersOnOutskirts.OrderBy(m => CalculateDistance(freeAttackingHero.Position, m.Position))
+                Monster closestMonster = monstersOnOutskirts.OrderBy(m => CalculateDistance(freeAttackingHero.Position, m.Position))
                                                         .First();
 
                 freeAttackingHero.CurrentMonster = closestMonster.Id;
@@ -964,12 +964,12 @@ internal sealed class MovementGenerator
     private void CalculateDefenderMovement(IReadOnlyCollection<Hero> playerHeroes, List<Monster> monsters)
     {
         // if a hero is not in the base, and a spider is, drop everything and defend
-        var monstersThreateningBase = monsters.Where(m => m.ThreatFor == ThreatFor.Player
+        List<Monster> monstersThreateningBase = monsters.Where(m => m.ThreatFor == ThreatFor.Player
                                                                          && CalculateDistance(m.Position, _playerBaseLocation) <= 6000)
                                                          .OrderBy(m => CalculateDistance(m.Position, _playerBaseLocation))
                                                          .ToList();
 
-        var freeDefendingHeroes = playerHeroes.Where(h => h.Strategy == Strategy.Defend && h.CurrentMonster == -1).ToList();
+        List<Hero> freeDefendingHeroes = playerHeroes.Where(h => h.Strategy == Strategy.Defend && h.CurrentMonster == -1).ToList();
 
         if (monstersThreateningBase.Count == 0 && freeDefendingHeroes.Count <= 0)
         {
@@ -978,18 +978,18 @@ internal sealed class MovementGenerator
 
         if (monstersThreateningBase.Count > 0)
         {
-            var closestMonster = monstersThreateningBase.First();
+            Monster closestMonster = monstersThreateningBase.First();
 
-            foreach (var hero in freeDefendingHeroes)
+            foreach (Hero? hero in freeDefendingHeroes)
             {
                 hero.CurrentMonster = closestMonster.Id;
             }
         }
         else
         {
-            foreach (var freeDefendingHero in freeDefendingHeroes)
+            foreach (Hero? freeDefendingHero in freeDefendingHeroes)
             {
-                var monsterWithinRange = monsters.Where(m => CalculateDistance(m.Position, _playerBaseLocation) <= _valuesProvider.MaxDefenderDistanceFromBase
+                Monster? monsterWithinRange = monsters.Where(m => CalculateDistance(m.Position, _playerBaseLocation) <= _valuesProvider.MaxDefenderDistanceFromBase
                                                              && m.ThreatFor != ThreatFor.Enemy)
                                                  .Select(m => new { m, distance = CalculateDistance(m.Position, freeDefendingHero.Position) })
                                                  .Where(m => m.distance <= _valuesProvider.HeroRange)
@@ -1008,13 +1008,13 @@ internal sealed class MovementGenerator
     private void CalculateCollectorMovement(IEnumerable<Hero> playerHeroes, IEnumerable<Monster> monsters)
     {
 
-        var collectingHeroes = playerHeroes.Where(h => h.Strategy == Strategy.Collect && h.CurrentMonster == -1).ToList();
+        List<Hero> collectingHeroes = playerHeroes.Where(h => h.Strategy == Strategy.Collect && h.CurrentMonster == -1).ToList();
 
         if (collectingHeroes.Count > 0)
         {
-            foreach (var collectingHero in collectingHeroes)
+            foreach (Hero? collectingHero in collectingHeroes)
             {
-                var closestMonster = monsters.Where(m => CalculateDistance(m.Position, _playerBaseLocation) > _valuesProvider.OutskirtsMaxDist)
+                Monster? closestMonster = monsters.Where(m => CalculateDistance(m.Position, _playerBaseLocation) > _valuesProvider.OutskirtsMaxDist)
                                              .Select(m => new { m, distance = CalculateDistance(m.Position, collectingHero.Position) })
                                              .Where(m => m.distance <= _valuesProvider.HeroRange)
                                              .OrderBy(m => m.distance)
@@ -1049,47 +1049,47 @@ internal sealed class Player
         string[] inputs;
         inputs = Console.ReadLine().Split(' ');
 
-        var baseX = int.Parse(inputs[0]); // The corner of the map representing your base
-        var baseY = int.Parse(inputs[1]);
-        var heroesPerPlayer = int.Parse(Console.ReadLine()); // Always 3
+        int baseX = int.Parse(inputs[0]); // The corner of the map representing your base
+        int baseY = int.Parse(inputs[1]);
+        int heroesPerPlayer = int.Parse(Console.ReadLine()); // Always 3
 
-        var game = new Game(new Point(baseX, baseY), heroesPerPlayer);
+        Game game = new Game(new Point(baseX, baseY), heroesPerPlayer);
 
         // game loop
         while (true)
         {
             // Don't bother persisting monsters. It's quicker just to re-add them every time.
             // At least until we need to persist them
-            var enemyHeroes = new List<Hero>();
-            var monsters = new List<Monster>();
+            List<Hero> enemyHeroes = new List<Hero>();
+            List<Monster> monsters = new List<Monster>();
 
             // Player base stats
             inputs = Console.ReadLine().Split(' ');
-            var playerBaseHealth = int.Parse(inputs[0]); // Your base health
-            var playerMana = int.Parse(inputs[1]); // Ignore in the first league; Spend ten mana to cast a spell
+            int playerBaseHealth = int.Parse(inputs[0]); // Your base health
+            int playerMana = int.Parse(inputs[1]); // Ignore in the first league; Spend ten mana to cast a spell
 
             // enemy base stats
             inputs = Console.ReadLine().Split(' ');
-            var enemyBaseHealth = int.Parse(inputs[0]); // Your base health
-            var enemyMana = int.Parse(inputs[1]); // Ignore in the first league; Spend ten mana to cast a spell
+            int enemyBaseHealth = int.Parse(inputs[0]); // Your base health
+            int enemyMana = int.Parse(inputs[1]); // Ignore in the first league; Spend ten mana to cast a spell
 
-            var entityCount = int.Parse(Console.ReadLine()); // Amount of heros and monsters you can see
+            int entityCount = int.Parse(Console.ReadLine()); // Amount of heros and monsters you can see
 
-            for (var i = 0; i < entityCount; i++)
+            for (int i = 0; i < entityCount; i++)
             {
                 inputs = Console.ReadLine().Split(' ');
 
-                var id = int.Parse(inputs[0]); // Unique identifier
-                var type = int.Parse(inputs[1]); // 0=monster, 1=your hero, 2=opponent hero
-                var x = int.Parse(inputs[2]); // Position of this entity
-                var y = int.Parse(inputs[3]);
-                var shieldLife = int.Parse(inputs[4]); // Ignore for this league; Count down until shield spell fades
-                var isControlled = int.Parse(inputs[5]); // Ignore for this league; Equals 1 when this entity is under a control spell
-                var health = int.Parse(inputs[6]); // Remaining health of this monster
-                var vx = int.Parse(inputs[7]); // Trajectory of this monster
-                var vy = int.Parse(inputs[8]);
-                var nearBase = int.Parse(inputs[9]); // 0=monster with no target yet, 1=monster targeting a base
-                var threatFor = int.Parse(inputs[10]); // Given this monster's trajectory, is it a threat to 1=your base, 2=your opponent's base, 0=neither
+                int id = int.Parse(inputs[0]); // Unique identifier
+                int type = int.Parse(inputs[1]); // 0=monster, 1=your hero, 2=opponent hero
+                int x = int.Parse(inputs[2]); // Position of this entity
+                int y = int.Parse(inputs[3]);
+                int shieldLife = int.Parse(inputs[4]); // Ignore for this league; Count down until shield spell fades
+                int isControlled = int.Parse(inputs[5]); // Ignore for this league; Equals 1 when this entity is under a control spell
+                int health = int.Parse(inputs[6]); // Remaining health of this monster
+                int vx = int.Parse(inputs[7]); // Trajectory of this monster
+                int vy = int.Parse(inputs[8]);
+                int nearBase = int.Parse(inputs[9]); // 0=monster with no target yet, 1=monster targeting a base
+                int threatFor = int.Parse(inputs[10]); // Given this monster's trajectory, is it a threat to 1=your base, 2=your opponent's base, 0=neither
 
                 if (type == 0)
                 {
@@ -1115,7 +1115,7 @@ internal sealed class Player
                 }
                 else
                 {
-                    var hero = new Hero(id, new Point(x, y), isControlled == 1, shieldLife);
+                    Hero hero = new Hero(id, new Point(x, y), isControlled == 1, shieldLife);
 
                     if (type == 1)
                     {
@@ -1128,9 +1128,9 @@ internal sealed class Player
                 }
             }
 
-            var moves = game.GetMoves(enemyHeroes, monsters, playerMana);
+            string[] moves = game.GetMoves(enemyHeroes, monsters, playerMana);
 
-            for (var i = 0; i < moves.Length; i++)
+            for (int i = 0; i < moves.Length; i++)
             {
                 // Write an action using Console.WriteLine()
                 // To debug: Console.Error.WriteLine("Debug messages...");
@@ -1183,7 +1183,7 @@ internal sealed class SpellGenerator
 
     internal void CastProtectiveShieldSpells(IEnumerable<Hero> playerHeroes, Strategy strategy, ActionManager actionManager)
     {
-        foreach (var hero in playerHeroes.Where(h => h.Strategy == strategy))
+        foreach (Hero? hero in playerHeroes.Where(h => h.Strategy == strategy))
         {
             if (hero.ShieldLife == 0)
             {
@@ -1197,9 +1197,9 @@ internal sealed class SpellGenerator
 
     internal void AssignDefensiveWindSpell(List<Hero> playerHeroes, IEnumerable<Monster> monsters, ActionManager actionManager)
     {
-        var closeDistance = 3000;
+        int closeDistance = 3000;
 
-        var closestMonster = monsters.Where(m => m.ShieldLife == 0)
+        Monster? closestMonster = monsters.Where(m => m.ShieldLife == 0)
                                                          .Select(m => new { m, distance = CalculateDistance(m.Position, _playerBaseLocation)})
                                                          .Where(m => m.distance <= closeDistance)
                                                          .OrderBy(m => m.distance)
@@ -1208,13 +1208,13 @@ internal sealed class SpellGenerator
 
         if (closestMonster != null)
         {
-            var availableHeroes = playerHeroes.Where(h => h.Strategy == Strategy.Defend && h.IsShielding == false).ToList();
+            List<Hero> availableHeroes = playerHeroes.Where(h => h.Strategy == Strategy.Defend && h.IsShielding == false).ToList();
 
             Console.Error.WriteLine($"availableHeroes.Count:{availableHeroes.Count}");
 
             if (availableHeroes.Count > 0)
             {
-                var closestHero = availableHeroes.OrderBy(h => CalculateDistance(h.Position, closestMonster.Position))
+                Hero closestHero = availableHeroes.OrderBy(h => CalculateDistance(h.Position, closestMonster.Position))
                                                  .First();
 
                 Console.Error.WriteLine($"closestHero:{closestHero.Id}");
@@ -1247,14 +1247,14 @@ internal sealed class SpellGenerator
     {
         const int healthCutOff = 10;
 
-        var defendingHeroesOutsideOfBase =
+        IEnumerable<Hero> defendingHeroesOutsideOfBase =
             playerHeroes.Where(h => h.Strategy == Strategy.Defend
                                       && h.IsShielding == false
                                       && CalculateDistance(h.Position, _playerBaseLocation) > _valuesProvider.BaseRadius);
 
-        foreach (var defendingHeroOutsideOfBase in defendingHeroesOutsideOfBase)
+        foreach (Hero? defendingHeroOutsideOfBase in defendingHeroesOutsideOfBase)
         {
-            var monsterWithinSpellRange =
+            Monster? monsterWithinSpellRange =
                 monsters.Where(m => m.Health > healthCutOff
                                         && m.IsControlled == false
                                         && m.ThreatFor == ThreatFor.Player
@@ -1276,14 +1276,14 @@ internal sealed class SpellGenerator
 
     internal void AssignAttackSpells(IEnumerable<Hero> playerHeroes, IEnumerable<Hero> enemyHeroes, IEnumerable<Monster> monsters, ActionManager actionManager)
     {
-        foreach (var attackingHero in playerHeroes.Where(h => h.Strategy == Strategy.Attack))
+        foreach (Hero? attackingHero in playerHeroes.Where(h => h.Strategy == Strategy.Attack))
         {
             if (CalculateDistance(attackingHero.Position, _enemyBaseLocation) > _valuesProvider.OutskirtsMaxDist)
             {
                 continue;
             }
 
-            var closeEnoughForWindMonster = monsters.FirstOrDefault(m => CalculateDistance(m.Position, attackingHero.Position) <= ValuesProvider.WindSpellRange
+            Monster? closeEnoughForWindMonster = monsters.FirstOrDefault(m => CalculateDistance(m.Position, attackingHero.Position) <= ValuesProvider.WindSpellRange
                                                                                  && m.ShieldLife == 0);
 
             if (closeEnoughForWindMonster != null)
@@ -1294,14 +1294,14 @@ internal sealed class SpellGenerator
             }
             else // If we're not close enough for a wind spell try a shield or control
             {
-                var closeEnoughForControlEnemy =
+                Hero? closeEnoughForControlEnemy =
                         enemyHeroes.Where(e => e.ShieldLife == 0
                                                  && CalculateDistance(e.Position, attackingHero.Position) <= _valuesProvider.ControlSpellange
                                                  && CalculateDistance(e.Position, _enemyBaseLocation) <= _valuesProvider.BaseRadius)
                                    .OrderBy(e => CalculateDistance(e.Position, _enemyBaseLocation))
                                    .FirstOrDefault();
 
-                var closeEnoughForSpellMonster =
+                Monster? closeEnoughForSpellMonster =
                         monsters.FirstOrDefault(m => m.ShieldLife == 0
                                                          && m.ThreatFor == ThreatFor.Enemy
                                                          && CalculateDistance(m.Position, attackingHero.Position) <= _valuesProvider.ShieldSpellRange

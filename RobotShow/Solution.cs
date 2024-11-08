@@ -8,32 +8,32 @@ namespace RobotShow
     {
         static void Main(string[] args)
         {
-            var ductLength = int.Parse(Console.ReadLine())+1;
-            var numberOfBots = int.Parse(Console.ReadLine());
-            var inputs = Console.ReadLine().Split(' ');
-            
-            var ducts = new List<char[]>();
-            
-            var botPositions = new List<int>();
+            int ductLength = int.Parse(Console.ReadLine())+1;
+            int numberOfBots = int.Parse(Console.ReadLine());
+            string[] inputs = Console.ReadLine().Split(' ');
 
-            for (var i = 0; i < numberOfBots; i++)
+            List<char[]> ducts = new List<char[]>();
+
+            List<int> botPositions = new List<int>();
+
+            for (int i = 0; i < numberOfBots; i++)
             {
                 //Console.Error.WriteLine($"inputs[i]: {inputs[i]}");
                 botPositions.Add(int.Parse(inputs[i]));   
             }
             Console.Error.WriteLine($"duct length: {ductLength}");
             Console.Error.WriteLine($"botPositions.Count: {botPositions.Count}");
-            
-            var leftMost = botPositions.Min();
-            
-            var leftOne = ductLength - leftMost - 1;
-            
-            var rightMost = botPositions.Max();
+
+            int leftMost = botPositions.Min();
+
+            int leftOne = ductLength - leftMost - 1;
+
+            int rightMost = botPositions.Max();
             
             Console.Error.WriteLine($"Left one: {leftOne}");
             Console.Error.WriteLine($"Right one: {rightMost}");
-            
-            var longest = Math.Max(leftOne, rightMost);
+
+            int longest = Math.Max(leftOne, rightMost);
             
             
             
@@ -93,7 +93,7 @@ namespace RobotShow
         
         private static void PrintDucts(List<char[]> ducts)
         {
-            foreach (var duct in ducts)
+            foreach (char[] duct in ducts)
             {
                 PrintDuct(duct);
             }
@@ -101,7 +101,7 @@ namespace RobotShow
         
         private static void PrintDuct(char[] duct)
         {
-            foreach(var cell in duct)
+            foreach(char cell in duct)
             {
                 if(cell == '\0')
                 {
@@ -118,19 +118,19 @@ namespace RobotShow
         }
         private static int GetTime(char[] duct)
         {
-            var seconds = 0;
-            
-            var botInDuct = true;
+            int seconds = 0;
+
+            bool botInDuct = true;
             
             Console.Error.WriteLine();
 
             while(botInDuct)
             {
                 PrintDuct(duct);
-                var nextDuct = new char[duct.Length];
+                char[] nextDuct = new char[duct.Length];
 
                 // Move bots
-                for (var i = 0; i < duct.Length; i++)
+                for (int i = 0; i < duct.Length; i++)
                 {
                     if(duct[i] != '\0')
                     {

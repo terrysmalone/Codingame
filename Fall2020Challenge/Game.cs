@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 internal sealed class Game
 {   
@@ -81,16 +82,17 @@ internal sealed class Game
                 paths[i] = FindShortestPath(PlayerInventory.Ingredients, currentRecipe.Ingredients, Spells);
             }
 
-            int quickest = GetQuickestPathIndex(paths);
+            // int bestIndex = GetQuickestPathIndex(paths);
+            int bestIndex = GetMostExpensivePathIndex(paths);
 
-            if (quickest >= 0)
+            if (bestIndex >= 0)
             {
-                List<string> quickestPath = paths[quickest];
+                List<string> bestPath = paths[bestIndex];
 
-                if (quickestPath.Count > 0)
+                if (bestPath.Count > 0)
                 {
-                    currentRecipe = Recipes[quickest].Id; ;
-                    currentPath = quickestPath;
+                    currentRecipe = Recipes[bestIndex].Id; ;
+                    currentPath = bestPath;
                 }
             }
         }
@@ -135,7 +137,7 @@ internal sealed class Game
         return action;
     }
 
-    private int GetQuickestPathIndex(List<string>[] paths)
+    private static int GetQuickestPathIndex(List<string>[] paths)
     {
         int quickest = int.MaxValue;
         int quickestIndex = -1;
@@ -151,6 +153,39 @@ internal sealed class Game
         }
 
         return quickestIndex;
+    }
+
+    private int GetMostExpensivePathIndex(List<string>[] paths)
+    {
+        int mostExpensive = int.MinValue;
+        int mostExpensiveIndex = -1;
+
+        for (int i = 0; i < paths.Length; i++)
+        {
+            var price = Recipes[i].Price;
+
+            // The implementation of this bonus isn't 100% right. I'll fix it at some point:
+            // Brewing a potion for the very first client awards a + 3 rupee bonus, but this can only happen 4 times during the game.
+            // Brewing a potion for the second client awards a + 1 rupee bonus, but this also can only happen 4 times during the game.
+            // If all + 3 bonuses have been used up, the + 1 bonus will be awarded by the first client instead of the second client.
+            if (i == 0)
+            {
+                price += 3;
+            }
+            else if (i == 1)
+            {
+                price += 1;
+            }
+
+            if (paths[i].Count > 0 && price > mostExpensive)
+            {
+                mostExpensive = price;
+
+                mostExpensiveIndex = i;
+            }
+        }
+
+        return mostExpensiveIndex;
     }
 
     private bool CanRecipeBeBrewed(Recipe recipe)

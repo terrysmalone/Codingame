@@ -76,7 +76,7 @@ using System.Runtime.CompilerServices;
             }
             else
             {
-                var m = (Move) obj;
+            Move m = (Move) obj;
                 return (Column == m.Column) && (Row == m.Row);
             }
         }
@@ -88,13 +88,13 @@ using System.Runtime.CompilerServices;
 
         internal Move GetBestMoveUsingAlphaBeta(ITicTacToe ticTacToeBoard, int depth, char startingPlayer)
         {
-            var moves = GetMoveScoresUsingAlphaBeta(ticTacToeBoard, depth, startingPlayer).OrderByDescending(m => m.Item2).ToList();
-            
-            var max = moves.Max(m => m.Item2);
-            
-            var highest = moves.Where(m => m.Item2 == max).ToList();
-            
-            var rand = new Random();
+        List<Tuple<Move, int>> moves = GetMoveScoresUsingAlphaBeta(ticTacToeBoard, depth, startingPlayer).OrderByDescending(m => m.Item2).ToList();
+
+        int max = moves.Max(m => m.Item2);
+
+        List<Tuple<Move, int>> highest = moves.Where(m => m.Item2 == max).ToList();
+
+        Random rand = new Random();
             
             return highest[rand.Next(highest.Count)].Item1;
         
@@ -105,17 +105,17 @@ using System.Runtime.CompilerServices;
         {
             _board = ticTacToeBoard;
 
-            var moveScores = new List<Tuple<Move, int>>();
+        List<Tuple<Move, int>> moveScores = new List<Tuple<Move, int>>();
 
-            var validMoves = _board.CalculateValidMoves();
+        List<Move> validMoves = _board.CalculateValidMoves();
 
-            foreach (var validAction in validMoves)
+            foreach (Move validAction in validMoves)
             {
-                var isX = player == 'X';
+            bool isX = player == 'X';
 
                 _board.AddMove(validAction.Column, validAction.Row, player);
 
-                var score = -Calculate(int.MinValue+1, int.MaxValue, depth-1, !isX, SwapPieces(player));
+            int score = -Calculate(int.MinValue+1, int.MaxValue, depth-1, !isX, SwapPieces(player));
 
                 moveScores.Add(new Tuple<Move, int>(new Move(validAction.Column, validAction.Row), score));
 
@@ -134,7 +134,7 @@ using System.Runtime.CompilerServices;
                 return _board.Evaluate(isX, depth);
             }
 
-            var validMoves = _board.CalculateValidMoves();
+        List<Move> validMoves = _board.CalculateValidMoves();
 
             if(validMoves.Count == 0
                || _board.IsGameOver())
@@ -142,9 +142,9 @@ using System.Runtime.CompilerServices;
                 return _board.Evaluate(isX, depth);
             }
 
-            var score = int.MinValue;
+        int score = int.MinValue;
 
-            foreach (var move in validMoves)
+            foreach (Move move in validMoves)
             {
                 _board.AddMove(move.Column, move.Row, piece);
                 score = Math.Max(score, -Calculate(-beta, -alpha,depth-1, !isX, SwapPieces(piece)));
@@ -172,17 +172,17 @@ using System.Runtime.CompilerServices;
         {
             _board = ticTacToeBoard;
 
-            var moveScores = new List<Tuple<Move, int>>();
+        List<Tuple<Move, int>> moveScores = new List<Tuple<Move, int>>();
 
-            var validMoves = _board.CalculateValidMoves();
+        List<Move> validMoves = _board.CalculateValidMoves();
 
-            foreach (var validAction in validMoves)
+            foreach (Move validAction in validMoves)
             {
-                var maximisingPlayer = player == 'X';
+            bool maximisingPlayer = player == 'X';
 
                 _board.AddMove(validAction.Column, validAction.Row, player);
 
-                var score = -Calculate(depth-1, !maximisingPlayer, SwapPieces(player));
+            int score = -Calculate(depth-1, !maximisingPlayer, SwapPieces(player));
 
                 moveScores.Add(new Tuple<Move, int>(new Move(validAction.Column, validAction.Row), score));
 
@@ -199,27 +199,27 @@ using System.Runtime.CompilerServices;
                 return _board.Evaluate(maximisingPlayer, depth);
             }
 
-            var validMoves = _board.CalculateValidMoves();
+        List<Move> validMoves = _board.CalculateValidMoves();
 
             if(validMoves.Count == 0)
             {
                 return _board.Evaluate(maximisingPlayer, depth);
             }
 
-            var evaluation = _board.Evaluate(maximisingPlayer, depth);
+        int evaluation = _board.Evaluate(maximisingPlayer, depth);
 
             if(evaluation != 0)
             {
                 return evaluation;
             }
 
-            var maxScore = int.MinValue;
+        int maxScore = int.MinValue;
 
-            foreach (var move in validMoves)
+            foreach (Move move in validMoves)
             {
                 _board.AddMove(move.Column, move.Row, piece);
 
-                var score = -Calculate(depth-1, !maximisingPlayer, SwapPieces(piece));
+            int score = -Calculate(depth-1, !maximisingPlayer, SwapPieces(piece));
 
                 _board.UndoMove(move.Column, move.Row);
 
@@ -241,7 +241,7 @@ using System.Runtime.CompilerServices;
         {
             Console.Error.WriteLine("======================");
 
-            foreach (var move in moves)
+            foreach (Move move in moves)
             {
                 Console.Error.WriteLine($"Move:{move.Column}, {move.Row}");
             }
@@ -251,7 +251,7 @@ using System.Runtime.CompilerServices;
         {
             Console.Error.WriteLine("======================");
 
-            foreach (var moveScore in moveScores)
+            foreach (Tuple<Move, int> moveScore in moveScores)
             {
                 Console.Error.WriteLine($"Move:{moveScore.Item1.Column}, {moveScore.Item1.Row} - {moveScore.Item2}");
             }
@@ -285,13 +285,13 @@ using System.Runtime.CompilerServices;
         {
             _previousActiveBoard = ActiveBoard;
 
-            var localColumn = column % 3;
-            var localRow = row % 3;
+        int localColumn = column % 3;
+        int localRow = row % 3;
 
             SubBoards[column / 3, row / 3].AddMove(localColumn, localRow, piece);
 
-            // update active board
-            var probablyNextActiveBoard = SubBoards[localColumn, localRow];
+        // update active board
+        TicTacToe probablyNextActiveBoard = SubBoards[localColumn, localRow];
 
             if (!probablyNextActiveBoard.IsGameOver())
             {
@@ -328,9 +328,9 @@ using System.Runtime.CompilerServices;
         
         private int AvailableSpacesOnBoard()
         {
-            var availableSpaces = Board.AvailableSpacesOnBoard();
+        int availableSpaces = Board.AvailableSpacesOnBoard();
 
-            foreach (var board in SubBoards)
+            foreach (TicTacToe board in SubBoards)
             {
                 availableSpaces += board.AvailableSpacesOnBoard();
             }
@@ -342,11 +342,11 @@ using System.Runtime.CompilerServices;
         {
             Board.ClearBoard();
             
-            for(var column = 0; column < 3; column++)
+            for(int column = 0; column < 3; column++)
             {
-                for(var row = 0; row < 3; row++)
+                for(int row = 0; row < 3; row++)
                 {
-                    var evaluation = SubBoards[column, row].EvaluateBoard();
+                int evaluation = SubBoards[column, row].EvaluateBoard();
 
                     if(evaluation > 0)
                     {
@@ -362,15 +362,15 @@ using System.Runtime.CompilerServices;
 
         public List<Move> CalculateValidMoves()
         {
-            var moves = new List<Move>();
+        List<Move> moves = new List<Move>();
 
             if (ActiveBoard.Column == -1)
             {
-                for (var column = 0; column < 3; column++)
+                for (int column = 0; column < 3; column++)
                 {
-                    for (var row = 0; row < 3; row++)
+                    for (int row = 0; row < 3; row++)
                     {
-                        var subBoard = SubBoards[column, row];
+                    TicTacToe subBoard = SubBoards[column, row];
 
                         if (!subBoard.IsGameOver())
                         {
@@ -389,9 +389,9 @@ using System.Runtime.CompilerServices;
 
         private static IEnumerable<Move> TranslateToGlobalMoves(List<Move> moves, Move activeBoard)
         {
-            var translatedMoves = new List<Move>();
+        List<Move> translatedMoves = new List<Move>();
 
-            foreach (var move in moves)
+            foreach (Move move in moves)
             {
                 translatedMoves.Add(TranslateToGlobalMove(move, activeBoard));
             }
@@ -406,9 +406,9 @@ using System.Runtime.CompilerServices;
 
         public int Evaluate(bool isX, int depth)
         {
-            var score = 0;
+        int score = 0;
 
-            foreach (var board in SubBoards)
+            foreach (TicTacToe board in SubBoards)
             {
                 score += board.Evaluate(isX, depth);
             }
@@ -419,9 +419,9 @@ using System.Runtime.CompilerServices;
         }
         public void PrintBoard()
         {
-            for (var i = 0; i < 3; i++)
+            for (int i = 0; i < 3; i++)
             {
-                for (var j = 0; j < 3; j++)
+                for (int j = 0; j < 3; j++)
                 {
                     Console.Error.WriteLine($"Board {i+j}");
                     SubBoards[j, i].PrintBoard();
@@ -438,17 +438,17 @@ using System.Runtime.CompilerServices;
     {
         static void Main(string[] args)
         {
-            var game = new Game();
+        Game game = new Game();
 
             string[] inputs;
-            var moveNum = 0;
+        int moveNum = 0;
 
             // game loop
             while (true)
             {
                 inputs = Console.ReadLine().Split(' ');
-                var opponentRow = int.Parse(inputs[0]);
-                var opponentCol = int.Parse(inputs[1]);
+            int opponentRow = int.Parse(inputs[0]);
+            int opponentCol = int.Parse(inputs[1]);
 
                 if(moveNum == 0)
                 {
@@ -469,23 +469,23 @@ using System.Runtime.CompilerServices;
                     moveNum++;
                 }
 
-                var validActionCount = int.Parse(Console.ReadLine());
+            int validActionCount = int.Parse(Console.ReadLine());
 
-                var validActions = new List<Move>();
+            List<Move> validActions = new List<Move>();
 
-                for (var i = 0; i < validActionCount; i++)
+                for (int i = 0; i < validActionCount; i++)
                 {
                     inputs = Console.ReadLine().Split(' ');
 
-                    var row = int.Parse(inputs[0]);
-                    var column = int.Parse(inputs[1]);
+                int row = int.Parse(inputs[0]);
+                int column = int.Parse(inputs[1]);
                     validActions.Add(new Move(column, row));
                 }
 
                 game.ValidActions = validActions;
 
-                // If we're first might as well pick a corner
-                var action = game.GetAction();
+            // If we're first might as well pick a corner
+            Move action = game.GetAction();
 
                 game.AddMove(action.Column, action.Row, game.PlayerPiece);
                 Console.WriteLine($"{action.Row} {action.Column}");
@@ -519,11 +519,11 @@ using System.Runtime.CompilerServices;
 
         public List<Move> CalculateValidMoves()
         {
-            var moves = new List<Move>();
+        List<Move> moves = new List<Move>();
 
-            for(var column = 0; column < _board.GetLength(0); column++)
+            for(int column = 0; column < _board.GetLength(0); column++)
             {
-                for(var row = 0; row < _board.GetLength(1); row++)
+                for(int row = 0; row < _board.GetLength(1); row++)
                 {
                     if(_board[column, row] == '\0')
                     {
@@ -567,9 +567,9 @@ using System.Runtime.CompilerServices;
 
         internal int EvaluateBoard(int currentDepth = 0)
         {
-            foreach (var line in _lines)
+            foreach (Move[] line in _lines)
             {
-                var playerWithLine = PlayerWithLine(line);
+            char playerWithLine = PlayerWithLine(line);
 
                 if(playerWithLine == 'O')
                 {
@@ -638,10 +638,10 @@ using System.Runtime.CompilerServices;
         // Returns my placed pieces - opponent placed pieces
         internal int GetNumberOfPiecesScore(char player)
         {
-            var playerPieces = 0;
-            var opponentPieces = 0;
+        int playerPieces = 0;
+        int opponentPieces = 0;
 
-            foreach (var cell in _board)
+            foreach (char cell in _board)
             {
                 if(cell  == player)
                 {
@@ -669,9 +669,9 @@ using System.Runtime.CompilerServices;
 
         public int AvailableSpacesOnBoard()
         {
-            var availableSpaces = 0;
+        int availableSpaces = 0;
 
-            foreach (var cell in _board)
+            foreach (char cell in _board)
             {
                 if(cell == '\0')
                 {
@@ -686,9 +686,9 @@ using System.Runtime.CompilerServices;
         {
             Console.Error.WriteLine("------");
 
-            for(var row = 0; row < _board.GetLength(1); row++)
+            for(int row = 0; row < _board.GetLength(1); row++)
             {
-                for(var column = 0; column < _board.GetLength(0); column++)
+                for(int column = 0; column < _board.GetLength(0); column++)
                 {
                     if(_board[column, row] == 'X')
                     {

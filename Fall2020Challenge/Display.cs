@@ -9,7 +9,7 @@ internal static class Display
     {
         Console.Error.WriteLine("Recipes");
 
-        foreach (var recipe in recipes)
+        foreach (Recipe recipe in recipes)
         {
             DisplayRecipe(recipe);
         }
@@ -33,7 +33,7 @@ internal static class Display
 
     private static void DisplaySpells(List<Spell> spells)
     {
-        foreach (var spell in spells)
+        foreach (Spell spell in spells)
         {
             Console.Error.WriteLine($"actionId: {spell.Id}");
             Console.Error.WriteLine($"Castable: {spell.Castable}");
@@ -44,7 +44,7 @@ internal static class Display
 
     private static void DisplayMoves(List<string> moves)
     {
-        foreach (var move in moves)
+        foreach (string move in moves)
         {
             Console.Error.WriteLine(move);
         }

@@ -10,15 +10,15 @@ internal sealed class MoveCalculator
 
     internal int GetBestMoveUsingAlphaBeta(ConnectFour connectFour, int depth, int startingPlayer)
     {
-        var moves = GetMoveScoresUsingAlphaBeta(connectFour, depth, startingPlayer).OrderByDescending(m => m.Item2).ToList();
-        
-        var max = moves.Max(m => m.Item2);
+        List<Tuple<int, int>> moves = GetMoveScoresUsingAlphaBeta(connectFour, depth, startingPlayer).OrderByDescending(m => m.Item2).ToList();
+
+        int max = moves.Max(m => m.Item2);
         
         PrintMoveScores(moves);
-        
-        var highest = moves.Where(m => m.Item2 == max).ToList();
 
-        var rand = new Random();
+        List<Tuple<int, int>> highest = moves.Where(m => m.Item2 == max).ToList();
+
+        Random rand = new Random();
         
         return highest[rand.Next(highest.Count)].Item1;
     
@@ -28,7 +28,7 @@ internal sealed class MoveCalculator
     {
         Console.Error.WriteLine($"---------------------------------------");
 
-        foreach (var move in moves)
+        foreach (Tuple<int, int> move in moves)
         {
             Console.Error.WriteLine($"Move:{move.Item1}, score:{move.Item2}");
         }
@@ -38,19 +38,19 @@ internal sealed class MoveCalculator
     {
         _connectFour = connectFour;
 
-        var moveScores = new List<Tuple<int, int>>();
+        List<Tuple<int, int>> moveScores = new List<Tuple<int, int>>();
 
-        var validMoves = _connectFour.CalculateValidMoves();
+        List<int> validMoves = _connectFour.CalculateValidMoves();
 
-        foreach (var validAction in validMoves)
+        foreach (int validAction in validMoves)
         {
-            var is0 = player == 0;
+            bool is0 = player == 0;
             
             //var board = _connectFour.DisplayBoard();
 
             _connectFour.AddMove(validAction, player);
 
-            var score = -Calculate(int.MinValue+1, int.MaxValue, depth-1, !is0, SwapPieces(player));
+            int score = -Calculate(int.MinValue+1, int.MaxValue, depth-1, !is0, SwapPieces(player));
 
             moveScores.Add(new Tuple<int, int>(validAction, score));
 
@@ -67,7 +67,7 @@ internal sealed class MoveCalculator
             return _connectFour.Evaluate(is0, depth);
         }
 
-        var validMoves = _connectFour.CalculateValidMoves();
+        List<int> validMoves = _connectFour.CalculateValidMoves();
 
         if(validMoves.Count == 0
            || _connectFour.IsGameOver())
@@ -75,9 +75,9 @@ internal sealed class MoveCalculator
             return _connectFour.Evaluate(is0, depth);
         }
 
-        var score = int.MinValue;
+        int score = int.MinValue;
 
-        foreach (var move in validMoves)
+        foreach (int move in validMoves)
         {
             //var board = _connectFour.DisplayBoard();
             _connectFour.AddMove(move, piece);

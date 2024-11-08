@@ -23,21 +23,21 @@ public class ActionManager
 
     internal string[] GetBestActions()
     {
-        var actions = new string[3];
+        string[] actions = new string[3];
 
         PerformManaChecks();
 
-        var playerOffset = _player1 ? 0 : 3;
+        int playerOffset = _player1 ? 0 : 3;
 
-        var idOfEntityBeingControlled = -1;
-
-
+        int idOfEntityBeingControlled = -1;
 
 
 
-        for (var i = 0; i < 3; i++)
+
+
+        for (int i = 0; i < 3; i++)
         {
-            var bestAction = _possibleActions.Where(a => a.HeroId == i + playerOffset)
+            PossibleAction? bestAction = _possibleActions.Where(a => a.HeroId == i + playerOffset)
                                              .OrderByDescending(a => a.Priority)
                                              .FirstOrDefault();
 
@@ -76,16 +76,16 @@ public class ActionManager
 
     private void PerformManaChecks()
     {
-        var manaLeft = _mana;
+        int manaLeft = _mana;
 
-        var allHeroActions = new List<PossibleAction>[3];
+        List<PossibleAction>[] allHeroActions = new List<PossibleAction>[3];
 
         // Split actions into different heroes
-        var playerOffset = _player1 ? 0 : 3;
+        int playerOffset = _player1 ? 0 : 3;
 
         Debugger.DisplayPossibleAction(_possibleActions, playerOffset);
 
-        for (var i = 0; i < 3; i++)
+        for (int i = 0; i < 3; i++)
         {
             allHeroActions[i] = _possibleActions.Where(a => a.HeroId == i + playerOffset)
                                                 .OrderByDescending(a => a.Priority)
@@ -93,7 +93,7 @@ public class ActionManager
         }
 
         // Work out how many spells we have to get rid of
-        var possibleSpellCount = 3;
+        int possibleSpellCount = 3;
 
         if (manaLeft < 10)
         {
@@ -110,17 +110,17 @@ public class ActionManager
 
         if (possibleSpellCount != 3)
         {
-            var numberOfSpellsAsFirstChoice = 0;
+            int numberOfSpellsAsFirstChoice = 0;
 
-            var currentMax = new int[3];
-            var nonSpellMax = new int[3];
-            var canRemoveSpell = new bool[3];
+            int[] currentMax = new int[3];
+            int[] nonSpellMax = new int[3];
+            bool[] canRemoveSpell = new bool[3];
 
-            for (var i = 0; i < 3; i++)
+            for (int i = 0; i < 3; i++)
             {
-                var allPossibleActions = allHeroActions[i];
+                List<PossibleAction> allPossibleActions = allHeroActions[i];
 
-                var highestPriorityAction = allPossibleActions.First();
+                PossibleAction highestPriorityAction = allPossibleActions.First();
 
                 currentMax[i] = highestPriorityAction.Priority;
                 canRemoveSpell[i] = highestPriorityAction.ActionType != ActionType.Move;
@@ -142,12 +142,12 @@ public class ActionManager
 
             while (numberOfSpellsAsFirstChoice > possibleSpellCount)
             {
-                var highestIndex = 0;
-                var highestValue = int.MinValue;
+                int highestIndex = 0;
+                int highestValue = int.MinValue;
 
                 if (canRemoveSpell[0])
                 {
-                    var total = nonSpellMax[0] + currentMax[1] + currentMax[2];
+                    int total = nonSpellMax[0] + currentMax[1] + currentMax[2];
 
                     if (total > highestValue)
                     {
@@ -158,7 +158,7 @@ public class ActionManager
 
                 if (canRemoveSpell[1])
                 {
-                    var total =  currentMax[0] + nonSpellMax[1] + currentMax[2];
+                    int total =  currentMax[0] + nonSpellMax[1] + currentMax[2];
 
                     if (total > highestValue)
                     {
@@ -169,7 +169,7 @@ public class ActionManager
 
                 if (canRemoveSpell[2])
                 {
-                    var total =  currentMax[0] + currentMax[1] + nonSpellMax[2];
+                    int total =  currentMax[0] + currentMax[1] + nonSpellMax[2];
 
                     if (total > highestValue)
                     {
@@ -193,7 +193,7 @@ public class ActionManager
 
     private static string GetActionString(PossibleAction? bestAction)
     {
-        var stringBuilder = new StringBuilder();
+        StringBuilder stringBuilder = new StringBuilder();
 
         stringBuilder.Append($"{GetActionType(bestAction.ActionType)} ");
 

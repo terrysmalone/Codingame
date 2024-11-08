@@ -13,25 +13,25 @@ internal sealed class Program
         {
             return;
         }
-            
-        var destinationFile = $"{args[0]}/Combined.cs";
+
+        string destinationFile = $"{args[0]}/Combined.cs";
             
         if (File.Exists(destinationFile))
         {
             File.Delete(destinationFile);
         }
 
-        var filesToParse = GetSourceFileNames(args[0]).ToList();
+        List<string> filesToParse = GetSourceFileNames(args[0]).ToList();
 
-        var usings = new List<string>();
-        var classes = new List<string>();
+        List<string> usings = new List<string>();
+        List<string> classes = new List<string>();
 
-        foreach (var fileToParse in filesToParse)
+        foreach (string fileToParse in filesToParse)
         {
             if (Path.GetFileName(fileToParse) == "AssemblyInfo.cs")
                 continue;
 
-            var (fileUsings, fileContents) = GetClassContents(fileToParse);
+            (List<string> fileUsings, string fileContents) = GetClassContents(fileToParse);
                 
             usings.AddRange(fileUsings);
             classes.Add(fileContents);
@@ -44,29 +44,29 @@ internal sealed class Program
         
     private static IEnumerable<string> GetSourceFileNames(string solutionFilePath)
     {
-        var files = Directory.GetFiles(solutionFilePath, "*.cs", SearchOption.AllDirectories);
+        string[] files = Directory.GetFiles(solutionFilePath, "*.cs", SearchOption.AllDirectories);
 
         return files.Where(f => !f.Contains("\\obj\\")); // Exclude anything in obj
     }
 
     private static string GetNameSpace(string file)
     {
-        var text = File.ReadAllText(file);
+        string text = File.ReadAllText(file);
 
-        var startLocation = text.IndexOf("namespace", StringComparison.Ordinal) + 10;
+        int startLocation = text.IndexOf("namespace", StringComparison.Ordinal) + 10;
 
-        var endLocation = text.IndexOf("\r\n", startLocation, StringComparison.Ordinal);
+        int endLocation = text.IndexOf("\r\n", startLocation, StringComparison.Ordinal);
 
         return text.Substring(startLocation, endLocation-startLocation);
     }
 
     private static (List<string> usings, string content) GetClassContents(string fileToParse)
     {
-        var usings = new List<string>();
+        List<string> usings = new List<string>();
 
-        var text = File.ReadAllText(fileToParse);
+        string text = File.ReadAllText(fileToParse);
 
-        var blockIndex = text.IndexOf("class");
+        int blockIndex = text.IndexOf("class");
         if (blockIndex == -1)
         {
             blockIndex = text.IndexOf("enum");
@@ -76,24 +76,24 @@ internal sealed class Program
             blockIndex = text.IndexOf("struct");
         }
 
-        var blockStart = text.Substring(0, blockIndex).LastIndexOf("\n");
+        int blockStart = text.Substring(0, blockIndex).LastIndexOf("\n");
 
-        var blockContent = text.Substring(blockStart + 1);
+        string blockContent = text.Substring(blockStart + 1);
 
         // Get usings
-        var index = 0;
-        var usingsFinished = false;
+        int index = 0;
+        bool usingsFinished = false;
 
         while (!usingsFinished)
         {
-            var usingStartIndex = text.Substring(0, blockStart).IndexOf("using", index, StringComparison.Ordinal);
+            int usingStartIndex = text.Substring(0, blockStart).IndexOf("using", index, StringComparison.Ordinal);
 
             if (usingStartIndex == -1)
             {
                 usingsFinished = true;
                 continue;
             }
-            var usingEndIndex = text.IndexOf(";", usingStartIndex, StringComparison.Ordinal);
+            int usingEndIndex = text.IndexOf(";", usingStartIndex, StringComparison.Ordinal);
             index = usingEndIndex;
 
             usings.Add(text.Substring(usingStartIndex, usingEndIndex - usingStartIndex + 1));
@@ -106,7 +106,7 @@ internal sealed class Program
     {
         File.Create(destinationFile).Close();
 
-        using var textWriter = new StreamWriter(destinationFile);
+        using StreamWriter textWriter = new StreamWriter(destinationFile);
             
         // Add comments
         textWriter.WriteLine("/**************************************************************");
@@ -116,14 +116,14 @@ internal sealed class Program
         textWriter.WriteLine();
 
         // Add usings
-        foreach (var classUsing in usings)
+        foreach (string classUsing in usings)
         {
             textWriter.WriteLine(classUsing);
         }
 
         textWriter.WriteLine();
 
-        foreach (var projectClass in classes)
+        foreach (string projectClass in classes)
         {
             textWriter.Write(projectClass);
             textWriter.WriteLine();

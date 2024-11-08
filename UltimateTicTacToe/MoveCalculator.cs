@@ -10,13 +10,13 @@ namespace UltimateTicTacToe
 
         internal Move GetBestMoveUsingAlphaBeta(ITicTacToe ticTacToeBoard, int depth, char startingPlayer)
         {
-            var moves = GetMoveScoresUsingAlphaBeta(ticTacToeBoard, depth, startingPlayer).OrderByDescending(m => m.Item2).ToList();
-            
-            var max = moves.Max(m => m.Item2);
-            
-            var highest = moves.Where(m => m.Item2 == max).ToList();
-            
-            var rand = new Random();
+            List<Tuple<Move, int>> moves = GetMoveScoresUsingAlphaBeta(ticTacToeBoard, depth, startingPlayer).OrderByDescending(m => m.Item2).ToList();
+
+            int max = moves.Max(m => m.Item2);
+
+            List<Tuple<Move, int>> highest = moves.Where(m => m.Item2 == max).ToList();
+
+            Random rand = new Random();
             
             return highest[rand.Next(highest.Count)].Item1;
         
@@ -27,17 +27,17 @@ namespace UltimateTicTacToe
         {
             _board = ticTacToeBoard;
 
-            var moveScores = new List<Tuple<Move, int>>();
+            List<Tuple<Move, int>> moveScores = new List<Tuple<Move, int>>();
 
-            var validMoves = _board.CalculateValidMoves();
+            List<Move> validMoves = _board.CalculateValidMoves();
 
-            foreach (var validAction in validMoves)
+            foreach (Move validAction in validMoves)
             {
-                var isX = player == 'X';
+                bool isX = player == 'X';
 
                 _board.AddMove(validAction.Column, validAction.Row, player);
 
-                var score = -Calculate(int.MinValue+1, int.MaxValue, depth-1, !isX, SwapPieces(player));
+                int score = -Calculate(int.MinValue+1, int.MaxValue, depth-1, !isX, SwapPieces(player));
 
                 moveScores.Add(new Tuple<Move, int>(new Move(validAction.Column, validAction.Row), score));
 
@@ -56,7 +56,7 @@ namespace UltimateTicTacToe
                 return _board.Evaluate(isX, depth);
             }
 
-            var validMoves = _board.CalculateValidMoves();
+            List<Move> validMoves = _board.CalculateValidMoves();
 
             if(validMoves.Count == 0
                || _board.IsGameOver())
@@ -64,9 +64,9 @@ namespace UltimateTicTacToe
                 return _board.Evaluate(isX, depth);
             }
 
-            var score = int.MinValue;
+            int score = int.MinValue;
 
-            foreach (var move in validMoves)
+            foreach (Move move in validMoves)
             {
                 _board.AddMove(move.Column, move.Row, piece);
                 score = Math.Max(score, -Calculate(-beta, -alpha,depth-1, !isX, SwapPieces(piece)));
@@ -94,17 +94,17 @@ namespace UltimateTicTacToe
         {
             _board = ticTacToeBoard;
 
-            var moveScores = new List<Tuple<Move, int>>();
+            List<Tuple<Move, int>> moveScores = new List<Tuple<Move, int>>();
 
-            var validMoves = _board.CalculateValidMoves();
+            List<Move> validMoves = _board.CalculateValidMoves();
 
-            foreach (var validAction in validMoves)
+            foreach (Move validAction in validMoves)
             {
-                var maximisingPlayer = player == 'X';
+                bool maximisingPlayer = player == 'X';
 
                 _board.AddMove(validAction.Column, validAction.Row, player);
 
-                var score = -Calculate(depth-1, !maximisingPlayer, SwapPieces(player));
+                int score = -Calculate(depth-1, !maximisingPlayer, SwapPieces(player));
 
                 moveScores.Add(new Tuple<Move, int>(new Move(validAction.Column, validAction.Row), score));
 
@@ -121,27 +121,27 @@ namespace UltimateTicTacToe
                 return _board.Evaluate(maximisingPlayer, depth);
             }
 
-            var validMoves = _board.CalculateValidMoves();
+            List<Move> validMoves = _board.CalculateValidMoves();
 
             if(validMoves.Count == 0)
             {
                 return _board.Evaluate(maximisingPlayer, depth);
             }
 
-            var evaluation = _board.Evaluate(maximisingPlayer, depth);
+            int evaluation = _board.Evaluate(maximisingPlayer, depth);
 
             if(evaluation != 0)
             {
                 return evaluation;
             }
 
-            var maxScore = int.MinValue;
+            int maxScore = int.MinValue;
 
-            foreach (var move in validMoves)
+            foreach (Move move in validMoves)
             {
                 _board.AddMove(move.Column, move.Row, piece);
 
-                var score = -Calculate(depth-1, !maximisingPlayer, SwapPieces(piece));
+                int score = -Calculate(depth-1, !maximisingPlayer, SwapPieces(piece));
 
                 _board.UndoMove(move.Column, move.Row);
 
@@ -163,7 +163,7 @@ namespace UltimateTicTacToe
         {
             Console.Error.WriteLine("======================");
 
-            foreach (var move in moves)
+            foreach (Move move in moves)
             {
                 Console.Error.WriteLine($"Move:{move.Column}, {move.Row}");
             }
@@ -173,7 +173,7 @@ namespace UltimateTicTacToe
         {
             Console.Error.WriteLine("======================");
 
-            foreach (var moveScore in moveScores)
+            foreach (Tuple<Move, int> moveScore in moveScores)
             {
                 Console.Error.WriteLine($"Move:{moveScore.Item1.Column}, {moveScore.Item1.Row} - {moveScore.Item2}");
             }

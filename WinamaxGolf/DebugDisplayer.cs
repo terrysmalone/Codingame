@@ -9,15 +9,15 @@ namespace WinamaxGolf
     {
         internal static void DisplayCourse(Course course)
         {
-            var display = string.Empty;
+            string display = string.Empty;
 
-            var courseContents = course.Contents;
+            CourseContent[,] courseContents = course.Contents;
 
-            for (var y = 0; y < courseContents.GetLength(1); y++)
+            for (int y = 0; y < courseContents.GetLength(1); y++)
             {
-                for (var x = 0; x < courseContents.GetLength(0); x++)
+                for (int x = 0; x < courseContents.GetLength(0); x++)
                 {
-                    var character = courseContents[x,y] switch
+                    char character = courseContents[x,y] switch
                     {
                         CourseContent.Empty => '.',
                         CourseContent.Water => 'X',
@@ -38,11 +38,11 @@ namespace WinamaxGolf
 
         internal static void DisplayCourseText(char[,] course)
         {
-            var display = string.Empty;
+            string display = string.Empty;
 
-            for (var y = 0; y < course.GetLength(1); y++)
+            for (int y = 0; y < course.GetLength(1); y++)
             {
-                for (var x = 0; x < course.GetLength(0); x++)
+                for (int x = 0; x < course.GetLength(0); x++)
                 {
                     display += course[x,y];
                 }
@@ -55,36 +55,36 @@ namespace WinamaxGolf
 
         internal static void DisplayMoves(int width, int height, List<(Point, Point)> moves)
         {
-            var board = new string[width, height];
+            string[,] board = new string[width, height];
 
-            for (var y = 0; y < board.GetLength(1); y++)
+            for (int y = 0; y < board.GetLength(1); y++)
             {
-                for (var x = 0; x < board.GetLength(0); x++)
+                for (int x = 0; x < board.GetLength(0); x++)
                 {
                     board[x, y] = "  ";
                 }
             }
 
-            for (var i = 0; i < moves.Count; i++)
+            for (int i = 0; i < moves.Count; i++)
             {
-                var move = moves[i];
+                (Point, Point) move = moves[i];
                 board[move.Item1.X, move.Item1.Y] = i + "a";
                 board[move.Item2.X, move.Item2.Y] = i + "b";
             }
 
-            var display = string.Empty;
+            string display = string.Empty;
 
-            for (var i = 0; i < width; i++)
+            for (int i = 0; i < width; i++)
             {
                 display += "---";
             }
 
             display += "\n";
 
-            for (var y = 0; y < board.GetLength(1); y++)
+            for (int y = 0; y < board.GetLength(1); y++)
             {
                 display += "|";
-                for (var x = 0; x < board.GetLength(0); x++)
+                for (int x = 0; x < board.GetLength(0); x++)
                 {
                     display += board[x,y];
                     display += "|";
@@ -93,7 +93,7 @@ namespace WinamaxGolf
                 display += "\n";
             }
 
-            for (var i = 0; i < width; i++)
+            for (int i = 0; i < width; i++)
             {
                 display += "---";
             }
@@ -102,35 +102,35 @@ namespace WinamaxGolf
         }
         public static void DisplayBallLocations(int width, int height, List<Ball> balls)
         {
-        var board = new char[width, height];
+            char[,] board = new char[width, height];
 
-            for (var y = 0; y < board.GetLength(1); y++)
+            for (int y = 0; y < board.GetLength(1); y++)
             {
-                for (var x = 0; x < board.GetLength(0); x++)
+                for (int x = 0; x < board.GetLength(0); x++)
                 {
                     board[x, y] = ' ';
                 }
             }
 
-            foreach (var ball in balls)
+            foreach (Ball ball in balls)
             {
                 board[ball.Position.X, ball.Position.Y] = (char)('0' + ball.NumberOfHits);
                 Console.Error.WriteLine($"{ball.Position.X},{ball.Position.Y}, {ball.NumberOfHits}");
             }
 
-            var display = string.Empty;
+            string display = string.Empty;
 
-            for (var i = 0; i < width; i++)
+            for (int i = 0; i < width; i++)
             {
                 display += "---";
             }
 
             display += "\n";
 
-            for (var y = 0; y < board.GetLength(1); y++)
+            for (int y = 0; y < board.GetLength(1); y++)
             {
                 display += "|";
-                for (var x = 0; x < board.GetLength(0); x++)
+                for (int x = 0; x < board.GetLength(0); x++)
                 {
                     display += board[x,y];
                     display += "|";
@@ -139,7 +139,7 @@ namespace WinamaxGolf
                 display += "\n";
             }
 
-            for (var i = 0; i < width; i++)
+            for (int i = 0; i < width; i++)
             {
                 display += "---";
             }
@@ -151,7 +151,7 @@ namespace WinamaxGolf
         {
             Console.Error.Write("MoveIndexes: ");
 
-            foreach (var moveIndex in moveIndexes)
+            foreach (int moveIndex in moveIndexes)
             {
                 Console.Error.Write(moveIndex + " ");
             }

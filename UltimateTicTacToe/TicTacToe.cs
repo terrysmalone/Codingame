@@ -9,11 +9,11 @@ namespace UltimateTicTacToe
 
         public List<Move> CalculateValidMoves()
         {
-            var moves = new List<Move>();
+            List<Move> moves = new List<Move>();
 
-            for(var column = 0; column < _board.GetLength(0); column++)
+            for(int column = 0; column < _board.GetLength(0); column++)
             {
-                for(var row = 0; row < _board.GetLength(1); row++)
+                for(int row = 0; row < _board.GetLength(1); row++)
                 {
                     if(_board[column, row] == '\0')
                     {
@@ -57,9 +57,9 @@ namespace UltimateTicTacToe
 
         internal int EvaluateBoard(int currentDepth = 0)
         {
-            foreach (var line in _lines)
+            foreach (Move[] line in _lines)
             {
-                var playerWithLine = PlayerWithLine(line);
+                char playerWithLine = PlayerWithLine(line);
 
                 if(playerWithLine == 'O')
                 {
@@ -128,10 +128,10 @@ namespace UltimateTicTacToe
         // Returns my placed pieces - opponent placed pieces
         internal int GetNumberOfPiecesScore(char player)
         {
-            var playerPieces = 0;
-            var opponentPieces = 0;
+            int playerPieces = 0;
+            int opponentPieces = 0;
 
-            foreach (var cell in _board)
+            foreach (char cell in _board)
             {
                 if(cell  == player)
                 {
@@ -159,9 +159,9 @@ namespace UltimateTicTacToe
 
         public int AvailableSpacesOnBoard()
         {
-            var availableSpaces = 0;
+            int availableSpaces = 0;
 
-            foreach (var cell in _board)
+            foreach (char cell in _board)
             {
                 if(cell == '\0')
                 {
@@ -176,9 +176,9 @@ namespace UltimateTicTacToe
         {
             Console.Error.WriteLine("------");
 
-            for(var row = 0; row < _board.GetLength(1); row++)
+            for(int row = 0; row < _board.GetLength(1); row++)
             {
-                for(var column = 0; column < _board.GetLength(0); column++)
+                for(int column = 0; column < _board.GetLength(0); column++)
                 {
                     if(_board[column, row] == 'X')
                     {

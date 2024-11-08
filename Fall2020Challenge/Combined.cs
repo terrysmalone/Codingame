@@ -18,7 +18,7 @@ internal static class Display
     {
         Console.Error.WriteLine("Recipes");
 
-        foreach (var recipe in recipes)
+        foreach (Recipe recipe in recipes)
         {
             DisplayRecipe(recipe);
         }
@@ -42,7 +42,7 @@ internal static class Display
 
     private static void DisplaySpells(List<Spell> spells)
     {
-        foreach (var spell in spells)
+        foreach (Spell spell in spells)
         {
             Console.Error.WriteLine($"actionId: {spell.Id}");
             Console.Error.WriteLine($"Castable: {spell.Castable}");
@@ -53,7 +53,7 @@ internal static class Display
 
     private static void DisplayMoves(List<string> moves)
     {
-        foreach (var move in moves)
+        foreach (string move in moves)
         {
             Console.Error.WriteLine(move);
         }
@@ -105,12 +105,12 @@ internal sealed class Game
 
             currentRecipe = -1;
 
-            var paths = new List<string>[Recipes.Count];
+            List<string>[] paths = new List<string>[Recipes.Count];
 
             // Go through each recipe, starting with the best scoring one
             for (int i = 0; i < Recipes.Count; i++)
             {
-                var currentRecipe = Recipes[i];
+                Recipe currentRecipe = Recipes[i];
 
                 // If it can be brewed then brew it
                 if (CanRecipeBeBrewed(currentRecipe))
@@ -121,9 +121,9 @@ internal sealed class Game
             }
 
             // Lets try going for quickest first
-            var quickestPath = new List<string>();
-            var quickest = int.MaxValue;
-            var quickestRecipe = 0;
+            List<string> quickestPath = new List<string>();
+            int quickest = int.MaxValue;
+            int quickestRecipe = 0;
 
             for (int i = 0; i < paths.Length; i++)
             {
@@ -143,7 +143,7 @@ internal sealed class Game
             }
         }
 
-        var action = string.Empty;
+        string action = string.Empty;
 
         if (currentRecipe != -1)
         {
@@ -201,9 +201,9 @@ internal sealed class Game
 
     private static bool CanSpellBeCast(int[] spellIngredientsChange, int[] inventoryIngredients)
     {
-        var total = GetTotal(spellIngredientsChange, inventoryIngredients);
+        int total = GetTotal(spellIngredientsChange, inventoryIngredients);
 
-        var haveIngredients = AreNeededIngredientsPresent(spellIngredientsChange, inventoryIngredients);
+        bool haveIngredients = AreNeededIngredientsPresent(spellIngredientsChange, inventoryIngredients);
         
 
         if (total > 10 || !haveIngredients)
@@ -217,7 +217,7 @@ internal sealed class Game
 
     private static int GetTotal(int[] spellIngredientsChange, int[] inventoryIngredients)
     {
-        var total = 0;
+        int total = 0;
 
         for (int i = 0; i < 4; i++)
         {
@@ -240,12 +240,12 @@ internal sealed class Game
 
     private List<string> FindShortestPath(int[] currentIngredients, int[] neededIngredients, List<Spell> availableSpells)
     {
-        var moves = new List<string>();
+        List<string> moves = new List<string>();
 
         for (int i = 0; i <= maxDepth; i++)
         {
             moves.Clear();
-            var turns = MiniMax(currentIngredients, neededIngredients, availableSpells, 0, moves, i);
+            int turns = MiniMax(currentIngredients, neededIngredients, availableSpells, 0, moves, i);
 
             if (turns != int.MaxValue)
             {
@@ -277,13 +277,13 @@ internal sealed class Game
         // Get all possible actions
         for (int i = 0; i <= availableSpells.Count(); i++)
         {
-            var currentMove = string.Empty;
-            var changedIngredients = currentIngredients.ToArray();
+            string currentMove = string.Empty;
+            int[] changedIngredients = currentIngredients.ToArray();
 
-            var copiedSpells = new Spell[availableSpells.Count];
+            Spell[] copiedSpells = new Spell[availableSpells.Count];
 
             availableSpells.CopyTo(copiedSpells);
-            var changedSpells = copiedSpells.ToList();
+            List<Spell> changedSpells = copiedSpells.ToList();
 
             if (i == changedSpells.Count())
             {
@@ -291,7 +291,7 @@ internal sealed class Game
                 {
                     for (int k = 0; k < changedSpells.Count(); k++)
                     {
-                        var spellToChange = changedSpells[k];
+                        Spell spellToChange = changedSpells[k];
 
                         spellToChange.Castable = true;
 
@@ -312,7 +312,7 @@ internal sealed class Game
                 // do the changes from casting the spell
                 if (changedSpells[i].Castable == true && CanSpellBeCast(changedSpells[i].IngredientsChange, changedIngredients))
                 {
-                    var currentSpell = changedSpells[i];
+                    Spell currentSpell = changedSpells[i];
                     currentSpell.Castable = false;
 
                     changedSpells.RemoveAt(i);
@@ -371,7 +371,7 @@ internal sealed class Player
 {
     static void Main(string[] args)
     {
-        var game = new Game();
+        Game game = new Game();
         
         // game loop
         while (true)
@@ -380,11 +380,11 @@ internal sealed class Player
 
             game.SetPlayerInventory(GetInventoryItems());
             game.SetOpponentInventory(GetInventoryItems());
-            
+
             //DisplayInventory(game.PlayerInventory, true);
             //DisplayInventory(game.OpponentInventory, false);
 
-            var action = game.GetAction();
+            string action = game.GetAction();
             Console.WriteLine(action);
 
             // Write an action using Console.WriteLine()
@@ -396,17 +396,17 @@ internal sealed class Player
     }
 
     private static void ParseActions(Game game)
-    {        
-        var actionCount = int.Parse(Console.ReadLine()); // the number of spells and recipes in play
-        
-        var recipes = new List<Recipe>();
-        var spells = new List<Spell>();
+    {
+        int actionCount = int.Parse(Console.ReadLine()); // the number of spells and recipes in play
+
+        List<Recipe> recipes = new List<Recipe>();
+        List<Spell> spells = new List<Spell>();
         
 
-        for (var i = 0; i < actionCount; i++)
-        {               
-            var input = Console.ReadLine();
-            var inputs = input.Split(' ');
+        for (int i = 0; i < actionCount; i++)
+        {
+            string input = Console.ReadLine();
+            string[] inputs = input.Split(' ');
             
             if(inputs[1] == "BREW")
             {
@@ -434,10 +434,10 @@ internal sealed class Player
     
     private static Inventory GetInventoryItems()
     {
-        var input = Console.ReadLine();
-        var inputs = input.Split(' ');
-        
-        var inventory = new Inventory(new int[] {Math.Abs(int.Parse(inputs[0])),
+        string input = Console.ReadLine();
+        string[] inputs = input.Split(' ');
+
+        Inventory inventory = new Inventory(new int[] {Math.Abs(int.Parse(inputs[0])),
                                       Math.Abs(int.Parse(inputs[1])),
                                       Math.Abs(int.Parse(inputs[2])),
                                       Math.Abs(int.Parse(inputs[3]))},

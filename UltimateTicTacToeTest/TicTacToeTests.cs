@@ -12,7 +12,7 @@ namespace UltimateTicTacToeTest
         [Test]
         public void GetNumberOfPiecesScore_EmptyBoard()
         {
-            var ticTacToe = new TicTacToe();
+            TicTacToe ticTacToe = new TicTacToe();
 
             Assert.That(ticTacToe.GetNumberOfPiecesScore('X'), Is.EqualTo(0));
             Assert.That(ticTacToe.GetNumberOfPiecesScore('O'), Is.EqualTo(0));
@@ -24,7 +24,7 @@ namespace UltimateTicTacToeTest
             // |O| |O|
             // | | |X|
             // | | |X|
-            var ticTacToe = new TicTacToe();
+            TicTacToe ticTacToe = new TicTacToe();
             ticTacToe.SetBoard(SetBoard("O-O--X--X"));
             
             Assert.That(ticTacToe.GetNumberOfPiecesScore('X'), Is.EqualTo(0));
@@ -41,7 +41,7 @@ namespace UltimateTicTacToeTest
             // |X|O|X|
             // | | |O|
             // | | |O|
-            var ticTacToe = new TicTacToe();
+            TicTacToe ticTacToe = new TicTacToe();
             ticTacToe.SetBoard(SetBoard("XOX--O--O"));
             
             Assert.That(ticTacToe.GetNumberOfPiecesScore('X'), Is.EqualTo(-1));
@@ -54,7 +54,7 @@ namespace UltimateTicTacToeTest
             // | |X| |
             // | | |X|
             // |O|O|X|
-            var ticTacToe = new TicTacToe();
+            TicTacToe ticTacToe = new TicTacToe();
             ticTacToe.SetBoard(SetBoard("-X---XOOX"));
             
             Assert.That(ticTacToe.GetNumberOfPiecesScore('X'), Is.EqualTo(1));
@@ -67,7 +67,7 @@ namespace UltimateTicTacToeTest
             // | |X| |
             // | | |X|
             // |O|O|O|
-            var ticTacToe = new TicTacToe();
+            TicTacToe ticTacToe = new TicTacToe();
             ticTacToe.SetBoard(SetBoard("-X---XOOO"));
             
             Assert.That(ticTacToe.IsGameOver());
@@ -79,7 +79,7 @@ namespace UltimateTicTacToeTest
             // |X| | |
             // | |X| |
             // |O|O|X|
-            var ticTacToe = new TicTacToe();
+            TicTacToe ticTacToe = new TicTacToe();
             ticTacToe.SetBoard(SetBoard("X---X-OOX"));
             
             Assert.That(ticTacToe.IsGameOver());
@@ -95,7 +95,7 @@ namespace UltimateTicTacToeTest
         [TestCase("--X-X-X--")]
         public void IsGameOver_CheckAllLines(string boardPieces)
         {
-            var ticTacToe = new TicTacToe();
+            TicTacToe ticTacToe = new TicTacToe();
             ticTacToe.SetBoard(SetBoard(boardPieces));
             
             Assert.That(ticTacToe.IsGameOver());
@@ -107,7 +107,7 @@ namespace UltimateTicTacToeTest
             // |X|X|O|
             // |X|O|O|
             // |X|O|X|
-            var ticTacToe = new TicTacToe();
+            TicTacToe ticTacToe = new TicTacToe();
             ticTacToe.SetBoard(SetBoard("XXOXOOXOX"));
             
             Assert.That(ticTacToe.IsGameOver());
@@ -119,7 +119,7 @@ namespace UltimateTicTacToeTest
             // |X|O|O|
             // |O|X|X|
             // |X|O|O|
-            var ticTacToe = new TicTacToe();
+            TicTacToe ticTacToe = new TicTacToe();
             ticTacToe.SetBoard(SetBoard("XOOOXXXOO"));
             
             Assert.That(ticTacToe.IsGameOver());
@@ -128,9 +128,9 @@ namespace UltimateTicTacToeTest
         [Test]
         public void IsGameOver_FalseIfEmpty()
         {
-            var  board = new char[3,3];
-            
-            var ticTacToe = new TicTacToe();
+            char[,] board = new char[3,3];
+
+            TicTacToe ticTacToe = new TicTacToe();
             ticTacToe.SetBoard(board);
             
             Assert.That(ticTacToe.IsGameOver(), Is.False);
@@ -142,7 +142,7 @@ namespace UltimateTicTacToeTest
             // | | |O|
             // | | | |
             // |X|X| |
-            var ticTacToe = new TicTacToe();
+            TicTacToe ticTacToe = new TicTacToe();
             ticTacToe.SetBoard(SetBoard("--O---XX-"));
             
             Assert.That(ticTacToe.IsGameOver(), Is.False);
@@ -151,11 +151,11 @@ namespace UltimateTicTacToeTest
         [Test]
         public void TestCalculateValidMovesOnEmptyBoard()
         {
-            var ticTacToe = new TicTacToe();
-            
-            var moves = ticTacToe.CalculateValidMoves();
-            
-            var expectedMoves = new List<Move>
+            TicTacToe ticTacToe = new TicTacToe();
+
+            List<Move> moves = ticTacToe.CalculateValidMoves();
+
+            List<Move> expectedMoves = new List<Move>
             {
                 new(0, 0),
                 new(0, 1),
@@ -174,12 +174,12 @@ namespace UltimateTicTacToeTest
         [Test]
         public void TestAddMoveO()
         {
-            var ticTacToe = new TicTacToe();
+            TicTacToe ticTacToe = new TicTacToe();
             
             ticTacToe.AddMove(0, 2, 'O');
-            
-            var board = ticTacToe.GetBoard();
-            var expectedBoard = SetBoard("------O--");
+
+            char[,] board = ticTacToe.GetBoard();
+            char[,] expectedBoard = SetBoard("------O--");
 
 
             CollectionAssert.AreEqual(expectedBoard, board);
@@ -188,12 +188,12 @@ namespace UltimateTicTacToeTest
         [Test]
         public void TestAddMoveX()
         {
-            var ticTacToe = new TicTacToe();
+            TicTacToe ticTacToe = new TicTacToe();
             
             ticTacToe.AddMove(1, 1, 'X');
-            
-            var board = ticTacToe.GetBoard();
-            var expectedBoard = SetBoard("----X----");
+
+            char[,] board = ticTacToe.GetBoard();
+            char[,] expectedBoard = SetBoard("----X----");
 
             CollectionAssert.AreEqual(expectedBoard, board);
         }
@@ -201,7 +201,7 @@ namespace UltimateTicTacToeTest
         [Test]
         public void TestAddMoveFull()
         {
-            var ticTacToe = new TicTacToe();
+            TicTacToe ticTacToe = new TicTacToe();
             
             ticTacToe.AddMove(0, 0, 'O');
             ticTacToe.AddMove(0, 1, 'X');
@@ -212,9 +212,9 @@ namespace UltimateTicTacToeTest
             ticTacToe.AddMove(2, 0, 'O');
             ticTacToe.AddMove(2, 1, 'X');
             ticTacToe.AddMove(2, 2, 'O');
-            
-            var board = ticTacToe.GetBoard();
-            var expectedBoard = SetBoard("OXOXOXOXO");
+
+            char[,] board = ticTacToe.GetBoard();
+            char[,] expectedBoard = SetBoard("OXOXOXOXO");
 
             CollectionAssert.AreEqual(expectedBoard, board);
         }
@@ -222,14 +222,14 @@ namespace UltimateTicTacToeTest
         [Test]
         public void TestUndoMoveO()
         {
-            var ticTacToe = new TicTacToe();
+            TicTacToe ticTacToe = new TicTacToe();
             ticTacToe.SetBoard(SetBoard("X--O--XO-"));
             
             ticTacToe.UndoMove(1, 2);
-            
-            var board = ticTacToe.GetBoard();
-            
-            var expectedBoard = SetBoard("X--O--X--");
+
+            char[,] board = ticTacToe.GetBoard();
+
+            char[,] expectedBoard = SetBoard("X--O--X--");
 
             CollectionAssert.AreEqual(expectedBoard, board);
         }
@@ -237,14 +237,14 @@ namespace UltimateTicTacToeTest
         [Test]
         public void TestUndoMoveX()
         {
-            var ticTacToe = new TicTacToe();
+            TicTacToe ticTacToe = new TicTacToe();
             ticTacToe.SetBoard(SetBoard("XOOOX-X--"));
             
             ticTacToe.UndoMove(0, 2);
-            
-            var board = ticTacToe.GetBoard();
-            
-            var expectedBoard = SetBoard("XOOOX----");
+
+            char[,] board = ticTacToe.GetBoard();
+
+            char[,] expectedBoard = SetBoard("XOOOX----");
 
             CollectionAssert.AreEqual(expectedBoard, board);
         }
@@ -252,7 +252,7 @@ namespace UltimateTicTacToeTest
         [Test]
         public void FullBoard()
         {
-            var ticTacToe = new TicTacToe();
+            TicTacToe ticTacToe = new TicTacToe();
             ticTacToe.SetBoard(SetBoard("OXOXOXOXO"));
             
             ticTacToe.UndoMove(0, 0);
@@ -264,10 +264,10 @@ namespace UltimateTicTacToeTest
             ticTacToe.UndoMove(2, 0);
             ticTacToe.UndoMove(2, 1);
             ticTacToe.UndoMove(2, 2);
-            
-            var board = ticTacToe.GetBoard();
-            
-            var expectedBoard = SetBoard("---------");
+
+            char[,] board = ticTacToe.GetBoard();
+
+            char[,] expectedBoard = SetBoard("---------");
 
             CollectionAssert.AreEqual(expectedBoard, board);
         }
@@ -278,12 +278,12 @@ namespace UltimateTicTacToeTest
             // | |O|X|
             // | | | |
             // |O|X| |
-            var ticTacToe = new TicTacToe();
+            TicTacToe ticTacToe = new TicTacToe();
             ticTacToe.SetBoard(SetBoard("-OX---OX-"));
-            
-            var moves = ticTacToe.CalculateValidMoves();
-            
-            var expectedMoves = new List<Move>
+
+            List<Move> moves = ticTacToe.CalculateValidMoves();
+
+            List<Move> expectedMoves = new List<Move>
             {
                 new(0, 0),
                 new(0, 1),
@@ -301,7 +301,7 @@ namespace UltimateTicTacToeTest
             // | |O|X|
             // |X|O| |
             // |O|O|X|
-            var ticTacToe = new TicTacToe();
+            TicTacToe ticTacToe = new TicTacToe();
             ticTacToe.SetBoard(SetBoard("-OXXO-OOX"));
             
             Assert.That(ticTacToe.Evaluate(isX:false, currentDepth:5), Is.EqualTo(6));    // Score should be equal to 1 + depth
@@ -313,7 +313,7 @@ namespace UltimateTicTacToeTest
             // | |O|X|
             // |X|O|O|
             // |X|X|X|
-            var ticTacToe = new TicTacToe();
+            TicTacToe ticTacToe = new TicTacToe();
             ticTacToe.SetBoard(SetBoard("-OXXOOXXX"));
             
             Assert.That(ticTacToe.Evaluate(isX:false, currentDepth:0), Is.EqualTo(-1));    // Score should be equal to 1 + depth
@@ -325,7 +325,7 @@ namespace UltimateTicTacToeTest
             // |X|O|O|
             // |X|X|O|
             // | |O| |
-            var ticTacToe = new TicTacToe();
+            TicTacToe ticTacToe = new TicTacToe();
             ticTacToe.SetBoard(SetBoard("XOOXXO-O-"));
             
             Assert.That(ticTacToe.Evaluate(isX:false, currentDepth:3), Is.EqualTo(0)); 
@@ -337,7 +337,7 @@ namespace UltimateTicTacToeTest
             // |X|O|O|
             // |X|X| |
             // |O|O|X|
-            var ticTacToe = new TicTacToe();
+            TicTacToe ticTacToe = new TicTacToe();
             ticTacToe.SetBoard(SetBoard("XOOXX-OOX"));
             
             Assert.That(ticTacToe.Evaluate(isX:true, currentDepth:9), Is.EqualTo(10));    // Score should be equal to 1 + depth
@@ -349,7 +349,7 @@ namespace UltimateTicTacToeTest
             // |X|O|O|
             // |X|O|O|
             // |O|X|X|
-            var ticTacToe = new TicTacToe();
+            TicTacToe ticTacToe = new TicTacToe();
             ticTacToe.SetBoard(SetBoard("XOOXOOOXX"));
             
             Assert.That(ticTacToe.Evaluate(isX:true, currentDepth:3), Is.EqualTo(-4));    // Score should be equal to  - 1 - depth
@@ -361,7 +361,7 @@ namespace UltimateTicTacToeTest
             // |X|O|O|
             // |X|X| |
             // |O| |O|
-            var ticTacToe = new TicTacToe();
+            TicTacToe ticTacToe = new TicTacToe();
             ticTacToe.SetBoard(SetBoard("XOOXX-O-O"));
             
             Assert.That(ticTacToe.Evaluate(isX:true, currentDepth:453), Is.EqualTo(0));   
@@ -374,14 +374,14 @@ namespace UltimateTicTacToeTest
         // "-" for empty
         private static char[,] SetBoard(string boardString)
         {
-            var board = new char[3,3];
-            var position = 0;
+            char[,] board = new char[3,3];
+            int position = 0;
             
-            for(var row = 0; row < board.GetLength(1); row++)
+            for(int row = 0; row < board.GetLength(1); row++)
             {
-                for(var column = 0; column < board.GetLength(0); column++)
+                for(int column = 0; column < board.GetLength(0); column++)
                 {
-                    var letter = boardString.Substring(position, 1);
+                    string letter = boardString.Substring(position, 1);
                     if(letter != "-")
                     {
                         board[column, row] = letter.ToCharArray().First();

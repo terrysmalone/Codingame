@@ -11,9 +11,9 @@ namespace UltimateTicTacToeTest
         // "-" for empty
         internal static TicTacToe GetTicTacToeBoard(string boardString)
         {
-            var ticTacToe = new TicTacToe();
-            
-            var board = GetBoard(boardString);
+            TicTacToe ticTacToe = new TicTacToe();
+
+            char[,] board = GetBoard(boardString);
             
             ticTacToe.SetBoard(board);
             
@@ -22,15 +22,15 @@ namespace UltimateTicTacToeTest
         
         internal static char[,] GetBoard(string boardString)
         {
-            var board = new char[3,3];
+            char[,] board = new char[3,3];
+
+            int position = 0;
             
-            var position = 0;
-            
-            for(var row = 0; row < board.GetLength(1); row++)
+            for(int row = 0; row < board.GetLength(1); row++)
             {
-                for(var column = 0; column < board.GetLength(0); column++)
+                for(int column = 0; column < board.GetLength(0); column++)
                 {
-                    var letter = boardString.Substring(position, 1);
+                    string letter = boardString.Substring(position, 1);
                     if(letter != "-")
                     {
                         board[column, row] = letter.ToCharArray().First();

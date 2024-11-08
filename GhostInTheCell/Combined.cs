@@ -28,9 +28,9 @@ using System.Collections;
         }
         private List<Link> NormaliseLinks(List<Link> links)
         {
-            var normalisedLinks = new List<Link>();
+        List<Link> normalisedLinks = new List<Link>();
 
-            foreach (var link in links)
+            foreach (Link link in links)
             {
                 if(link.SourceFactory == Id)
                 {
@@ -76,18 +76,18 @@ using System.Collections;
 
         internal string GetMove()
         {
-            var move = string.Empty;
+        string move = string.Empty;
 
-            var playerFactories = _factories.Where(f => f.Owner == Owner.Player).ToList();
+        List<Factory> playerFactories = _factories.Where(f => f.Owner == Owner.Player).ToList();
 
             // Get bomb moves
             if(_bombCount > 0)
             {
-                var enemyFactory = _factories.Where(f => f.Owner == Owner.Enemy && f.Production > 0 && f.Id != _firstBombTarget).OrderByDescending(f => f.Production).FirstOrDefault();
+            Factory? enemyFactory = _factories.Where(f => f.Owner == Owner.Enemy && f.Production > 0 && f.Id != _firstBombTarget).OrderByDescending(f => f.Production).FirstOrDefault();
 
                  if(enemyFactory != null)
                  {
-                     var sendFrom = playerFactories.OrderBy(f => f.NumberOfCyborgs).Select(f => f.Id).First();
+                int sendFrom = playerFactories.OrderBy(f => f.NumberOfCyborgs).Select(f => f.Id).First();
 
                      if(_firstBombTarget == -1)
                      {
@@ -108,46 +108,46 @@ using System.Collections;
 
         private string GetTroopMoves(List<Factory> playerFactories)
         {
-            var move = string.Empty;
+        string move = string.Empty;
 
-            // We want to keep track of how many cyborgs we can send
-            //
-            var availableTroops = _factories.Where(f => f.Owner == Owner.Player)
+        // We want to keep track of how many cyborgs we can send
+        //
+        Dictionary<int, int> availableTroops = _factories.Where(f => f.Owner == Owner.Player)
                                                           .ToDictionary(f => f.Id, f => f.NumberOfCyborgs);
 
-            //move += AddDefensiveMoves(playerFactories, availableTroops);
+        //move += AddDefensiveMoves(playerFactories, availableTroops);
 
-            // TODO: Make more sophisticated. We want to go for high producing, close ones first
-            var allViableTargetFactories = _factories.Where(f => f.Owner != Owner.Player && f.Production > 0)
+        // TODO: Make more sophisticated. We want to go for high producing, close ones first
+        List<Factory> allViableTargetFactories = _factories.Where(f => f.Owner != Owner.Player && f.Production > 0)
                                                      .OrderByDescending(f => f.Owner == Owner.Neutral) // Neutral then opponent
                                                      .ThenByDescending(f => f.Production)
                                                      .ThenBy(f => f.NumberOfCyborgs)
                                                      .ToList();
 
-            foreach (var targetFactory in allViableTargetFactories)
+            foreach (Factory? targetFactory in allViableTargetFactories)
             {
-                var playerTroopsEnRoute = _playerTroops.Where(t => t.DestinationFactory == targetFactory.Id)
+            int playerTroopsEnRoute = _playerTroops.Where(t => t.DestinationFactory == targetFactory.Id)
                                                        .Select(f => f.NumberOfCyborgs)
                                                        .Sum();
 
-                var enemyTroopsEnRoute = _enemyTroops.Where(t => t.DestinationFactory == targetFactory.Id)
+            int enemyTroopsEnRoute = _enemyTroops.Where(t => t.DestinationFactory == targetFactory.Id)
                                                      .Select(f => f.NumberOfCyborgs)
                                                      .Sum();
 
-                // How many troops do we need
-                var troopsNeeded = (targetFactory.NumberOfCyborgs + 1 +  enemyTroopsEnRoute) - playerTroopsEnRoute;
+            // How many troops do we need
+            int troopsNeeded = (targetFactory.NumberOfCyborgs + 1 +  enemyTroopsEnRoute) - playerTroopsEnRoute;
 
-                var linksToPlayerFactories = targetFactory.Links.Where(l => playerFactories.Select(f => f.Id).Contains(l.DestinationFactory))
+            List<Link> linksToPlayerFactories = targetFactory.Links.Where(l => playerFactories.Select(f => f.Id).Contains(l.DestinationFactory))
                                                           .OrderBy(l => l.Distance).ToList();
 
-                var linkIndex = 0;
+            int linkIndex = 0;
 
                 // Get them from the closest place first
                 //
                 while (linkIndex < linksToPlayerFactories.Count && troopsNeeded > 0)
                 {
-                    var closestFactoryId = linksToPlayerFactories[linkIndex].DestinationFactory;
-                    var availableAtFactory = availableTroops[closestFactoryId];
+                int closestFactoryId = linksToPlayerFactories[linkIndex].DestinationFactory;
+                int availableAtFactory = availableTroops[closestFactoryId];
 
                     if (availableAtFactory >= troopsNeeded)
                     {
@@ -174,42 +174,42 @@ using System.Collections;
         }
         private string AddDefensiveMoves(List<Factory> playerFactories, Dictionary<int, int> availableTroops)
         {
-            var move = string.Empty;
+        string move = string.Empty;
 
             // Before attacking anyone, lets see if we need to defend
             // If I'm holding a high production site that is being attacked
                 // send it some troops
             if (playerFactories.Count > 1)
             {
-                // Lets try just protecting one factory at a time
-                //
-                var highProdPlayerFactory = playerFactories.Where(f => f.Production > 1).OrderByDescending(f => f.Production).First();
+            // Lets try just protecting one factory at a time
+            //
+            Factory highProdPlayerFactory = playerFactories.Where(f => f.Production > 1).OrderByDescending(f => f.Production).First();
 
-                // (troops in factory + my troops on the way) - enemy troops on the way
-                var playerTroopsEnRoute = _playerTroops.Where(t => t.DestinationFactory == highProdPlayerFactory.Id)
+            // (troops in factory + my troops on the way) - enemy troops on the way
+            int playerTroopsEnRoute = _playerTroops.Where(t => t.DestinationFactory == highProdPlayerFactory.Id)
                                                           .Select(f => f.NumberOfCyborgs)
                                                           .Sum();
 
-                var enemyTroopsEnRoute = _enemyTroops.Where(t => t.DestinationFactory == highProdPlayerFactory.Id)
+            int enemyTroopsEnRoute = _enemyTroops.Where(t => t.DestinationFactory == highProdPlayerFactory.Id)
                                                         .Select(f => f.NumberOfCyborgs)
                                                         .Sum();
 
-                var projectedTroops = (highProdPlayerFactory.NumberOfCyborgs + playerTroopsEnRoute) - enemyTroopsEnRoute;
+            int projectedTroops = (highProdPlayerFactory.NumberOfCyborgs + playerTroopsEnRoute) - enemyTroopsEnRoute;
 
                 // if above is negative send some troops
                 if (projectedTroops < 1)
                 {
-                    var troopsNeeded = 1 - projectedTroops;
-                    var sourceFactories = playerFactories.Where(f => f.NumberOfCyborgs > 1 && f.Id != highProdPlayerFactory.Id).OrderByDescending(f => f.NumberOfCyborgs).ToList();
+                int troopsNeeded = 1 - projectedTroops;
+                List<Factory> sourceFactories = playerFactories.Where(f => f.NumberOfCyborgs > 1 && f.Id != highProdPlayerFactory.Id).OrderByDescending(f => f.NumberOfCyborgs).ToList();
 
-                    var factoryIndex = 0;
+                int factoryIndex = 0;
 
                     // Get them from the closest place first
                     //
                     while (factoryIndex < sourceFactories.Count && troopsNeeded > 0)
                     {
-                        var closestFactoryId = sourceFactories[factoryIndex].Id;
-                        var availableAtFactory = availableTroops[closestFactoryId];
+                    int closestFactoryId = sourceFactories[factoryIndex].Id;
+                    int availableAtFactory = availableTroops[closestFactoryId];
 
                         if (availableAtFactory >= troopsNeeded)
                         {
@@ -258,7 +258,7 @@ using System.Collections;
             Console.Error.WriteLine("FACTORIES");
             Console.Error.WriteLine("================");
 
-            foreach (var factory in _factories)
+            foreach (Factory factory in _factories)
             {
                 DisplayFactory(factory);
             }
@@ -279,7 +279,7 @@ using System.Collections;
 
         private static void DisplayLinks(List<Link> links)
         {
-            foreach (var link in links)
+            foreach (Link link in links)
             {
                 Console.Error.WriteLine($"Link:{link.SourceFactory}-{link.DestinationFactory}:{link.Distance}");
             }
@@ -290,7 +290,7 @@ using System.Collections;
             Console.Error.WriteLine("PLAYER TROOPS");
             Console.Error.WriteLine("================");
 
-            foreach (var troop in _playerTroops)
+            foreach (Troop troop in _playerTroops)
             {
                 Console.Error.WriteLine($"troop.SourceFactory:{troop.SourceFactory}");
                 Console.Error.WriteLine($"troop.DestinationFactory:{troop.DestinationFactory}");
@@ -331,64 +331,64 @@ using System.Collections;
         static void Main(string[] args)
         {
             string[] inputs;
-            var factoryCount = int.Parse(Console.ReadLine()); // the number of factories
+        int factoryCount = int.Parse(Console.ReadLine()); // the number of factories
 
-            var linkCount = int.Parse(Console.ReadLine()); // the number of links between factories
+        int linkCount = int.Parse(Console.ReadLine()); // the number of links between factories
 
-            var links = new List<Link>();
+        List<Link> links = new List<Link>();
 
-            for (var i = 0; i < linkCount; i++)
+            for (int i = 0; i < linkCount; i++)
             {
                 inputs = Console.ReadLine().Split(' ');
-                var factory1 = int.Parse(inputs[0]);
-                var factory2 = int.Parse(inputs[1]);
-                var distance = int.Parse(inputs[2]);
+            int factory1 = int.Parse(inputs[0]);
+            int factory2 = int.Parse(inputs[1]);
+            int distance = int.Parse(inputs[2]);
 
                 links.Add(new Link(factory1, factory2, distance));
             }
 
-            var factories = new List<Factory>();
+        List<Factory> factories = new List<Factory>();
 
-            for (var i = 0; i < factoryCount; i++)
+            for (int i = 0; i < factoryCount; i++)
             {
                 factories.Add(new Factory(i, links.Where(l => l.SourceFactory == i || l.DestinationFactory == i).ToList()));
             }
 
 
-            var game = new Game(factories);
+        Game game = new Game(factories);
 
             // game loop
             while (true)
             {
-                var playerTroops = new List<Troop>();
-                var enempyTroops = new List<Troop>();
+            List<Troop> playerTroops = new List<Troop>();
+            List<Troop> enempyTroops = new List<Troop>();
 
-                var entityCount = int.Parse(Console.ReadLine()); // the number of entities (e.g. factories and troops)
+            int entityCount = int.Parse(Console.ReadLine()); // the number of entities (e.g. factories and troops)
 
 
-                for (var i = 0; i < entityCount; i++)
+                for (int i = 0; i < entityCount; i++)
                 {
                     inputs = Console.ReadLine().Split(' ');
-                    var entityId = int.Parse(inputs[0]);
+                int entityId = int.Parse(inputs[0]);
                     string entityType = inputs[1];
 
-                    var owner = int.Parse(inputs[2]);
+                int owner = int.Parse(inputs[2]);
 
                     if(entityType == "FACTORY")
                     {
-                        var numberOfCyborgs = int.Parse(inputs[3]);
-                        var factoryProduction = int.Parse(inputs[4]);
-                        var unused1 = int.Parse(inputs[5]);
-                        var unused2 = int.Parse(inputs[6]);
+                    int numberOfCyborgs = int.Parse(inputs[3]);
+                    int factoryProduction = int.Parse(inputs[4]);
+                    int unused1 = int.Parse(inputs[5]);
+                    int unused2 = int.Parse(inputs[6]);
 
                         game.UpdateFactory(entityId, (Owner)owner, numberOfCyborgs, factoryProduction);
                     }
                     else if(entityType == "TROOP")
                     {
-                        var sourceFactory = int.Parse(inputs[3]);
-                        var destinationFactory = int.Parse(inputs[4]);
-                        var numberOfCyborgs = int.Parse(inputs[5]);
-                        var turnsUntilArrival = int.Parse(inputs[6]);
+                    int sourceFactory = int.Parse(inputs[3]);
+                    int destinationFactory = int.Parse(inputs[4]);
+                    int numberOfCyborgs = int.Parse(inputs[5]);
+                    int turnsUntilArrival = int.Parse(inputs[6]);
 
                         if((Owner)owner == Owner.Player)
                         {
@@ -404,7 +404,7 @@ using System.Collections;
                 game.SetPlayerTroops(playerTroops);
                 game.SetEnemyTroops(enempyTroops);
 
-                var move = game.GetMove();
+            string move = game.GetMove();
 
                 // Any valid action, such as "WAIT" or "MOVE source destination cyborgs"
                 Console.WriteLine(move);

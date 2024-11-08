@@ -22,7 +22,7 @@ internal sealed class Game
     
     internal string GetMove()
     {
-        var bestMove = _calculator.GetBestMoveUsingAlphaBeta(_connectFour, _depth, _myId);
+        int bestMove = _calculator.GetBestMoveUsingAlphaBeta(_connectFour, _depth, _myId);
 
         _connectFour.AddMove(bestMove, _myId);
         

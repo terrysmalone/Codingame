@@ -11,7 +11,7 @@ internal static class Debugger
         Console.Error.WriteLine("Monsters");
         Console.Error.WriteLine("------------------------");
 
-        foreach (var monster in monsters)
+        foreach (Monster monster in monsters)
         {
             Console.Error.WriteLine($"{monster.Id}: Position-{monster.Position.X},{monster.Position.Y} - ThreatFor:{monster.ThreatFor} - IsControlled={monster.IsControlled} - near base:{monster.NearBase} - ThreatFor:{monster.ThreatFor}");
         }
@@ -24,7 +24,7 @@ internal static class Debugger
         Console.Error.WriteLine("Player heroes");
         Console.Error.WriteLine("------------------------");
 
-        foreach (var hero in heroes)
+        foreach (Hero hero in heroes)
         {
             Console.Error.WriteLine($"{hero.Id}: Postion:({hero.Position.X},{hero.Position.Y}) - Current monster:{hero.CurrentMonster} - isShielding:{hero.IsShielding}");
         }
@@ -37,7 +37,7 @@ internal static class Debugger
         Console.Error.WriteLine("Enemy heroes");
         Console.Error.WriteLine("------------------------");
 
-        foreach (var hero in heroes)
+        foreach (Hero hero in heroes)
         {
             Console.Error.WriteLine($"{hero.Id}: {hero.Position.X}, {hero.Position.Y}");
         }
@@ -50,14 +50,14 @@ internal static class Debugger
         Console.Error.WriteLine("Possible actions");
         Console.Error.WriteLine("------------------------");
 
-        for (var i = 0; i < 3; i++)
+        for (int i = 0; i < 3; i++)
         {
             Console.Error.WriteLine($"Hero {i + playerOffset}");
 
-            var heroActions = possibleActions.Where(a => a.HeroId == i + playerOffset)
+            IOrderedEnumerable<PossibleAction> heroActions = possibleActions.Where(a => a.HeroId == i + playerOffset)
                                                                        .OrderByDescending(a => a.Priority);
 
-            foreach (var action in heroActions)
+            foreach (PossibleAction? action in heroActions)
             {
                 Console.Error.WriteLine($"{action.Priority}:{action.ActionType} {action.EntityType} {action.TargetId} {action.TargetXPos} {action.TargetYPos}");
             }

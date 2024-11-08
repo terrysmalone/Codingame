@@ -41,7 +41,7 @@ internal sealed class Game
 
     internal void UpdateSite(int siteId, int owner, int structureType, int gold, int maxMineSize)
     {
-        var site = _sites.Single(s => s.Id == siteId);
+        Site site = _sites.Single(s => s.Id == siteId);
 
         site.Owner = owner;
 
@@ -105,27 +105,27 @@ internal sealed class Game
         //DebugAll();
         //DebugSites(false);
 
-        var playerQueen = _playerUnits.Single(u => u.Type == UnitType.Queen);
-        var enemyQueen = _enemyUnits.Single(u => u.Type == UnitType.Queen);
-            
-        var trainAction = "TRAIN";
+        Unit playerQueen = _playerUnits.Single(u => u.Type == UnitType.Queen);
+        Unit enemyQueen = _enemyUnits.Single(u => u.Type == UnitType.Queen);
 
-        var knightBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksKnights).ToList();
-        var archerBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksArchers).ToList();
-        var giantBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksGiant).ToList();
-            
-        var queenAction = DecideQueenAction();
-            
-        var idealUnit = GetIdealUnit();
+        string trainAction = "TRAIN";
+
+        List<Site> knightBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksKnights).ToList();
+        List<Site> archerBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksArchers).ToList();
+        List<Site> giantBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksGiant).ToList();
+
+        string queenAction = DecideQueenAction();
+
+        UnitType idealUnit = GetIdealUnit();
             
         if(idealUnit == UnitType.Archer)
         {
             //Order barracks by closest to player queen
             archerBarracks = archerBarracks.OrderBy(b => CalculateDistance(playerQueen.Position, b.Position)).ToList();
 
-            var goldLeft = Gold;
+            int goldLeft = Gold;
 
-            foreach (var barrack in archerBarracks)
+            foreach (Site barrack in archerBarracks)
             {
                 if(goldLeft < _archerCost)
                 {
@@ -141,9 +141,9 @@ internal sealed class Game
             //Order barracks by closest to enemies queen
             knightBarracks = knightBarracks.OrderBy(b => CalculateDistance(enemyQueen.Position, b.Position)).ToList();
 
-            var goldLeft = Gold;
+            int goldLeft = Gold;
 
-            foreach (var barrack in knightBarracks)
+            foreach (Site barrack in knightBarracks)
             {
                 if(goldLeft < _knightCost)
                 {
@@ -164,23 +164,23 @@ internal sealed class Game
 
     private string DecideQueenAction()
     {
-        var idealTowerCount = (_sites.Count - 9) / 2; 
-        var idealMineCount = 3; 
-            
+        int idealTowerCount = (_sites.Count - 9) / 2;
+        int idealMineCount = 3;
+
         //Console.Error.WriteLine($"idealTowerCount:{idealTowerCount}");
-                
-        var queenAction = "WAIT";
 
-        var queen = _playerUnits.Single(u => u.Type == UnitType.Queen);
-        var closestEmptySiteId = GetClosestEmptySite(queen.Position);
+        string queenAction = "WAIT";
 
-        var knightBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksKnights).ToList();
-        var archerBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksArchers).ToList();
-        var giantBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksGiant).ToList();
-        var towers = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.Tower).ToList();
-        var mines = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.Mine).ToList();
+        Unit queen = _playerUnits.Single(u => u.Type == UnitType.Queen);
+        int closestEmptySiteId = GetClosestEmptySite(queen.Position);
 
-        var action = DecideWhetherToRunAway(queen);
+        List<Site> knightBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksKnights).ToList();
+        List<Site> archerBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksArchers).ToList();
+        List<Site> giantBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksGiant).ToList();
+        List<Site> towers = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.Tower).ToList();
+        List<Site> mines = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.Mine).ToList();
+
+        string action = DecideWhetherToRunAway(queen);
 
         if (action != null)
         {
@@ -190,7 +190,7 @@ internal sealed class Game
         // If the queen is touching a mine that can be levelled up
         if (_sites.Where(s => s.Owner == 0 && s.Structure == StructureType.Mine).Select(s => s.Id).Contains(TouchedSite))
         {
-            var touchedMine = _sites.Single(s => s.Id == TouchedSite);
+            Site touchedMine = _sites.Single(s => s.Id == TouchedSite);
 
             if (touchedMine.MaxMineSize > touchedMine.MineSize)
             {
@@ -200,7 +200,7 @@ internal sealed class Game
             
         if (_sites.Where(s => s.Owner == 0 && s.Structure == StructureType.Tower).Select(s => s.Id).Contains(TouchedSite))
         {
-            var touchedTower = _sites.Single(s => s.Id == TouchedSite);
+            Site touchedTower = _sites.Single(s => s.Id == TouchedSite);
 
             if (touchedTower.TowerSize < 3 )
             {
@@ -208,15 +208,15 @@ internal sealed class Game
             }
         }
 
-        var enemyHasTowers = _sites.Any(s => s.Owner != 0 && s.Structure == StructureType.Tower);
+        bool enemyHasTowers = _sites.Any(s => s.Owner != 0 && s.Structure == StructureType.Tower);
 
         if (_playAggressively)
         {
             if (closestEmptySiteId != -1)
             {
-                var closestSite = _sites.Single(s => s.Id == closestEmptySiteId);
-                    
-                var buildingType = string.Empty;
+                Site closestSite = _sites.Single(s => s.Id == closestEmptySiteId);
+
+                string buildingType = string.Empty;
                     
                 if (mines.Count < idealMineCount && closestSite.Gold > 0)
                 {
@@ -251,9 +251,9 @@ internal sealed class Game
         {
             if (closestEmptySiteId != -1)
             {
-                var closestSite = _sites.Single(s => s.Id == closestEmptySiteId);
+                Site closestSite = _sites.Single(s => s.Id == closestEmptySiteId);
 
-                var buildingType = string.Empty;
+                string buildingType = string.Empty;
 
                 if (archerBarracks.Count < 1)
                 {
@@ -308,17 +308,17 @@ internal sealed class Game
 
     private string DecideWhetherToRunAway(Unit queen)
     {
-        var closestUnitToQueen = ClosestEnemyUnitToQueen(queen.Position);
-            
+        Unit closestUnitToQueen = ClosestEnemyUnitToQueen(queen.Position);
+
         // Prioritise running away  
-        var distanceThreshold = 200;
+        int distanceThreshold = 200;
             
         if (closestUnitToQueen != null && CalculateDistance(queen.Position, closestUnitToQueen.Position) < distanceThreshold)
         {
             // Try to move towards archers
             if (_playerUnits.Any(u => u.Type == UnitType.Archer))
             {
-                var closestArcher = GetClosestUnit(queen, UnitType.Archer);
+                Point closestArcher = GetClosestUnit(queen, UnitType.Archer);
                     
                 return $"MOVE {closestArcher.X} {closestArcher.Y}";
             }
@@ -340,11 +340,11 @@ internal sealed class Game
 
     private Point GetClosestUnit(Unit sourceUnit, UnitType unitType)
     {
-        var closestUnitPosition = new Point();
-        var closestDistance = double.MaxValue;
+        Point closestUnitPosition = new Point();
+        double closestDistance = double.MaxValue;
 
         // Find closest unit
-        foreach (var unit in _playerUnits.Where(u => u.Type == unitType))
+        foreach (Unit unit in _playerUnits.Where(u => u.Type == unitType))
         {
             distance = CalculateDistance(sourceUnit.Position, unit.Position);
 
@@ -360,12 +360,12 @@ internal sealed class Game
         
     private Point GetClosestStructure(Unit sourceUnit, StructureType structureType, int player)
     {
-        var closestStructurePosition = new Point();
-        var closestDistance = double.MaxValue;
+        Point closestStructurePosition = new Point();
+        double closestDistance = double.MaxValue;
 
-        var sites = _sites.Where(s => s.Owner == player && s.Structure == structureType);
+        IEnumerable<Site> sites = _sites.Where(s => s.Owner == player && s.Structure == structureType);
             
-        foreach (var site in sites)
+        foreach (Site site in sites)
         {
             distance = CalculateDistance(sourceUnit.Position, site.Position);
 
@@ -382,11 +382,11 @@ internal sealed class Game
     private Unit ClosestEnemyUnitToQueen(Point queenPosition)
     {
         Unit closestUnit = null;
-        var closestDistance = double.MaxValue;
+        double closestDistance = double.MaxValue;
 
-        foreach (var knight in _enemyUnits.Where(u => u.Type == UnitType.Knight))
+        foreach (Unit knight in _enemyUnits.Where(u => u.Type == UnitType.Knight))
         {
-            var distance = CalculateDistance(queenPosition, knight.Position);
+            double distance = CalculateDistance(queenPosition, knight.Position);
 
             if (distance < closestDistance)
             {
@@ -400,17 +400,17 @@ internal sealed class Game
 
     private int GetClosestEmptySite(Point queenPosition)
     {
-        var closestId = -1;
-        var closestDistance = double.MaxValue;
+        int closestId = -1;
+        double closestDistance = double.MaxValue;
 
-        foreach (var site in _sites)
+        foreach (Site site in _sites)
         {
             if(site.Structure != StructureType.Empty)
             {
                 continue;
             }
 
-            var distance = CalculateDistance(queenPosition, site.Position);
+            double distance = CalculateDistance(queenPosition, site.Position);
 
             if(distance < closestDistance)
             {
@@ -429,7 +429,7 @@ internal sealed class Game
         
     private UnitType GetIdealUnit()
     {
-        var numberOfGiants = _playerUnits.Count(u => u.Type == UnitType.Giant);
+        int numberOfGiants = _playerUnits.Count(u => u.Type == UnitType.Giant);
             
         if (_playAggressively)
         {
@@ -450,12 +450,12 @@ internal sealed class Game
             // 4 knights to
             // 2 archers to
             // 1 giant
-            var idealKnightProportion = 2;
-            var idealArcherProportion = 4;
-            var idealGiantProportion = 1;
+            int idealKnightProportion = 2;
+            int idealArcherProportion = 4;
+            int idealGiantProportion = 1;
 
-            var numberOfKnights = _playerUnits.Count(u => u.Type == UnitType.Knight);
-            var numberOfArchers = _playerUnits.Count(u => u.Type == UnitType.Archer);
+            int numberOfKnights = _playerUnits.Count(u => u.Type == UnitType.Knight);
+            int numberOfArchers = _playerUnits.Count(u => u.Type == UnitType.Archer);
 
             if (numberOfArchers <= 2)
             {
@@ -513,7 +513,7 @@ internal sealed class Game
         Console.Error.WriteLine("Sites");
         Console.Error.WriteLine("------");
 
-        foreach (var site in _sites)
+        foreach (Site site in _sites)
         {
             if(!showEmptySites && site.Structure == StructureType.Empty)
             {
@@ -536,7 +536,7 @@ internal sealed class Game
         Console.Error.WriteLine("Player Units");
         Console.Error.WriteLine("------");
 
-        foreach (var unit in _playerUnits)
+        foreach (Unit unit in _playerUnits)
         {
             Console.Error.WriteLine($"Type:{unit.Type}");
             Console.Error.WriteLine($"Position:{unit.Position.X},{unit.Position.Y}");
@@ -552,7 +552,7 @@ internal sealed class Game
         Console.Error.WriteLine("Enemy Units");
         Console.Error.WriteLine("------");
 
-        foreach (var unit in _enemyUnits)
+        foreach (Unit unit in _enemyUnits)
         {
             Console.Error.WriteLine($"Type:{unit.Type}");
             Console.Error.WriteLine($"Position:{unit.Position.X},{unit.Position.Y}");
@@ -568,14 +568,14 @@ internal sealed class Player
 {
     static void Main(string[] args)
     {
-        var sites = GetSites();
-        var game = new Game(sites);
+        List<Site> sites = GetSites();
+        Game game = new Game(sites);
 
         // game loop
         while (true)
         {
             // ReSharper disable once PossibleNullReferenceException
-            var inputs = Console.ReadLine().Split(' ');
+            string[] inputs = Console.ReadLine().Split(' ');
 
             game.Gold = int.Parse(inputs[0]);
             game.TouchedSite = int.Parse(inputs[1]); // -1 if none
@@ -583,7 +583,7 @@ internal sealed class Player
             UpdateSites(game);
             UpdateUnits(game);
 
-            var (queenAction, trainingAction) = game.GetAction();
+            (string queenAction, string trainingAction) = game.GetAction();
 
             // First line: A valid queen action
             // Second line: A set of training instructions
@@ -594,15 +594,15 @@ internal sealed class Player
 
     private static List<Site> GetSites()
     {
-        var sites = new List<Site>();
+        List<Site> sites = new List<Site>();
 
         // ReSharper disable once AssignNullToNotNullAttribute
-        var  numSites = int.Parse(Console.ReadLine());
+        int numSites = int.Parse(Console.ReadLine());
 
-        for (var i = 0; i < numSites; i++)
+        for (int i = 0; i < numSites; i++)
         {
             // ReSharper disable once PossibleNullReferenceException
-            var siteInfo = Console.ReadLine().Split(' ');
+            string[] siteInfo = Console.ReadLine().Split(' ');
 
             sites.Add(new Site(int.Parse(siteInfo[0]),
                                     new Point(int.Parse(siteInfo[1]), int.Parse(siteInfo[2])),
@@ -614,17 +614,17 @@ internal sealed class Player
 
     private static void UpdateSites(Game game)
     {
-        for (var i = 0; i < game.NumberOfSites; i++)
+        for (int i = 0; i < game.NumberOfSites; i++)
         {
             // ReSharper disable once PossibleNullReferenceException
-            var inputs = Console.ReadLine().Split(' ');
-            var siteId = int.Parse(inputs[0]);
-            var gold = int.Parse(inputs[1]); 
-            var maxMineSize = int.Parse(inputs[2]);
-            var structureType = int.Parse(inputs[3]); // -1 = No structure, 2 = Barracks
-            var owner = int.Parse(inputs[4]); // -1 = No structure, 0 = Friendly, 1 = Enemy
-            var param1 = int.Parse(inputs[5]);
-            var param2 = int.Parse(inputs[6]);
+            string[] inputs = Console.ReadLine().Split(' ');
+            int siteId = int.Parse(inputs[0]);
+            int gold = int.Parse(inputs[1]);
+            int maxMineSize = int.Parse(inputs[2]);
+            int structureType = int.Parse(inputs[3]); // -1 = No structure, 2 = Barracks
+            int owner = int.Parse(inputs[4]); // -1 = No structure, 0 = Friendly, 1 = Enemy
+            int param1 = int.Parse(inputs[5]);
+            int param2 = int.Parse(inputs[6]);
 
             game.UpdateSite(siteId,
                             owner,
@@ -639,17 +639,17 @@ internal sealed class Player
         game.ClearUnits();
 
         // ReSharper disable once AssignNullToNotNullAttribute
-        var numberOfUnits = int.Parse(Console.ReadLine());
+        int numberOfUnits = int.Parse(Console.ReadLine());
 
-        for (var i = 0; i < numberOfUnits; i++)
+        for (int i = 0; i < numberOfUnits; i++)
         {
             // ReSharper disable once PossibleNullReferenceException
-            var inputs = Console.ReadLine().Split(' ');
+            string[] inputs = Console.ReadLine().Split(' ');
 
-            var position = new Point(int.Parse(inputs[0]), int.Parse(inputs[1]));
-            var owner = int.Parse(inputs[2]);
+            Point position = new Point(int.Parse(inputs[0]), int.Parse(inputs[1]));
+            int owner = int.Parse(inputs[2]);
 
-            var unitType = int.Parse(inputs[3]) switch
+            UnitType unitType = int.Parse(inputs[3]) switch
             {
                 -1 => UnitType.Queen,
                 0 => UnitType.Knight,
@@ -658,7 +658,7 @@ internal sealed class Player
                 _ => throw new ArgumentException()
             };
 
-            var health = int.Parse(inputs[4]);
+            int health = int.Parse(inputs[4]);
 
             if(owner == 0)
             {

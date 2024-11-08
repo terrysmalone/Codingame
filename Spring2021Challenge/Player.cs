@@ -7,25 +7,25 @@ namespace Spring2021Challenge
         static void Main(string[] args)
         {
             string[] inputs;
-    
-            var game = new Game();
-    
-            var  numberOfCells = int.Parse(Console.ReadLine()); // 37
+
+            Game game = new Game();
+
+            int numberOfCells = int.Parse(Console.ReadLine()); // 37
             
-            for (var i = 0; i < numberOfCells; i++)
+            for (int i = 0; i < numberOfCells; i++)
             {
                 inputs = Console.ReadLine().Split(' ');
-                var index = int.Parse(inputs[0]); // 0 is the center cell, the next cells spiral outwards
-                var richness = int.Parse(inputs[1]); // 0 if the cell is unusable, 1-3 for usable cells
-                var neigh0 = int.Parse(inputs[2]); // the index of the neighbouring cell for each direction
-                var neigh1 = int.Parse(inputs[3]);
-                var neigh2 = int.Parse(inputs[4]);
-                var neigh3 = int.Parse(inputs[5]);
-                var neigh4 = int.Parse(inputs[6]);
-                var neigh5 = int.Parse(inputs[7]);
-                var neighs = new int[] { neigh0, neigh1, neigh2, neigh3, neigh4, neigh5 };
-                
-                var cell = new Cell(index, richness, neighs);
+                int index = int.Parse(inputs[0]); // 0 is the center cell, the next cells spiral outwards
+                int richness = int.Parse(inputs[1]); // 0 if the cell is unusable, 1-3 for usable cells
+                int neigh0 = int.Parse(inputs[2]); // the index of the neighbouring cell for each direction
+                int neigh1 = int.Parse(inputs[3]);
+                int neigh2 = int.Parse(inputs[4]);
+                int neigh3 = int.Parse(inputs[5]);
+                int neigh4 = int.Parse(inputs[6]);
+                int neigh5 = int.Parse(inputs[7]);
+                int[] neighs = new int[] { neigh0, neigh1, neigh2, neigh3, neigh4, neigh5 };
+
+                Cell cell = new Cell(index, richness, neighs);
                 game.Board.Add(cell);
             }
     
@@ -43,29 +43,29 @@ namespace Spring2021Challenge
                 game.OpponentIsWaiting = inputs[2] != "0"; // whether your opponent is asleep until the next day
     
                 game.Trees.Clear();
-                var numberOfTrees = int.Parse(Console.ReadLine()); // the current amount of trees
-                for (var i = 0; i < numberOfTrees; i++)
+                int numberOfTrees = int.Parse(Console.ReadLine()); // the current amount of trees
+                for (int i = 0; i < numberOfTrees; i++)
                 {
                     inputs = Console.ReadLine().Split(' ');
-                    var cellIndex = int.Parse(inputs[0]); // location of this tree
-                    var size = int.Parse(inputs[1]); // size of this tree: 0-3
-                    var isMine = inputs[2] != "0"; // 1 if this is your tree
-                    var isDormant = inputs[3] != "0"; // 1 if this tree is dormant
-                    var tree = new Tree(cellIndex, size, isMine, isDormant);
+                    int cellIndex = int.Parse(inputs[0]); // location of this tree
+                    int size = int.Parse(inputs[1]); // size of this tree: 0-3
+                    bool isMine = inputs[2] != "0"; // 1 if this is your tree
+                    bool isDormant = inputs[3] != "0"; // 1 if this tree is dormant
+                    Tree tree = new Tree(cellIndex, size, isMine, isDormant);
                     game.Trees.Add(tree);
                 }
     
                 game.PossibleActions.Clear();
-    
-                var numberOfPossibleMoves = int.Parse(Console.ReadLine());
+
+                int numberOfPossibleMoves = int.Parse(Console.ReadLine());
                 
-                for (var i = 0; i < numberOfPossibleMoves; i++)
+                for (int i = 0; i < numberOfPossibleMoves; i++)
                 {
-                    var possibleMove = Console.ReadLine();
+                    string possibleMove = Console.ReadLine();
                     game.PossibleActions.Add(Action.Parse(possibleMove));
                 }
-    
-                var action = game.GetNextAction();
+
+                Action action = game.GetNextAction();
                 Console.WriteLine(action);
             }
         }

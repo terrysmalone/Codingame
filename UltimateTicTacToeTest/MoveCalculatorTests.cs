@@ -15,12 +15,12 @@ namespace UltimateTicTacToeTest
             // |X| |O|
             // |X| |O|
             // | | | |
-            var ticTacToe = TicTacToeBoardFactory.GetTicTacToeBoard("X-OX-O---");
+            TicTacToe ticTacToe = TicTacToeBoardFactory.GetTicTacToeBoard("X-OX-O---");
 
-            var calculator = new MoveCalculator();
-            var bestMove = calculator.GetBestMoveUsingAlphaBeta(ticTacToe, depth, 'O');
+            MoveCalculator calculator = new MoveCalculator();
+            Move bestMove = calculator.GetBestMoveUsingAlphaBeta(ticTacToe, depth, 'O');
 
-            var expectedBestMove = new Move(2, 2);
+            Move expectedBestMove = new Move(2, 2);
             Assert.That(bestMove.Column, Is.EqualTo(expectedBestMove.Column));
             Assert.That(bestMove.Row, Is.EqualTo(expectedBestMove.Row));
         }
@@ -31,12 +31,12 @@ namespace UltimateTicTacToeTest
             // |O| |X|
             // |O| |X|
             // | | | |
-            var ticTacToe = TicTacToeBoardFactory.GetTicTacToeBoard("O-XO-X---");
+            TicTacToe ticTacToe = TicTacToeBoardFactory.GetTicTacToeBoard("O-XO-X---");
 
-            var calculator = new MoveCalculator();
-            var bestMove = calculator.GetBestMoveUsingAlphaBeta(ticTacToe, depth, 'X');
+            MoveCalculator calculator = new MoveCalculator();
+            Move bestMove = calculator.GetBestMoveUsingAlphaBeta(ticTacToe, depth, 'X');
 
-            var expectedBestMove = new Move(2, 2);
+            Move expectedBestMove = new Move(2, 2);
             Assert.That(bestMove.Column, Is.EqualTo(expectedBestMove.Column));
             Assert.That(bestMove.Row, Is.EqualTo(expectedBestMove.Row));
         }
@@ -47,12 +47,12 @@ namespace UltimateTicTacToeTest
             // |O|X|O|
             // | | |X|
             // |X| |O|
-            var ticTacToe = TicTacToeBoardFactory.GetTicTacToeBoard("OXO--XX-O");
+            TicTacToe ticTacToe = TicTacToeBoardFactory.GetTicTacToeBoard("OXO--XX-O");
 
-            var calculator = new MoveCalculator();
-            var bestMove = calculator.GetBestMoveUsingAlphaBeta(ticTacToe, depth, 'O');
-            
-            var expectedBestMove = new Move(1, 1);
+            MoveCalculator calculator = new MoveCalculator();
+            Move bestMove = calculator.GetBestMoveUsingAlphaBeta(ticTacToe, depth, 'O');
+
+            Move expectedBestMove = new Move(1, 1);
             Assert.That(bestMove.Column, Is.EqualTo(expectedBestMove.Column));
             Assert.That(bestMove.Row, Is.EqualTo(expectedBestMove.Row));
         }
@@ -63,12 +63,12 @@ namespace UltimateTicTacToeTest
             // | |X|O|
             // | |X| |
             // |O| | |
-            var ticTacToe = TicTacToeBoardFactory.GetTicTacToeBoard("-XO-X-O--");
+            TicTacToe ticTacToe = TicTacToeBoardFactory.GetTicTacToeBoard("-XO-X-O--");
 
-            var calculator = new MoveCalculator();
-            var bestMove = calculator.GetBestMoveUsingAlphaBeta(ticTacToe, depth, 'X');
-            
-            var expectedBestMove = new Move(1, 2);
+            MoveCalculator calculator = new MoveCalculator();
+            Move bestMove = calculator.GetBestMoveUsingAlphaBeta(ticTacToe, depth, 'X');
+
+            Move expectedBestMove = new Move(1, 2);
             Assert.That(bestMove.Column, Is.EqualTo(expectedBestMove.Column));
             Assert.That(bestMove.Row, Is.EqualTo(expectedBestMove.Row));
         }
@@ -79,12 +79,12 @@ namespace UltimateTicTacToeTest
             // | | |O|
             // |X|X| |
             // |O| | |
-            var ticTacToe = TicTacToeBoardFactory.GetTicTacToeBoard("--OXX-O--");
+            TicTacToe ticTacToe = TicTacToeBoardFactory.GetTicTacToeBoard("--OXX-O--");
 
-            var calculator = new MoveCalculator();
-            var bestMove = calculator.GetBestMoveUsingAlphaBeta(ticTacToe, depth, 'X');
-            
-            var expectedBestMove = new Move(2, 1);
+            MoveCalculator calculator = new MoveCalculator();
+            Move bestMove = calculator.GetBestMoveUsingAlphaBeta(ticTacToe, depth, 'X');
+
+            Move expectedBestMove = new Move(2, 1);
             Assert.That(bestMove.Column, Is.EqualTo(expectedBestMove.Column));
             Assert.That(bestMove.Row, Is.EqualTo(expectedBestMove.Row));
         }
@@ -95,13 +95,13 @@ namespace UltimateTicTacToeTest
             // |O| | |
             // |X| | |
             // |O| |X|
-            var ticTacToe = TicTacToeBoardFactory.GetTicTacToeBoard("O--X--O-X");
+            TicTacToe ticTacToe = TicTacToeBoardFactory.GetTicTacToeBoard("O--X--O-X");
 
-            var calculator = new MoveCalculator();
-            var bestMove = calculator.GetBestMoveUsingAlphaBeta(ticTacToe, depth, 'O');
- 
-            
-            var expectedBestMove = new Move(2, 0);
+            MoveCalculator calculator = new MoveCalculator();
+            Move bestMove = calculator.GetBestMoveUsingAlphaBeta(ticTacToe, depth, 'O');
+
+
+            Move expectedBestMove = new Move(2, 0);
             Assert.That(bestMove.Column, Is.EqualTo(expectedBestMove.Column));
             Assert.That(bestMove.Row, Is.EqualTo(expectedBestMove.Row));
         }
@@ -112,12 +112,12 @@ namespace UltimateTicTacToeTest
             // | |X| |
             // | | |X|
             // |O|O|X|
-            var ticTacToe = TicTacToeBoardFactory.GetTicTacToeBoard("-X---XOOX");
+            TicTacToe ticTacToe = TicTacToeBoardFactory.GetTicTacToeBoard("-X---XOOX");
 
-            var calculator = new MoveCalculator();
-            var bestMove = calculator.GetBestMoveUsingAlphaBeta(ticTacToe, depth, 'O');
-            
-            var expectedBestMove = new Move(2, 0);
+            MoveCalculator calculator = new MoveCalculator();
+            Move bestMove = calculator.GetBestMoveUsingAlphaBeta(ticTacToe, depth, 'O');
+
+            Move expectedBestMove = new Move(2, 0);
             Assert.That(bestMove.Column, Is.EqualTo(expectedBestMove.Column));
             Assert.That(bestMove.Row, Is.EqualTo(expectedBestMove.Row));
         }
@@ -128,12 +128,12 @@ namespace UltimateTicTacToeTest
             // | |O| |
             // | | |O|
             // |X|X|O|
-            var ticTacToe = TicTacToeBoardFactory.GetTicTacToeBoard("-O---OXXO");
+            TicTacToe ticTacToe = TicTacToeBoardFactory.GetTicTacToeBoard("-O---OXXO");
 
-            var calculator = new MoveCalculator();
-            var bestMove = calculator.GetBestMoveUsingAlphaBeta(ticTacToe, depth, 'X');
-            
-            var expectedBestMove = new Move(2, 0);
+            MoveCalculator calculator = new MoveCalculator();
+            Move bestMove = calculator.GetBestMoveUsingAlphaBeta(ticTacToe, depth, 'X');
+
+            Move expectedBestMove = new Move(2, 0);
             Assert.That(bestMove.Column, Is.EqualTo(expectedBestMove.Column));
             Assert.That(bestMove.Row, Is.EqualTo(expectedBestMove.Row));
         }
@@ -148,12 +148,12 @@ namespace UltimateTicTacToeTest
             // |X| |X|
             // | | |O|
             // | | |O|
-            var ticTacToe = TicTacToeBoardFactory.GetTicTacToeBoard("X-X--O--O");
+            TicTacToe ticTacToe = TicTacToeBoardFactory.GetTicTacToeBoard("X-X--O--O");
 
-            var calculator = new MoveCalculator();
-            var bestMove = calculator.GetBestMoveUsingAlphaBeta(ticTacToe, depth, 'O');
-            
-            var expectedBestMove = new Move(1, 0);
+            MoveCalculator calculator = new MoveCalculator();
+            Move bestMove = calculator.GetBestMoveUsingAlphaBeta(ticTacToe, depth, 'O');
+
+            Move expectedBestMove = new Move(1, 0);
             Assert.That(bestMove.Column, Is.EqualTo(expectedBestMove.Column));
             Assert.That(bestMove.Row, Is.EqualTo(expectedBestMove.Row));
         }
@@ -164,12 +164,12 @@ namespace UltimateTicTacToeTest
             // |O| |O|
             // | | |X|
             // | | |X|
-            var ticTacToe = TicTacToeBoardFactory.GetTicTacToeBoard("O-O--X--X");
+            TicTacToe ticTacToe = TicTacToeBoardFactory.GetTicTacToeBoard("O-O--X--X");
 
-            var calculator = new MoveCalculator();
-            var bestMove = calculator.GetBestMoveUsingAlphaBeta(ticTacToe, depth, 'O');
-            
-            var expectedBestMove = new Move(1, 0);
+            MoveCalculator calculator = new MoveCalculator();
+            Move bestMove = calculator.GetBestMoveUsingAlphaBeta(ticTacToe, depth, 'O');
+
+            Move expectedBestMove = new Move(1, 0);
             Assert.That(bestMove.Column, Is.EqualTo(expectedBestMove.Column));
             Assert.That(bestMove.Row, Is.EqualTo(expectedBestMove.Row));
         }
@@ -177,18 +177,18 @@ namespace UltimateTicTacToeTest
         [Test]
         public void UltimateTicTacToe_OneMoveLossIsAvoidedForX([Range(2,2)] int depth)
         {
-            var subBoard0 = TicTacToeBoardFactory.GetTicTacToeBoard("X-O--O-OO");
-            var subBoard1 = TicTacToeBoardFactory.GetTicTacToeBoard("---------");
-            var subBoard2 = TicTacToeBoardFactory.GetTicTacToeBoard("X--X--X--");
-            var subBoard3 = TicTacToeBoardFactory.GetTicTacToeBoard("----O---O");
-            var subBoard4 = TicTacToeBoardFactory.GetTicTacToeBoard("------X--");
-            var subBoard5 = TicTacToeBoardFactory.GetTicTacToeBoard("X--------");
-            var subBoard6 = TicTacToeBoardFactory.GetTicTacToeBoard("OOO------");
-            var subBoard7 = TicTacToeBoardFactory.GetTicTacToeBoard("X--------");
-            var subBoard8 = TicTacToeBoardFactory.GetTicTacToeBoard("X--X-----");
+            TicTacToe subBoard0 = TicTacToeBoardFactory.GetTicTacToeBoard("X-O--O-OO");
+            TicTacToe subBoard1 = TicTacToeBoardFactory.GetTicTacToeBoard("---------");
+            TicTacToe subBoard2 = TicTacToeBoardFactory.GetTicTacToeBoard("X--X--X--");
+            TicTacToe subBoard3 = TicTacToeBoardFactory.GetTicTacToeBoard("----O---O");
+            TicTacToe subBoard4 = TicTacToeBoardFactory.GetTicTacToeBoard("------X--");
+            TicTacToe subBoard5 = TicTacToeBoardFactory.GetTicTacToeBoard("X--------");
+            TicTacToe subBoard6 = TicTacToeBoardFactory.GetTicTacToeBoard("OOO------");
+            TicTacToe subBoard7 = TicTacToeBoardFactory.GetTicTacToeBoard("X--------");
+            TicTacToe subBoard8 = TicTacToeBoardFactory.GetTicTacToeBoard("X--X-----");
 
 
-            var ticTacToe = new MultiTicTacToe();
+            MultiTicTacToe ticTacToe = new MultiTicTacToe();
             
             ticTacToe.SubBoards[0,0] = subBoard0;
             ticTacToe.SubBoards[1,0] = subBoard1;
@@ -202,13 +202,13 @@ namespace UltimateTicTacToeTest
             
             ticTacToe.AddMove(1, 6, 'O');   //Emulate the last move played to kick off all the updates
 
-            var calculator = new MoveCalculator();
-            
+            MoveCalculator calculator = new MoveCalculator();
+
             // (3,0), (3,1), (3,2) and (5,0) are all losing moves. Never pick one of them
-            
-            var bestMove = calculator.GetBestMoveUsingAlphaBeta(ticTacToe, depth, 'X');
-            
-            var goodMoves = new List<Move>
+
+            Move bestMove = calculator.GetBestMoveUsingAlphaBeta(ticTacToe, depth, 'X');
+
+            List<Move> goodMoves = new List<Move>
             {
                 new(4, 0),
                 new(4, 1),
@@ -224,17 +224,17 @@ namespace UltimateTicTacToeTest
         [Test]
         public void UltimateTicTacToe_OneMoveLossIsAvoidedForX_2([Range(2,2)] int depth)
         {
-            var subBoard0 = TicTacToeBoardFactory.GetTicTacToeBoard("X-O-----O");
-            var subBoard1 = TicTacToeBoardFactory.GetTicTacToeBoard("----OOX--");
-            var subBoard2 = TicTacToeBoardFactory.GetTicTacToeBoard("X-----X--");
-            var subBoard3 = TicTacToeBoardFactory.GetTicTacToeBoard("-O--O----");
-            var subBoard4 = TicTacToeBoardFactory.GetTicTacToeBoard("-X-XX----");
-            var subBoard5 = TicTacToeBoardFactory.GetTicTacToeBoard("-X-------");
-            var subBoard6 = TicTacToeBoardFactory.GetTicTacToeBoard("--O-O----");
-            var subBoard7 = TicTacToeBoardFactory.GetTicTacToeBoard("---------");
-            var subBoard8 = TicTacToeBoardFactory.GetTicTacToeBoard("---X-----");
+            TicTacToe subBoard0 = TicTacToeBoardFactory.GetTicTacToeBoard("X-O-----O");
+            TicTacToe subBoard1 = TicTacToeBoardFactory.GetTicTacToeBoard("----OOX--");
+            TicTacToe subBoard2 = TicTacToeBoardFactory.GetTicTacToeBoard("X-----X--");
+            TicTacToe subBoard3 = TicTacToeBoardFactory.GetTicTacToeBoard("-O--O----");
+            TicTacToe subBoard4 = TicTacToeBoardFactory.GetTicTacToeBoard("-X-XX----");
+            TicTacToe subBoard5 = TicTacToeBoardFactory.GetTicTacToeBoard("-X-------");
+            TicTacToe subBoard6 = TicTacToeBoardFactory.GetTicTacToeBoard("--O-O----");
+            TicTacToe subBoard7 = TicTacToeBoardFactory.GetTicTacToeBoard("---------");
+            TicTacToe subBoard8 = TicTacToeBoardFactory.GetTicTacToeBoard("---X-----");
 
-            var ticTacToe = new MultiTicTacToe();
+            MultiTicTacToe ticTacToe = new MultiTicTacToe();
             
             ticTacToe.SubBoards[0,0] = subBoard0;
             ticTacToe.SubBoards[1,0] = subBoard1;
@@ -248,13 +248,13 @@ namespace UltimateTicTacToeTest
             
             ticTacToe.AddMove(4, 5, 'O');   //Emulate the last move played to kick off all the updates
 
-            var calculator = new MoveCalculator();
-            
+            MoveCalculator calculator = new MoveCalculator();
+
             //  are all losing moves. Never pick one of them
-            
-            var moveScores = calculator.GetMoveScoresUsingAlphaBeta(ticTacToe, depth, 'X');
-            
-            var bestMove = calculator.GetBestMoveUsingAlphaBeta(ticTacToe, depth, 'X');
+
+            List<Tuple<Move, int>> moveScores = calculator.GetMoveScoresUsingAlphaBeta(ticTacToe, depth, 'X');
+
+            Move bestMove = calculator.GetBestMoveUsingAlphaBeta(ticTacToe, depth, 'X');
             
             throw new NotImplementedException();
             // var goodMoves = new List<Move>
@@ -276,23 +276,23 @@ namespace UltimateTicTacToeTest
             // |O| |O|
             // | | |X|
             // | | |X|
-            var ticTacToe = TicTacToeBoardFactory.GetTicTacToeBoard("O-O--X--X");
+            TicTacToe ticTacToe = TicTacToeBoardFactory.GetTicTacToeBoard("O-O--X--X");
 
-            var calculator = new MoveCalculator();
-            var bestMoves = calculator.GetMoveScoresUsingAlphaBeta(ticTacToe, 9, 'O');
+            MoveCalculator calculator = new MoveCalculator();
+            List<Tuple<Move, int>> bestMoves = calculator.GetMoveScoresUsingAlphaBeta(ticTacToe, 9, 'O');
             
         }
 
         [Test]
         public void CompareTimes()
         {
-            var alphaBetaTime = MeasureAlphaBetaTime(1000);
-            var negaTime = MeasureNegaMaxTime(1000);
+            long alphaBetaTime = MeasureAlphaBetaTime(1000);
+            long negaTime = MeasureNegaMaxTime(1000);
         }
 
         private static long MeasureNegaMaxTime(int times)
         {
-            var watch = new System.Diagnostics.Stopwatch();
+            System.Diagnostics.Stopwatch watch = new System.Diagnostics.Stopwatch();
             watch.Start();
 
             // The only non winning move is 1, 2
@@ -302,25 +302,25 @@ namespace UltimateTicTacToeTest
             // |O| |O|
             // | | |X|
             // | | |X|
-            for (var i = 0; i < times; i++)
+            for (int i = 0; i < times; i++)
             {
-                var ticTacToe = TicTacToeBoardFactory.GetTicTacToeBoard("O-O--X--X");
+                TicTacToe ticTacToe = TicTacToeBoardFactory.GetTicTacToeBoard("O-O--X--X");
 
-                var calculator = new MoveCalculator();
-                var bestMove = calculator.GetBestMove(ticTacToe, 10, 'O');
+                MoveCalculator calculator = new MoveCalculator();
+                Move bestMove = calculator.GetBestMove(ticTacToe, 10, 'O');
             }
 
             watch.Stop();
-            
 
-            var negaMaxTime = watch.ElapsedMilliseconds;
+
+            long negaMaxTime = watch.ElapsedMilliseconds;
 
             return negaMaxTime;
         }
         
         private static long MeasureAlphaBetaTime(int times)
         {
-            var watch = new System.Diagnostics.Stopwatch();
+            System.Diagnostics.Stopwatch watch = new System.Diagnostics.Stopwatch();
             watch.Start();
 
             // The only non winning move is 1, 2
@@ -331,17 +331,17 @@ namespace UltimateTicTacToeTest
             // | | |X|
             // | | |X|
 
-            for (var i = 0; i < times; i++)
+            for (int i = 0; i < times; i++)
             {
-                var ticTacToe = TicTacToeBoardFactory.GetTicTacToeBoard("O-O--X--X");
+                TicTacToe ticTacToe = TicTacToeBoardFactory.GetTicTacToeBoard("O-O--X--X");
 
-                var calculator = new MoveCalculator();
-                var bestMove = calculator.GetBestMoveUsingAlphaBeta(ticTacToe, 10, 'O');
+                MoveCalculator calculator = new MoveCalculator();
+                Move bestMove = calculator.GetBestMoveUsingAlphaBeta(ticTacToe, 10, 'O');
             }
 
             watch.Stop();
 
-            var time = watch.ElapsedMilliseconds;
+            long time = watch.ElapsedMilliseconds;
 
             return time;
         }

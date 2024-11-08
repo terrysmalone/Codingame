@@ -22,7 +22,7 @@ internal sealed class SpellGenerator
 
     internal void CastProtectiveShieldSpells(IEnumerable<Hero> playerHeroes, Strategy strategy, ActionManager actionManager)
     {
-        foreach (var hero in playerHeroes.Where(h => h.Strategy == strategy))
+        foreach (Hero? hero in playerHeroes.Where(h => h.Strategy == strategy))
         {
             if (hero.ShieldLife == 0)
             {
@@ -36,9 +36,9 @@ internal sealed class SpellGenerator
 
     internal void AssignDefensiveWindSpell(List<Hero> playerHeroes, IEnumerable<Monster> monsters, ActionManager actionManager)
     {
-        var closeDistance = 3000;
+        int closeDistance = 3000;
 
-        var closestMonster = monsters.Where(m => m.ShieldLife == 0)
+        Monster? closestMonster = monsters.Where(m => m.ShieldLife == 0)
                                                          .Select(m => new { m, distance = CalculateDistance(m.Position, _playerBaseLocation)})
                                                          .Where(m => m.distance <= closeDistance)
                                                          .OrderBy(m => m.distance)
@@ -47,13 +47,13 @@ internal sealed class SpellGenerator
 
         if (closestMonster != null)
         {
-            var availableHeroes = playerHeroes.Where(h => h.Strategy == Strategy.Defend && h.IsShielding == false).ToList();
+            List<Hero> availableHeroes = playerHeroes.Where(h => h.Strategy == Strategy.Defend && h.IsShielding == false).ToList();
 
             Console.Error.WriteLine($"availableHeroes.Count:{availableHeroes.Count}");
 
             if (availableHeroes.Count > 0)
             {
-                var closestHero = availableHeroes.OrderBy(h => CalculateDistance(h.Position, closestMonster.Position))
+                Hero closestHero = availableHeroes.OrderBy(h => CalculateDistance(h.Position, closestMonster.Position))
                                                  .First();
 
                 Console.Error.WriteLine($"closestHero:{closestHero.Id}");
@@ -86,14 +86,14 @@ internal sealed class SpellGenerator
     {
         const int healthCutOff = 10;
 
-        var defendingHeroesOutsideOfBase =
+        IEnumerable<Hero> defendingHeroesOutsideOfBase =
             playerHeroes.Where(h => h.Strategy == Strategy.Defend
                                       && h.IsShielding == false
                                       && CalculateDistance(h.Position, _playerBaseLocation) > _valuesProvider.BaseRadius);
 
-        foreach (var defendingHeroOutsideOfBase in defendingHeroesOutsideOfBase)
+        foreach (Hero? defendingHeroOutsideOfBase in defendingHeroesOutsideOfBase)
         {
-            var monsterWithinSpellRange =
+            Monster? monsterWithinSpellRange =
                 monsters.Where(m => m.Health > healthCutOff
                                         && m.IsControlled == false
                                         && m.ThreatFor == ThreatFor.Player
@@ -115,14 +115,14 @@ internal sealed class SpellGenerator
 
     internal void AssignAttackSpells(IEnumerable<Hero> playerHeroes, IEnumerable<Hero> enemyHeroes, IEnumerable<Monster> monsters, ActionManager actionManager)
     {
-        foreach (var attackingHero in playerHeroes.Where(h => h.Strategy == Strategy.Attack))
+        foreach (Hero? attackingHero in playerHeroes.Where(h => h.Strategy == Strategy.Attack))
         {
             if (CalculateDistance(attackingHero.Position, _enemyBaseLocation) > _valuesProvider.OutskirtsMaxDist)
             {
                 continue;
             }
 
-            var closeEnoughForWindMonster = monsters.FirstOrDefault(m => CalculateDistance(m.Position, attackingHero.Position) <= ValuesProvider.WindSpellRange
+            Monster? closeEnoughForWindMonster = monsters.FirstOrDefault(m => CalculateDistance(m.Position, attackingHero.Position) <= ValuesProvider.WindSpellRange
                                                                                  && m.ShieldLife == 0);
 
             if (closeEnoughForWindMonster != null)
@@ -133,14 +133,14 @@ internal sealed class SpellGenerator
             }
             else // If we're not close enough for a wind spell try a shield or control
             {
-                var closeEnoughForControlEnemy =
+                Hero? closeEnoughForControlEnemy =
                         enemyHeroes.Where(e => e.ShieldLife == 0
                                                  && CalculateDistance(e.Position, attackingHero.Position) <= _valuesProvider.ControlSpellange
                                                  && CalculateDistance(e.Position, _enemyBaseLocation) <= _valuesProvider.BaseRadius)
                                    .OrderBy(e => CalculateDistance(e.Position, _enemyBaseLocation))
                                    .FirstOrDefault();
 
-                var closeEnoughForSpellMonster =
+                Monster? closeEnoughForSpellMonster =
                         monsters.FirstOrDefault(m => m.ShieldLife == 0
                                                          && m.ThreatFor == ThreatFor.Enemy
                                                          && CalculateDistance(m.Position, attackingHero.Position) <= _valuesProvider.ShieldSpellRange

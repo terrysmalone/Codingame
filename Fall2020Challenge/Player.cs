@@ -10,7 +10,7 @@ internal sealed class Player
 {
     static void Main(string[] args)
     {
-        var game = new Game();
+        Game game = new Game();
         
         // game loop
         while (true)
@@ -19,11 +19,11 @@ internal sealed class Player
 
             game.SetPlayerInventory(GetInventoryItems());
             game.SetOpponentInventory(GetInventoryItems());
-            
+
             //DisplayInventory(game.PlayerInventory, true);
             //DisplayInventory(game.OpponentInventory, false);
 
-            var action = game.GetAction();
+            string action = game.GetAction();
             Console.WriteLine(action);
 
             // Write an action using Console.WriteLine()
@@ -35,16 +35,16 @@ internal sealed class Player
     }
 
     private static void ParseActions(Game game)
-    {        
-        var actionCount = int.Parse(Console.ReadLine()); // the number of spells and recipes in play
-        
-        var recipes = new List<Recipe>();
-        var spells = new List<Spell>();
+    {
+        int actionCount = int.Parse(Console.ReadLine()); // the number of spells and recipes in play
+
+        List<Recipe> recipes = new List<Recipe>();
+        List<Spell> spells = new List<Spell>();
          
-        for (var i = 0; i < actionCount; i++)
-        {               
-            var input = Console.ReadLine();
-            var inputs = input.Split(' ');
+        for (int i = 0; i < actionCount; i++)
+        {
+            string input = Console.ReadLine();
+            string[] inputs = input.Split(' ');
             
             if(inputs[1] == "BREW")
             {
@@ -72,10 +72,10 @@ internal sealed class Player
     
     private static Inventory GetInventoryItems()
     {
-        var input = Console.ReadLine();
-        var inputs = input.Split(' ');
-        
-        var inventory = new Inventory(new int[] {Math.Abs(int.Parse(inputs[0])),
+        string input = Console.ReadLine();
+        string[] inputs = input.Split(' ');
+
+        Inventory inventory = new Inventory(new int[] {Math.Abs(int.Parse(inputs[0])),
                                       Math.Abs(int.Parse(inputs[1])),
                                       Math.Abs(int.Parse(inputs[2])),
                                       Math.Abs(int.Parse(inputs[3]))},

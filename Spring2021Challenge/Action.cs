@@ -25,7 +25,7 @@
         
         public static Action Parse(string action)
         {
-            var parts = action.Split(" ");
+            string[] parts = action.Split(" ");
             
             switch (parts[0])
             {

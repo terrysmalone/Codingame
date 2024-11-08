@@ -8,14 +8,14 @@ internal sealed class Player
 {
     static void Main(string[] args)
     {
-        var sites = GetSites();
-        var game = new Game(sites);
+        List<Site> sites = GetSites();
+        Game game = new Game(sites);
 
         // game loop
         while (true)
         {
             // ReSharper disable once PossibleNullReferenceException
-            var inputs = Console.ReadLine().Split(' ');
+            string[] inputs = Console.ReadLine().Split(' ');
 
             game.Gold = int.Parse(inputs[0]);
             game.TouchedSite = int.Parse(inputs[1]); // -1 if none
@@ -23,7 +23,7 @@ internal sealed class Player
             UpdateSites(game);
             UpdateUnits(game);
 
-            var (queenAction, trainingAction) = game.GetAction();
+            (string queenAction, string trainingAction) = game.GetAction();
 
             // First line: A valid queen action
             // Second line: A set of training instructions
@@ -34,15 +34,15 @@ internal sealed class Player
 
     private static List<Site> GetSites()
     {
-        var sites = new List<Site>();
+        List<Site> sites = new List<Site>();
 
         // ReSharper disable once AssignNullToNotNullAttribute
-        var  numSites = int.Parse(Console.ReadLine());
+        int numSites = int.Parse(Console.ReadLine());
 
-        for (var i = 0; i < numSites; i++)
+        for (int i = 0; i < numSites; i++)
         {
             // ReSharper disable once PossibleNullReferenceException
-            var siteInfo = Console.ReadLine().Split(' ');
+            string[] siteInfo = Console.ReadLine().Split(' ');
 
             sites.Add(new Site(int.Parse(siteInfo[0]),
                                     new Point(int.Parse(siteInfo[1]), int.Parse(siteInfo[2])),
@@ -54,17 +54,17 @@ internal sealed class Player
 
     private static void UpdateSites(Game game)
     {
-        for (var i = 0; i < game.NumberOfSites; i++)
+        for (int i = 0; i < game.NumberOfSites; i++)
         {
             // ReSharper disable once PossibleNullReferenceException
-            var inputs = Console.ReadLine().Split(' ');
-            var siteId = int.Parse(inputs[0]);
-            var gold = int.Parse(inputs[1]); 
-            var maxMineSize = int.Parse(inputs[2]);
-            var structureType = int.Parse(inputs[3]); // -1 = No structure, 2 = Barracks
-            var owner = int.Parse(inputs[4]); // -1 = No structure, 0 = Friendly, 1 = Enemy
-            var param1 = int.Parse(inputs[5]);
-            var param2 = int.Parse(inputs[6]);
+            string[] inputs = Console.ReadLine().Split(' ');
+            int siteId = int.Parse(inputs[0]);
+            int gold = int.Parse(inputs[1]);
+            int maxMineSize = int.Parse(inputs[2]);
+            int structureType = int.Parse(inputs[3]); // -1 = No structure, 2 = Barracks
+            int owner = int.Parse(inputs[4]); // -1 = No structure, 0 = Friendly, 1 = Enemy
+            int param1 = int.Parse(inputs[5]);
+            int param2 = int.Parse(inputs[6]);
 
             game.UpdateSite(siteId,
                             owner,
@@ -79,17 +79,17 @@ internal sealed class Player
         game.ClearUnits();
 
         // ReSharper disable once AssignNullToNotNullAttribute
-        var numberOfUnits = int.Parse(Console.ReadLine());
+        int numberOfUnits = int.Parse(Console.ReadLine());
 
-        for (var i = 0; i < numberOfUnits; i++)
+        for (int i = 0; i < numberOfUnits; i++)
         {
             // ReSharper disable once PossibleNullReferenceException
-            var inputs = Console.ReadLine().Split(' ');
+            string[] inputs = Console.ReadLine().Split(' ');
 
-            var position = new Point(int.Parse(inputs[0]), int.Parse(inputs[1]));
-            var owner = int.Parse(inputs[2]);
+            Point position = new Point(int.Parse(inputs[0]), int.Parse(inputs[1]));
+            int owner = int.Parse(inputs[2]);
 
-            var unitType = int.Parse(inputs[3]) switch
+            UnitType unitType = int.Parse(inputs[3]) switch
             {
                 -1 => UnitType.Queen,
                 0 => UnitType.Knight,
@@ -98,7 +98,7 @@ internal sealed class Player
                 _ => throw new ArgumentException()
             };
 
-            var health = int.Parse(inputs[4]);
+            int health = int.Parse(inputs[4]);
 
             if(owner == 0)
             {

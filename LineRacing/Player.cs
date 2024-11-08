@@ -14,24 +14,24 @@ namespace LineRacing
             string currentDirection = "LEFT";
             string[] inputs;
 
-            var playerStartPosition = new Point(-1, -1);
-            var playerEndPosition = new Point(-1, -1);
+            Point playerStartPosition = new Point(-1, -1);
+            Point playerEndPosition = new Point(-1, -1);
 
-            var filledPositions = new List<Point>();
+            List<Point> filledPositions = new List<Point>();
 
             // game loop
             while (true)
             {
                 inputs = Console.ReadLine().Split(' ');
-                var numberOfPlayers = int.Parse(inputs[0]); // total number of players (2 to 4).
-                var playerNumber = int.Parse(inputs[1]); // your player number (0 to 3).
+                int numberOfPlayers = int.Parse(inputs[0]); // total number of players (2 to 4).
+                int playerNumber = int.Parse(inputs[1]); // your player number (0 to 3).
 
                 Point[] enemyStartPositions = new Point[numberOfPlayers - 1];
                 Point[] enemyEndPositions = new Point[numberOfPlayers - 1];
 
-                var enemyIndex = 0;
+                int enemyIndex = 0;
 
-                for (var i = 0; i < numberOfPlayers; i++)
+                for (int i = 0; i < numberOfPlayers; i++)
                 {
                     inputs = Console.ReadLine().Split(' ');
 
@@ -72,7 +72,7 @@ namespace LineRacing
                 DisplayLightCyclePosition(playerStartPosition, playerEndPosition);
                 DisplayLightCyclePositions(enemyStartPositions, enemyEndPositions);
 
-                var nextMove = GetNextMove(playerEndPosition, currentDirection, filledPositions);
+                string nextMove = GetNextMove(playerEndPosition, currentDirection, filledPositions);
 
                 if (nextMove != string.Empty)
                 {
@@ -92,9 +92,9 @@ namespace LineRacing
         private static string GetNextMove(Point position, string currentDirection, List<Point> filledPositions)
         {
             // Check left
-            var leftPos = new Point(position.X-1, position.Y);
+            Point leftPos = new Point(position.X-1, position.Y);
 
-            var isViable = !(leftPos.X <= -1);
+            bool isViable = !(leftPos.X <= -1);
 
             if (isViable && !filledPositions.Contains(leftPos))
             {
@@ -102,7 +102,7 @@ namespace LineRacing
             }
 
             // Check right
-            var rightPos = new Point(position.X+1, position.Y);
+            Point rightPos = new Point(position.X+1, position.Y);
 
             isViable = !(rightPos.X >= WIDTH);
 
@@ -112,7 +112,7 @@ namespace LineRacing
             }
 
             // Check down
-            var downPos = new Point(position.X, position.Y+1);
+            Point downPos = new Point(position.X, position.Y+1);
 
             isViable = !(downPos.Y <= -1);
 
@@ -122,7 +122,7 @@ namespace LineRacing
             }
 
             // Check up
-            var upPos = new Point(position.X, position.Y-1);
+            Point upPos = new Point(position.X, position.Y-1);
 
             isViable = !(upPos.Y <= HEIGHT);
 
@@ -141,7 +141,7 @@ namespace LineRacing
 
         private static void DisplayLightCyclePositions(Point[] positions0, Point[] positions1)
         {
-            for (var i = 0; i < positions0.Length; i++)
+            for (int i = 0; i < positions0.Length; i++)
             {
                 Console.Error.WriteLine($"Enemy position: ({positions0[i].X},{positions0[i].Y}) - ({positions1[i].X},{positions1[i].Y}) ");
             }

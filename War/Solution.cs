@@ -13,56 +13,56 @@ class Solution
 {
     static void Main(string[] args)
     {
-        var player1Cards = new Queue<string>();
-        var player2Cards = new Queue<string>();
+        Queue<string> player1Cards = new Queue<string>();
+        Queue<string> player2Cards = new Queue<string>();
+
+        int n = int.Parse(Console.ReadLine()); // the number of cards for player 1
         
-        var n = int.Parse(Console.ReadLine()); // the number of cards for player 1
-        
-        for (var i = 0; i < n; i++)
+        for (int i = 0; i < n; i++)
         {
             player1Cards.Enqueue(Console.ReadLine()); // the n cards of player 1
         }
+
+        int m = int.Parse(Console.ReadLine()); // the number of cards for player 2
         
-        var m = int.Parse(Console.ReadLine()); // the number of cards for player 2
-        
-        for (var i = 0; i < m; i++)
+        for (int i = 0; i < m; i++)
         {
             player2Cards.Enqueue(Console.ReadLine()); // the m cards of player 2
         }
-        
-        var player1WaitingCards = new Queue<string>();
-        var player2WaitingCards = new Queue<string>();
-        
-        var gameOver = false;
-        
-        var roundCount = 1;
+
+        Queue<string> player1WaitingCards = new Queue<string>();
+        Queue<string> player2WaitingCards = new Queue<string>();
+
+        bool gameOver = false;
+
+        int roundCount = 1;
         
         PrintCards(player1Cards, "Player 1 cards: ");
         PrintCards(player2Cards, "Player 2 cards: ");
 
         while(!gameOver)
         {
-            var roundOver = false;
+            bool roundOver = false;
             
             while(!roundOver)
             {
                 Console.Error.WriteLine($"Round:{roundCount}");
-                
+
                 // Have fight
-                var player1Card = player1Cards.Dequeue();
-                var player2Card = player2Cards.Dequeue();
+                string player1Card = player1Cards.Dequeue();
+                string player2Card = player2Cards.Dequeue();
                 
                 Console.Error.WriteLine($"player1Card:{player1Card}");
                 Console.Error.WriteLine($"player2Card:{player2Card}");
-                
+
                 // if(player1Cards.Count == 0 || player1Cards.Count == 0)
                 // {
                 //     Console.WriteLine("Tie");
                 //     break;
                 // }
-                
-                var player1CardValue = GetValue(player1Card);
-                var player2CardValue = GetValue(player2Card);
+
+                int player1CardValue = GetValue(player1Card);
+                int player2CardValue = GetValue(player2Card);
                 
                 player1WaitingCards.Enqueue(player1Card);
                 player2WaitingCards.Enqueue(player2Card);
@@ -115,7 +115,7 @@ class Solution
     
     private static void PrintCards(Queue<string> cards, string text)
     {
-        var enumerator = cards.GetEnumerator();
+        Queue<string>.Enumerator enumerator = cards.GetEnumerator();
         
         while(enumerator.MoveNext())
         {
@@ -127,11 +127,11 @@ class Solution
 
     private static void MoveCards(Queue<string> fromQueue, Queue<string> toQueue, int amount)
     {
-        for (var i = 0; i < amount; i++)
+        for (int i = 0; i < amount; i++)
         {
             //toQueue.Enqueue(fromQueue.Dequeue());
-            
-            var card = fromQueue.Dequeue();
+
+            string card = fromQueue.Dequeue();
             toQueue.Enqueue(card);
         }
     }
@@ -139,8 +139,8 @@ class Solution
     private static int GetValue(string card)
     {
         card = card.Remove(card.Length-1);
-        
-        var cardValue = card switch
+
+        int cardValue = card switch
         {
             "A" => 14,
             "K" => 13,

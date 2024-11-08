@@ -22,7 +22,7 @@ internal sealed class ConnectFour
     {
         _board = new List<int>[9];
 
-        for (var i = 0; i < _board.Length; i++)
+        for (int i = 0; i < _board.Length; i++)
         {
             _board[i] = new List<int>();
         }
@@ -30,9 +30,9 @@ internal sealed class ConnectFour
     
     public List<int> CalculateValidMoves()
     {
-        var validMoves = new List<int>();
+        List<int> validMoves = new List<int>();
 
-        for (var i = 0; i < _board.Length; i++)
+        for (int i = 0; i < _board.Length; i++)
         {
             if(_board[i].Count <= _boardMax)
             {
@@ -57,9 +57,9 @@ internal sealed class ConnectFour
     
     public void Steal(int playerId)
     {
-        var column = -1;
+        int column = -1;
         
-        for (var i = 0; i < _board.Length; i++)
+        for (int i = 0; i < _board.Length; i++)
         {
             if(_board[i].Count > 0)
             {
@@ -76,12 +76,12 @@ internal sealed class ConnectFour
     {
         const int winWeighting = 1000;
         const int potentialWinsWeighting = 100;
-        const int threeWeighting = 15; 
+        const int threeWeighting = 15;
 
 
         //var score = CountSequences(4) * (depth + 1) * winWeighting;     // Can we just cut off here? A win is probably trumps any other score
-        
-        var score = FindWin() * (depth + 1) * winWeighting;
+
+        int score = FindWin() * (depth + 1) * winWeighting;
         
         if(score == 0)
         {
@@ -99,16 +99,16 @@ internal sealed class ConnectFour
     // Returns as soon as there's a win
     private int FindWin()
     {
-        var sequenceLength = 4;
-        var numberOfSequences = 0;
+        int sequenceLength = 4;
+        int numberOfSequences = 0;
         
-        for (var column = 0; column < _board.Length; column++)
+        for (int column = 0; column < _board.Length; column++)
         {
-            var currentColumn = _board[column];
+            List<int> currentColumn = _board[column];
             
-            for (var row = 0; row < currentColumn.Count; row++)
+            for (int row = 0; row < currentColumn.Count; row++)
             {
-                var currentPiece = currentColumn[row];
+                int currentPiece = currentColumn[row];
                 
                 if(currentPiece == -1)
                 {
@@ -184,19 +184,19 @@ internal sealed class ConnectFour
     {
         const int maxRow = 6;
         const int maxColumn = 8;
-        
-        var numberOfSequences = 0;
-        var sequenceLength = 4;
 
-        for (var column = 0; column < _board.Length; column++)
+        int numberOfSequences = 0;
+        int sequenceLength = 4;
+
+        for (int column = 0; column < _board.Length; column++)
         {
-            var currentColumn = _board[column];
+            List<int> currentColumn = _board[column];
             
-            for (var row = 0; row < currentColumn.Count; row++)
+            for (int row = 0; row < currentColumn.Count; row++)
             {
-                var currentPiece = currentColumn[row];
-                
-                var increment = 0;
+                int currentPiece = currentColumn[row];
+
+                int increment = 0;
                 
                 if(currentPiece == 0)
                 {
@@ -223,7 +223,7 @@ internal sealed class ConnectFour
                 {
                     if(column > 0)
                     {
-                        var previousColumn = _board[column-1];
+                        List<int> previousColumn = _board[column-1];
                         
                         if(previousColumn.Count < row)
                         {
@@ -233,7 +233,7 @@ internal sealed class ConnectFour
                     
                     if(column <= maxColumn - (sequenceLength-1))
                     {
-                        var endColumn = _board[column+(sequenceLength-1)];
+                        List<int> endColumn = _board[column+(sequenceLength-1)];
                         
                         if(endColumn.Count < row)
                         {
@@ -250,7 +250,7 @@ internal sealed class ConnectFour
                     // Check down left for empty space
                     if(column > 0 && row > 0)
                     {
-                        var previousColumn = _board[column-1];
+                        List<int> previousColumn = _board[column-1];
                         
                         if(previousColumn.Count < row-1)
                         {
@@ -261,7 +261,7 @@ internal sealed class ConnectFour
                     // Check up right for empty space
                     if(row+(sequenceLength-1) <= maxRow && column <= maxColumn - (sequenceLength-1))
                     {
-                        var endColumn = _board[column+(sequenceLength-1)];
+                        List<int> endColumn = _board[column+(sequenceLength-1)];
                         
                         if(endColumn.Count < row + (sequenceLength-1))
                         {
@@ -277,7 +277,7 @@ internal sealed class ConnectFour
                     // Check up left for empty spaces
                     if(column > 0 && row+(sequenceLength-1) <= maxRow)
                     {
-                        var previousColumn = _board[column-1];
+                        List<int> previousColumn = _board[column-1];
                         
                         if(previousColumn.Count < row - 1)
                         {
@@ -288,7 +288,7 @@ internal sealed class ConnectFour
                     // Check down right
                     if(column <= maxColumn - (sequenceLength-1))
                     {
-                        var endColumn = _board[column+(sequenceLength-1)];
+                        List<int> endColumn = _board[column+(sequenceLength-1)];
                         
                         if(endColumn.Count < row - (sequenceLength-1))
                         {
@@ -305,15 +305,15 @@ internal sealed class ConnectFour
     
     private int CountSequences(int sequenceLength)
     {
-        var numberOfSequences = 0;
+        int numberOfSequences = 0;
         
-        for (var column = 0; column < _board.Length; column++)
+        for (int column = 0; column < _board.Length; column++)
         {
-            var currentColumn = _board[column];
+            List<int> currentColumn = _board[column];
             
-            for (var row = 0; row < currentColumn.Count; row++)
+            for (int row = 0; row < currentColumn.Count; row++)
             {
-                var currentPiece = currentColumn[row];
+                int currentPiece = currentColumn[row];
                 
                 if(currentPiece == -1)
                 {
@@ -384,9 +384,9 @@ internal sealed class ConnectFour
 
     private static bool CheckUp(List<int> column, int startPoisiton, int piece, int sequenceLength)
     {
-        var matchCount = 0;
+        int matchCount = 0;
         
-        for (var i = 1; i <= sequenceLength-1; i++)
+        for (int i = 1; i <= sequenceLength-1; i++)
         {
             if(column[startPoisiton+i] == piece)
             {
@@ -408,11 +408,11 @@ internal sealed class ConnectFour
     
     private bool CheckRight(int startColumn, int row, int piece, int sequenceLength)
     {
-        var matchCount = 0;
+        int matchCount = 0;
         
-        for (var i = 1; i <= sequenceLength-1; i++)
+        for (int i = 1; i <= sequenceLength-1; i++)
         {
-            var nextColumn = _board[startColumn+i];
+            List<int> nextColumn = _board[startColumn+i];
             
             if(nextColumn.Count >= row+1 && nextColumn[row] == piece)
             {
@@ -429,11 +429,11 @@ internal sealed class ConnectFour
     
     private bool CheckDiagonalUp(int startColumn, int startRow, int piece, int sequenceLength)
     {
-        var matchCount = 0;
+        int matchCount = 0;
         
-        for (var i = 1; i <= sequenceLength-1; i++)
+        for (int i = 1; i <= sequenceLength-1; i++)
         {
-            var nextColumn = _board[startColumn+i];
+            List<int> nextColumn = _board[startColumn+i];
             
             if(nextColumn.Count >= startRow+i+1 && nextColumn[startRow+i] == piece)
             {
@@ -450,11 +450,11 @@ internal sealed class ConnectFour
     
     private bool CheckDiagonalDown(int startColumn, int startRow, int piece, int sequenceLength)
     {
-        var matchCount = 0;
+        int matchCount = 0;
         
-        for (var i = 1; i <= sequenceLength-1; i++)
+        for (int i = 1; i <= sequenceLength-1; i++)
         {
-            var nextColumn = _board[startColumn+i];
+            List<int> nextColumn = _board[startColumn+i];
             
             if(nextColumn.Count >= startRow-i+1 && nextColumn[startRow-i] == piece)
             {
@@ -481,9 +481,9 @@ internal sealed class ConnectFour
     
     internal void SetMoveSequence(string moves)
     {
-        var isPlayer0 = true;
+        bool isPlayer0 = true;
         
-        foreach (var move in moves)
+        foreach (char move in moves)
         {
             AddMove(int.Parse(move.ToString()), isPlayer0 ? 0 : 1);
             
@@ -494,11 +494,11 @@ internal sealed class ConnectFour
     
     internal void PrintBoard()
     {
-        for (var i = 6; i >= 0; i--)            
+        for (int i = 6; i >= 0; i--)            
         {
-            var rowText = string.Empty;
+            string rowText = string.Empty;
             
-            for (var j = 0; j < 9; j++)
+            for (int j = 0; j < 9; j++)
             {
                 if (_board[j].Count >= i+1)
                 {
@@ -515,13 +515,13 @@ internal sealed class ConnectFour
     }
     public string DisplayBoard()
     {
-        var board = string.Empty;
+        string board = string.Empty;
         
-        for (var i = 6; i >= 0; i--)            
+        for (int i = 6; i >= 0; i--)            
         {
-            var rowText = string.Empty;
+            string rowText = string.Empty;
             
-            for (var j = 0; j < 9; j++)
+            for (int j = 0; j < 9; j++)
             {
                 if (_board[j].Count >= i+1)
                 {
@@ -561,7 +561,7 @@ internal sealed class Game
     
     internal string GetMove()
     {
-        var bestMove = _calculator.GetBestMoveUsingAlphaBeta(_connectFour, _depth, _myId);
+        int bestMove = _calculator.GetBestMoveUsingAlphaBeta(_connectFour, _depth, _myId);
 
         _connectFour.AddMove(bestMove, _myId);
         
@@ -587,15 +587,15 @@ internal sealed class MoveCalculator
 
     internal int GetBestMoveUsingAlphaBeta(ConnectFour connectFour, int depth, int startingPlayer)
     {
-        var moves = GetMoveScoresUsingAlphaBeta(connectFour, depth, startingPlayer).OrderByDescending(m => m.Item2).ToList();
-        
-        var max = moves.Max(m => m.Item2);
+        List<Tuple<int, int>> moves = GetMoveScoresUsingAlphaBeta(connectFour, depth, startingPlayer).OrderByDescending(m => m.Item2).ToList();
+
+        int max = moves.Max(m => m.Item2);
         
         PrintMoveScores(moves);
-        
-        var highest = moves.Where(m => m.Item2 == max).ToList();
 
-        var rand = new Random();
+        List<Tuple<int, int>> highest = moves.Where(m => m.Item2 == max).ToList();
+
+        Random rand = new Random();
         
         return highest[rand.Next(highest.Count)].Item1;
     
@@ -605,7 +605,7 @@ internal sealed class MoveCalculator
     {
         Console.Error.WriteLine($"---------------------------------------");
 
-        foreach (var move in moves)
+        foreach (Tuple<int, int> move in moves)
         {
             Console.Error.WriteLine($"Move:{move.Item1}, score:{move.Item2}");
         }
@@ -615,19 +615,19 @@ internal sealed class MoveCalculator
     {
         _connectFour = connectFour;
 
-        var moveScores = new List<Tuple<int, int>>();
+        List<Tuple<int, int>> moveScores = new List<Tuple<int, int>>();
 
-        var validMoves = _connectFour.CalculateValidMoves();
+        List<int> validMoves = _connectFour.CalculateValidMoves();
 
-        foreach (var validAction in validMoves)
+        foreach (int validAction in validMoves)
         {
-            var is0 = player == 0;
+            bool is0 = player == 0;
             
             //var board = _connectFour.DisplayBoard();
 
             _connectFour.AddMove(validAction, player);
 
-            var score = -Calculate(int.MinValue+1, int.MaxValue, depth-1, !is0, SwapPieces(player));
+            int score = -Calculate(int.MinValue+1, int.MaxValue, depth-1, !is0, SwapPieces(player));
 
             moveScores.Add(new Tuple<int, int>(validAction, score));
 
@@ -644,7 +644,7 @@ internal sealed class MoveCalculator
             return _connectFour.Evaluate(is0, depth);
         }
 
-        var validMoves = _connectFour.CalculateValidMoves();
+        List<int> validMoves = _connectFour.CalculateValidMoves();
 
         if(validMoves.Count == 0
            || _connectFour.IsGameOver())
@@ -652,9 +652,9 @@ internal sealed class MoveCalculator
             return _connectFour.Evaluate(is0, depth);
         }
 
-        var score = int.MinValue;
+        int score = int.MinValue;
 
-        foreach (var move in validMoves)
+        foreach (int move in validMoves)
         {
             //var board = _connectFour.DisplayBoard();
             _connectFour.AddMove(move, piece);
@@ -684,27 +684,27 @@ class Player
 {
     static void Main(string[] args)
     {
-        var inputs = Console.ReadLine().Split(' ');
-        var myId = int.Parse(inputs[0]); // 0 or 1 (Player 0 plays first)
-        var oppId = int.Parse(inputs[1]); // if your index is 0, this will be 1, and vice versa
+        string[] inputs = Console.ReadLine().Split(' ');
+        int myId = int.Parse(inputs[0]); // 0 or 1 (Player 0 plays first)
+        int oppId = int.Parse(inputs[1]); // if your index is 0, this will be 1, and vice versa
 
-        var game = new Game(myId);
+        Game game = new Game(myId);
         
         // game loop
         while (true)
         {
-            var turnIndex = int.Parse(Console.ReadLine()); // starts from 0; As the game progresses, first player gets [0,2,4,...] and second player gets [1,3,5,...]
-            for (var i = 0; i < 7; i++)
+            int turnIndex = int.Parse(Console.ReadLine()); // starts from 0; As the game progresses, first player gets [0,2,4,...] and second player gets [1,3,5,...]
+            for (int i = 0; i < 7; i++)
             {
-                var boardRow = Console.ReadLine(); // one row of the board (from top to bottom)
+                string boardRow = Console.ReadLine(); // one row of the board (from top to bottom)
             }
 
-            var numValidActions = int.Parse(Console.ReadLine()); // number of unfilled columns in the board
-            for (var i = 0; i < numValidActions; i++)
+            int numValidActions = int.Parse(Console.ReadLine()); // number of unfilled columns in the board
+            for (int i = 0; i < numValidActions; i++)
             {
-                var action = int.Parse(Console.ReadLine()); // a valid column index into which a chip can be dropped
+                int action = int.Parse(Console.ReadLine()); // a valid column index into which a chip can be dropped
             }
-            var oppPreviousAction = int.Parse(Console.ReadLine()); // opponent's previous chosen column index (will be -1 for first player in the first turn)
+            int oppPreviousAction = int.Parse(Console.ReadLine()); // opponent's previous chosen column index (will be -1 for first player in the first turn)
 
             if (oppPreviousAction != -1)
             {
@@ -722,7 +722,7 @@ class Player
 
 
             // Output a column index to drop the chip in. Append message to show in the viewer.
-            var move = game.GetMove();
+            string move = game.GetMove();
             Console.WriteLine(move);
         }
     }

@@ -14,7 +14,7 @@ using System.Collections;
 
 internal static class Display
 {
-    private static void DisplayRecipes(List<Recipe> recipes)
+    internal static void DisplayRecipes(List<Recipe> recipes)
     {
         Console.Error.WriteLine("Recipes");
 
@@ -24,7 +24,7 @@ internal static class Display
         }
     }
 
-    private static void DisplayRecipe(Recipe recipe)
+    internal static void DisplayRecipe(Recipe recipe)
     {
         Console.Error.WriteLine("actionId: " + recipe.Id);
         DisplayIngredients(recipe.Ingredients);
@@ -32,7 +32,7 @@ internal static class Display
         Console.Error.WriteLine();
     }
 
-    private static void DisplayIngredients(int[] ingredients)
+    internal static void DisplayIngredients(int[] ingredients)
     {
         Console.Error.WriteLine("blueIngredients:   " + ingredients[0]);
         Console.Error.WriteLine("greenIngredients:  " + ingredients[1]);
@@ -40,18 +40,24 @@ internal static class Display
         Console.Error.WriteLine("yellowIngredients: " + ingredients[3]);
     }
 
-    private static void DisplaySpells(List<Spell> spells)
+    internal static void DisplaySpells(List<Spell> spells)
     {
         foreach (Spell spell in spells)
         {
-            Console.Error.WriteLine($"actionId: {spell.Id}");
-            Console.Error.WriteLine($"Castable: {spell.Castable}");
-            DisplayIngredients(spell.IngredientsChange);
-            Console.Error.WriteLine();
+            DisplaySpell(spell);
         }
     }
 
-    private static void DisplayMoves(List<string> moves)
+    internal static void DisplaySpell(Spell spell)
+    {
+        Console.Error.WriteLine($"actionId: {spell.Id}");
+        Console.Error.WriteLine($"Castable: {spell.Castable}");
+        Console.Error.WriteLine($"Repeatable: {spell.Repeatable}");
+        DisplayIngredients(spell.IngredientsChange);
+        Console.Error.WriteLine();        
+    }
+
+    internal static void DisplayMoves(List<string> moves)
     {
         foreach (string move in moves)
         {
@@ -65,6 +71,7 @@ internal sealed class Game
 {   
     internal List<Recipe> Recipes { get; private set; }
     internal List<Spell> Spells { get; private set; }
+    internal List<Spell> TomeSpells { get; private set; }
     internal Inventory PlayerInventory { get; private set; }
     internal Inventory OpponentInventory { get; private set; }
 
@@ -72,6 +79,8 @@ internal sealed class Game
     private int currentRecipe = -1;
 
     private int maxDepth = 0;
+
+    private int turnCount = 0;
     
     public Game()
     {
@@ -87,7 +96,12 @@ internal sealed class Game
     {
         Spells = spells;
     }
-    
+
+    public void SetTomeSpells(List<Spell> tomeSpells)
+    {
+        TomeSpells = tomeSpells;
+    }
+
     public void SetPlayerInventory(Inventory inventoryItems)
     {
         PlayerInventory = inventoryItems;
@@ -99,6 +113,15 @@ internal sealed class Game
     }
     public string GetAction()
     {
+        // Display.DisplaySpells(TomeSpells);
+
+        // Very naieve but lets just get the first 6 spells
+        if (turnCount < 6)
+        {
+            turnCount++;
+            return $"LEARN {TomeSpells[0].Id}";
+        }
+
         if (currentRecipe == -1 || !Recipes.Exists(r => r.Id == currentRecipe))
         {
             maxDepth = 6;
@@ -109,7 +132,7 @@ internal sealed class Game
 
             // Go through each recipe, starting with the best scoring one
             for (int i = 0; i < Recipes.Count; i++)
-            {
+            {  
                 Recipe currentRecipe = Recipes[i];
 
                 // If it can be brewed then brew it
@@ -168,16 +191,18 @@ internal sealed class Game
             {
                 if (Spells[i].Castable && CanSpellBeCast(Spells[i].IngredientsChange, PlayerInventory.Ingredients))
                 {
-                    return $"CAST {Spells[i].Id}";
+                    action = $"CAST {Spells[i].Id}";
                 }
             }
         }
 
         if (action == "")
         {
-            return "REST";
+            action = "REST";
         }
-        
+
+        turnCount++;
+
         return action;
     }
 
@@ -263,13 +288,10 @@ internal sealed class Game
     public int MiniMax(int[] currentIngredients, int[] neededIngredients, List<Spell> availableSpells, int depth, List<string> moves, int maxDepth)
     {
         if (CanRecipeBeBrewed(neededIngredients, currentIngredients))
-        {
             return 0;
-        }
-
+        
         if (depth == maxDepth)
         {
-            // No solution found
             return int.MaxValue;
         }
 
@@ -381,17 +403,8 @@ internal sealed class Player
             game.SetPlayerInventory(GetInventoryItems());
             game.SetOpponentInventory(GetInventoryItems());
 
-            //DisplayInventory(game.PlayerInventory, true);
-            //DisplayInventory(game.OpponentInventory, false);
-
             string action = game.GetAction();
             Console.WriteLine(action);
-
-            // Write an action using Console.WriteLine()
-            // To debug: Console.Error.WriteLine("Debug messages...");
-
-            // in the first league: BREW <id> | WAIT; later: BREW <id> | CAST <id> [<times>] | LEARN <id> | REST | WAIT
-            //Console.WriteLine(actionType + " " + recipeId);
         }
     }
 
@@ -401,7 +414,7 @@ internal sealed class Player
 
         List<Recipe> recipes = new List<Recipe>();
         List<Spell> spells = new List<Spell>();
-        
+        List<Spell> tomeSpells = new List<Spell>();
 
         for (int i = 0; i < actionCount; i++)
         {
@@ -424,12 +437,24 @@ internal sealed class Player
                                                  int.Parse(inputs[3]),
                                                  int.Parse(inputs[4]),
                                                  int.Parse(inputs[5])},
-                                     int.Parse(inputs[9]) == 1));   
-            }       
+                                     int.Parse(inputs[9]) == 1,
+                                     int.Parse(inputs[10]) == 1));   
+            }
+            else if (inputs[1] == "LEARN")
+            {
+                tomeSpells.Add(new Spell(int.Parse(inputs[0]),
+                                     new int[] { int.Parse(inputs[2]),
+                                                 int.Parse(inputs[3]),
+                                                 int.Parse(inputs[4]),
+                                                 int.Parse(inputs[5])},
+                                     int.Parse(inputs[9]) == 1,
+                                     int.Parse(inputs[10]) == 1));
+            }
         }
         
         game.SetRecipes(recipes);
         game.SetSpells(spells);
+        game.SetTomeSpells(tomeSpells);
     }
     
     private static Inventory GetInventoryItems()
@@ -510,14 +535,17 @@ internal struct Spell
     internal int Id { get; }
     public int[] IngredientsChange { get; }
     internal bool Castable { get; set; }
+    internal bool Repeatable { get; set; }
 
     internal Spell(int id,
         int[] ingredientsChange,
-        bool castable)
+        bool castable,
+        bool repeatable)
     {
         Id = id;
         IngredientsChange = ingredientsChange;
         Castable = castable;
+        Repeatable = repeatable;
 
     }
 }

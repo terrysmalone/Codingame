@@ -11,6 +11,7 @@ internal sealed class Game
 {   
     internal List<Recipe> Recipes { get; private set; }
     internal List<Spell> Spells { get; private set; }
+    internal List<Spell> TomeSpells { get; private set; }
     internal Inventory PlayerInventory { get; private set; }
     internal Inventory OpponentInventory { get; private set; }
 
@@ -18,6 +19,8 @@ internal sealed class Game
     private int currentRecipe = -1;
 
     private int maxDepth = 0;
+
+    private int turnCount = 0;
     
     public Game()
     {
@@ -33,7 +36,12 @@ internal sealed class Game
     {
         Spells = spells;
     }
-    
+
+    public void SetTomeSpells(List<Spell> tomeSpells)
+    {
+        TomeSpells = tomeSpells;
+    }
+
     public void SetPlayerInventory(Inventory inventoryItems)
     {
         PlayerInventory = inventoryItems;
@@ -45,6 +53,15 @@ internal sealed class Game
     }
     public string GetAction()
     {
+        // Display.DisplaySpells(TomeSpells);
+
+        // Very naieve but lets just get the first 6 spells
+        if (turnCount < 6)
+        {
+            turnCount++;
+            return $"LEARN {TomeSpells[0].Id}";
+        }
+
         if (currentRecipe == -1 || !Recipes.Exists(r => r.Id == currentRecipe))
         {
             maxDepth = 6;
@@ -55,7 +72,7 @@ internal sealed class Game
 
             // Go through each recipe, starting with the best scoring one
             for (int i = 0; i < Recipes.Count; i++)
-            {
+            {  
                 Recipe currentRecipe = Recipes[i];
 
                 // If it can be brewed then brew it
@@ -114,16 +131,18 @@ internal sealed class Game
             {
                 if (Spells[i].Castable && CanSpellBeCast(Spells[i].IngredientsChange, PlayerInventory.Ingredients))
                 {
-                    return $"CAST {Spells[i].Id}";
+                    action = $"CAST {Spells[i].Id}";
                 }
             }
         }
 
         if (action == "")
         {
-            return "REST";
+            action = "REST";
         }
-        
+
+        turnCount++;
+
         return action;
     }
 

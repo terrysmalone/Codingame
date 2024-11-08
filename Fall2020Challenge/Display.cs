@@ -5,7 +5,7 @@ using System.Collections.Generic;
 
 internal static class Display
 {
-    private static void DisplayRecipes(List<Recipe> recipes)
+    internal static void DisplayRecipes(List<Recipe> recipes)
     {
         Console.Error.WriteLine("Recipes");
 
@@ -15,7 +15,7 @@ internal static class Display
         }
     }
 
-    private static void DisplayRecipe(Recipe recipe)
+    internal static void DisplayRecipe(Recipe recipe)
     {
         Console.Error.WriteLine("actionId: " + recipe.Id);
         DisplayIngredients(recipe.Ingredients);
@@ -23,7 +23,7 @@ internal static class Display
         Console.Error.WriteLine();
     }
 
-    private static void DisplayIngredients(int[] ingredients)
+    internal static void DisplayIngredients(int[] ingredients)
     {
         Console.Error.WriteLine("blueIngredients:   " + ingredients[0]);
         Console.Error.WriteLine("greenIngredients:  " + ingredients[1]);
@@ -31,18 +31,24 @@ internal static class Display
         Console.Error.WriteLine("yellowIngredients: " + ingredients[3]);
     }
 
-    private static void DisplaySpells(List<Spell> spells)
+    internal static void DisplaySpells(List<Spell> spells)
     {
         foreach (Spell spell in spells)
         {
-            Console.Error.WriteLine($"actionId: {spell.Id}");
-            Console.Error.WriteLine($"Castable: {spell.Castable}");
-            DisplayIngredients(spell.IngredientsChange);
-            Console.Error.WriteLine();
+            DisplaySpell(spell);
         }
     }
 
-    private static void DisplayMoves(List<string> moves)
+    internal static void DisplaySpell(Spell spell)
+    {
+        Console.Error.WriteLine($"actionId: {spell.Id}");
+        Console.Error.WriteLine($"Castable: {spell.Castable}");
+        Console.Error.WriteLine($"Repeatable: {spell.Repeatable}");
+        DisplayIngredients(spell.IngredientsChange);
+        Console.Error.WriteLine();        
+    }
+
+    internal static void DisplayMoves(List<string> moves)
     {
         foreach (string move in moves)
         {

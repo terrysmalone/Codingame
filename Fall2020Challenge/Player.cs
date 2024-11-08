@@ -20,17 +20,8 @@ internal sealed class Player
             game.SetPlayerInventory(GetInventoryItems());
             game.SetOpponentInventory(GetInventoryItems());
 
-            //DisplayInventory(game.PlayerInventory, true);
-            //DisplayInventory(game.OpponentInventory, false);
-
             string action = game.GetAction();
             Console.WriteLine(action);
-
-            // Write an action using Console.WriteLine()
-            // To debug: Console.Error.WriteLine("Debug messages...");
-
-            // in the first league: BREW <id> | WAIT; later: BREW <id> | CAST <id> [<times>] | LEARN <id> | REST | WAIT
-            //Console.WriteLine(actionType + " " + recipeId);
         }
     }
 
@@ -40,7 +31,8 @@ internal sealed class Player
 
         List<Recipe> recipes = new List<Recipe>();
         List<Spell> spells = new List<Spell>();
-         
+        List<Spell> tomeSpells = new List<Spell>();
+
         for (int i = 0; i < actionCount; i++)
         {
             string input = Console.ReadLine();
@@ -62,12 +54,24 @@ internal sealed class Player
                                                  int.Parse(inputs[3]),
                                                  int.Parse(inputs[4]),
                                                  int.Parse(inputs[5])},
-                                     int.Parse(inputs[9]) == 1));   
-            }       
+                                     int.Parse(inputs[9]) == 1,
+                                     int.Parse(inputs[10]) == 1));   
+            }
+            else if (inputs[1] == "LEARN")
+            {
+                tomeSpells.Add(new Spell(int.Parse(inputs[0]),
+                                     new int[] { int.Parse(inputs[2]),
+                                                 int.Parse(inputs[3]),
+                                                 int.Parse(inputs[4]),
+                                                 int.Parse(inputs[5])},
+                                     int.Parse(inputs[9]) == 1,
+                                     int.Parse(inputs[10]) == 1));
+            }
         }
         
         game.SetRecipes(recipes);
         game.SetSpells(spells);
+        game.SetTomeSpells(tomeSpells);
     }
     
     private static Inventory GetInventoryItems()

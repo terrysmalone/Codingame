@@ -1,6 +1,6 @@
 ﻿namespace Fall2020Challenge;
 
-internal struct Spell
+internal sealed class Spell
 {
     internal const string ActionType = "CAST";
     

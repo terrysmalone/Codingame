@@ -18,7 +18,7 @@ internal sealed class Game
     private List<string> currentPath = new List<string>();
     private int currentRecipe = -1;
 
-    private int maxDepth = 0;
+    private int maxDepth = 10;
 
     private int turnCount = 0;
     
@@ -64,8 +64,6 @@ internal sealed class Game
 
         if (currentRecipe == -1 || !Recipes.Exists(r => r.Id == currentRecipe))
         {
-            maxDepth = 6;
-
             currentRecipe = -1;
 
             List<string>[] paths = new List<string>[Recipes.Count];
@@ -83,26 +81,17 @@ internal sealed class Game
                 paths[i] = FindShortestPath(PlayerInventory.Ingredients, currentRecipe.Ingredients, Spells);
             }
 
-            // Lets try going for quickest first
-            List<string> quickestPath = new List<string>();
-            int quickest = int.MaxValue;
-            int quickestRecipe = 0;
+            int quickest = GetQuickestPathIndex(paths);
 
-            for (int i = 0; i < paths.Length; i++)
+            if (quickest >= 0)
             {
-                if (paths[i].Count > 0 && paths[i].Count < quickest)
+                List<string> quickestPath = paths[quickest];
+
+                if (quickestPath.Count > 0)
                 {
-                    quickest = paths[i].Count;
-                    quickestPath = paths[i];
-                    quickestRecipe = Recipes[i].Id;
+                    currentRecipe = Recipes[quickest].Id; ;
+                    currentPath = quickestPath;
                 }
-            }
-
-
-            if (quickestPath.Count > 0)
-            {
-                currentRecipe = quickestRecipe;
-                currentPath = quickestPath;
             }
         }
 
@@ -144,6 +133,24 @@ internal sealed class Game
         turnCount++;
 
         return action;
+    }
+
+    private int GetQuickestPathIndex(List<string>[] paths)
+    {
+        int quickest = int.MaxValue;
+        int quickestIndex = -1;
+
+        for (int i = 0; i < paths.Length; i++)
+        {
+            if (paths[i].Count > 0 && paths[i].Count < quickest)
+            {
+                quickest = paths[i].Count;
+
+                quickestIndex = i;
+            }
+        }
+
+        return quickestIndex;
     }
 
     private bool CanRecipeBeBrewed(Recipe recipe)
@@ -210,14 +217,10 @@ internal sealed class Game
         for (int i = 0; i <= maxDepth; i++)
         {
             moves.Clear();
-            int turns = MiniMax(currentIngredients, neededIngredients, availableSpells, 0, moves, i);
+            int turns = DepthFirstSearch(currentIngredients, neededIngredients, availableSpells, 0, moves, i);
 
             if (turns != int.MaxValue)
             {
-                Console.Error.WriteLine($"Breaking at {i}");
-
-                // We care about the quickest ones right now. Don't look beyond something we've already found
-                maxDepth = i;
                 break;
             }
         }
@@ -225,7 +228,7 @@ internal sealed class Game
         return moves;
     }
 
-    public int MiniMax(int[] currentIngredients, int[] neededIngredients, List<Spell> availableSpells, int depth, List<string> moves, int maxDepth)
+    public int DepthFirstSearch(int[] currentIngredients, int[] neededIngredients, List<Spell> availableSpells, int depth, List<string> moves, int maxDepth)
     {
         if (CanRecipeBeBrewed(neededIngredients, currentIngredients))
             return 0;
@@ -236,30 +239,31 @@ internal sealed class Game
         }
 
         int minTurns = int.MaxValue;
+
+        string madeMove = string.Empty;
+        bool[] castableBefore = new bool[availableSpells.Count];
+        int[] ingredientsBefore = new int[4];
+
         // Get all possible actions
         for (int i = 0; i <= availableSpells.Count(); i++)
         {
-            string currentMove = string.Empty;
-            int[] changedIngredients = currentIngredients.ToArray();
+            madeMove = string.Empty;
 
-            Spell[] copiedSpells = new Spell[availableSpells.Count];
-
-            availableSpells.CopyTo(copiedSpells);
-            List<Spell> changedSpells = copiedSpells.ToList();
-
-            if (i == changedSpells.Count())
+            if (i == availableSpells.Count())
             {
-                if (changedSpells.Count(s => !s.Castable) > 0)
+                if (availableSpells.Count(s => !s.Castable) > 0)
                 {
-                    for (int k = 0; k < changedSpells.Count(); k++)
+                    // Make move
+                    for (int k = 0; k < availableSpells.Count(); k++)
                     {
-                        Spell spellToChange = changedSpells[k];
+                        Spell spellToChange = availableSpells[k];
 
-                        spellToChange.Castable = true;
+                        castableBefore[k] = availableSpells[k].Castable;
 
-                        changedSpells.RemoveAt(k);
-                        changedSpells.Insert(k, spellToChange);
+                        availableSpells[k].Castable = true;
                     }
+
+                    madeMove = "REST";
 
                     moves.Add("REST");
                 }
@@ -272,22 +276,24 @@ internal sealed class Game
             else
             {
                 // do the changes from casting the spell
-                if (changedSpells[i].Castable == true && CanSpellBeCast(changedSpells[i].IngredientsChange, changedIngredients))
+                if (availableSpells[i].Castable == true && CanSpellBeCast(availableSpells[i].IngredientsChange, currentIngredients))
                 {
-                    Spell currentSpell = changedSpells[i];
-                    currentSpell.Castable = false;
-
-                    changedSpells.RemoveAt(i);
-                    changedSpells.Insert(i, currentSpell);
+                    availableSpells[i].Castable = false;
 
                     for (int j = 0; j < 4; j++)
                     {
-                        changedIngredients[j] += currentSpell.IngredientsChange[j];
-                        if (changedIngredients[j] < 0)
-                            changedIngredients[j] = 0;
+                        ingredientsBefore[j] = currentIngredients[j];
                     }
 
-                    moves.Add($"CAST {currentSpell.Id}");
+                    for (int j = 0; j < 4; j++)
+                    {
+                        currentIngredients[j] += availableSpells[i].IngredientsChange[j];
+                        if (currentIngredients[j] < 0)
+                            currentIngredients[j] = 0;
+                    }
+
+                    madeMove = "CAST";
+                    moves.Add($"CAST {availableSpells[i].Id}");
                 }
                 else
                 {
@@ -295,7 +301,23 @@ internal sealed class Game
                 }
             }
 
-            int turns = MiniMax(changedIngredients, neededIngredients, changedSpells, depth + 1, moves, maxDepth);
+            int turns = DepthFirstSearch(currentIngredients, neededIngredients, availableSpells, depth + 1, moves, maxDepth);
+
+            // unmake move
+            if (madeMove == "REST")
+            {
+                for (int j = 0; j < availableSpells.Count(); j++)
+                {
+                    availableSpells[j].Castable = castableBefore[j];
+                }
+            } 
+            else if (madeMove == "CAST")
+            {
+                for (int j = 0; j < 4; j++)
+                {
+                    currentIngredients[j] = ingredientsBefore[j];
+                }
+            }
 
             if (turns == 0)
             {

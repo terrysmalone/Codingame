@@ -47,9 +47,7 @@ internal sealed class Game
     {
         if (currentRecipe == -1 || !Recipes.Exists(r => r.Id == currentRecipe))
         {
-            Console.Error.WriteLine("FINDING RECIPE");
-
-            maxDepth = 8;
+            maxDepth = 6;
 
             currentRecipe = -1;
 
@@ -89,8 +87,6 @@ internal sealed class Game
                 currentRecipe = quickestRecipe;
                 currentPath = quickestPath;
             }
-
-            Console.Error.WriteLine($"currentRecipe: {currentRecipe}");
         }
 
         var action = string.Empty;
@@ -136,7 +132,7 @@ internal sealed class Game
         return CanRecipeBeBrewed(recipe.Ingredients, PlayerInventory.Ingredients);
     }
 
-    private bool CanRecipeBeBrewed(int[] needed, int[] have)
+    private static bool CanRecipeBeBrewed(int[] needed, int[] have)
     {
         if (have[0] >= needed[0]
             && have[1] >= needed[1]
@@ -187,36 +183,9 @@ internal sealed class Game
             && inventoryIngredients[2] + spellIngredientsChange[2] >= 0
             && inventoryIngredients[3] + spellIngredientsChange[3] >= 0;
     }
-    
-    private int[] CalculateNeededIngredientsAfterChange(IReadOnlyList<int> targetIngredients, IReadOnlyList<int> ingredientsChange)
-    {
-        var blueDiff = targetIngredients[0] - (PlayerInventory.Ingredients[0] + ingredientsChange[0]);
-        var greenDiff = targetIngredients[1] - (PlayerInventory.Ingredients[1] + ingredientsChange[1]);
-        var orangeDiff = targetIngredients[2] - (PlayerInventory.Ingredients[2] + ingredientsChange[2]);
-        var yellowDiff = targetIngredients[3] - (PlayerInventory.Ingredients[3] + ingredientsChange[3]);
-        
-        var blueNeeds = blueDiff >= 0 ? blueDiff : 0;
-        var greenNeeds = greenDiff >= 0 ? greenDiff : 0;
-        var orangeNeeds = orangeDiff >= 0 ? orangeDiff : 0;
-        var yellowNeeds = yellowDiff >= 0 ? yellowDiff : 0;
-
-        return new []
-        {
-            blueNeeds,
-            greenNeeds,
-            orangeNeeds,
-            yellowNeeds
-        };
-    }
 
     private List<string> FindShortestPath(int[] currentIngredients, int[] neededIngredients, List<Spell> availableSpells)
     {
-        var actionCount = 0;
-
-        // get all possible actions (all castable spells plus rest)
-        // for each action
-        //    Do the action
-
         var moves = new List<string>();
 
         for (int i = 0; i <= maxDepth; i++)
@@ -234,21 +203,16 @@ internal sealed class Game
             }
         }
 
-        //DisplayMoves(moves);
-
         return moves;
     }
 
     public int MiniMax(int[] currentIngredients, int[] neededIngredients, List<Spell> availableSpells, int depth, List<string> moves, int maxDepth)
     {
         if (CanRecipeBeBrewed(neededIngredients, currentIngredients))
-        {
             return 0;
-        }
-
+        
         if (depth == maxDepth)
         {
-            // No solution found
             return int.MaxValue;
         }
 
@@ -312,8 +276,6 @@ internal sealed class Game
                 }
             }
 
-            // DisplaySpells(changedSpells);
-
             int turns = MiniMax(changedIngredients, neededIngredients, changedSpells, depth + 1, moves, maxDepth);
 
             if (turns == 0)
@@ -332,57 +294,5 @@ internal sealed class Game
         }
 
         return minTurns;
-    }
-
-    private void DisplayRecipes()
-    {
-        Console.Error.WriteLine("Recipes");
-        
-        foreach (var recipe in Recipes)
-        {
-            DisplayRecipe(recipe);         
-        }   
-    }
-
-    private void DisplayRecipe(Recipe recipe)
-    {
-        Console.Error.WriteLine("actionId: " + recipe.Id);
-        DisplayIngredients(recipe.Ingredients);
-        Console.Error.WriteLine("Price: " + recipe.Price);
-        Console.Error.WriteLine();
-    }
-
-    private void DisplayIngredients(int[] ingredients)
-    {
-        Console.Error.WriteLine("blueIngredients:   " + ingredients[0]);
-        Console.Error.WriteLine("greenIngredients:  " + ingredients[1]);
-        Console.Error.WriteLine("orangeIngredients: " + ingredients[2]);
-        Console.Error.WriteLine("yellowIngredients: " + ingredients[3]);
-    }
-
-    private void DisplaySpells()
-    {
-        Console.Error.WriteLine("Spells");
-
-        DisplaySpells(Spells);
-    }
-
-    private void DisplaySpells(List<Spell> spells)
-    {
-        foreach (var spell in spells)
-        {
-            Console.Error.WriteLine($"actionId: {spell.Id}");
-            Console.Error.WriteLine($"Castable: {spell.Castable}");
-            DisplayIngredients(spell.IngredientsChange);
-            Console.Error.WriteLine();
-        }
-    }
-
-    private void DisplayMoves(List<string> moves)
-    {
-        foreach (var move in moves)
-        {
-            Console.Error.WriteLine(move);
-        }
     }
 }

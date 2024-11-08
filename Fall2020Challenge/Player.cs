@@ -40,8 +40,7 @@ internal sealed class Player
         
         var recipes = new List<Recipe>();
         var spells = new List<Spell>();
-        
-
+         
         for (var i = 0; i < actionCount; i++)
         {               
             var input = Console.ReadLine();

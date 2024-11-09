@@ -55,4 +55,18 @@ internal static class Display
             Console.Error.WriteLine(move);
         }
     }
+
+    internal static void DisplayPaths(List<string>[] paths)
+    {
+        foreach (var path in paths)
+        {
+            Console.Error.WriteLine("-----------------------------");
+
+            foreach (var p in path)
+            {
+                Console.Error.WriteLine(p);
+            }
+
+        }
+    }
 }

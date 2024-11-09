@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+using System.Reflection.Metadata.Ecma335;
 using System.Runtime.CompilerServices;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 using System.Text;
@@ -63,6 +64,20 @@ internal static class Display
         foreach (string move in moves)
         {
             Console.Error.WriteLine(move);
+        }
+    }
+
+    internal static void DisplayPaths(List<string>[] paths)
+    {
+        foreach (var path in paths)
+        {
+            Console.Error.WriteLine("-----------------------------");
+
+            foreach (var p in path)
+            {
+                Console.Error.WriteLine(p);
+            }
+
         }
     }
 }
@@ -123,7 +138,7 @@ internal sealed class Game
             return $"LEARN {TomeSpells[0].Id}";
         }
 
-        if (currentRecipe == -1 || !Recipes.Exists(r => r.Id == currentRecipe))
+        if (currentRecipe is -1 || !Recipes.Exists(r => r.Id == currentRecipe))
         {
             currentRecipe = -1;
 
@@ -141,6 +156,8 @@ internal sealed class Game
                 // Find shortest path to ingredients
                 paths[i] = FindShortestPath(PlayerInventory.Ingredients, currentRecipe.Ingredients, Spells);
             }
+
+            Display.DisplayPaths(paths);
 
             // int bestIndex = GetQuickestPathIndex(paths);
             int bestIndex = GetMostExpensivePathIndex(paths);
@@ -189,6 +206,7 @@ internal sealed class Game
 
         if (action == "")
         {
+            Console.Error.WriteLine("RESTING");
             action = "REST";
         }
 
@@ -222,6 +240,9 @@ internal sealed class Game
 
         for (int i = 0; i < paths.Length; i++)
         {
+            if (paths[i].Count == 0)
+                continue;
+
             var price = Recipes[i].Price;
 
             // The implementation of this bonus isn't 100% right. I'll fix it at some point:
@@ -237,7 +258,7 @@ internal sealed class Game
                 price += 1;
             }
 
-            if (paths[i].Count > 0 && price > mostExpensive)
+            if (price > mostExpensive)
             {
                 mostExpensive = price;
 
@@ -268,41 +289,63 @@ internal sealed class Game
 
     private static bool CanSpellBeCast(int[] spellIngredientsChange, int[] inventoryIngredients)
     {
-        int total = GetTotal(spellIngredientsChange, inventoryIngredients);
-
-        bool haveIngredients = AreNeededIngredientsPresent(spellIngredientsChange, inventoryIngredients);
-        
-
-        if (total > 10 || !haveIngredients)
-        {
-            return false;
-        }
-
-        return true;
-
+        return CanSpellBeCast(spellIngredientsChange, inventoryIngredients, 1);
     }
 
-    private static int GetTotal(int[] spellIngredientsChange, int[] inventoryIngredients)
+    private static bool CanSpellBeCast(int[] spellIngredientsChange, int[] inventoryIngredients, int timesToCast)
+    {
+        int total = GetTotal(spellIngredientsChange, inventoryIngredients, timesToCast);
+
+        if (total > 10)
+            return false;
+
+        bool haveIngredients = AreNeededIngredientsPresent(spellIngredientsChange, inventoryIngredients, timesToCast);
+        
+        if (!haveIngredients)
+            return false;
+
+        return true;
+    }
+
+    private static int GetTotal(int[] spellIngredientsChange, int[] inventoryIngredients, int timesToCast)
     {
         int total = 0;
 
-        for (int i = 0; i < 4; i++)
+        for (int times = 1; times <= timesToCast; times++)
         {
-            if (inventoryIngredients[i] + spellIngredientsChange[i] >= 0)
+            for (int i = 0; i < 4; i++)
             {
-                total += inventoryIngredients[i] + spellIngredientsChange[i];
+                if (inventoryIngredients[i] + spellIngredientsChange[i] >= 0)
+                {
+                    total += inventoryIngredients[i] + spellIngredientsChange[i];
+                }
             }
         }
 
         return total;
     }
 
-    private static bool AreNeededIngredientsPresent(int[] spellIngredientsChange, int[] inventoryIngredients)
+    private static bool AreNeededIngredientsPresent(int[] spellIngredientsChange, int[] inventoryIngredients, int timesToCast)
     {
-        return inventoryIngredients[0] + spellIngredientsChange[0] >= 0
-            && inventoryIngredients[1] + spellIngredientsChange[1] >= 0
-            && inventoryIngredients[2] + spellIngredientsChange[2] >= 0
-            && inventoryIngredients[3] + spellIngredientsChange[3] >= 0;
+        int blue = inventoryIngredients[0];
+        int green = inventoryIngredients[1];
+        int orange = inventoryIngredients[2];
+        int yellow = inventoryIngredients[3];
+
+        for (int times = 1; times <= timesToCast; times++)
+        {
+            blue += spellIngredientsChange[0];
+            green += spellIngredientsChange[1];
+            orange += spellIngredientsChange[2];
+            yellow += spellIngredientsChange[3];
+        }
+
+        if (blue < 0) return false;
+        if (green < 0) return false;
+        if (orange < 0) return false;   
+        if (yellow < 0) return false;
+
+        return true;
     }
 
     private List<string> FindShortestPath(int[] currentIngredients, int[] neededIngredients, List<Spell> availableSpells)
@@ -317,7 +360,7 @@ internal sealed class Game
             if (turns != int.MaxValue)
             {
                 break;
-            }
+            }           
         }
 
         return moves;
@@ -340,11 +383,14 @@ internal sealed class Game
         int[] ingredientsBefore = new int[4];
 
         // Get all possible actions
-        for (int i = 0; i <= availableSpells.Count(); i++)
+        // Give enough space to try multicasting all spells 3 times. We won't need tis many but lets use it any way
+        int numberOfActions = (availableSpells.Count() * 3) + 1;
+       
+        for (int i = 0; i < numberOfActions; i++)
         {
             madeMove = string.Empty;
 
-            if (i == availableSpells.Count())
+            if (i == numberOfActions-1)
             {
                 if (availableSpells.Count(s => !s.Castable) > 0)
                 {
@@ -370,11 +416,19 @@ internal sealed class Game
             }
             else
             {
-                // do the changes from casting the spell
-                if (availableSpells[i].Castable == true && CanSpellBeCast(availableSpells[i].IngredientsChange, currentIngredients))
-                {
-                    availableSpells[i].Castable = false;
+                Spell currentSpell = availableSpells[i/3];
+                int timesToCast = (i % 3) + 1;
+                              
+                // If it's not repeatable we only need to try 1 cast
+                if (!currentSpell.Repeatable && timesToCast > 1)
+                    continue;
 
+                // do the changes from casting the spell
+                if (currentSpell.Castable == true && CanSpellBeCast(currentSpell.IngredientsChange, currentIngredients, timesToCast))
+                {
+                    currentSpell.Castable = false;
+
+                    
                     for (int j = 0; j < 4; j++)
                     {
                         ingredientsBefore[j] = currentIngredients[j];
@@ -382,13 +436,17 @@ internal sealed class Game
 
                     for (int j = 0; j < 4; j++)
                     {
-                        currentIngredients[j] += availableSpells[i].IngredientsChange[j];
+                        for (int times = 0; times < timesToCast; times++)
+                        {
+                            currentIngredients[j] += currentSpell.IngredientsChange[j];                      
+                        }
+
                         if (currentIngredients[j] < 0)
                             currentIngredients[j] = 0;
                     }
 
                     madeMove = "CAST";
-                    moves.Add($"CAST {availableSpells[i].Id}");
+                    moves.Add($"CAST {currentSpell.Id} {timesToCast}");
                 }
                 else
                 {

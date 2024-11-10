@@ -1,7 +1,8 @@
-﻿namespace Fall2024Challenge_SeleniaCity; 
+﻿namespace Fall2024Challenge_SeleniaCity;
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -26,13 +27,23 @@ internal sealed class Game
 
     internal void SetModules(List<Module> modules) => Modules = modules;
 
+    private const int TELEPORTER_COST = 5000;
+    private const int TUBE_COST = 1000;
+    private const int DESTROY_REFUND = 750;
+
+
+
     // TUBE | UPGRADE | TELEPORT | POD | DESTROY | WAIT
     // Example - "TUBE 0 1;TUBE 0 2;POD 42 0 1 0 2 0 1 0 2"
     internal string GetActions()
     {
+        Display.Tubes(Tubes);
+        Display.Pods(Pods);
+        // Get all landing pods
+
         if (Tubes.Count == 0)
         {
-            return "TUBE 0 1;TUBE 0 2;POD 42 0 1 0 2 0 1 0 2";
+            return "TUBE 0 1;TUBE 0 2;POD 42 0 1 0 2 0 1 0 2;";
         }
         else
         {

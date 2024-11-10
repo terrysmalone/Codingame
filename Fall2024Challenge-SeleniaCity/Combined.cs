@@ -5,12 +5,37 @@
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Drawing;
 using System.IO;
 using System.Collections;
+
+internal static class Display 
+{
+    internal static void Tubes(List<Tube> tubes)
+    {
+        Console.Error.WriteLine("");
+        foreach (Tube tube in tubes)
+        { 
+            Console.Error.WriteLine($"{tube.Building1Id} -> {tube.Building2Id} Capacity:{tube.Capacity}");
+        }
+        Console.Error.WriteLine("");
+    }
+
+    internal static void Pods(List<Pod> pods)
+    {
+        Console.Error.WriteLine("");
+        foreach (Pod pod in pods)
+        {
+            Console.Error.WriteLine($"{pod.Id}- Stops:{pod.NumberOfStops} - {string.Join(" ", pod.Path)}");
+        }
+        Console.Error.WriteLine("");
+    }
+}
+
 
 internal sealed class Game
 {
@@ -33,13 +58,23 @@ internal sealed class Game
 
     internal void SetModules(List<Module> modules) => Modules = modules;
 
+    private const int TELEPORTER_COST = 5000;
+    private const int TUBE_COST = 1000;
+    private const int DESTROY_REFUND = 750;
+
+
+
     // TUBE | UPGRADE | TELEPORT | POD | DESTROY | WAIT
     // Example - "TUBE 0 1;TUBE 0 2;POD 42 0 1 0 2 0 1 0 2"
     internal string GetActions()
     {
+        Display.Tubes(Tubes);
+        Display.Pods(Pods);
+        // Get all landing pods
+
         if (Tubes.Count == 0)
         {
-            return "TUBE 0 1;TUBE 0 2;POD 42 0 1 0 2 0 1 0 2";
+            return "TUBE 0 1;TUBE 0 2;POD 42 0 1 0 1 0 1 0 1; POD 43 0 2 0 2 0 2 0 2;";
         }
         else
         {
@@ -47,7 +82,6 @@ internal sealed class Game
         }
     }
 }
-
 
 internal sealed class LandingPad(int id, Point position, int[] astronauts)
 {
@@ -193,14 +227,10 @@ internal sealed class Teleporter(int building1Id, int building2Id)
     public int Building2Id { get; private set; } = building2Id;
 }
 
-
-
 internal sealed class Tube(int building1Id, int building2Id, int capacity)
 {
     public int Building1Id { get; private set; } = building1Id;
     public int Building2Id { get; private set; } = building2Id;
     public int Capacity { get; private set; } = capacity;
 }
-
-
 

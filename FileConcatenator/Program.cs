@@ -75,6 +75,10 @@ internal sealed class Program
         {
             blockIndex = text.IndexOf("struct");
         }
+        if (blockIndex == -1)
+        {
+            blockIndex = text.IndexOf("interface");
+        }
 
         int blockStart = text.Substring(0, blockIndex).LastIndexOf("\n");
 

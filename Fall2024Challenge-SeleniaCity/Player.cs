@@ -121,7 +121,7 @@ class Player
             }
         }
 
-        game.SetLandingPads(landingPads);
-        game.SetModules(modules);
+        game.AddLandingPads(landingPads);
+        game.AddModules(modules);
     }
 }

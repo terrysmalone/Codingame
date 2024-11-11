@@ -6,17 +6,95 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Drawing;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
-using System.Drawing;
 using System.IO;
 using System.Collections;
 
+internal enum ActionType
+{
+    POD,
+    TUBE,
+    WAIT
+}
+
 internal static class Display 
 {
+    internal static void Summary(Game game, bool verbose)
+    {
+        Console.Error.WriteLine("==================================");
+        Console.Error.WriteLine($"Resources: {game.Resources}");
+        Console.Error.WriteLine();
+
+        // Landing Pads
+        Console.Error.WriteLine($"Landing Pads: {game.LandingPads.Count}");
+        if (verbose)
+        {
+            LandingPads(game.LandingPads);
+        }
+        Console.Error.WriteLine();
+
+        // Modules
+        Console.Error.WriteLine($"Modules: {game.Modules.Count}");
+        if (verbose)
+        {
+            Modules(game.Modules);
+        }
+        Console.Error.WriteLine();
+
+        // Tubes
+        Console.Error.WriteLine($"Tubes: {game.Tubes.Count}");
+        if (verbose)
+        {
+            Tubes(game.Tubes);
+        }
+        Console.Error.WriteLine();
+
+        // Pods
+        Console.Error.WriteLine($"Pods: {game.Pods.Count}");
+        if (verbose)
+        {
+            Pods(game.Pods);
+        }
+        Console.Error.WriteLine();
+
+        Console.Error.WriteLine("==================================");
+    }
+
+    internal static void LandingPads(List<LandingPad> landingPads)
+    {
+        if (landingPads.Count == 0)
+            return;
+
+        Console.Error.WriteLine("");
+        foreach (LandingPad landingPad in landingPads)
+        {
+            Console.Error.WriteLine($"{landingPad.Id}: ({landingPad.Position}) - Astronauts: {landingPad.Astronauts}");
+        }
+        Console.Error.WriteLine("");
+    }
+
+    internal static void Modules(List<Module> modules)
+    {
+        if (modules.Count == 0)
+            return;
+
+        Console.Error.WriteLine("");
+        foreach (Module module in modules)
+        {
+            Console.Error.WriteLine($"{module.Id}: ({module.Position}) - Type: {module.Type}");
+        }
+        Console.Error.WriteLine("");
+    }
+
     internal static void Tubes(List<Tube> tubes)
     {
+        if (tubes.Count == 0)
+            return;
+
         Console.Error.WriteLine("");
         foreach (Tube tube in tubes)
         { 
@@ -27,24 +105,27 @@ internal static class Display
 
     internal static void Pods(List<Pod> pods)
     {
+        if (pods.Count == 0)
+            return;
+
         Console.Error.WriteLine("");
         foreach (Pod pod in pods)
         {
             Console.Error.WriteLine($"{pod.Id}- Stops:{pod.NumberOfStops} - {string.Join(" ", pod.Path)}");
         }
         Console.Error.WriteLine("");
-    }
+    }    
 }
 
 
-internal sealed class Game
+internal sealed partial class Game
 {
     public int Resources { get; private set; }
     internal List<Tube> Tubes { get; private set; }
     internal List<Teleporter> Teleporters { get; private set; }
     internal List<Pod> Pods { get; private set; }
-    public List<LandingPad> LandingPads { get; private set; }
-    public List<Module> Modules { get; private set; }
+    public List<LandingPad> LandingPads { get; private set; } = new List<LandingPad>();
+    public List<Module> Modules { get; private set; } = new List<Module>();
 
     internal void SetResources(int resources) => Resources = resources;
 
@@ -54,48 +135,136 @@ internal sealed class Game
 
     internal void SetPods(List<Pod> pods) => Pods = pods;
 
-    internal void SetLandingPads(List<LandingPad> landingPads) => LandingPads = landingPads;
+    internal void AddLandingPads(List<LandingPad> landingPads) => LandingPads.AddRange(landingPads);
 
-    internal void SetModules(List<Module> modules) => Modules = modules;
+    internal void AddModules(List<Module> modules) => Modules.AddRange(modules);
 
     private const int TELEPORTER_COST = 5000;
-    private const int TUBE_COST = 1000;
+    private const int POD_COST = 5000;
     private const int DESTROY_REFUND = 750;
 
-
-
+    private int currentPodId = 0;
+   
     // TUBE | UPGRADE | TELEPORT | POD | DESTROY | WAIT
     // Example - "TUBE 0 1;TUBE 0 2;POD 42 0 1 0 2 0 1 0 2"
     internal string GetActions()
     {
-        Display.Tubes(Tubes);
-        Display.Pods(Pods);
-        // Get all landing pods
+        Display.Summary(this, true);
 
-        if (Tubes.Count == 0)
+        //int cost0 = CalculateTubeCost(LandingPads[0], Modules[0]);
+        //int cost1 = CalculateTubeCost(LandingPads[0], Modules[1]);
+
+        // Bare minimum implementation
+        // Create a tube from every landing pod to every building (that doesn't already exist)
+
+        string actions = string.Empty;
+
+        // Define tubes
+        string tubesActions = string.Empty;
+        string podsActions = string.Empty;
+
+        foreach (LandingPad landingPad in LandingPads)
         {
-            return "TUBE 0 1;TUBE 0 2;POD 42 0 1 0 1 0 1 0 1; POD 43 0 2 0 2 0 2 0 2;";
+            string podPath = string.Empty;
+
+            foreach (Module module in Modules)
+            {
+                Console.Error.WriteLine($"podPath: {podPath}");
+                // If the landing pad has astronauts of the module type
+                if (landingPad.Astronauts.Contains(module.Type))
+                {
+                   // If the tube does not exist (TODO: Later we'll want to check teleporters too)
+                   if (!Tubes.Any(a => a.Building1Id == landingPad.Id && a.Building2Id == module.Id))
+                    {
+                        tubesActions += ($"{nameof(ActionType.TUBE)} {landingPad.Id} {module.Id};");
+
+                        podPath += $"{landingPad.Id} {module.Id} ";
+                    }
+                }
+                Console.Error.WriteLine($"podPath: {podPath}");
+            }
+
+            if (podPath != string.Empty)
+            {
+                podPath = podPath.TrimEnd();
+                string podAction = $"{ActionType.POD} {currentPodId} {podPath} {landingPad.Id};";
+                currentPodId++;
+
+                podsActions += podAction;
+            }
         }
-        else
+
+        if (tubesActions != string.Empty)
         {
-            return "UPGRADE 0 1;UPGRADE 0 2";
+            actions += tubesActions;
         }
+
+        if (podsActions != string.Empty)
+        {
+            actions += podsActions;
+        }
+
+        if (actions != string.Empty)
+        {
+            return actions;
+        }
+
+        return nameof(ActionType.WAIT);
+    }
+
+    private static int CalculateTubeCost(IBuilding building1, IBuilding building2)
+    {
+        Point point1 = building1.Getposition();
+        Point point2 = building2.Getposition();
+
+        double distance = Math.Sqrt(Math.Pow(point1.X-point2.X, 2) + Math.Pow(point1.Y - point2.Y, 2));
+
+        int cost = (int)(Math.Round((distance), MidpointRounding.ToZero) * 10);
+
+        return cost;
     }
 }
 
-internal sealed class LandingPad(int id, Point position, int[] astronauts)
+
+internal interface IBuilding
+{
+    internal int GetId();
+    internal Point Getposition();
+}
+
+
+internal sealed class LandingPad(int id, Point position, int[] astronauts) : IBuilding
 {
     internal int Id { get; } = id;
     internal Point Position { get; } = position;
     internal int[] Astronauts { get; } = astronauts;
+
+    int IBuilding.GetId()
+    {
+        return Id;
+    }
+
+    Point IBuilding.Getposition()
+    {
+        return Position;
+    }
 }
 
-
-internal sealed class Module(int id, int type, Point position)
+internal sealed class Module(int id, int type, Point position): IBuilding
 {
     internal int Id { get; } = id;
     public int Type { get; } = type;
     internal Point Position { get; } = position;
+
+    int IBuilding.GetId()
+    {
+        return Id;
+    }
+
+    Point IBuilding.Getposition()
+    {
+        return Position;
+    }
 }
 
 
@@ -208,8 +377,8 @@ class Player
             }
         }
 
-        game.SetLandingPads(landingPads);
-        game.SetModules(modules);
+        game.AddLandingPads(landingPads);
+        game.AddModules(modules);
     }
 }
 

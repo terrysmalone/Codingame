@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.32126.317
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Spring2021Challenge", "Spring2021Challenge\Spring2021Challenge.csproj", "{36D7CAE0-AF95-4085-84E9-186EF6958D87}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SpringChallenge2021", "Spring2021Challenge\SpringChallenge2021.csproj", "{36D7CAE0-AF95-4085-84E9-186EF6958D87}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Fall2020Challenge", "Fall2020Challenge\Fall2020Challenge.csproj", "{D229852D-BDED-49F2-9F9E-C68276AB723C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FallChallenge2020", "Fall2020Challenge\FallChallenge2020.csproj", "{D229852D-BDED-49F2-9F9E-C68276AB723C}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UltimateTicTacToe", "UltimateTicTacToe\UltimateTicTacToe.csproj", "{346C88E6-EA74-4874-A334-8D7A200B9F10}"
 EndProject
@@ -47,7 +47,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SpringChallenge2022", "Spri
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SpringChallenge2022Tests", "SpringChallenge2022Tests\SpringChallenge2022Tests.csproj", "{41F5D9FC-AA85-48C3-A3E2-6B3D0E33EEE9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Fall2024Challenge-SeleniaCity", "Fall2024Challenge-SeleniaCity\Fall2024Challenge-SeleniaCity.csproj", "{CC2738D0-1AF8-49A1-8DC0-4FC321054D9C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FallChallenge20204-SeleniaCity", "Fall2024Challenge-SeleniaCity\FallChallenge20204-SeleniaCity.csproj", "{CC2738D0-1AF8-49A1-8DC0-4FC321054D9C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SpringChallenge2020", "SpringChallenge2020\SpringChallenge2020.csproj", "{D25D6D80-943B-4D32-ADAF-56A913627276}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -147,6 +149,10 @@ Global
 		{CC2738D0-1AF8-49A1-8DC0-4FC321054D9C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CC2738D0-1AF8-49A1-8DC0-4FC321054D9C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CC2738D0-1AF8-49A1-8DC0-4FC321054D9C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D25D6D80-943B-4D32-ADAF-56A913627276}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D25D6D80-943B-4D32-ADAF-56A913627276}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D25D6D80-943B-4D32-ADAF-56A913627276}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D25D6D80-943B-4D32-ADAF-56A913627276}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

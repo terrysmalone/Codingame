@@ -39,7 +39,7 @@ internal sealed partial class Game
     // Example - "TUBE 0 1;TUBE 0 2;POD 42 0 1 0 2 0 1 0 2"
     internal string GetActions()
     {
-        Display.Summary(this, true);
+        // Display.Summary(this, true);
 
         //int cost0 = CalculateTubeCost(LandingPads[0], Modules[0]);
         //int cost1 = CalculateTubeCost(LandingPads[0], Modules[1]);

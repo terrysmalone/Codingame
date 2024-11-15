@@ -2,21 +2,20 @@
 
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 internal struct Pellet
 {
-    internal int X;
-    internal int Y;
+    internal Point Position;
 
     internal int Value;
 
-    public Pellet(int x, int y, int value)
+    public Pellet(Point position, int value)
     {
-        X = x;
-        Y = y;
+        Position = position;
         Value = value;
     }
 }

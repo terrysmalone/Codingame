@@ -7,6 +7,7 @@ using System.IO;
 using System.Text;
 using System.Collections;
 using System.Collections.Generic;
+using System.Drawing;
 
 /**
  * https://www.codingame.com/ide/puzzle/spring-challenge-2020
@@ -53,11 +54,11 @@ class Player
 
                 if (mine)
                 {
-                    playerPacs.Add(new Pac(pacId, x, y));
+                    playerPacs.Add(new Pac(pacId, new Point(x, y)));
                 }
                 else
                 {
-                    opponentPacs.Add(new Pac(pacId, x, y));
+                    opponentPacs.Add(new Pac(pacId, new Point(x, y)));
                 }
             }
 
@@ -75,7 +76,7 @@ class Player
                 int y = int.Parse(inputs[1]);
                 int value = int.Parse(inputs[2]); // amount of points this pellet is worth
 
-                pellets.Add(new Pellet(x, y, value)); 
+                pellets.Add(new Pellet(new Point(x, y), value)); 
             }
 
             game.SetPellets(pellets);

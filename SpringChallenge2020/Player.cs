@@ -33,6 +33,12 @@ class Player
             inputs = Console.ReadLine().Split(' ');
             int myScore = int.Parse(inputs[0]);
             int opponentScore = int.Parse(inputs[1]);
+
+
+            // Get the Pacs
+            List<Pac> playerPacs = new List<Pac>();
+            List<Pac> opponentPacs = new List<Pac>();
+
             int visiblePacCount = int.Parse(Console.ReadLine()); // all your pacs and enemy pacs in sight
             for (int i = 0; i < visiblePacCount; i++)
             {
@@ -44,8 +50,21 @@ class Player
                 string typeId = inputs[4]; // unused in wood leagues
                 int speedTurnsLeft = int.Parse(inputs[5]); // unused in wood leagues
                 int abilityCooldown = int.Parse(inputs[6]); // unused in wood leagues
+
+                if (mine)
+                {
+                    playerPacs.Add(new Pac(pacId, x, y));
+                }
+                else
+                {
+                    opponentPacs.Add(new Pac(pacId, x, y));
+                }
             }
 
+            game.SetPlayerPacs(playerPacs);
+            game.SetOpponentPacs(opponentPacs);
+
+            // Get the pellets
             List<Pellet> pellets = new List<Pellet>();
 
             int visiblePelletCount = int.Parse(Console.ReadLine()); // all pellets in sight

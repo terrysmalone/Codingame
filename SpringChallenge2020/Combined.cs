@@ -15,28 +15,71 @@ internal class Game
 {
     private const int pelletValue = 1;
     private const int superPelletValue = 10;
+    
+    public List<Pac> PlayerPacs { get; private set; }
+    
+    public List<Pac> OpponentPacs { get; private set; }
 
     public List<Pellet> Pellets { get; private set; }
 
+    internal void SetPlayerPacs(List<Pac> playerPacs) => PlayerPacs = playerPacs;
+
+    internal void SetOpponentPacs(List<Pac> opponentPacs) => OpponentPacs = opponentPacs;
+
     internal void SetPellets(List<Pellet> pellets) => Pellets = pellets;
-    
-    // MOVE <pacId> <x> <y>
+
+    // MOVE <pacId> <x> <y> | MOVE <pacId> <x> <y>
     internal string GetCommand()
     {
-        Pellet pellet = new Pellet();
+        List<string> commands = new List<string>();
 
-        if (Pellets.Any(p => p.Value == superPelletValue))
+        List<Pellet> superPellets = Pellets.Where(p => p.Value == superPelletValue).ToList();
+
+        if (superPellets.Count <= PlayerPacs.Count)
         {
-            pellet = Pellets.First(p => p.Value == superPelletValue);
+            for (int i = 0; i < superPellets.Count; i++)
+            {
+                commands.Add($"MOVE {PlayerPacs[i].Id} {superPellets[i].X} {superPellets[i].Y}");
+            }
+
+            List<Pellet> standardPellets = Pellets.Where(p => p.Value == pelletValue).ToList();
+
+            for (int i = superPellets.Count; i < PlayerPacs.Count; i++)
+            {
+
+                commands.Add($"MOVE {PlayerPacs[i].Id} {standardPellets[i].X} {standardPellets[i].Y}");
+            }
         }
         else
         {
-            pellet = Pellets.First();
+            for (int i = 0; i < PlayerPacs.Count; i++)
+            {
+                commands.Add($"MOVE {PlayerPacs[i].Id} {superPellets[i].X} {superPellets[i].Y}");
+            }
         }
 
-        return $"MOVE 0 {pellet.X} {pellet.Y}";    
+        string command = string.Join(" | ", commands);
+
+        return command;    
     }
 }
+
+internal struct Pac
+{
+    internal int Id;
+    internal int X;
+    internal int Y;
+
+    internal int Value;
+
+    public Pac(int id, int x, int y)
+    {
+        Id = id;
+        X = x;
+        Y = y;
+    }
+}
+
 
 internal struct Pellet
 {
@@ -74,6 +117,12 @@ class Player
             inputs = Console.ReadLine().Split(' ');
             int myScore = int.Parse(inputs[0]);
             int opponentScore = int.Parse(inputs[1]);
+
+
+            // Get the Pacs
+            List<Pac> playerPacs = new List<Pac>();
+            List<Pac> opponentPacs = new List<Pac>();
+
             int visiblePacCount = int.Parse(Console.ReadLine()); // all your pacs and enemy pacs in sight
             for (int i = 0; i < visiblePacCount; i++)
             {
@@ -85,8 +134,21 @@ class Player
                 string typeId = inputs[4]; // unused in wood leagues
                 int speedTurnsLeft = int.Parse(inputs[5]); // unused in wood leagues
                 int abilityCooldown = int.Parse(inputs[6]); // unused in wood leagues
+
+                if (mine)
+                {
+                    playerPacs.Add(new Pac(pacId, x, y));
+                }
+                else
+                {
+                    opponentPacs.Add(new Pac(pacId, x, y));
+                }
             }
 
+            game.SetPlayerPacs(playerPacs);
+            game.SetOpponentPacs(opponentPacs);
+
+            // Get the pellets
             List<Pellet> pellets = new List<Pellet>();
 
             int visiblePelletCount = int.Parse(Console.ReadLine()); // all pellets in sight
@@ -111,5 +173,4 @@ class Player
         }
     }
 }
-
 

@@ -1,15 +1,18 @@
-﻿namespace SpringChallenge2020; 
+﻿namespace SpringChallenge2020;
 
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 internal class Game
 {
     private const int pelletValue = 1;
     private const int superPelletValue = 10;
+
+    private Point startPos = new Point(-1, -1);
     
     public List<Pac> PlayerPacs { get; private set; }
     
@@ -26,34 +29,61 @@ internal class Game
     // MOVE <pacId> <x> <y> | MOVE <pacId> <x> <y>
     internal string GetCommand()
     {
+        // Save for emergencies
+        if (startPos.X == -1)
+        {
+            startPos = new Point(PlayerPacs[0].Position.X, PlayerPacs[0].Position.Y);
+        }
+
         List<string> commands = new List<string>();
 
         List<Pellet> superPellets = Pellets.Where(p => p.Value == superPelletValue).ToList();
-        bool[] superPelletTargeted = new bool[superPellets.Count];
-
-        List<Pellet> standardPellets = Pellets.Where(p => p.Value == pelletValue).ToList();
-        bool[] standardPelletTargeted = new bool[standardPellets.Count];
 
         bool[] playerTargetSet = new bool[PlayerPacs.Count];
 
-        foreach (Pellet superPellet in superPellets)
+        // ------------------------
+
+        List<PelletDistance> pelletDistances = CalculatePelletDistances(superPellets).OrderBy(p => p.Distances.Min()).ToList();
+
+        Display.PelletDistances(pelletDistances);
+        Console.Error.WriteLine("----------------------------");
+
+        int superPelletsTargeted = 0;
+
+        while (!AreAllTargeted(playerTargetSet) && superPelletsTargeted < superPellets.Count)
         {
-            if (!AreAllTargeted(playerTargetSet))
-            {
-                // Get closest player
-                int index = GetClosestPlayerIndex(superPellet, playerTargetSet);
+            PelletDistance pelletDistance = pelletDistances[0];
 
-                playerTargetSet[index] = true;
+            int pacIndex = 0;
 
-                commands.Add($"MOVE {PlayerPacs[index].Id} {superPellet.Position.X} {superPellet.Position.Y}");
-            }
-            else
+            double[] distances = pelletDistance.Distances;
+
+            for (int i = 0; i < distances.Length; i++)
             {
-                break;
+                if (distances[i] < distances[pacIndex])
+                    pacIndex = i;
             }
+
+            commands.Add($"MOVE {PlayerPacs[pacIndex].Id} {pelletDistance.Position.X} {pelletDistance.Position.Y}");
+
+            playerTargetSet[pacIndex] = true;
+            superPelletsTargeted++;
+
+            pelletDistances.RemoveAt(0);
+
+            MaxOutAtIndex(pelletDistances, pacIndex);
+
+            pelletDistances = pelletDistances.OrderBy(p => p.Distances.Min()).ToList();
+            Display.PelletDistances(pelletDistances);
+            Console.Error.WriteLine("----------------------------");
         }
 
         // Now find close standard pellets for other pacs
+        List<Pellet> standardPellets = Pellets.Where(p => p.Value == pelletValue).ToList();
+        Console.Error.WriteLine($"standardPellets.Count: {standardPellets.Count}");
+
+        bool[] standardPelletTargeted = new bool[standardPellets.Count];
+
         for (int i = 0; i < PlayerPacs.Count; i++)
         {
             if (playerTargetSet[i])
@@ -64,15 +94,58 @@ internal class Game
             // Get closest standard pellet
             int index = GetClosestPelletIndex(currentPac, standardPellets, standardPelletTargeted);
 
-            standardPelletTargeted[index] = true;
+            // If we can see less pellets than players then let players head to the same place...for now
+            if (standardPellets.Count >= PlayerPacs.Count)
+            {
+                standardPelletTargeted[index] = true;
+            }
 
             commands.Add($"MOVE {currentPac.Id} {standardPellets[index].Position.X} {standardPellets[index].Position.Y}");
+        }
+        
+
+        // This is an emergency. Send them to the start
+        if (commands.Count == 0)
+        {
+            foreach (Pac playerPac in PlayerPacs)
+            {
+                commands.Add($"MOVE {playerPac.Id} {startPos.X} {startPos.Y}");
+            }
         }
 
         string command = string.Join(" | ", commands);
 
         return command;    
-    }    
+    }
+
+    private static void MaxOutAtIndex(List<PelletDistance> pelletDistances, int pacIndex)
+    {
+        foreach (PelletDistance pelletDistance in pelletDistances) 
+        {
+            pelletDistance.Distances[pacIndex] = double.MaxValue;
+        }
+    }
+
+    private List<PelletDistance> CalculatePelletDistances(List<Pellet> superPellets)
+    {
+        List<PelletDistance> pelletDistances = new List<PelletDistance>();
+
+        foreach (Pellet superPellet in superPellets)
+        {
+            double [] distances = new double[PlayerPacs.Count];
+
+            for(int i = 0;i < PlayerPacs.Count;i++)
+            {
+                Pac pac = PlayerPacs[i];
+
+                distances[i] = GetDistance(superPellet.Position, pac.Position);
+            }           
+
+            pelletDistances.Add(new PelletDistance(superPellet.Position, distances));
+        }
+
+        return pelletDistances;
+    }
 
     private static bool AreAllTargeted(bool[] targeted)
     {
@@ -87,28 +160,7 @@ internal class Game
         return true;
     }
 
-    private int GetClosestPlayerIndex(Pellet pellet, bool[] targetSet)
-    {
-        double closestDistance = double.MaxValue;
-        int closestPlayer = -1;
-
-        for (int i = 0; i < PlayerPacs.Count; i++)
-        {
-            if (!targetSet[i])
-            {
-                double distance = GetDistance(pellet.Position, PlayerPacs[i].Position);
-                if (distance < closestDistance)
-                {
-                    closestDistance = distance;
-                    closestPlayer = i;
-                }
-            }
-        }
-        
-        return closestPlayer;
-    }
-
-    private int GetClosestPelletIndex(Pac pac, List<Pellet> pellets, bool[] targeted)
+    private static int GetClosestPelletIndex(Pac pac, List<Pellet> pellets, bool[] targeted)
     {
         double closestDistance = double.MaxValue;
         int closestPellet = -1;

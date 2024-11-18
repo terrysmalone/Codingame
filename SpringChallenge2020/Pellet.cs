@@ -1,4 +1,4 @@
-﻿namespace SpringChallenge2020; 
+﻿namespace SpringChallenge2020;
 
 using System;
 using System.Collections.Generic;
@@ -7,15 +7,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-internal struct Pellet
+internal struct Pellet(Point position, int value)
 {
-    internal Point Position;
+    internal Point Position = position;
 
-    internal int Value;
-
-    public Pellet(Point position, int value)
-    {
-        Position = position;
-        Value = value;
-    }
+    internal int Value = value;
 }

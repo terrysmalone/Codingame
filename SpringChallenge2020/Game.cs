@@ -32,30 +32,41 @@ internal class Game
         bool[] superPelletTargeted = new bool[superPellets.Count];
 
         List<Pellet> standardPellets = Pellets.Where(p => p.Value == pelletValue).ToList();
-        bool[] standardPelletTargeted = new bool[standardPellets.Count]; 
+        bool[] standardPelletTargeted = new bool[standardPellets.Count];
 
-        // TODO: I should really get the closest Pac to each super pellet rather than the closest super 
-        // pellet to each pac
-        foreach (Pac pac in PlayerPacs) 
-        {        
-            if (!AreAllTargeted(superPelletTargeted))
+        bool[] playerTargetSet = new bool[PlayerPacs.Count];
+
+        foreach (Pellet superPellet in superPellets)
+        {
+            if (!AreAllTargeted(playerTargetSet))
             {
-                // Get a super pellet
-                int index = GetClosestPelletIndex(pac, superPellets, superPelletTargeted);
+                // Get closest player
+                int index = GetClosestPlayerIndex(superPellet, playerTargetSet);
 
-                superPelletTargeted[index] = true;
+                playerTargetSet[index] = true;
 
-                commands.Add($"MOVE {pac.Id} {superPellets[index].Position.X} {superPellets[index].Position.Y}");
+                commands.Add($"MOVE {PlayerPacs[index].Id} {superPellet.Position.X} {superPellet.Position.Y}");
             }
             else
             {
-                // Get closest standard pellet
-                int index = GetClosestPelletIndex(pac, standardPellets, standardPelletTargeted);
-
-                standardPelletTargeted[index] = true;
-
-                commands.Add($"MOVE {pac.Id} {standardPellets[index].Position.X} {standardPellets[index].Position.Y}");
+                break;
             }
+        }
+
+        // Now find close standard pellets for other pacs
+        for (int i = 0; i < PlayerPacs.Count; i++)
+        {
+            if (playerTargetSet[i])
+                continue;
+
+            Pac currentPac = PlayerPacs[i];
+
+            // Get closest standard pellet
+            int index = GetClosestPelletIndex(currentPac, standardPellets, standardPelletTargeted);
+
+            standardPelletTargeted[index] = true;
+
+            commands.Add($"MOVE {currentPac.Id} {standardPellets[index].Position.X} {standardPellets[index].Position.Y}");
         }
 
         string command = string.Join(" | ", commands);
@@ -74,6 +85,27 @@ internal class Game
         }
 
         return true;
+    }
+
+    private int GetClosestPlayerIndex(Pellet pellet, bool[] targetSet)
+    {
+        double closestDistance = double.MaxValue;
+        int closestPlayer = -1;
+
+        for (int i = 0; i < PlayerPacs.Count; i++)
+        {
+            if (!targetSet[i])
+            {
+                double distance = GetDistance(pellet.Position, PlayerPacs[i].Position);
+                if (distance < closestDistance)
+                {
+                    closestDistance = distance;
+                    closestPlayer = i;
+                }
+            }
+        }
+        
+        return closestPlayer;
     }
 
     private int GetClosestPelletIndex(Pac pac, List<Pellet> pellets, bool[] targeted)

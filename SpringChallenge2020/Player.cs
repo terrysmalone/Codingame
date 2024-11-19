@@ -54,11 +54,11 @@ class Player
 
                 if (mine)
                 {
-                    playerPacs.Add(new Pac(pacId, new Point(x, y)));
+                    playerPacs.Add(new Pac(pacId, new Point(x, y), typeId, speedTurnsLeft, abilityCooldown));
                 }
                 else
                 {
-                    opponentPacs.Add(new Pac(pacId, new Point(x, y)));
+                    opponentPacs.Add(new Pac(pacId, new Point(x, y), typeId, speedTurnsLeft, abilityCooldown));
                 }
             }
 

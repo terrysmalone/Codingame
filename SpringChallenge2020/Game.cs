@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
 using System.Reflection;
@@ -39,18 +40,66 @@ internal class Game
 
         List<Pellet> superPellets = Pellets.Where(p => p.Value == superPelletValue).ToList();
 
-        bool[] playerTargetSet = new bool[PlayerPacs.Count];
+        // -----------------------
+        // Prioritise Scissors paper stone
+        foreach (Pac pac in PlayerPacs)
+        {
+            if (pac.AbilityCooldown > 0)
+                break;
+
+            foreach (Pac opponentPac in OpponentPacs)
+            {
+                if (GetDistance(pac.Position, opponentPac.Position) <= 2.0)
+                {
+                    string switchTo = string.Empty;
+
+                    switch (opponentPac.TypeId)
+                    {
+                        case "ROCK":
+                            switchTo = "PAPER";
+                            break;
+                        case "PAPER":
+                            switchTo = "SCISSORS";
+                            break;
+                        case "SCISSORS":
+                            switchTo = "ROCK";
+                            break;
+                        default:
+                            break;
+                    }
+
+                    if (switchTo == string.Empty || switchTo == pac.TypeId)
+                        break;
+
+                    commands.Add($"SWITCH {pac.Id} {switchTo}");
+                    pac.TargetSet = true;
+
+                    break;
+                }
+            }
+        }
 
         // ------------------------
 
-        List<PelletDistance> pelletDistances = CalculatePelletDistances(superPellets).OrderBy(p => p.Distances.Min()).ToList();
+        foreach (Pac pac in PlayerPacs)
+        {
+            if (pac.TargetSet)
+                continue;
 
-        Display.PelletDistances(pelletDistances);
-        Console.Error.WriteLine("----------------------------");
+            if (pac.AbilityCooldown == 0)
+            {
+                commands.Add($"SPEED {pac.Id}");
+                pac.TargetSet = true;
+            }
+        }
+
+        // -------------------------
+
+        List<PelletDistance> pelletDistances = CalculatePelletDistances(superPellets, PlayerPacs).OrderBy(p => p.Distances.Min()).ToList();
 
         int superPelletsTargeted = 0;
 
-        while (!AreAllTargeted(playerTargetSet) && superPelletsTargeted < superPellets.Count)
+        while (!AreAllTargeted(PlayerPacs) && superPelletsTargeted < superPellets.Count)
         {
             PelletDistance pelletDistance = pelletDistances[0];
 
@@ -64,9 +113,11 @@ internal class Game
                     pacIndex = i;
             }
 
-            commands.Add($"MOVE {PlayerPacs[pacIndex].Id} {pelletDistance.Position.X} {pelletDistance.Position.Y}");
+            int pacId = PlayerPacs[pacIndex].Id;
 
-            playerTargetSet[pacIndex] = true;
+            commands.Add($"MOVE {pacId} {pelletDistance.Position.X} {pelletDistance.Position.Y}");
+
+            PlayerPacs[pacIndex].TargetSet = true;
             superPelletsTargeted++;
 
             pelletDistances.RemoveAt(0);
@@ -74,44 +125,44 @@ internal class Game
             MaxOutAtIndex(pelletDistances, pacIndex);
 
             pelletDistances = pelletDistances.OrderBy(p => p.Distances.Min()).ToList();
-            Display.PelletDistances(pelletDistances);
-            Console.Error.WriteLine("----------------------------");
         }
 
         // Now find close standard pellets for other pacs
         List<Pellet> standardPellets = Pellets.Where(p => p.Value == pelletValue).ToList();
-        Console.Error.WriteLine($"standardPellets.Count: {standardPellets.Count}");
-
+        
         bool[] standardPelletTargeted = new bool[standardPellets.Count];
 
-        for (int i = 0; i < PlayerPacs.Count; i++)
+        if (standardPellets.Count > 0)
         {
-            if (playerTargetSet[i])
-                continue;
-
-            Pac currentPac = PlayerPacs[i];
-
-            // Get closest standard pellet
-            int index = GetClosestPelletIndex(currentPac, standardPellets, standardPelletTargeted);
-
-            // If we can see less pellets than players then let players head to the same place...for now
-            if (standardPellets.Count >= PlayerPacs.Count)
+            for (int i = 0; i < PlayerPacs.Count; i++)
             {
-                standardPelletTargeted[index] = true;
+                if (PlayerPacs[i].TargetSet)
+                    continue;
+
+                Pac currentPac = PlayerPacs[i];
+
+                // Get closest standard pellet
+                int index = GetClosestPelletIndex(currentPac, standardPellets, standardPelletTargeted);
+
+                // If we can see less pellets than players then let players head to the same place...for now
+                if (standardPellets.Count >= PlayerPacs.Count)
+                {
+                    standardPelletTargeted[index] = true;
+                }
+
+                commands.Add($"MOVE {currentPac.Id} {standardPellets[index].Position.X} {standardPellets[index].Position.Y}");
+                currentPac.TargetSet = true;
             }
-
-            commands.Add($"MOVE {currentPac.Id} {standardPellets[index].Position.X} {standardPellets[index].Position.Y}");
         }
-        
 
-        // This is an emergency. Send them to the start
-        if (commands.Count == 0)
+        // If a player hasn't been given a move send them to the start
+        foreach (Pac playerPac in PlayerPacs)
         {
-            foreach (Pac playerPac in PlayerPacs)
+            if (!playerPac.TargetSet)
             {
                 commands.Add($"MOVE {playerPac.Id} {startPos.X} {startPos.Y}");
             }
-        }
+        }        
 
         string command = string.Join(" | ", commands);
 
@@ -126,7 +177,7 @@ internal class Game
         }
     }
 
-    private List<PelletDistance> CalculatePelletDistances(List<Pellet> superPellets)
+    private List<PelletDistance> CalculatePelletDistances(List<Pellet> superPellets, List<Pac> playerPacs)
     {
         List<PelletDistance> pelletDistances = new List<PelletDistance>();
 
@@ -138,7 +189,10 @@ internal class Game
             {
                 Pac pac = PlayerPacs[i];
 
-                distances[i] = GetDistance(superPellet.Position, pac.Position);
+                if (pac.TargetSet)
+                    distances[i] = double.MaxValue;
+                else
+                    distances[i] = GetDistance(superPellet.Position, pac.Position);
             }           
 
             pelletDistances.Add(new PelletDistance(superPellet.Position, distances));
@@ -157,6 +211,19 @@ internal class Game
             }
         }
 
+        return true;
+    }
+
+    private static bool AreAllTargeted(List<Pac> playerPacs)
+    {
+        foreach (Pac pac in playerPacs)
+        {
+            if (!pac.TargetSet)
+            {
+                return false;
+            }
+        }
+        
         return true;
     }
 

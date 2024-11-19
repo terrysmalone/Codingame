@@ -13,7 +13,7 @@ internal class Game
     private const int pelletValue = 1;
     private const int superPelletValue = 10;
 
-    private Point startPos = new Point(-1, -1);
+    private List<Point> startPositions = new List<Point>();
     
     public List<Pac> PlayerPacs { get; private set; }
     
@@ -31,9 +31,12 @@ internal class Game
     internal string GetCommand()
     {
         // Save for emergencies
-        if (startPos.X == -1)
+        if (startPositions.Count == 0)
         {
-            startPos = new Point(PlayerPacs[0].Position.X, PlayerPacs[0].Position.Y);
+            foreach (Pac pac in PlayerPacs)
+            {
+                startPositions.Add(new Point(pac.Position.X, pac.Position.Y));
+            }
         }
 
         List<string> commands = new List<string>();
@@ -49,6 +52,8 @@ internal class Game
 
             foreach (Pac opponentPac in OpponentPacs)
             {
+                // TODO: There's a bug in here where sometimes it'll get a 
+                // further away opponent. Change this to get th eclosest.
                 if (GetDistance(pac.Position, opponentPac.Position) <= 2.0)
                 {
                     string switchTo = string.Empty;
@@ -81,17 +86,17 @@ internal class Game
 
         // ------------------------
 
-        foreach (Pac pac in PlayerPacs)
-        {
-            if (pac.TargetSet)
-                continue;
+        //foreach (Pac pac in PlayerPacs)
+        //{
+        //    if (pac.TargetSet)
+        //        continue;
 
-            if (pac.AbilityCooldown == 0)
-            {
-                commands.Add($"SPEED {pac.Id}");
-                pac.TargetSet = true;
-            }
-        }
+        //    if (pac.AbilityCooldown == 0)
+        //    {
+        //        commands.Add($"SPEED {pac.Id}");
+        //        pac.TargetSet = true;
+        //    }
+        //}
 
         // -------------------------
 
@@ -160,7 +165,7 @@ internal class Game
         {
             if (!playerPac.TargetSet)
             {
-                commands.Add($"MOVE {playerPac.Id} {startPos.X} {startPos.Y}");
+                commands.Add($"MOVE {playerPac.Id} {startPositions[playerPac.Id].X} {startPositions[playerPac.Id].Y}");
             }
         }        
 

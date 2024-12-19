@@ -51,6 +51,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FallChallenge20204-SeleniaC
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SpringChallenge2020", "SpringChallenge2020\SpringChallenge2020.csproj", "{D25D6D80-943B-4D32-ADAF-56A913627276}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinterChallenge2024", "WinterChallenge2024\WinterChallenge2024.csproj", "{0B474372-74DC-43AB-AC77-B70E71FB111B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -153,6 +155,10 @@ Global
 		{D25D6D80-943B-4D32-ADAF-56A913627276}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D25D6D80-943B-4D32-ADAF-56A913627276}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D25D6D80-943B-4D32-ADAF-56A913627276}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0B474372-74DC-43AB-AC77-B70E71FB111B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0B474372-74DC-43AB-AC77-B70E71FB111B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0B474372-74DC-43AB-AC77-B70E71FB111B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0B474372-74DC-43AB-AC77-B70E71FB111B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

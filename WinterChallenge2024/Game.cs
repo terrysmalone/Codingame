@@ -60,16 +60,30 @@ internal sealed class Game
     {
         CheckForHarvestedProtein();
 
+        string action = string.Empty;
+
         //if (CanProduceHarvester() && Proteins.Exists(p => p.Type == ProteinType.A && p.IsHarvested == false))
         //{
+        //    List<Protein> harvestableProteins = Proteins.Where(p => p.Type == ProteinType.A && p.IsHarvested == false).ToList();
 
+        //    (int closestOrgan, Point closestPoint) = HeadToNearestProtein(harvestableProteins);
+
+        //    if (closestOrgan != -1)
+        //    {
+        //        action = $"GROW {closestOrgan} {closestPoint.X} {closestPoint.Y} HARVESTER";
+        //    }
         //}
 
-        Display.Organism(PlayerOrganism);
-        Console.Error.WriteLine();
-        Display.Proteins(Proteins);
+        //if (string.IsNullOrEmpty(action))
+        //{
 
-        string action = HeadToNearestProtein();
+            (int closestOrgan, Point closestPoint) = HeadToNearestProtein(Proteins);
+
+            if (closestOrgan != -1)
+            {
+                action = $"GROW {closestOrgan} {closestPoint.X} {closestPoint.Y} BASIC";
+            }
+        // }
 
         if (string.IsNullOrEmpty(action))
         {
@@ -121,7 +135,17 @@ internal sealed class Game
         return new Point(-1,-1);
     }
 
-    private string HeadToNearestProtein()
+    private bool CanProduceHarvester()
+    {
+        if (PlayerProteinStock.C >= 1 && PlayerProteinStock.D >= 1)
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    private (int, Point) HeadToNearestProtein(List<Protein> proteins)
     {
         string action = string.Empty;
 
@@ -130,7 +154,7 @@ internal sealed class Game
         Point closestPoint = new Point();
 
         // Get the closest A protein to Organs
-        foreach (Protein protein in Proteins)
+        foreach (Protein protein in proteins)
         {
             if (protein.Type == ProteinType.A && !protein.IsHarvested)
             {
@@ -148,15 +172,7 @@ internal sealed class Game
             }
         }
 
-        if (closestId == -1)
-        {
-            return string.Empty;
-        }
-
-        action = $"GROW {closestId} {closestPoint.X} {closestPoint.Y} BASIC";
-        
-
-        return action;
+        return (closestId, closestPoint);
     }
 
     private static double CalculateDistance(Point pointA, Point pointB)

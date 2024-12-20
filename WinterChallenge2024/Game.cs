@@ -1,12 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
+using static System.Collections.Specialized.BitVector32;
 
 namespace WinterChallenge2024;
 
 internal sealed class Game
-{  
-
+{
     internal Organism PlayerOrganism { get; private set; }
     internal Organism OpponentOrganism { get; private set; }
 
@@ -57,63 +58,105 @@ internal sealed class Game
 
     internal List<string> GetActions()
     {
-        // First pass simple solution. Find the closest A protein.
-        string action =  "WAIT";
+        CheckForHarvestedProtein();
 
-        if (PlayerOrganism.Organs.Count == 0)
+        //if (CanProduceHarvester() && Proteins.Exists(p => p.Type == ProteinType.A && p.IsHarvested == false))
+        //{
+
+        //}
+
+        Display.Organism(PlayerOrganism);
+        Console.Error.WriteLine();
+        Display.Proteins(Proteins);
+
+        string action = HeadToNearestProtein();
+
+        if (string.IsNullOrEmpty(action))
         {
-            double closest = double.MaxValue;
-            Point closestPoint = new Point();
+            // There was no protein to head to. Focus on expanding the 
+            // organism
+        }
 
-            // Display.Proteins(Proteins);
+        if (string.IsNullOrEmpty(action))
+        {
+            action = "WAIT";
+        }
 
-            // Get the closes A protein to Root
-            foreach (Protein protein in Proteins)
+        return new List<string>() { action };
+    }
+
+    // Check to see if any protein is being harvested and mark it as such
+    private void CheckForHarvestedProtein()
+    {
+        foreach(Organ organ in PlayerOrganism.Organs)
+        {
+            if (organ.Type == OrganType.HARVESTER)
             {
-                if (protein.Type == ProteinType.A)
+                Point harvestedPosition = GetHarvestedPosition(organ);
+
+                Protein havestedProtein = Proteins.Single(p => p.Position.X == harvestedPosition.X && p.Position.Y == harvestedPosition.Y);
+
+                havestedProtein.IsHarvested = true;
+            }
+        }
+
+        // We don't care about enemy harvested proteins because
+        // we're still happy to consume them.
+    }
+
+    private static Point GetHarvestedPosition(Organ organ)
+    {
+        switch (organ.Direction)
+        {
+            case OrganDirection.N:
+                return new Point(organ.Position.X, organ.Position.Y+1);
+            case OrganDirection.E:
+                return new Point(organ.Position.X+1, organ.Position.Y);
+            case OrganDirection.S:
+                return new Point(organ.Position.X, organ.Position.Y-1);
+            case OrganDirection.W:
+                return new Point(organ.Position.X-1, organ.Position.Y);
+        }
+
+        return new Point(-1,-1);
+    }
+
+    private string HeadToNearestProtein()
+    {
+        string action = string.Empty;
+
+        double closest = double.MaxValue;
+        int closestId = -1;
+        Point closestPoint = new Point();
+
+        // Get the closest A protein to Organs
+        foreach (Protein protein in Proteins)
+        {
+            if (protein.Type == ProteinType.A && !protein.IsHarvested)
+            {
+                foreach (var organ in PlayerOrganism.Organs)
                 {
-                    double distance = CalculateDistance(protein.Position, PlayerOrganism.Root.Position);
+                    double distance = CalculateDistance(protein.Position, organ.Position);
 
                     if (distance < closest)
                     {
                         closest = distance;
-                        closestPoint = new Point(protein.Position.X, protein.Position.Y);    
+                        closestId = organ.Id;
+                        closestPoint = new Point(protein.Position.X, protein.Position.Y);
                     }
                 }
             }
-
-            action = $"GROW {PlayerOrganism.Root.Id} {closestPoint.X} {closestPoint.Y} BASIC";
         }
-        else
+
+        if (closestId == -1)
         {
-            double closest = double.MaxValue;
-            int closestId = -1;
-            Point closestPoint = new Point();
-
-            // Get the closest A protein to Organs
-            foreach (Protein protein in Proteins)
-            {
-                if (protein.Type == ProteinType.A)
-                {
-                    foreach (var organ in PlayerOrganism.Organs)
-                    {
-                        double distance = CalculateDistance(protein.Position, organ.Position);
-
-                        if (distance < closest)
-                        {
-                            closest = distance;
-                            closestId = organ.Id;
-                            closestPoint = new Point(protein.Position.X, protein.Position.Y);
-                        }
-                    } 
-                }
-            }
-
-            action = $"GROW {closestId} {closestPoint.X} {closestPoint.Y} BASIC";
+            return string.Empty;
         }
 
+        action = $"GROW {closestId} {closestPoint.X} {closestPoint.Y} BASIC";
+        
 
-        return new List<string>() { action };
+        return action;
     }
 
     private static double CalculateDistance(Point pointA, Point pointB)

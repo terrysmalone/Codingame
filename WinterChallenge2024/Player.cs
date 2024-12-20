@@ -49,21 +49,36 @@ partial class Player
                     case "ROOT":
                         if (owner == 1)
                         {
-                            playerOrganism.SetRoot(organId, new Point(x, y));
+                            playerOrganism.AddRoot(organId, new Point(x, y));
                         } 
                         else if (owner == 0)
                         {
-                            opponentOrganism.SetRoot(organId, new Point(x, y));
+                            opponentOrganism.AddRoot(organId, new Point(x, y));
                         }
                         break;
                     case "BASIC":
                         if (owner == 1)
                         {
-                            playerOrganism.AddOrgan(organId, new Point(x, y));
+                            playerOrganism.AddBasicOrgan(organId, new Point(x, y));
                         }
                         else if (owner == 0)
                         {
-                            opponentOrganism.AddOrgan(organId, new Point(x, y));
+                            opponentOrganism.AddBasicOrgan(organId, new Point(x, y));
+                        }
+                        break;
+                    case "HARVESTER":
+
+                        OrganDirection dirEnum;
+                        if (Enum.TryParse(organDir, out dirEnum))
+                        {
+                            if (owner == 1)
+                            {
+                                playerOrganism.AddHarvesterOrgan(organId, new Point(x, y), dirEnum);
+                            }
+                            else if (owner == 0)
+                            {
+                                opponentOrganism.AddHarvesterOrgan(organId, new Point(x, y), dirEnum);
+                            }
                         }
                         break;
                     case "A":

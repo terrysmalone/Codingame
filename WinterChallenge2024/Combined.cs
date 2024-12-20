@@ -9,6 +9,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Drawing;
+using static System.Collections.Specialized.BitVector32;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Net;
 
@@ -16,11 +18,20 @@ internal static class Display
 {
     internal static void Summary(Game game)
     {
-        Console.Error.WriteLine($"Proteins");
+        Console.Error.WriteLine($"PROTEINS");
         Proteins(game.Proteins);
         Console.Error.WriteLine("==================================");
 
-        Console.Error.WriteLine($"Protein stock");
+        Console.Error.WriteLine($"ORGANISMS");
+        Console.Error.WriteLine("----------------------------------");
+        Console.Error.WriteLine($"Player organism");
+        Organism(game.PlayerOrganism);
+        Console.Error.WriteLine("----------------------------------");
+        Console.Error.WriteLine($"Opponent organism");
+        Organism(game.OpponentOrganism);
+        Console.Error.WriteLine("==================================");
+
+        Console.Error.WriteLine($"PROTEIN STOCK");
         Console.Error.WriteLine("----------------------------------");
         Console.Error.WriteLine($"Player protein stock");
         ProteinStock(game.PlayerProteinStock);
@@ -44,15 +55,33 @@ internal static class Display
 
         foreach (Protein protein in proteins)
         {
-            Console.Error.WriteLine($"Type:{protein.Type} - Position:({protein.Position.X},{protein.Position.Y})");
+            Console.Error.WriteLine($"Type:{protein.Type} - Position:({protein.Position.X},{protein.Position.Y}) - BeingHarvested:{protein.IsHarvested}");
+        }
+    }
+
+    internal static void Organism(Organism organism)
+    {
+        foreach (Organ organ in organism.Organs)
+        {
+            if (organ.Type == OrganType.ROOT)
+            {
+                Console.Error.WriteLine($" ID:{organ.Id} - Type:ROOT - Position:({organ.Position.X},{organ.Position.Y})");
+            }
+            if (organ.Type == OrganType.BASIC)
+            {
+                Console.Error.WriteLine($" ID:{organ.Id} - Type:BASIC - Position:({organ.Position.X},{organ.Position.Y})");
+            }
+            else if (organ.Type == OrganType.HARVESTER)
+            {
+                Console.Error.WriteLine($" ID:{organ.Id} - Type:HARVESTER - Position:({organ.Position.X},{organ.Position.Y}) - Direction:{organ.Direction.ToString()}");
+            }
         }
     }
 }
 
 
 internal sealed class Game
-{  
-
+{
     internal Organism PlayerOrganism { get; private set; }
     internal Organism OpponentOrganism { get; private set; }
 
@@ -103,63 +132,105 @@ internal sealed class Game
 
     internal List<string> GetActions()
     {
-        // First pass simple solution. Find the closest A protein.
-        string action =  "WAIT";
+        CheckForHarvestedProtein();
 
-        if (PlayerOrganism.Organs.Count == 0)
+        //if (CanProduceHarvester() && Proteins.Exists(p => p.Type == ProteinType.A && p.IsHarvested == false))
+        //{
+
+        //}
+
+        Display.Organism(PlayerOrganism);
+        Console.Error.WriteLine();
+        Display.Proteins(Proteins);
+
+        string action = HeadToNearestProtein();
+
+        if (string.IsNullOrEmpty(action))
         {
-            double closest = double.MaxValue;
-            Point closestPoint = new Point();
+            // There was no protein to head to. Focus on expanding the 
+            // organism
+        }
 
-            // Display.Proteins(Proteins);
+        if (string.IsNullOrEmpty(action))
+        {
+            action = "WAIT";
+        }
 
-            // Get the closes A protein to Root
-            foreach (Protein protein in Proteins)
+        return new List<string>() { action };
+    }
+
+    // Check to see if any protein is being harvested and mark it as such
+    private void CheckForHarvestedProtein()
+    {
+        foreach(Organ organ in PlayerOrganism.Organs)
+        {
+            if (organ.Type == OrganType.HARVESTER)
             {
-                if (protein.Type == ProteinType.A)
+                Point harvestedPosition = GetHarvestedPosition(organ);
+
+                Protein havestedProtein = Proteins.Single(p => p.Position.X == harvestedPosition.X && p.Position.Y == harvestedPosition.Y);
+
+                havestedProtein.IsHarvested = true;
+            }
+        }
+
+        // We don't care about enemy harvested proteins because
+        // we're still happy to consume them.
+    }
+
+    private static Point GetHarvestedPosition(Organ organ)
+    {
+        switch (organ.Direction)
+        {
+            case OrganDirection.N:
+                return new Point(organ.Position.X, organ.Position.Y+1);
+            case OrganDirection.E:
+                return new Point(organ.Position.X+1, organ.Position.Y);
+            case OrganDirection.S:
+                return new Point(organ.Position.X, organ.Position.Y-1);
+            case OrganDirection.W:
+                return new Point(organ.Position.X-1, organ.Position.Y);
+        }
+
+        return new Point(-1,-1);
+    }
+
+    private string HeadToNearestProtein()
+    {
+        string action = string.Empty;
+
+        double closest = double.MaxValue;
+        int closestId = -1;
+        Point closestPoint = new Point();
+
+        // Get the closest A protein to Organs
+        foreach (Protein protein in Proteins)
+        {
+            if (protein.Type == ProteinType.A && !protein.IsHarvested)
+            {
+                foreach (var organ in PlayerOrganism.Organs)
                 {
-                    double distance = CalculateDistance(protein.Position, PlayerOrganism.Root.Position);
+                    double distance = CalculateDistance(protein.Position, organ.Position);
 
                     if (distance < closest)
                     {
                         closest = distance;
-                        closestPoint = new Point(protein.Position.X, protein.Position.Y);    
+                        closestId = organ.Id;
+                        closestPoint = new Point(protein.Position.X, protein.Position.Y);
                     }
                 }
             }
-
-            action = $"GROW {PlayerOrganism.Root.Id} {closestPoint.X} {closestPoint.Y} BASIC";
         }
-        else
+
+        if (closestId == -1)
         {
-            double closest = double.MaxValue;
-            int closestId = -1;
-            Point closestPoint = new Point();
-
-            // Get the closest A protein to Organs
-            foreach (Protein protein in Proteins)
-            {
-                if (protein.Type == ProteinType.A)
-                {
-                    foreach (var organ in PlayerOrganism.Organs)
-                    {
-                        double distance = CalculateDistance(protein.Position, organ.Position);
-
-                        if (distance < closest)
-                        {
-                            closest = distance;
-                            closestId = organ.Id;
-                            closestPoint = new Point(protein.Position.X, protein.Position.Y);
-                        }
-                    } 
-                }
-            }
-
-            action = $"GROW {closestId} {closestPoint.X} {closestPoint.Y} BASIC";
+            return string.Empty;
         }
 
+        action = $"GROW {closestId} {closestPoint.X} {closestPoint.Y} BASIC";
+        
 
-        return new List<string>() { action };
+        return action;
     }
 
     private static double CalculateDistance(Point pointA, Point pointB)
@@ -173,18 +244,35 @@ internal struct Organ
 {
     internal int Id { get; private set; }
 
+    public OrganType Type { get; set; }
+
     internal Point Position { get; private set; }
 
-    public Organ(int id, Point position) : this()
+    internal OrganDirection Direction { get; private set; }
+
+    public Organ(int id, OrganType type, Point position) : this()
     {
         Id = id;
+        Type = type;
         Position = position;
     }
+
+    public Organ(int id, OrganType type, Point position, OrganDirection direction) : this(id, type, position)
+    {
+        Direction = direction;
+    }
+}
+
+internal enum OrganDirection
+{
+    N,
+    E,
+    S,
+    W
 }
 
 internal struct Organism
 {
-    internal Organ Root { get; private set; }
     internal List<Organ> Organs { get; private set; }
 
     public Organism()
@@ -192,17 +280,29 @@ internal struct Organism
         Organs = new List<Organ>();
     }
 
-    internal void SetRoot(int id, Point root)
+    internal void AddRoot(int id, Point root)
     {
-        Root = new Organ(id, root);
+        Organs.Add(new Organ(id, OrganType.ROOT, root));
     }
 
-    internal readonly void AddOrgan(int organId, Point point)
+    internal readonly void AddBasicOrgan(int organId, Point point)
     {
-        Organs.Add(new Organ(organId, point));
+        Organs.Add(new Organ(organId, OrganType.BASIC, point));
+    }
+
+    internal readonly void AddHarvesterOrgan(int organId, Point point, OrganDirection direction)
+    {
+        Organs.Add(new Organ(organId, OrganType.HARVESTER, point, direction));
     }
 }
 
+
+internal enum OrganType
+{
+    BASIC,
+    HARVESTER,
+    ROOT
+}
 
 partial class Player
 {
@@ -244,21 +344,36 @@ partial class Player
                     case "ROOT":
                         if (owner == 1)
                         {
-                            playerOrganism.SetRoot(organId, new Point(x, y));
+                            playerOrganism.AddRoot(organId, new Point(x, y));
                         } 
                         else if (owner == 0)
                         {
-                            opponentOrganism.SetRoot(organId, new Point(x, y));
+                            opponentOrganism.AddRoot(organId, new Point(x, y));
                         }
                         break;
                     case "BASIC":
                         if (owner == 1)
                         {
-                            playerOrganism.AddOrgan(organId, new Point(x, y));
+                            playerOrganism.AddBasicOrgan(organId, new Point(x, y));
                         }
                         else if (owner == 0)
                         {
-                            opponentOrganism.AddOrgan(organId, new Point(x, y));
+                            opponentOrganism.AddBasicOrgan(organId, new Point(x, y));
+                        }
+                        break;
+                    case "HARVESTER":
+
+                        OrganDirection dirEnum;
+                        if (Enum.TryParse(organDir, out dirEnum))
+                        {
+                            if (owner == 1)
+                            {
+                                playerOrganism.AddHarvesterOrgan(organId, new Point(x, y), dirEnum);
+                            }
+                            else if (owner == 0)
+                            {
+                                opponentOrganism.AddHarvesterOrgan(organId, new Point(x, y), dirEnum);
+                            }
                         }
                         break;
                     case "A":
@@ -322,6 +437,7 @@ internal struct Protein
     internal ProteinType Type { get; private set; }
     internal Point Position { get; private set; }
 
+    internal bool IsHarvested { get; set; }
 
     internal Protein(ProteinType type, Point position)
     {

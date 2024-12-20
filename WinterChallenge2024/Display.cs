@@ -9,11 +9,20 @@ internal static class Display
 {
     internal static void Summary(Game game)
     {
-        Console.Error.WriteLine($"Proteins");
+        Console.Error.WriteLine($"PROTEINS");
         Proteins(game.Proteins);
         Console.Error.WriteLine("==================================");
 
-        Console.Error.WriteLine($"Protein stock");
+        Console.Error.WriteLine($"ORGANISMS");
+        Console.Error.WriteLine("----------------------------------");
+        Console.Error.WriteLine($"Player organism");
+        Organism(game.PlayerOrganism);
+        Console.Error.WriteLine("----------------------------------");
+        Console.Error.WriteLine($"Opponent organism");
+        Organism(game.OpponentOrganism);
+        Console.Error.WriteLine("==================================");
+
+        Console.Error.WriteLine($"PROTEIN STOCK");
         Console.Error.WriteLine("----------------------------------");
         Console.Error.WriteLine($"Player protein stock");
         ProteinStock(game.PlayerProteinStock);
@@ -37,7 +46,26 @@ internal static class Display
 
         foreach (Protein protein in proteins)
         {
-            Console.Error.WriteLine($"Type:{protein.Type} - Position:({protein.Position.X},{protein.Position.Y})");
+            Console.Error.WriteLine($"Type:{protein.Type} - Position:({protein.Position.X},{protein.Position.Y}) - BeingHarvested:{protein.IsHarvested}");
+        }
+    }
+
+    internal static void Organism(Organism organism)
+    {
+        foreach (Organ organ in organism.Organs)
+        {
+            if (organ.Type == OrganType.ROOT)
+            {
+                Console.Error.WriteLine($" ID:{organ.Id} - Type:ROOT - Position:({organ.Position.X},{organ.Position.Y})");
+            }
+            if (organ.Type == OrganType.BASIC)
+            {
+                Console.Error.WriteLine($" ID:{organ.Id} - Type:BASIC - Position:({organ.Position.X},{organ.Position.Y})");
+            }
+            else if (organ.Type == OrganType.HARVESTER)
+            {
+                Console.Error.WriteLine($" ID:{organ.Id} - Type:HARVESTER - Position:({organ.Position.X},{organ.Position.Y}) - Direction:{organ.Direction.ToString()}");
+            }
         }
     }
 }

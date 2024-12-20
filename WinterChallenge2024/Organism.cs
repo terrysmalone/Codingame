@@ -6,7 +6,6 @@ namespace WinterChallenge2024;
 
 internal struct Organism
 {
-    internal Organ Root { get; private set; }
     internal List<Organ> Organs { get; private set; }
 
     public Organism()
@@ -14,13 +13,18 @@ internal struct Organism
         Organs = new List<Organ>();
     }
 
-    internal void SetRoot(int id, Point root)
+    internal void AddRoot(int id, Point root)
     {
-        Root = new Organ(id, root);
+        Organs.Add(new Organ(id, OrganType.ROOT, root));
     }
 
-    internal readonly void AddOrgan(int organId, Point point)
+    internal readonly void AddBasicOrgan(int organId, Point point)
     {
-        Organs.Add(new Organ(organId, point));
+        Organs.Add(new Organ(organId, OrganType.BASIC, point));
+    }
+
+    internal readonly void AddHarvesterOrgan(int organId, Point point, OrganDirection direction)
+    {
+        Organs.Add(new Organ(organId, OrganType.HARVESTER, point, direction));
     }
 }

@@ -2,7 +2,7 @@
 
 namespace WinterChallenge2024;
 
-internal struct Protein
+internal class Protein
 {
     internal ProteinType Type { get; private set; }
     internal Point Position { get; private set; }

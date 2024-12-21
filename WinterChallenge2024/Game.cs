@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Xml.Linq;
 using static System.Collections.Specialized.BitVector32;
 
 namespace WinterChallenge2024;
@@ -76,19 +77,82 @@ internal sealed class Game
 
         //if (string.IsNullOrEmpty(action))
         //{
+        //Display.Organism(PlayerOrganism);
+        //Display.Organism(OpponentOrganism);
+        Display.Proteins(Proteins);
 
-            (int closestOrgan, Point closestPoint) = HeadToNearestProtein(Proteins);
+        (int closestOrgan, List<Point> shortestPath) = GetShortestPathToProtein(Proteins);
 
-            if (closestOrgan != -1)
+        if (closestOrgan != -1)
+        {
+            if (CanProduceHarvester() && Proteins.Exists(p => p.Type == ProteinType.A && p.IsHarvested == false))
             {
-                action = $"GROW {closestOrgan} {closestPoint.X} {closestPoint.Y} BASIC";
+                if (shortestPath.Count == 2)
+                {
+                    string dir = "N";
+
+                    // Get direction to protein 
+                    if (shortestPath[0].X < shortestPath[1].X)
+                    {
+                        dir = "E";
+                    }
+                    else if (shortestPath[0].X > shortestPath[1].X)
+                    {
+                        dir = "W";
+                    }
+                    else if (shortestPath[0].Y > shortestPath[1].Y)
+                    {
+                        dir = "S";
+                    }
+
+                    action = $"GROW {closestOrgan} {shortestPath[0].X} {shortestPath[0].Y} HARVESTER {dir}";
+                }
             }
+
+            if (string.IsNullOrEmpty(action))
+            {
+                action = $"GROW {closestOrgan} {shortestPath[0].X} {shortestPath[0].Y} BASIC";
+            }
+        }
         // }
 
         if (string.IsNullOrEmpty(action))
         {
+            Console.Error.WriteLine("NO PROTEIN. Move randomly");
             // There was no protein to head to. Focus on expanding the 
             // organism
+
+            // For now just be a bit random
+            for (int i = PlayerOrganism.Organs.Count-1; i >= 0; i--)
+            {
+                Organ current = PlayerOrganism.Organs[i];
+
+                Console.Error.WriteLine($"Checking {current.Id}");
+                { }
+                if (CanMoveTo(new Point(current.Position.X+1, current.Position.Y)))
+                {
+                    action = $"GROW {current.Id} {current.Position.X + 1} {current.Position.Y} BASIC";
+                    break;
+                }
+
+                if (CanMoveTo(new Point(current.Position.X, current.Position.Y + 1)))
+                {
+                    action = $"GROW {current.Id} {current.Position.X} {current.Position.Y + 1} BASIC";
+                    break;
+                }
+
+                if (CanMoveTo(new Point(current.Position.X, current.Position.Y - 1)))
+                {
+                    action = $"GROW {current.Id} {current.Position.X} {current.Position.Y - 1} BASIC";
+                    break;
+                }
+
+                if (CanMoveTo(new Point(current.Position.X - 1, current.Position.Y)))
+                {
+                    action = $"GROW {current.Id} {current.Position.X - 1} {current.Position.Y} BASIC";
+                    break;
+                }
+            }
         }
 
         if (string.IsNullOrEmpty(action))
@@ -106,6 +170,7 @@ internal sealed class Game
         {
             if (organ.Type == OrganType.HARVESTER)
             {
+                Console.Error.WriteLine("HARVESTER found");
                 Point harvestedPosition = GetHarvestedPosition(organ);
 
                 Protein havestedProtein = Proteins.Single(p => p.Position.X == harvestedPosition.X && p.Position.Y == harvestedPosition.Y);
@@ -145,13 +210,15 @@ internal sealed class Game
         return false;
     }
 
-    private (int, Point) HeadToNearestProtein(List<Protein> proteins)
+    private (int,List<Point>) GetShortestPathToProtein(List<Protein> proteins)
     {
         string action = string.Empty;
 
-        double closest = double.MaxValue;
+        int shortest = int.MaxValue;
         int closestId = -1;
-        Point closestPoint = new Point();
+        List<Point> shortestPath = new List<Point>();
+
+        AStar aStar = new AStar(this);
 
         // Get the closest A protein to Organs
         foreach (Protein protein in proteins)
@@ -160,23 +227,71 @@ internal sealed class Game
             {
                 foreach (var organ in PlayerOrganism.Organs)
                 {
-                    double distance = CalculateDistance(protein.Position, organ.Position);
-
-                    if (distance < closest)
+                    List<Point> path = aStar.GetShortestPath(organ.Position, protein.Position);
+                    
+                    if (path.Count < shortest && path.Count != 0)
                     {
-                        closest = distance;
+                        shortest = path.Count;
+                        shortestPath = new List<Point>(path);
+
                         closestId = organ.Id;
-                        closestPoint = new Point(protein.Position.X, protein.Position.Y);
                     }
                 }
             }
         }
 
-        return (closestId, closestPoint);
+        //Console.Error.WriteLine($"Shortest path is to organ {closestId} and is {shortestPath.Count} steps ");
+
+        //if (closestId == -1)
+        //{
+        //    return (closestId, new Point(-1,-1));
+        //}
+
+        return (closestId, shortestPath);
     }
 
     private static double CalculateDistance(Point pointA, Point pointB)
     {
         return Math.Sqrt(Math.Pow(pointA.X - pointB.X, 2) + Math.Pow(pointA.Y - pointB.Y, 2));
+    }
+
+    private bool CanMoveTo(Point pointToCheck)
+    {
+        Console.Error.WriteLine($"Checking {pointToCheck.X}, {pointToCheck.Y}");
+        // Not walkable if player organ on that spot
+        if (PlayerOrganism.Organs.Any(o => o.Position == pointToCheck))
+        {
+            Console.Error.WriteLine("False at PlayerOrganism");
+            return false;
+        }
+
+        // Not walkable if opponent organ on that spot
+        if (OpponentOrganism.Organs.Any(o => o.Position == pointToCheck))
+        {
+            Console.Error.WriteLine("False at OpponentOrganism");
+            return false;
+        }
+
+        // Not walkable player harvested protein on that spot
+        if (Proteins.Any(p => p.IsHarvested && p.Position == pointToCheck))
+        {
+            Console.Error.WriteLine("False at Protein");
+
+            Display.Proteins(Proteins);
+            return false;
+        }
+
+        // Not walkable if wall on that spot
+        if (Walls.Any(w => w == pointToCheck))
+        {
+            Console.Error.WriteLine("False at Wall");
+
+            return false;
+        }
+
+        Console.Error.WriteLine("True");
+
+
+        return true;
     }
 }

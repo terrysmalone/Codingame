@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 
 namespace WinterChallenge2024;
@@ -66,6 +67,14 @@ internal static class Display
             {
                 Console.Error.WriteLine($" ID:{organ.Id} - Type:HARVESTER - Position:({organ.Position.X},{organ.Position.Y}) - Direction:{organ.Direction.ToString()}");
             }
+        }
+    }
+
+    internal static void Nodes(List<Node> nodes)
+    {
+        foreach(Node node in nodes)
+        {
+            Console.Error.WriteLine($"Position:({node.Position.X},{node.Position.Y}) - Closed:{node.Closed}");
         }
     }
 }

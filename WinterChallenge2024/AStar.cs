@@ -21,12 +21,6 @@ internal sealed partial class AStar
 
     internal List<Point> GetShortestPath(Point startPoint, Point targetPoint)
     {
-        //if (targetPoint.Y == 5)
-        //{
-        //    Console.Error.WriteLine("------------------------------------");
-        //    Console.Error.WriteLine($"From ({startPoint.X},{startPoint.Y}) to ({targetPoint.X},{targetPoint.Y})");
-        //    Console.Error.WriteLine("-------------------------------------");
-        //}
         _nodes = new List<Node>();
 
         // Create a node for the start Point
@@ -35,25 +29,14 @@ internal sealed partial class AStar
 
         bool targetFound = false;
 
-        // while target not hit
         while (!targetFound) 
         {
-            //if (targetPoint.Y == 5)
-            //{
-                //Console.Error.WriteLine("-------------------------------------");
-                //Console.Error.WriteLine($"CurrentNode:({currentNode.Position.X},{currentNode.Position.Y})");
-                //Console.Error.WriteLine("-------------------------------------");
-                //Display.Nodes(_nodes);
-            //}
-
             Point[] pointsToCheck = new Point[4];
 
             pointsToCheck[0] = new Point(currentNode.Position.X, currentNode.Position.Y+1);
             pointsToCheck[1] = new Point(currentNode.Position.X+1, currentNode.Position.Y);
             pointsToCheck[2] = new Point(currentNode.Position.X, currentNode.Position.Y - 1);
             pointsToCheck[3] = new Point(currentNode.Position.X - 1, currentNode.Position.Y);
-
-            bool somethingChecked = false;
 
             // for each adjacent square
             foreach (Point pointToCheck in pointsToCheck)
@@ -70,13 +53,11 @@ internal sealed partial class AStar
 
                         node.Parent = currentNode.Position;
 
-                        // Calculate F = G + H
                         node.G = currentNode.G + 1;
                         node.H = (Math.Abs(targetPoint.X - pointToCheck.X) + Math.Abs(targetPoint.Y - pointToCheck.Y));
                         node.F = node.G + node.F;
 
                         _nodes.Add(node);
-                        somethingChecked = true;
                     }
                 }
                 else
@@ -92,8 +73,6 @@ internal sealed partial class AStar
 
                             existingNode.Parent = currentNode.Position;
                         }
-
-                        somethingChecked = true;
                     }
                 }
             }
@@ -103,10 +82,8 @@ internal sealed partial class AStar
                 return new List<Point>();
             }
 
-            // Close the current square
             currentNode.Closed = true;
-
-            //    If this is target 
+ 
             if (currentNode.Position == targetPoint)
             {
                 targetFound = true;

@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
+using System.Xml.Linq;
 
 namespace WinterChallenge2024;
 internal static class Display
@@ -41,17 +43,15 @@ internal static class Display
     {
         Console.Error.WriteLine($"Proteins");
 
-        foreach (Protein protein in proteins)
-        {
-            Console.Error.WriteLine($"Type:{protein.Type} - Position:({protein.Position.X},{protein.Position.Y}) - BeingHarvested:{protein.IsHarvested}");
-        }
+        proteins.ForEach(p => 
+            Console.Error.WriteLine($"Type:{p.Type} - Position:({p.Position.X},{p.Position.Y}) - BeingHarvested:{p.IsHarvested}"));
     }
 
     internal static void Organisms(List<Organism> organisms)
     {
         foreach (Organism organism in organisms)
         {
-            Display.Organism(organism);
+            Organism(organism);
             Console.Error.WriteLine("-----------------------------------");
         }
     }
@@ -60,26 +60,75 @@ internal static class Display
     {
         foreach (Organ organ in organism.Organs)
         {
-            if (organ.Type == OrganType.ROOT)
+            switch (organ.Type)
             {
-                Console.Error.WriteLine($" ID:{organ.Id} - Type:ROOT - Position:({organ.Position.X},{organ.Position.Y})");
-            }
-            if (organ.Type == OrganType.BASIC)
-            {
-                Console.Error.WriteLine($" ID:{organ.Id} - Type:BASIC - Position:({organ.Position.X},{organ.Position.Y})");
-            }
-            else if (organ.Type == OrganType.HARVESTER)
-            {
-                Console.Error.WriteLine($" ID:{organ.Id} - Type:HARVESTER - Position:({organ.Position.X},{organ.Position.Y}) - Direction:{organ.Direction.ToString()}");
+                case OrganType.BASIC:
+                case OrganType.ROOT:
+                    Console.Error.WriteLine($" ID:{organ.Id} - Type:{organ.Type.ToString()} - Position:({organ.Position.X},{organ.Position.Y})");
+                    break;
+
+                case OrganType.HARVESTER:
+                case OrganType.SPORER:
+                    Console.Error.WriteLine($" ID:{organ.Id} - Type:{organ.Type.ToString()} - Position:({organ.Position.X},{organ.Position.Y}) - Direction:{organ.Direction.ToString()}");
+                    break;
             }
         }
     }
 
     internal static void Nodes(List<Node> nodes)
     {
-        foreach(Node node in nodes)
+        nodes.ForEach(n => 
+            Console.Error.WriteLine($"Position:({n.Position.X},{n.Position.Y}) - Closed:{n.Closed}"));
+    }
+
+    internal static void Map(Game game)
+    {
+        string[,] map = new string[game.Width, game.Height];
+
+        for (int y = 0; y < game.Height; y++)
         {
-            Console.Error.WriteLine($"Position:({node.Position.X},{node.Position.Y}) - Closed:{node.Closed}");
+            for (int x = 0; x < game.Width; x++)
+            {
+                map[x, y] = " ";
+            }
+        }
+
+        foreach (Point wall in game.Walls)
+        {
+            map[wall.X, wall.Y] = "X";
+        }
+
+        foreach (Protein protein in game.Proteins)
+        {
+            map[protein.Position.X, protein.Position.Y] = protein.Type.ToString();
+        }
+
+        foreach (Organism organism in game.PlayerOrganisms)
+        {
+            foreach (Organ organ in organism.Organs)
+            {
+                map[organ.Position.X, organ.Position.Y] = "O";
+            }
+        }
+
+        foreach (Organism organism in game.OpponentOrganisms)
+        {
+            foreach (Organ organ in organism.Organs)
+            {
+                map[organ.Position.X, organ.Position.Y] = "o";
+            }
+        }
+
+        for (int y = 0; y < game.Height; y++)
+        {
+            string row = string.Empty;
+
+            for (int x = 0; x < game.Width; x++)
+            {
+                row += map[x, y];
+            }
+
+            Console.Error.WriteLine(row);
         }
     }
 }

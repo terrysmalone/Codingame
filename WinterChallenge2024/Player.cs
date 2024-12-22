@@ -42,59 +42,83 @@ partial class Player
                 int organParentId = int.Parse(inputs[6]);
                 int organRootId = int.Parse(inputs[7]);
 
-                switch (type)
+                OrganType organTypeEnum;
+                if (Enum.TryParse(type, out organTypeEnum))
                 {
-                    case "WALL":
-                        walls.Add(new Point(x, y));
-                        break;
-                    case "BASIC":
-                        if (owner == 1)
-                        {
-                            unsortedPlayerOrgans.Add(CreateBasicOrgan(organId, organRootId, new Point(x, y)));
-                        }
-                        else if (owner == 0)
-                        {
-                            unsortedOpponentOrgans.Add(CreateBasicOrgan(organId, organRootId, new Point(x, y)));
-                        }
-                        break;
-                    case "HARVESTER":
-
-                        OrganDirection dirEnum;
-                        if (Enum.TryParse(organDir, out dirEnum))
-                        {
+                    switch (type)
+                    {
+                        case "BASIC":
+                        case "ROOT":
                             if (owner == 1)
                             {
-                                unsortedPlayerOrgans.Add(CreateHarvesterOrgan(organId, organRootId, new Point(x, y), dirEnum));
+                                unsortedPlayerOrgans.Add(
+                                    CreateOrgan(
+                                        organId,
+                                        organRootId,
+                                        organTypeEnum,
+                                        new Point(x, y)));
                             }
                             else if (owner == 0)
                             {
-                                unsortedOpponentOrgans.Add(CreateHarvesterOrgan(organId, organRootId, new Point(x, y), dirEnum));
+                                unsortedOpponentOrgans.Add(
+                                    CreateOrgan(
+                                        organId,
+                                        organRootId,
+                                        organTypeEnum,
+                                        new Point(x, y)));
                             }
-                        }
-                        break;
-                    case "ROOT":
-                        if (owner == 1)
-                        {
 
-                            unsortedPlayerOrgans.Add(CreateRootOrgan(organId, organRootId, new Point(x, y)));
-                        }
-                        else if (owner == 0)
-                        {
-                            unsortedOpponentOrgans.Add(CreateRootOrgan(organId, organRootId, new Point(x, y)));
-                        }
-                        break;
-                    case "A":
-                        proteins.Add(new Protein(ProteinType.A, new Point(x, y)));
-                        break;
-                    case "B":
-                        proteins.Add(new Protein(ProteinType.B, new Point(x, y)));
-                        break;
-                    case "C":
-                        proteins.Add(new Protein(ProteinType.C, new Point(x, y)));
-                        break;
-                    case "D":
-                        proteins.Add(new Protein(ProteinType.D, new Point(x, y)));
-                        break;
+                            break;
+
+                        case "HARVESTER":
+                        case "SPORER":
+                            OrganDirection dirEnum;
+                            if (Enum.TryParse(organDir, out dirEnum))
+                            {
+                                if (owner == 1)
+                                {
+                                    unsortedPlayerOrgans.Add(
+                                        CreateDirectionOrgan(
+                                            organId,
+                                            organRootId,
+                                            organTypeEnum,
+                                            new Point(x, y),
+                                            dirEnum));
+                                }
+                                else if (owner == 0)
+                                {
+                                    unsortedOpponentOrgans.Add(
+                                        CreateDirectionOrgan(
+                                            organId,
+                                            organRootId,
+                                            organTypeEnum,
+                                            new Point(x, y),
+                                            dirEnum));
+                                }
+                            }
+                            break;
+                    }
+                }
+                else
+                {
+                    switch (type)
+                    {
+                        case "A":
+                            proteins.Add(new Protein(ProteinType.A, new Point(x, y)));
+                            break;
+                        case "B":
+                            proteins.Add(new Protein(ProteinType.B, new Point(x, y)));
+                            break;
+                        case "C":
+                            proteins.Add(new Protein(ProteinType.C, new Point(x, y)));
+                            break;
+                        case "D":
+                            proteins.Add(new Protein(ProteinType.D, new Point(x, y)));
+                            break;
+                        case "WALL":
+                            walls.Add(new Point(x, y));
+                            break;
+                    }
                 }
             }
 
@@ -140,19 +164,14 @@ partial class Player
         return proteins;
     }
 
-    private static Organ CreateBasicOrgan(int organId, int rootId, Point point)
+    private static Organ CreateOrgan(int organId, int rootId, OrganType organType, Point point)
     {
-        return new Organ(organId, rootId, OrganType.BASIC, point);
+        return new Organ(organId, rootId, organType, point);
     }
 
-    private static Organ CreateHarvesterOrgan(int organId, int rootId, Point point, OrganDirection direction)
+    private static Organ CreateDirectionOrgan(int organId, int rootId, OrganType organType, Point point, OrganDirection direction)
     {
-        return new Organ(organId, rootId, OrganType.HARVESTER, point, direction);
-    }
-
-    private static Organ CreateRootOrgan(int organId, int rootId, Point root)
-    {
-        return new Organ(organId, rootId, OrganType.ROOT, root);
+        return new Organ(organId, rootId, organType, point, direction);
     }
 
     private static List<Organism> SortOrgans(List<Organ> unsortedOrgans)

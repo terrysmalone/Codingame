@@ -21,20 +21,23 @@ internal sealed partial class AStar
 
     internal List<Point> GetShortestPath(Point startPoint, Point targetPoint)
     {
+        Console.Error.WriteLine($"StartPoint:({startPoint.X},{startPoint.Y})");
+        Console.Error.WriteLine($"targetPoint:({targetPoint.X},{targetPoint.Y})");
         _nodes = new List<Node>();
 
         // Create a node for the start Point
         Node currentNode = new Node(startPoint);
+        Display.Nodes(new List<Node> { currentNode });
         _nodes.Add(currentNode);
 
         bool targetFound = false;
 
-        while (!targetFound) 
+        while (!targetFound)
         {
             Point[] pointsToCheck = new Point[4];
 
-            pointsToCheck[0] = new Point(currentNode.Position.X, currentNode.Position.Y+1);
-            pointsToCheck[1] = new Point(currentNode.Position.X+1, currentNode.Position.Y);
+            pointsToCheck[0] = new Point(currentNode.Position.X, currentNode.Position.Y + 1);
+            pointsToCheck[1] = new Point(currentNode.Position.X + 1, currentNode.Position.Y);
             pointsToCheck[2] = new Point(currentNode.Position.X, currentNode.Position.Y - 1);
             pointsToCheck[3] = new Point(currentNode.Position.X - 1, currentNode.Position.Y);
 
@@ -83,7 +86,7 @@ internal sealed partial class AStar
             }
 
             currentNode.Closed = true;
- 
+
             if (currentNode.Position == targetPoint)
             {
                 targetFound = true;
@@ -91,11 +94,13 @@ internal sealed partial class AStar
             else
             {
                 // Sort nodes
-                _nodes =  _nodes.OrderBy(n => n.Closed == true).ThenBy(n => n.F).ToList();
+                _nodes = _nodes.OrderBy(n => n.Closed == true).ThenBy(n => n.F).ToList();
 
                 currentNode = _nodes.First();
             }
         }
+
+        Console.Error.WriteLine("Target found");
 
         int numberOfSteps = currentNode.G;
 

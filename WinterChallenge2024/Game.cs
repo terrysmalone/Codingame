@@ -2,11 +2,16 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Xml.Linq;
+using static System.Formats.Asn1.AsnWriter;
 
 namespace WinterChallenge2024;
 
 internal sealed class Game
 {
+    internal int Width { get; private set; }
+    internal int Height { get; private set; }
+
     internal List<Organism> PlayerOrganisms { get; private set; }
     internal List<Organism> OpponentOrganisms { get; private set; }
 
@@ -16,45 +21,25 @@ internal sealed class Game
     public List<Point> Walls { get; private set; }
     public List<Protein> Proteins { get; private set; }
 
-    private int _width;
-    private int _height;
-
     internal Game(int width, int height)
     {
-        _width = width;
-        _height = height;
+        Width = width;
+        Height = height;
     }
 
-    internal void SetPlayerProteinStock(ProteinStock playerProteins)
-    {
-        PlayerProteinStock = playerProteins;
-    }
+    internal void SetPlayerProteinStock(ProteinStock playerProteins) => PlayerProteinStock = playerProteins;
 
-    internal void SetOpponentProteinStock(ProteinStock opponentProteins)
-    {
-        OpponentProteinStock = opponentProteins;
-    }
+    internal void SetOpponentProteinStock(ProteinStock opponentProteins) => OpponentProteinStock = opponentProteins;
 
-    internal void SetPlayerOrganisms(List<Organism> playerOrganisms)
-    {
-        PlayerOrganisms = playerOrganisms;
-    }
+    internal void SetPlayerOrganisms(List<Organism> playerOrganisms) => PlayerOrganisms = playerOrganisms;
 
-    internal void SetOpponentOrganisms(List<Organism> opponentOrganisms)
-    {
-        OpponentOrganisms = opponentOrganisms;
-    }
+    internal void SetOpponentOrganisms(List<Organism> opponentOrganisms) => OpponentOrganisms = opponentOrganisms;
 
-    internal void SetWalls(List<Point> walls)
-    {
-        Walls = walls;
-    }
+    internal void SetWalls(List<Point> walls) => Walls = walls;
 
-    internal void SetProteins(List<Protein> proteins)
-    {
-        Proteins = proteins;
-    }
+    internal void SetProteins(List<Protein> proteins) => Proteins = proteins;
 
+    int turn = 0;
     internal List<string> GetActions()
     {
         CheckForHarvestedProtein();

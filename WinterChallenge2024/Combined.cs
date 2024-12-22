@@ -11,6 +11,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using static System.Formats.Asn1.AsnWriter;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Net;
@@ -28,20 +29,23 @@ internal sealed partial class AStar
 
     internal List<Point> GetShortestPath(Point startPoint, Point targetPoint)
     {
+        Console.Error.WriteLine($"StartPoint:({startPoint.X},{startPoint.Y})");
+        Console.Error.WriteLine($"targetPoint:({targetPoint.X},{targetPoint.Y})");
         _nodes = new List<Node>();
 
         // Create a node for the start Point
         Node currentNode = new Node(startPoint);
+        Display.Nodes(new List<Node> { currentNode });
         _nodes.Add(currentNode);
 
         bool targetFound = false;
 
-        while (!targetFound) 
+        while (!targetFound)
         {
             Point[] pointsToCheck = new Point[4];
 
-            pointsToCheck[0] = new Point(currentNode.Position.X, currentNode.Position.Y+1);
-            pointsToCheck[1] = new Point(currentNode.Position.X+1, currentNode.Position.Y);
+            pointsToCheck[0] = new Point(currentNode.Position.X, currentNode.Position.Y + 1);
+            pointsToCheck[1] = new Point(currentNode.Position.X + 1, currentNode.Position.Y);
             pointsToCheck[2] = new Point(currentNode.Position.X, currentNode.Position.Y - 1);
             pointsToCheck[3] = new Point(currentNode.Position.X - 1, currentNode.Position.Y);
 
@@ -90,7 +94,7 @@ internal sealed partial class AStar
             }
 
             currentNode.Closed = true;
- 
+
             if (currentNode.Position == targetPoint)
             {
                 targetFound = true;
@@ -98,11 +102,13 @@ internal sealed partial class AStar
             else
             {
                 // Sort nodes
-                _nodes =  _nodes.OrderBy(n => n.Closed == true).ThenBy(n => n.F).ToList();
+                _nodes = _nodes.OrderBy(n => n.Closed == true).ThenBy(n => n.F).ToList();
 
                 currentNode = _nodes.First();
             }
         }
+
+        Console.Error.WriteLine("Target found");
 
         int numberOfSteps = currentNode.G;
 
@@ -218,17 +224,15 @@ internal static class Display
     {
         Console.Error.WriteLine($"Proteins");
 
-        foreach (Protein protein in proteins)
-        {
-            Console.Error.WriteLine($"Type:{protein.Type} - Position:({protein.Position.X},{protein.Position.Y}) - BeingHarvested:{protein.IsHarvested}");
-        }
+        proteins.ForEach(p => 
+            Console.Error.WriteLine($"Type:{p.Type} - Position:({p.Position.X},{p.Position.Y}) - BeingHarvested:{p.IsHarvested}"));
     }
 
     internal static void Organisms(List<Organism> organisms)
     {
         foreach (Organism organism in organisms)
         {
-            Display.Organism(organism);
+            Organism(organism);
             Console.Error.WriteLine("-----------------------------------");
         }
     }
@@ -237,26 +241,75 @@ internal static class Display
     {
         foreach (Organ organ in organism.Organs)
         {
-            if (organ.Type == OrganType.ROOT)
+            switch (organ.Type)
             {
-                Console.Error.WriteLine($" ID:{organ.Id} - Type:ROOT - Position:({organ.Position.X},{organ.Position.Y})");
-            }
-            if (organ.Type == OrganType.BASIC)
-            {
-                Console.Error.WriteLine($" ID:{organ.Id} - Type:BASIC - Position:({organ.Position.X},{organ.Position.Y})");
-            }
-            else if (organ.Type == OrganType.HARVESTER)
-            {
-                Console.Error.WriteLine($" ID:{organ.Id} - Type:HARVESTER - Position:({organ.Position.X},{organ.Position.Y}) - Direction:{organ.Direction.ToString()}");
+                case OrganType.BASIC:
+                case OrganType.ROOT:
+                    Console.Error.WriteLine($" ID:{organ.Id} - Type:{organ.Type.ToString()} - Position:({organ.Position.X},{organ.Position.Y})");
+                    break;
+
+                case OrganType.HARVESTER:
+                case OrganType.SPORER:
+                    Console.Error.WriteLine($" ID:{organ.Id} - Type:{organ.Type.ToString()} - Position:({organ.Position.X},{organ.Position.Y}) - Direction:{organ.Direction.ToString()}");
+                    break;
             }
         }
     }
 
     internal static void Nodes(List<Node> nodes)
     {
-        foreach(Node node in nodes)
+        nodes.ForEach(n => 
+            Console.Error.WriteLine($"Position:({n.Position.X},{n.Position.Y}) - Closed:{n.Closed}"));
+    }
+
+    internal static void Map(Game game)
+    {
+        string[,] map = new string[game.Width, game.Height];
+
+        for (int y = 0; y < game.Height; y++)
         {
-            Console.Error.WriteLine($"Position:({node.Position.X},{node.Position.Y}) - Closed:{node.Closed}");
+            for (int x = 0; x < game.Width; x++)
+            {
+                map[x, y] = " ";
+            }
+        }
+
+        foreach (Point wall in game.Walls)
+        {
+            map[wall.X, wall.Y] = "X";
+        }
+
+        foreach (Protein protein in game.Proteins)
+        {
+            map[protein.Position.X, protein.Position.Y] = protein.Type.ToString();
+        }
+
+        foreach (Organism organism in game.PlayerOrganisms)
+        {
+            foreach (Organ organ in organism.Organs)
+            {
+                map[organ.Position.X, organ.Position.Y] = "O";
+            }
+        }
+
+        foreach (Organism organism in game.OpponentOrganisms)
+        {
+            foreach (Organ organ in organism.Organs)
+            {
+                map[organ.Position.X, organ.Position.Y] = "o";
+            }
+        }
+
+        for (int y = 0; y < game.Height; y++)
+        {
+            string row = string.Empty;
+
+            for (int x = 0; x < game.Width; x++)
+            {
+                row += map[x, y];
+            }
+
+            Console.Error.WriteLine(row);
         }
     }
 }
@@ -264,6 +317,9 @@ internal static class Display
 
 internal sealed class Game
 {
+    internal int Width { get; private set; }
+    internal int Height { get; private set; }
+
     internal List<Organism> PlayerOrganisms { get; private set; }
     internal List<Organism> OpponentOrganisms { get; private set; }
 
@@ -273,47 +329,28 @@ internal sealed class Game
     public List<Point> Walls { get; private set; }
     public List<Protein> Proteins { get; private set; }
 
-    private int _width;
-    private int _height;
-
     internal Game(int width, int height)
     {
-        _width = width;
-        _height = height;
+        Width = width;
+        Height = height;
     }
 
-    internal void SetPlayerProteinStock(ProteinStock playerProteins)
-    {
-        PlayerProteinStock = playerProteins;
-    }
+    internal void SetPlayerProteinStock(ProteinStock playerProteins) => PlayerProteinStock = playerProteins;
 
-    internal void SetOpponentProteinStock(ProteinStock opponentProteins)
-    {
-        OpponentProteinStock = opponentProteins;
-    }
+    internal void SetOpponentProteinStock(ProteinStock opponentProteins) => OpponentProteinStock = opponentProteins;
 
-    internal void SetPlayerOrganisms(List<Organism> playerOrganisms)
-    {
-        PlayerOrganisms = playerOrganisms;
-    }
+    internal void SetPlayerOrganisms(List<Organism> playerOrganisms) => PlayerOrganisms = playerOrganisms;
 
-    internal void SetOpponentOrganisms(List<Organism> opponentOrganisms)
-    {
-        OpponentOrganisms = opponentOrganisms;
-    }
+    internal void SetOpponentOrganisms(List<Organism> opponentOrganisms) => OpponentOrganisms = opponentOrganisms;
 
-    internal void SetWalls(List<Point> walls)
-    {
-        Walls = walls;
-    }
+    internal void SetWalls(List<Point> walls) => Walls = walls;
 
-    internal void SetProteins(List<Protein> proteins)
-    {
-        Proteins = proteins;
-    }
+    internal void SetProteins(List<Protein> proteins) => Proteins = proteins;
 
+    int turn = 0;
     internal List<string> GetActions()
     {
+        Display.Map(this);
         CheckForHarvestedProtein();
 
         List<string> actions = new List<string>();
@@ -650,59 +687,83 @@ partial class Player
                 int organParentId = int.Parse(inputs[6]);
                 int organRootId = int.Parse(inputs[7]);
 
-                switch (type)
+                OrganType organTypeEnum;
+                if (Enum.TryParse(type, out organTypeEnum))
                 {
-                    case "WALL":
-                        walls.Add(new Point(x, y));
-                        break;
-                    case "BASIC":
-                        if (owner == 1)
-                        {
-                            unsortedPlayerOrgans.Add(CreateBasicOrgan(organId, organRootId, new Point(x, y)));
-                        }
-                        else if (owner == 0)
-                        {
-                            unsortedOpponentOrgans.Add(CreateBasicOrgan(organId, organRootId, new Point(x, y)));
-                        }
-                        break;
-                    case "HARVESTER":
-
-                        OrganDirection dirEnum;
-                        if (Enum.TryParse(organDir, out dirEnum))
-                        {
+                    switch (type)
+                    {
+                        case "BASIC":
+                        case "ROOT":
                             if (owner == 1)
                             {
-                                unsortedPlayerOrgans.Add(CreateHarvesterOrgan(organId, organRootId, new Point(x, y), dirEnum));
+                                unsortedPlayerOrgans.Add(
+                                    CreateOrgan(
+                                        organId,
+                                        organRootId,
+                                        organTypeEnum,
+                                        new Point(x, y)));
                             }
                             else if (owner == 0)
                             {
-                                unsortedOpponentOrgans.Add(CreateHarvesterOrgan(organId, organRootId, new Point(x, y), dirEnum));
+                                unsortedOpponentOrgans.Add(
+                                    CreateOrgan(
+                                        organId,
+                                        organRootId,
+                                        organTypeEnum,
+                                        new Point(x, y)));
                             }
-                        }
-                        break;
-                    case "ROOT":
-                        if (owner == 1)
-                        {
 
-                            unsortedPlayerOrgans.Add(CreateRootOrgan(organId, organRootId, new Point(x, y)));
-                        }
-                        else if (owner == 0)
-                        {
-                            unsortedOpponentOrgans.Add(CreateRootOrgan(organId, organRootId, new Point(x, y)));
-                        }
-                        break;
-                    case "A":
-                        proteins.Add(new Protein(ProteinType.A, new Point(x, y)));
-                        break;
-                    case "B":
-                        proteins.Add(new Protein(ProteinType.B, new Point(x, y)));
-                        break;
-                    case "C":
-                        proteins.Add(new Protein(ProteinType.C, new Point(x, y)));
-                        break;
-                    case "D":
-                        proteins.Add(new Protein(ProteinType.D, new Point(x, y)));
-                        break;
+                            break;
+
+                        case "HARVESTER":
+                        case "SPORER":
+                            OrganDirection dirEnum;
+                            if (Enum.TryParse(organDir, out dirEnum))
+                            {
+                                if (owner == 1)
+                                {
+                                    unsortedPlayerOrgans.Add(
+                                        CreateDirectionOrgan(
+                                            organId,
+                                            organRootId,
+                                            organTypeEnum,
+                                            new Point(x, y),
+                                            dirEnum));
+                                }
+                                else if (owner == 0)
+                                {
+                                    unsortedOpponentOrgans.Add(
+                                        CreateDirectionOrgan(
+                                            organId,
+                                            organRootId,
+                                            organTypeEnum,
+                                            new Point(x, y),
+                                            dirEnum));
+                                }
+                            }
+                            break;
+                    }
+                }
+                else
+                {
+                    switch (type)
+                    {
+                        case "A":
+                            proteins.Add(new Protein(ProteinType.A, new Point(x, y)));
+                            break;
+                        case "B":
+                            proteins.Add(new Protein(ProteinType.B, new Point(x, y)));
+                            break;
+                        case "C":
+                            proteins.Add(new Protein(ProteinType.C, new Point(x, y)));
+                            break;
+                        case "D":
+                            proteins.Add(new Protein(ProteinType.D, new Point(x, y)));
+                            break;
+                        case "WALL":
+                            walls.Add(new Point(x, y));
+                            break;
+                    }
                 }
             }
 
@@ -748,19 +809,14 @@ partial class Player
         return proteins;
     }
 
-    private static Organ CreateBasicOrgan(int organId, int rootId, Point point)
+    private static Organ CreateOrgan(int organId, int rootId, OrganType organType, Point point)
     {
-        return new Organ(organId, rootId, OrganType.BASIC, point);
+        return new Organ(organId, rootId, organType, point);
     }
 
-    private static Organ CreateHarvesterOrgan(int organId, int rootId, Point point, OrganDirection direction)
+    private static Organ CreateDirectionOrgan(int organId, int rootId, OrganType organType, Point point, OrganDirection direction)
     {
-        return new Organ(organId, rootId, OrganType.HARVESTER, point, direction);
-    }
-
-    private static Organ CreateRootOrgan(int organId, int rootId, Point root)
-    {
-        return new Organ(organId, rootId, OrganType.ROOT, root);
+        return new Organ(organId, rootId, organType, point, direction);
     }
 
     private static List<Organism> SortOrgans(List<Organ> unsortedOrgans)
@@ -771,7 +827,6 @@ partial class Player
 
         foreach (Organ organ in unsortedOrgans)
         {
-            Console.Error.WriteLine($"Organ type: {organ.Type}");
             if (organ.Type == OrganType.ROOT)
             {
                 Organism organism = new Organism(organ.Id);

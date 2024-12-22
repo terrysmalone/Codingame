@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "FileConcatenator": {
+      "commandName": "Project",
+      "commandLineArgs": "C:\\Users\\terry\\Documents\\Development\\C-Sharp\\Codingame\\WinterChallenge2024"
+    }
+  }
+}

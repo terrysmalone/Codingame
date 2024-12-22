@@ -47,7 +47,7 @@ internal sealed partial class AStar
                 if (existingNode == null)
                 {
                     // Create a node if the position is walkable (No wall. No harvested protein)
-                    if (MovementChecker.CanGrowOn(pointToCheck, _game))
+                    if (MapChecker.CanGrowOn(pointToCheck, _game))
                     {
                         Node node = new Node(pointToCheck);
 

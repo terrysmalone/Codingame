@@ -6,10 +6,17 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace WinterChallenge2024;
-internal static class MovementChecker
+internal static class MapChecker
 {
     internal static bool CanGrowOn(Point pointToCheck, Game game)
     {
+        if (pointToCheck.X < 0 || 
+            pointToCheck.Y < 0 || 
+            pointToCheck.X >= game.Width || 
+            pointToCheck.Y >= game.Height) 
+        { 
+            return false; 
+        }
         // Not walkable if player organ on that spot
         foreach (Organism organism in game.PlayerOrganisms)
         {
@@ -41,5 +48,31 @@ internal static class MovementChecker
         }
 
         return true;
+    }
+
+    internal static List<Point> GetRootPoints(Point position, Game game)
+    {
+        List<Point> rootPoints = new List<Point>();
+
+        Point[] pointsToCheck = new Point[] {
+                new Point(position.X - 1, position.Y - 1),
+                new Point(position.X - 1, position.Y + 1),
+                new Point(position.X + 1, position.Y - 1),
+                new Point(position.X + 1, position.Y + 1),
+                new Point(position.X - 2, position.Y),
+                new Point(position.X + 2, position.Y),
+                new Point(position.X, position.Y - 2),
+                new Point(position.X, position.Y + 2),
+            };
+
+        foreach (Point point in pointsToCheck)
+        {
+            if (CanGrowOn(point, game))
+            {
+                rootPoints.Add(point);
+            }
+        }
+
+        return rootPoints;
     }
 }

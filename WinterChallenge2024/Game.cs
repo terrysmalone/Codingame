@@ -265,8 +265,7 @@ internal sealed class Game
         {
             // See if we can make a harvester
             if (CostCalculator.CanProduceOrgan(OrganType.HARVESTER, PlayerProteinStock) &&
-                Proteins.Exists(p => p.Type == ProteinType.A &&
-                p.IsHarvested == false))
+                Proteins.Exists(p => p.IsHarvested == false))
             {
                 if (shortestPath.Count == 2)
                 {
@@ -335,10 +334,10 @@ internal sealed class Game
         AStar aStar = new AStar(this);
             
 
-        // Get the closest A protein to Organs
+        // Get the closest protein to Organs
         foreach (Protein protein in proteins)
         {
-            if (protein.Type == ProteinType.A && !protein.IsHarvested)
+            if (!protein.IsHarvested)
             {
                 foreach (var organ in organism.Organs)
                 {

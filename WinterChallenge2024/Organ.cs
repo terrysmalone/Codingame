@@ -6,6 +6,7 @@ namespace WinterChallenge2024;
 internal struct Organ
 {
     internal int Id { get; private set; }
+    internal int RootId { get; private set; }
 
     public OrganType Type { get; set; }
 
@@ -13,14 +14,15 @@ internal struct Organ
 
     internal OrganDirection Direction { get; private set; }
 
-    public Organ(int id, OrganType type, Point position) : this()
+    public Organ(int id, int rootId, OrganType type, Point position) : this()
     {
         Id = id;
+        RootId = rootId;
         Type = type;
         Position = position;
     }
 
-    public Organ(int id, OrganType type, Point position, OrganDirection direction) : this(id, type, position)
+    public Organ(int id, int rootId, OrganType type, Point position, OrganDirection direction) : this(id, rootId, type, position)
     {
         Direction = direction;
     }

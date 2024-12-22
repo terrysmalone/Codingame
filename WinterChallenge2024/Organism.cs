@@ -4,27 +4,22 @@ using System.Drawing;
 
 namespace WinterChallenge2024;
 
-internal struct Organism
+internal class Organism
 {
+    internal int RootId { get; private set; }
+
     internal List<Organ> Organs { get; private set; }
 
-    public Organism()
+    internal Organism(int rootId)
     {
         Organs = new List<Organ>();
+        RootId = rootId;
     }
 
-    internal void AddRoot(int id, Point root)
+    internal void AddOrgan(Organ organ)
     {
-        Organs.Add(new Organ(id, OrganType.ROOT, root));
+        Organs.Add(organ);
     }
 
-    internal readonly void AddBasicOrgan(int organId, Point point)
-    {
-        Organs.Add(new Organ(organId, OrganType.BASIC, point));
-    }
 
-    internal readonly void AddHarvesterOrgan(int organId, Point point, OrganDirection direction)
-    {
-        Organs.Add(new Organ(organId, OrganType.HARVESTER, point, direction));
-    }
 }

@@ -47,7 +47,7 @@ internal sealed partial class AStar
                 if (existingNode == null)
                 {
                     // Create a node if the position is walkable (No wall. No harvested protein)
-                    if (IsWalkable(pointToCheck))
+                    if (MovementChecker.CanGrowOn(pointToCheck, _game))
                     {
                         Node node = new Node(pointToCheck);
 
@@ -119,34 +119,5 @@ internal sealed partial class AStar
         }
 
         return shortestPath;
-    }
-
-    private bool IsWalkable(Point pointToCheck)
-    {
-        // Not walkable if player organ on that spot
-        if (_game.PlayerOrganism.Organs.Any(o => o.Position == pointToCheck))
-        {
-            return false;
-        }
-
-        // Not walkable if opponent organ on that spot
-        if (_game.OpponentOrganism.Organs.Any(o => o.Position == pointToCheck))
-        {
-            return false;
-        }
-
-        // Not walkable player harvested protein on that spot
-        if (_game.Proteins.Any(p => p.IsHarvested && p.Position == pointToCheck))
-        {
-            return false;
-        }
-
-        // Not walkable if wall on that spot
-        if (_game.Walls.Any(w => w == pointToCheck))
-        {
-            return false;
-        }
-
-        return true;
     }
 }

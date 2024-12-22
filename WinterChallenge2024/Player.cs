@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.Linq;
 using System.Net;
 
 namespace WinterChallenge2024;
@@ -23,8 +24,8 @@ partial class Player
         // game loop
         while (true)
         {
-            Organism playerOrganism = new Organism();
-            Organism opponentOrganism = new Organism();
+            List<Organ> unsortedPlayerOrgans = new List<Organ>();
+            List<Organ> unsortedOpponentOrgans = new List<Organ>();
             List<Point> walls = new List<Point>();
             List<Protein> proteins = new List<Protein>();
 
@@ -46,24 +47,14 @@ partial class Player
                     case "WALL":
                         walls.Add(new Point(x, y));
                         break;
-                    case "ROOT":
-                        if (owner == 1)
-                        {
-                            playerOrganism.AddRoot(organId, new Point(x, y));
-                        } 
-                        else if (owner == 0)
-                        {
-                            opponentOrganism.AddRoot(organId, new Point(x, y));
-                        }
-                        break;
                     case "BASIC":
                         if (owner == 1)
                         {
-                            playerOrganism.AddBasicOrgan(organId, new Point(x, y));
+                            unsortedPlayerOrgans.Add(CreateBasicOrgan(organId, organRootId, new Point(x, y)));
                         }
                         else if (owner == 0)
                         {
-                            opponentOrganism.AddBasicOrgan(organId, new Point(x, y));
+                            unsortedOpponentOrgans.Add(CreateBasicOrgan(organId, organRootId, new Point(x, y)));
                         }
                         break;
                     case "HARVESTER":
@@ -73,12 +64,23 @@ partial class Player
                         {
                             if (owner == 1)
                             {
-                                playerOrganism.AddHarvesterOrgan(organId, new Point(x, y), dirEnum);
+                                unsortedPlayerOrgans.Add(CreateHarvesterOrgan(organId, organRootId, new Point(x, y), dirEnum));
                             }
                             else if (owner == 0)
                             {
-                                opponentOrganism.AddHarvesterOrgan(organId, new Point(x, y), dirEnum);
+                                unsortedOpponentOrgans.Add(CreateHarvesterOrgan(organId, organRootId, new Point(x, y), dirEnum));
                             }
+                        }
+                        break;
+                    case "ROOT":
+                        if (owner == 1)
+                        {
+
+                            unsortedPlayerOrgans.Add(CreateRootOrgan(organId, organRootId, new Point(x, y)));
+                        }
+                        else if (owner == 0)
+                        {
+                            unsortedOpponentOrgans.Add(CreateRootOrgan(organId, organRootId, new Point(x, y)));
                         }
                         break;
                     case "A":
@@ -96,8 +98,10 @@ partial class Player
                 }
             }
 
-            game.SetPlayerOrganism(playerOrganism);
-            game.SetOpponentOrganism(opponentOrganism);
+            List<Organism> playerOrganisms = SortOrgans(unsortedPlayerOrgans);
+            game.SetPlayerOrganisms(playerOrganisms);
+            List<Organism> opponentOrganisms = SortOrgans(unsortedOpponentOrgans);
+            game.SetOpponentOrganisms(opponentOrganisms);
 
             game.SetWalls(walls);
             game.SetProteins(proteins);
@@ -134,5 +138,41 @@ partial class Player
         ProteinStock proteins = new ProteinStock(proteinA, proteinB, proteinC, proteinD);
 
         return proteins;
+    }
+
+    private static Organ CreateBasicOrgan(int organId, int rootId, Point point)
+    {
+        return new Organ(organId, rootId, OrganType.BASIC, point);
+    }
+
+    private static Organ CreateHarvesterOrgan(int organId, int rootId, Point point, OrganDirection direction)
+    {
+        return new Organ(organId, rootId, OrganType.HARVESTER, point, direction);
+    }
+
+    private static Organ CreateRootOrgan(int organId, int rootId, Point root)
+    {
+        return new Organ(organId, rootId, OrganType.ROOT, root);
+    }
+
+    private static List<Organism> SortOrgans(List<Organ> unsortedOrgans)
+    {
+        List<Organism> organisms = new List<Organism>();
+
+        unsortedOrgans = unsortedOrgans.OrderBy(o => o.Type != OrganType.ROOT).ToList();
+
+        foreach (Organ organ in unsortedOrgans)
+        {
+            if (organ.Type == OrganType.ROOT)
+            {
+                Organism organism = new Organism(organ.Id);
+                organism.AddOrgan(organ);
+                organisms.Add(new Organism(organ.Id));
+            }
+
+            organisms.Single(o => o.RootId == organ.RootId).AddOrgan(organ);
+        }
+
+        return organisms;
     }
 }

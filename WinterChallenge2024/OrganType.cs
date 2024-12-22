@@ -4,5 +4,7 @@ internal enum OrganType
 {
     BASIC,
     HARVESTER,
-    ROOT
+    ROOT,
+    SPORER,
+    TENTACLE,
 }

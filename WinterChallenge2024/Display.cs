@@ -1,9 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Channels;
-using System.Threading.Tasks;
 
 namespace WinterChallenge2024;
 internal static class Display
@@ -16,11 +12,11 @@ internal static class Display
 
         Console.Error.WriteLine($"ORGANISMS");
         Console.Error.WriteLine("----------------------------------");
-        Console.Error.WriteLine($"Player organism");
-        Organism(game.PlayerOrganism);
+        Console.Error.WriteLine($"Player organisms");
+        Organisms(game.PlayerOrganisms);
         Console.Error.WriteLine("----------------------------------");
-        Console.Error.WriteLine($"Opponent organism");
-        Organism(game.OpponentOrganism);
+        Console.Error.WriteLine($"Opponent organisms");
+        Organisms(game.OpponentOrganisms);
         Console.Error.WriteLine("==================================");
 
         Console.Error.WriteLine($"PROTEIN STOCK");
@@ -48,6 +44,15 @@ internal static class Display
         foreach (Protein protein in proteins)
         {
             Console.Error.WriteLine($"Type:{protein.Type} - Position:({protein.Position.X},{protein.Position.Y}) - BeingHarvested:{protein.IsHarvested}");
+        }
+    }
+
+    internal static void Organisms(List<Organism> organisms)
+    {
+        foreach (Organism organism in organisms)
+        {
+            Display.Organism(organism);
+            Console.Error.WriteLine("-----------------------------------");
         }
     }
 

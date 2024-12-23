@@ -29,7 +29,12 @@ internal sealed partial class AStar
         _game = game;
     }
 
-    internal List<Point> GetShortestPath(Point startPoint, Point targetPoint)
+    internal List<Point> GetShortestPath(Point startPoint, Point targetPoint, int maxDistance)
+    {
+        return GetShortestPath(startPoint, targetPoint, maxDistance, false);
+    }
+
+    internal List<Point> GetShortestPath(Point startPoint, Point targetPoint, int maxDistance, bool canGrowOnProteins)
     {
         _nodes = new List<Node>();
 
@@ -39,6 +44,7 @@ internal sealed partial class AStar
 
         bool targetFound = false;
 
+        int timeToSearch = 0;
         while (!targetFound)
         {
             Point[] pointsToCheck = new Point[4];
@@ -56,16 +62,20 @@ internal sealed partial class AStar
                 // If a node doesnt exists  
                 if (existingNode == null)
                 {
-                    // Create a node if the position is walkable (No wall. No harvested protein)
-                    if (MapChecker.CanGrowOn(pointToCheck, _game))
+                    // Create a node if the position is walkable
+                    if (MapChecker.CanGrowOn(pointToCheck, canGrowOnProteins, _game))
                     {                        
                         Node node = new Node(pointToCheck);
 
                         node.Parent = currentNode.Position;
 
                         node.G = currentNode.G + 1;
+
+                        if (node.G > maxDistance)
+                            continue;
+
                         node.H = (Math.Abs(targetPoint.X - pointToCheck.X) + Math.Abs(targetPoint.Y - pointToCheck.Y));
-                        node.F = node.G + node.F;
+                        node.F = node.G + node.H;
 
                         _nodes.Add(node);
                     }
@@ -79,7 +89,11 @@ internal sealed partial class AStar
                         if (g < existingNode.G)
                         {
                             existingNode.G = g;
-                            existingNode.F = existingNode.G = existingNode.H;
+
+                            if (existingNode.G > maxDistance)
+                                continue;
+
+                            existingNode.F = existingNode.G + existingNode.H;
 
                             existingNode.Parent = currentNode.Position;
                         }
@@ -104,6 +118,13 @@ internal sealed partial class AStar
                 _nodes = _nodes.OrderBy(n => n.Closed == true).ThenBy(n => n.F).ToList();
 
                 currentNode = _nodes.First();
+            }
+
+            timeToSearch++;
+
+            if (timeToSearch > 1000)
+            {
+                Console.Error.WriteLine("Warning: Time to search hit 1000");
             }
         }
 
@@ -356,22 +377,42 @@ internal sealed class Game
 
         foreach (Organism organism in PlayerOrganisms)
         {
-            string action = CheckForSporeRootAction(organism); 
+            Console.Error.WriteLine($"Checking organism {organism.RootId}");
+            string action = string.Empty;
 
+            (int closestOrgan, List<Point> shortestPath) = GetShortestPathToProtein(organism, Proteins);
+
+            Console.Error.WriteLine("Got closest path");
             if (string.IsNullOrEmpty(action))
             {
-                action = CheckForSporerAction(organism);
+                Console.Error.WriteLine("CheckForHarvestAction");
+                action = CheckForHarvestAction(closestOrgan, shortestPath);
             }
 
             if (string.IsNullOrEmpty(action))
             {
-                action = CheckForHarvestOrBasicAction(organism);
+                Console.Error.WriteLine("CheckForSporeRootAction");
+                action = CheckForSporeRootAction(organism);
+            }
+
+            if (string.IsNullOrEmpty(action))
+            {
+                Console.Error.WriteLine("CheckForSporerAction");
+                action = CheckForSporerAction(organism);
+                Console.Error.WriteLine("CheckForSporerAction");
+            }
+
+            if (string.IsNullOrEmpty(action))
+            {
+                Console.Error.WriteLine("CheckForBasicAction");
+                action = CheckForBasicAction(closestOrgan, shortestPath);
             }
 
             // If there wasn't a protein to go to just spread randomly...for now
             if (string.IsNullOrEmpty(action) &&
                 CostCalculator.CanProduceOrgan(OrganType.BASIC, PlayerProteinStock))
             {
+                Console.Error.WriteLine("GetRandomBasicGrow");
                 action = GetRandomBasicGrow(organism);
             }
 
@@ -397,9 +438,12 @@ internal sealed class Game
                 {
                     Point harvestedPosition = GetHarvestedPosition(organ);
 
-                    Protein havestedProtein = Proteins.Single(p => p.Position == harvestedPosition);
+                    if(Proteins.Any(p => p.Position == harvestedPosition))
+                    {
+                        Protein havestedProtein = Proteins.Single(p => p.Position == harvestedPosition);
 
-                    havestedProtein.IsHarvested = true;
+                        havestedProtein.IsHarvested = true;
+                    }
                 }
             }
         }
@@ -408,15 +452,39 @@ internal sealed class Game
         // we're still happy to consume them.
     }
 
+    private string CheckForHarvestAction(int closestOrgan, List<Point> shortestPath)
+    {
+        string action = string.Empty;
+
+        if (closestOrgan != -1)
+        {
+            // See if we can make a harvester
+            if (CostCalculator.CanProduceOrgan(OrganType.HARVESTER, PlayerProteinStock) &&
+                Proteins.Exists(p => p.IsHarvested == false))
+            {
+                if (shortestPath.Count == 2)
+                {
+                    string dir = GetDirection(shortestPath[0], shortestPath[1]);
+
+                    action = $"GROW {closestOrgan} {shortestPath[0].X} {shortestPath[0].Y} HARVESTER {dir}";
+                }
+            }
+        }
+
+        return action;
+    }
+
     private string CheckForSporerAction(Organism organism)
     {
         string action = string.Empty;
 
         int minRootSporerDistance = 5;
 
-        // TODO: We need to be able to spawn multiple sporers
+        // TODO: I should add a sensible way to have multiple sporers 
+        //       on a single organism
         if (CostCalculator.CanProduceOrgan(OrganType.ROOT, PlayerProteinStock) &&
-            CostCalculator.CanProduceOrgan(OrganType.SPORER, PlayerProteinStock))
+            CostCalculator.CanProduceOrgan(OrganType.SPORER, PlayerProteinStock) &&
+            !organism.Organs.Any(o => o.Type == OrganType.SPORER))
         {
             List<Protein> unharvestedByMeProteins = Proteins.Where(p => !p.IsHarvested).ToList();
 
@@ -427,7 +495,8 @@ internal sealed class Game
 
             foreach (Protein protein in unharvestedByMeProteins)
             {
-                // Console.Error.WriteLine($"Checking protein ({protein.Position.X},{protein.Position.Y})");
+                bool showDebug = false;                
+         
                 List<Point> possibleRootPoints = MapChecker.GetRootPoints(protein.Position, this);
 
                 // TODO: order by closest to enemy (i.e. We want to be able to block and
@@ -436,8 +505,7 @@ internal sealed class Game
                 // TODO: This is very intensive. Maybe add a cutoff for the 
                 //       AStar search so that it doesn't keep searching
                 foreach (Point rootPoint in possibleRootPoints)
-                {
-                    // Console.Error.WriteLine($"   Checking rootPoint ({rootPoint.X},{rootPoint.Y})");
+                {                    
                     // Draw a line towards the organism
                     // West
                     bool canStillMove = true;
@@ -447,11 +515,9 @@ internal sealed class Game
                     {
                         Point currentPoint = new Point(rootPoint.X - distanceFromRootPoint, rootPoint.Y);
 
-                        // Console.Error.WriteLine($"      Checking currentPoint ({currentPoint.X},{currentPoint.Y})");
                         // If we can't grow here we've hit an obstacle. Don't check further
                         if (!MapChecker.CanGrowOn(currentPoint, this))
                         {
-                            // Console.Error.WriteLine($"         Can't grow west");
                             canStillMove = false;
                             continue;
                         }
@@ -460,7 +526,6 @@ internal sealed class Game
                         // checking further
                         if (distanceFromRootPoint >= minRootSporerDistance)
                         {
-                            // Console.Error.WriteLine($"         Not far enough");
                             distanceFromRootPoint++;
                             continue;
                         }
@@ -468,10 +533,8 @@ internal sealed class Game
                         foreach (Organ organ in organism.Organs)
                         {
                             AStar aStar = new AStar(this);
-                            List<Point> path = aStar.GetShortestPath(organ.Position, currentPoint);
-
-                            // Console.Error.WriteLine($"         ShortestPath: {path.Count}");
-
+                            List<Point> path = aStar.GetShortestPath(organ.Position, currentPoint, 10);
+                                                        
                             if (path.Count < leastStepsToProtein && path.Count > 0)
                             {
                                 leastStepsToProtein = path.Count;
@@ -514,14 +577,12 @@ internal sealed class Game
             // foreach protein
             foreach (Protein protein in Proteins)
             {
-                //Console.Error.WriteLine($"Checking protein ({protein.Position.X},{protein.Position.Y})");
                 List<Point> possibleRootPoints = MapChecker.GetRootPoints(protein.Position, this);
                 // TODO: order by closest to enemy (i.e. We want to be able to block and
                 //       destroy the enemy before they can get to the protein
 
                 foreach (Point possibleRootPoint in possibleRootPoints)
                 {
-                    //Console.Error.WriteLine($"   Checking rootPoint ({possibleRootPoint.X},{possibleRootPoint.Y})");
                     Point checkPoint = new Point(possibleRootPoint.X, possibleRootPoint.Y);
                     int xDelta = 0;
                     int yDelta = 0;
@@ -550,8 +611,6 @@ internal sealed class Game
 
                     while (canStillMove)
                     {
-                        // Console.Error.WriteLine($"      Checking currentPoint ({checkPoint.X},{checkPoint.Y})");
-
                         if (!MapChecker.CanGrowOn(checkPoint, this))
                         {
                             canStillMove = false;
@@ -573,26 +632,12 @@ internal sealed class Game
         return string.Empty;
     }
 
-    private string CheckForHarvestOrBasicAction(Organism organism)
+    private string CheckForBasicAction(int closestOrgan, List<Point> shortestPath)
     {
         string action = string.Empty;
 
-        (int closestOrgan, List<Point> shortestPath) = GetShortestPathToProtein(organism, Proteins);
-
         if (closestOrgan != -1)
         {
-            // See if we can make a harvester
-            if (CostCalculator.CanProduceOrgan(OrganType.HARVESTER, PlayerProteinStock) &&
-                Proteins.Exists(p => p.IsHarvested == false))
-            {
-                if (shortestPath.Count == 2)
-                {
-                    string dir = GetDirection(shortestPath[0], shortestPath[1]);
-
-                    action = $"GROW {closestOrgan} {shortestPath[0].X} {shortestPath[0].Y} HARVESTER {dir}";
-                }
-            }
-
             // If not, just grow towards the nearest A protein
             if (string.IsNullOrEmpty(action) &&
                 CostCalculator.CanProduceOrgan(OrganType.BASIC, PlayerProteinStock))
@@ -659,7 +704,7 @@ internal sealed class Game
             {
                 foreach (var organ in organism.Organs)
                 {
-                    List<Point> path = aStar.GetShortestPath(organ.Position, protein.Position);
+                    List<Point> path = aStar.GetShortestPath(organ.Position, protein.Position, 10, true);
                     
                     if (path.Count < shortest && path.Count != 0)
                     {
@@ -718,6 +763,10 @@ internal static class MapChecker
 {
     internal static bool CanGrowOn(Point pointToCheck, Game game)
     {
+        return CanGrowOn(pointToCheck, false, game);
+    }
+    internal static bool CanGrowOn(Point pointToCheck, bool canGrowOnProteins, Game game)
+    {
         if (pointToCheck.X < 0 || 
             pointToCheck.Y < 0 || 
             pointToCheck.X >= game.Width || 
@@ -744,13 +793,19 @@ internal static class MapChecker
             }
         }
 
-        // Not walkable player harvested protein on that spot
-        // if (game.Proteins.Any(p => p.IsHarvested && p.Position == pointToCheck))
-
-        // WARNING: This change may not behave as expected....
-        if (game.Proteins.Any(p => p.Position == pointToCheck))
+        if (!canGrowOnProteins)
         {
-            return false;
+            if (game.Proteins.Any(p => p.Position == pointToCheck))
+            {
+                return false;
+            }
+        }
+        else
+        {
+            if (game.Proteins.Any(p => p.IsHarvested && p.Position == pointToCheck))
+            {
+                return false;
+            }
         }
 
         // Not walkable if wall on that spot

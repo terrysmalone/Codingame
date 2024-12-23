@@ -10,6 +10,10 @@ internal static class MapChecker
 {
     internal static bool CanGrowOn(Point pointToCheck, Game game)
     {
+        return CanGrowOn(pointToCheck, false, game);
+    }
+    internal static bool CanGrowOn(Point pointToCheck, bool canGrowOnProteins, Game game)
+    {
         if (pointToCheck.X < 0 || 
             pointToCheck.Y < 0 || 
             pointToCheck.X >= game.Width || 
@@ -36,13 +40,19 @@ internal static class MapChecker
             }
         }
 
-        // Not walkable player harvested protein on that spot
-        // if (game.Proteins.Any(p => p.IsHarvested && p.Position == pointToCheck))
-
-        // WARNING: This change may not behave as expected....
-        if (game.Proteins.Any(p => p.Position == pointToCheck))
+        if (!canGrowOnProteins)
         {
-            return false;
+            if (game.Proteins.Any(p => p.Position == pointToCheck))
+            {
+                return false;
+            }
+        }
+        else
+        {
+            if (game.Proteins.Any(p => p.IsHarvested && p.Position == pointToCheck))
+            {
+                return false;
+            }
         }
 
         // Not walkable if wall on that spot

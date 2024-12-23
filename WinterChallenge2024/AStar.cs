@@ -19,7 +19,12 @@ internal sealed partial class AStar
         _game = game;
     }
 
-    internal List<Point> GetShortestPath(Point startPoint, Point targetPoint)
+    internal List<Point> GetShortestPath(Point startPoint, Point targetPoint, int maxDistance)
+    {
+        return GetShortestPath(startPoint, targetPoint, maxDistance, false);
+    }
+
+    internal List<Point> GetShortestPath(Point startPoint, Point targetPoint, int maxDistance, bool canGrowOnProteins)
     {
         _nodes = new List<Node>();
 
@@ -29,6 +34,7 @@ internal sealed partial class AStar
 
         bool targetFound = false;
 
+        int timeToSearch = 0;
         while (!targetFound)
         {
             Point[] pointsToCheck = new Point[4];
@@ -46,16 +52,20 @@ internal sealed partial class AStar
                 // If a node doesnt exists  
                 if (existingNode == null)
                 {
-                    // Create a node if the position is walkable (No wall. No harvested protein)
-                    if (MapChecker.CanGrowOn(pointToCheck, _game))
+                    // Create a node if the position is walkable
+                    if (MapChecker.CanGrowOn(pointToCheck, canGrowOnProteins, _game))
                     {                        
                         Node node = new Node(pointToCheck);
 
                         node.Parent = currentNode.Position;
 
                         node.G = currentNode.G + 1;
+
+                        if (node.G > maxDistance)
+                            continue;
+
                         node.H = (Math.Abs(targetPoint.X - pointToCheck.X) + Math.Abs(targetPoint.Y - pointToCheck.Y));
-                        node.F = node.G + node.F;
+                        node.F = node.G + node.H;
 
                         _nodes.Add(node);
                     }
@@ -69,7 +79,11 @@ internal sealed partial class AStar
                         if (g < existingNode.G)
                         {
                             existingNode.G = g;
-                            existingNode.F = existingNode.G = existingNode.H;
+
+                            if (existingNode.G > maxDistance)
+                                continue;
+
+                            existingNode.F = existingNode.G + existingNode.H;
 
                             existingNode.Parent = currentNode.Position;
                         }
@@ -94,6 +108,13 @@ internal sealed partial class AStar
                 _nodes = _nodes.OrderBy(n => n.Closed == true).ThenBy(n => n.F).ToList();
 
                 currentNode = _nodes.First();
+            }
+
+            timeToSearch++;
+
+            if (timeToSearch > 1000)
+            {
+                Console.Error.WriteLine("Warning: Time to search hit 1000");
             }
         }
 

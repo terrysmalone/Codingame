@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Net;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -16,7 +17,6 @@ using static System.Collections.Specialized.BitVector32;
 using static System.Formats.Asn1.AsnWriter;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Net;
 
 internal sealed partial class AStar
 {
@@ -63,7 +63,7 @@ internal sealed partial class AStar
                 if (existingNode == null)
                 {
                     // Create a node if the position is walkable
-                    if (MapChecker.CanGrowOn(pointToCheck, canGrowOnProteins, _game))
+                    if (pointToCheck == startPoint || pointToCheck == targetPoint || MapChecker.CanGrowOn(pointToCheck, canGrowOnProteins, _game))
                     {                        
                         Node node = new Node(pointToCheck);
 
@@ -380,7 +380,10 @@ internal sealed class Game
             Console.Error.WriteLine($"Checking organism {organism.RootId}");
             string action = string.Empty;
 
-            (int closestOrgan, List<Point> shortestPath) = GetShortestPathToProtein(organism, Proteins);
+            // TODO: Before even doing path finding just check if placing a harvester 
+            //       N, E, S or W of any organs would work. 
+
+            (int closestOrgan, List<Point> shortestPath) = GetShortestPathToProtein(organism, Proteins, 2);
 
             Console.Error.WriteLine("Got closest path");
             if (string.IsNullOrEmpty(action))
@@ -399,14 +402,16 @@ internal sealed class Game
             {
                 Console.Error.WriteLine("CheckForSporerAction");
                 action = CheckForSporerAction(organism);
-                Console.Error.WriteLine("CheckForSporerAction");
+                Console.Error.WriteLine($"Checked ForSporerAction: {action}");
             }
+            Console.Error.WriteLine("1");
 
             if (string.IsNullOrEmpty(action))
             {
                 Console.Error.WriteLine("CheckForBasicAction");
                 action = CheckForBasicAction(closestOrgan, shortestPath);
             }
+            Console.Error.WriteLine("2");
 
             // If there wasn't a protein to go to just spread randomly...for now
             if (string.IsNullOrEmpty(action) &&
@@ -415,13 +420,16 @@ internal sealed class Game
                 Console.Error.WriteLine("GetRandomBasicGrow");
                 action = GetRandomBasicGrow(organism);
             }
+            Console.Error.WriteLine("3");
 
             if (string.IsNullOrEmpty(action))
             {
                 action = "WAIT";
             }
+            Console.Error.WriteLine("4");
 
             actions.Add(action);
+            Console.Error.WriteLine($"5 - Action:{action}");
         }
 
         return actions;
@@ -479,6 +487,7 @@ internal sealed class Game
         string action = string.Empty;
 
         int minRootSporerDistance = 5;
+        Display.Proteins(Proteins);
 
         // TODO: I should add a sensible way to have multiple sporers 
         //       on a single organism
@@ -498,17 +507,17 @@ internal sealed class Game
                 }
             }
 
+            Console.Error.WriteLine($"proteinsToCheck: {proteinsToCheck.Count}");
+            Display.Proteins(proteinsToCheck);
             int leastStepsToProtein = int.MaxValue;
             int quickestOrganId = -1;
             Point quickestPoint = new Point(-1, -1);
-            OrganDirection quickestDirection = OrganDirection.N;
 
             int maxDistance = 10;
 
             foreach (Protein protein in proteinsToCheck)
             {
-                bool showDebug = false;                
-         
+                Console.Error.WriteLine($"Checking protein: {protein.Position.X},{protein.Position.Y}");
                 List<Point> possibleRootPoints = MapChecker.GetRootPoints(protein.Position, this);
 
                 // TODO: order by closest to enemy (i.e. We want to be able to block and
@@ -558,8 +567,6 @@ internal sealed class Game
                                     maxDistance = leastStepsToProtein;
                                     Console.Error.WriteLine($"Lowered max distance to {maxDistance}");
                                 }
-
-                                // TODO: Calculate the direection the path is going in
                             }          
                         }
 
@@ -589,7 +596,6 @@ internal sealed class Game
         if (organism.Organs.Any(o => o.Type == OrganType.SPORER) &&
                 CostCalculator.CanProduceOrgan(OrganType.ROOT, PlayerProteinStock))
         {
-            // This assumes that an organism only has one sporer. That may not always be the case
             Organ sporer = new Organ();
             List<Organ> sporers = organism.Organs.Where(o => o.Type == OrganType.SPORER).ToList();
 
@@ -733,7 +739,7 @@ internal sealed class Game
         return dir;
     }
 
-    private (int,List<Point>) GetShortestPathToProtein(Organism organism, List<Protein> proteins)
+    private (int,List<Point>) GetShortestPathToProtein(Organism organism, List<Protein> proteins, int minDistance)
     {
         string action = string.Empty;
 
@@ -752,9 +758,9 @@ internal sealed class Game
             {
                 foreach (var organ in organism.Organs)
                 {
-                    List<Point> path = aStar.GetShortestPath(organ.Position, protein.Position, maxDistance, true);
+                    List<Point> path = aStar.GetShortestPath(organ.Position, protein.Position, maxDistance, false);
                     
-                    if (path.Count < shortest && path.Count != 0)
+                    if (path.Count < shortest && path.Count >= minDistance && path.Count != 0)
                     {
                         shortest = path.Count;
                         shortestPath = new List<Point>(path);
@@ -765,12 +771,13 @@ internal sealed class Game
                         {
                             maxDistance = shortest;
                             Console.Error.WriteLine($"Lowered max distance to {maxDistance}");
-
                         }
                     }
                 }
             }
         }
+
+        Console.Error.WriteLine($"closestId: {closestId}");
 
         return (closestId, shortestPath);
     }
@@ -1240,6 +1247,7 @@ partial class Player
             int requiredActionsCount = int.Parse(Console.ReadLine()); // your number of organisms, output an action for each one in any order
             for (int i = 0; i < requiredActionsCount; i++)
             {
+                Console.Error.WriteLine($"5 - Action:{actions[i]}");
                 Console.WriteLine(actions[i]);
 
                 // Write an action using Console.WriteLine()

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Net;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -53,7 +54,7 @@ internal sealed partial class AStar
                 if (existingNode == null)
                 {
                     // Create a node if the position is walkable
-                    if (MapChecker.CanGrowOn(pointToCheck, canGrowOnProteins, _game))
+                    if (pointToCheck == startPoint || pointToCheck == targetPoint || MapChecker.CanGrowOn(pointToCheck, canGrowOnProteins, _game))
                     {                        
                         Node node = new Node(pointToCheck);
 

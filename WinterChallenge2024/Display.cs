@@ -119,16 +119,20 @@ internal static class Display
             }
         }
 
+        Console.Error.WriteLine("----------");
         for (int y = 0; y < game.Height; y++)
         {
-            string row = string.Empty;
+            string row = "|";
 
             for (int x = 0; x < game.Width; x++)
             {
                 row += map[x, y];
             }
 
+            row += "|";
+
             Console.Error.WriteLine(row);
         }
+        Console.Error.WriteLine("----------");
     }
 }

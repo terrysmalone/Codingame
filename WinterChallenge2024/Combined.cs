@@ -483,17 +483,29 @@ internal sealed class Game
         // TODO: I should add a sensible way to have multiple sporers 
         //       on a single organism
         if (CostCalculator.CanProduceOrgan(OrganType.ROOT, PlayerProteinStock) &&
-            CostCalculator.CanProduceOrgan(OrganType.SPORER, PlayerProteinStock) &&
-            !organism.Organs.Any(o => o.Type == OrganType.SPORER))
+            CostCalculator.CanProduceOrgan(OrganType.SPORER, PlayerProteinStock))
         {
             List<Protein> unharvestedByMeProteins = Proteins.Where(p => !p.IsHarvested).ToList();
+
+            List<Protein> proteinsToCheck = new List<Protein>();
+
+            foreach (Protein protein in unharvestedByMeProteins)
+            {
+                if (!MapChecker.HasNearbyOrgan(protein, PlayerOrganisms))
+                {
+                    Console.Error.WriteLine("Removing protein from search");
+                    proteinsToCheck.Add(protein);
+                }
+            }
 
             int leastStepsToProtein = int.MaxValue;
             int quickestOrganId = -1;
             Point quickestPoint = new Point(-1, -1);
             OrganDirection quickestDirection = OrganDirection.N;
 
-            foreach (Protein protein in unharvestedByMeProteins)
+            int maxDistance = 10;
+
+            foreach (Protein protein in proteinsToCheck)
             {
                 bool showDebug = false;                
          
@@ -533,13 +545,19 @@ internal sealed class Game
                         foreach (Organ organ in organism.Organs)
                         {
                             AStar aStar = new AStar(this);
-                            List<Point> path = aStar.GetShortestPath(organ.Position, currentPoint, 10);
+                            List<Point> path = aStar.GetShortestPath(organ.Position, currentPoint, maxDistance);
                                                         
                             if (path.Count < leastStepsToProtein && path.Count > 0)
                             {
                                 leastStepsToProtein = path.Count;
                                 quickestOrganId = organ.Id;
                                 quickestPoint = path[0];
+
+                                if (leastStepsToProtein < maxDistance)
+                                {
+                                    maxDistance = leastStepsToProtein;
+                                    Console.Error.WriteLine($"Lowered max distance to {maxDistance}");
+                                }
 
                                 // TODO: Calculate the direection the path is going in
                             }          
@@ -572,7 +590,36 @@ internal sealed class Game
                 CostCalculator.CanProduceOrgan(OrganType.ROOT, PlayerProteinStock))
         {
             // This assumes that an organism only has one sporer. That may not always be the case
-            Organ sporer = organism.Organs.Single(o => o.Type == OrganType.SPORER);
+            Organ sporer = new Organ();
+            List<Organ> sporers = organism.Organs.Where(o => o.Type == OrganType.SPORER).ToList();
+
+            if (sporers.Count == 0)
+            {
+                return string.Empty;
+            }
+            else if (sporers.Count == 1)
+            {
+                sporer = sporers[0];
+            }
+            else
+            {
+                bool assigned = false;
+                foreach (Organ o in sporers)
+                {
+                    if (!MapChecker.HasSporerSpored(o, this))
+                    {
+                        sporer = o;
+                        assigned = true;
+                    }
+                }
+
+                if (!assigned)
+                {
+                    sporer = sporers[0];
+                }
+            }
+
+            Console.Error.WriteLine($"Selected sporer is {sporer.Id}");
 
             // foreach protein
             foreach (Protein protein in Proteins)
@@ -695,7 +742,8 @@ internal sealed class Game
         List<Point> shortestPath = new List<Point>();
 
         AStar aStar = new AStar(this);
-            
+
+        int maxDistance = 10;
 
         // Get the closest protein to Organs
         foreach (Protein protein in proteins)
@@ -704,7 +752,7 @@ internal sealed class Game
             {
                 foreach (var organ in organism.Organs)
                 {
-                    List<Point> path = aStar.GetShortestPath(organ.Position, protein.Position, 10, true);
+                    List<Point> path = aStar.GetShortestPath(organ.Position, protein.Position, maxDistance, true);
                     
                     if (path.Count < shortest && path.Count != 0)
                     {
@@ -712,6 +760,13 @@ internal sealed class Game
                         shortestPath = new List<Point>(path);
 
                         closestId = organ.Id;
+
+                        if (shortest < maxDistance)
+                        {
+                            maxDistance = shortest;
+                            Console.Error.WriteLine($"Lowered max distance to {maxDistance}");
+
+                        }
                     }
                 }
             }
@@ -899,6 +954,75 @@ internal static class MapChecker
         }
 
         return rootPoints;
+    }
+
+    internal static bool HasNearbyOrgan(Protein protein, List<Organism> playerOrganisms)
+    {
+        int maxDistance = 3;
+        foreach (Organism organism in playerOrganisms)
+        {
+            foreach (Organ organ in organism.Organs)
+            {
+                if (Math.Abs(protein.Position.X - organ.Position.X) + Math.Abs(protein.Position.Y - organ.Position.Y) <= maxDistance)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    // If we can draw a line from the sporer to a root then it's spored
+    internal static bool HasSporerSpored(Organ sporer, Game game)
+    {
+        int xDelta = 0;
+        int yDelta = 0;
+
+        switch(sporer.Direction)
+        {
+            case OrganDirection.N:
+                xDelta = 0;
+                yDelta = -1;
+                break;
+            case OrganDirection.E:
+                xDelta = 1;
+                yDelta = 0;
+                break;
+            case OrganDirection.S:
+                xDelta = 0;
+                yDelta = 1;
+                break;
+            case OrganDirection.W:
+                xDelta = -1;
+                yDelta = 0;
+                break;
+        }
+
+        bool hitSomething = false;
+
+        Point checkPoint = new Point(sporer.Position.X + xDelta, sporer.Position.Y + yDelta);
+
+        while(!hitSomething)
+        {
+            foreach(Organism organism in game.PlayerOrganisms)
+            {
+                if(organism.Organs.Any(o => o.Type == OrganType.ROOT &&
+                                            o.Position == checkPoint))
+                {
+                    return true;
+                }
+            }
+
+            if (!CanGrowOn(checkPoint, true, game))
+            {
+                hitSomething = true;
+            }
+
+            checkPoint = new Point(checkPoint.X + xDelta, checkPoint.Y + yDelta);
+        }
+
+        return false;
     }
 }
 

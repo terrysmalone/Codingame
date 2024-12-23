@@ -147,4 +147,73 @@ internal static class MapChecker
 
         return rootPoints;
     }
+
+    internal static bool HasNearbyOrgan(Protein protein, List<Organism> playerOrganisms)
+    {
+        int maxDistance = 3;
+        foreach (Organism organism in playerOrganisms)
+        {
+            foreach (Organ organ in organism.Organs)
+            {
+                if (Math.Abs(protein.Position.X - organ.Position.X) + Math.Abs(protein.Position.Y - organ.Position.Y) <= maxDistance)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    // If we can draw a line from the sporer to a root then it's spored
+    internal static bool HasSporerSpored(Organ sporer, Game game)
+    {
+        int xDelta = 0;
+        int yDelta = 0;
+
+        switch(sporer.Direction)
+        {
+            case OrganDirection.N:
+                xDelta = 0;
+                yDelta = -1;
+                break;
+            case OrganDirection.E:
+                xDelta = 1;
+                yDelta = 0;
+                break;
+            case OrganDirection.S:
+                xDelta = 0;
+                yDelta = 1;
+                break;
+            case OrganDirection.W:
+                xDelta = -1;
+                yDelta = 0;
+                break;
+        }
+
+        bool hitSomething = false;
+
+        Point checkPoint = new Point(sporer.Position.X + xDelta, sporer.Position.Y + yDelta);
+
+        while(!hitSomething)
+        {
+            foreach(Organism organism in game.PlayerOrganisms)
+            {
+                if(organism.Organs.Any(o => o.Type == OrganType.ROOT &&
+                                            o.Position == checkPoint))
+                {
+                    return true;
+                }
+            }
+
+            if (!CanGrowOn(checkPoint, true, game))
+            {
+                hitSomething = true;
+            }
+
+            checkPoint = new Point(checkPoint.X + xDelta, checkPoint.Y + yDelta);
+        }
+
+        return false;
+    }
 }

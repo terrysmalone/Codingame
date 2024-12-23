@@ -17,6 +17,7 @@ internal static class MapChecker
         { 
             return false; 
         }
+
         // Not walkable if player organ on that spot
         foreach (Organism organism in game.PlayerOrganisms)
         {
@@ -36,7 +37,10 @@ internal static class MapChecker
         }
 
         // Not walkable player harvested protein on that spot
-        if (game.Proteins.Any(p => p.IsHarvested && p.Position == pointToCheck))
+        // if (game.Proteins.Any(p => p.IsHarvested && p.Position == pointToCheck))
+
+        // WARNING: This change may not behave as expected....
+        if (game.Proteins.Any(p => p.Position == pointToCheck))
         {
             return false;
         }
@@ -54,22 +58,80 @@ internal static class MapChecker
     {
         List<Point> rootPoints = new List<Point>();
 
-        Point[] pointsToCheck = new Point[] {
-                new Point(position.X - 1, position.Y - 1),
-                new Point(position.X - 1, position.Y + 1),
-                new Point(position.X + 1, position.Y - 1),
-                new Point(position.X + 1, position.Y + 1),
-                new Point(position.X - 2, position.Y),
-                new Point(position.X + 2, position.Y),
-                new Point(position.X, position.Y - 2),
-                new Point(position.X, position.Y + 2),
-            };
+        bool canGrowNorth = CanGrowOn(new Point(position.X, position.Y - 1), game);
+        bool canGrowEast = CanGrowOn(new Point(position.X+1, position.Y), game);
+        bool canGrowSouth = CanGrowOn(new Point(position.X, position.Y + 1), game);
+        bool canGrowWest = CanGrowOn(new Point(position.X-1, position.Y), game);
 
-        foreach (Point point in pointsToCheck)
+        if (canGrowNorth)
         {
-            if (CanGrowOn(point, game))
+            Point farNorth = new Point(position.X, position.Y - 2);
+            if (CanGrowOn(farNorth, game))
             {
-                rootPoints.Add(point);
+                rootPoints.Add(farNorth);
+            }
+        }
+
+        if (canGrowNorth || canGrowEast)
+        {
+            Point northEast = new Point(position.X + 1, position.Y - 1);
+            if (CanGrowOn(northEast, game))
+            {
+                rootPoints.Add(northEast);
+            }
+        }
+
+        if (canGrowEast)
+        {
+            Point farEast = new Point(position.X + 2, position.Y);
+            if (CanGrowOn(farEast, game))
+            {
+                rootPoints.Add(farEast);
+            }
+        }
+
+        if (canGrowEast ||canGrowSouth)
+        {
+            Point southEast = new Point(position.X + 1, position.Y + 1);
+            if (CanGrowOn(southEast, game))
+            {
+                rootPoints.Add(southEast);
+            }
+        }
+
+        if (canGrowSouth)
+        {
+            Point farSouth = new Point(position.X, position.Y + 2);
+            if (CanGrowOn(farSouth, game))
+            {
+                rootPoints.Add(farSouth);
+            }
+        }
+
+        if (canGrowSouth || canGrowWest)
+        {
+            Point southWest = new Point(position.X - 1, position.Y + 1);
+            if (CanGrowOn(southWest, game))
+            {
+                rootPoints.Add(southWest);
+            }
+        }
+
+        if (canGrowWest)
+        {
+            Point farWest = new Point(position.X - 2, position.Y);
+            if (CanGrowOn(farWest, game))
+            {
+                rootPoints.Add(farWest);
+            }
+        }
+
+        if (canGrowWest || canGrowNorth)
+        {
+            Point northWest = new Point(position.X - 1, position.Y - 1);
+            if (CanGrowOn(northWest, game))
+            {
+                rootPoints.Add(northWest);
             }
         }
 

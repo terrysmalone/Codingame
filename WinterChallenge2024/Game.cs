@@ -56,6 +56,9 @@ internal sealed class Game
             Console.Error.WriteLine($"Checking organism {organism.RootId}");
             string action = string.Empty;
 
+            // TODO: Before even doing path finding just check if placing a harvester 
+            //       N, E, S or W of any organs would work. 
+
             (int closestOrgan, List<Point> shortestPath) = GetShortestPathToProtein(organism, Proteins);
 
             Console.Error.WriteLine("Got closest path");
@@ -177,14 +180,11 @@ internal sealed class Game
             int leastStepsToProtein = int.MaxValue;
             int quickestOrganId = -1;
             Point quickestPoint = new Point(-1, -1);
-            OrganDirection quickestDirection = OrganDirection.N;
 
             int maxDistance = 10;
 
             foreach (Protein protein in proteinsToCheck)
-            {
-                bool showDebug = false;                
-         
+            {          
                 List<Point> possibleRootPoints = MapChecker.GetRootPoints(protein.Position, this);
 
                 // TODO: order by closest to enemy (i.e. We want to be able to block and

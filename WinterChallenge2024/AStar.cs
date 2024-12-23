@@ -9,8 +9,10 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 
 namespace WinterChallenge2024;
-internal sealed partial class AStar
+internal sealed class AStar
 {
+    private int _diagnosticCount = 0;
+
     private readonly Game _game;
 
     private List<Node> _nodes = new List<Node>();
@@ -27,6 +29,7 @@ internal sealed partial class AStar
 
     internal List<Point> GetShortestPath(Point startPoint, Point targetPoint, int maxDistance, bool canGrowOnProteins)
     {
+        _diagnosticCount = 0;
         _nodes = new List<Node>();
 
         // Create a node for the start Point
@@ -48,6 +51,7 @@ internal sealed partial class AStar
             // for each adjacent square
             foreach (Point pointToCheck in pointsToCheck)
             {
+                _diagnosticCount++;
                 Node? existingNode = _nodes.SingleOrDefault(n => n.Position == pointToCheck);
 
                 // If a node doesnt exists  
@@ -92,12 +96,12 @@ internal sealed partial class AStar
                 }
             }
 
+            currentNode.Closed = true;
+
             if (_nodes.Count(n => n.Closed == false) == 0)
             {
                 return new List<Point>();
             }
-
-            currentNode.Closed = true;
 
             if (currentNode.Position == targetPoint)
             {
@@ -141,5 +145,10 @@ internal sealed partial class AStar
         }
 
         return shortestPath;
+    }
+
+    internal int GetDiagnosticCount()
+    {
+        return _diagnosticCount;
     }
 }

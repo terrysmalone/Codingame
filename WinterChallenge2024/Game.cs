@@ -27,6 +27,12 @@ internal sealed class Game
     {
         Width = width;
         Height = height;
+
+        PlayerOrganisms = new List<Organism>();
+        OpponentOrganisms = new List<Organism>();
+
+        Walls = new List<Point>();
+        Proteins = new List<Protein>();
     }
 
     internal void SetPlayerProteinStock(ProteinStock playerProteins) => PlayerProteinStock = playerProteins;

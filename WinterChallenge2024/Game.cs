@@ -59,59 +59,62 @@ internal sealed class Game
 
         foreach (Organism organism in PlayerOrganisms)
         {
-            Console.Error.WriteLine($"Checking organism {organism.RootId}");
+            //Console.Error.WriteLine($"Checking organism {organism.RootId}");
             string action = string.Empty;
 
-            // TODO: Before even doing path finding just check if placing a harvester 
-            //       N, E, S or W of any organs would work. 
+            (int closestOrgan, List<Point> shortestPath) = GetShortestPathToProtein(organism, Proteins, 2, false);
 
-            (int closestOrgan, List<Point> shortestPath) = GetShortestPathToProtein(organism, Proteins, 2);
-
-            Console.Error.WriteLine("Got closest path");
+            //Console.Error.WriteLine("Got closest path");
             if (string.IsNullOrEmpty(action))
             {
-                Console.Error.WriteLine("CheckForHarvestAction");
+                //Console.Error.WriteLine("CheckForHarvestAction");
                 action = CheckForHarvestAction(closestOrgan, shortestPath);
             }
 
             if (string.IsNullOrEmpty(action))
             {
-                Console.Error.WriteLine("CheckForSporeRootAction");
+                //Console.Error.WriteLine("CheckForSporeRootAction");
                 action = CheckForSporeRootAction(organism);
             }
 
             if (string.IsNullOrEmpty(action))
             {
-                Console.Error.WriteLine("CheckForSporerAction");
+                //Console.Error.WriteLine("CheckForSporerAction");
                 action = CheckForSporerAction(organism);
-                Console.Error.WriteLine($"Checked ForSporerAction: {action}");
             }
-            Console.Error.WriteLine("1");
 
             if (string.IsNullOrEmpty(action))
             {
-                Console.Error.WriteLine("CheckForBasicAction");
+                // We've already pretty much tried this as part of the 
+                // Harvester check but do it again now since we're willing 
+                // to go a further now
+                //Console.Error.WriteLine("CheckForBasicAction");
                 action = CheckForBasicAction(closestOrgan, shortestPath);
             }
-            Console.Error.WriteLine("2");
 
             // If there wasn't a protein to go to just spread randomly...for now
             if (string.IsNullOrEmpty(action) &&
                 CostCalculator.CanProduceOrgan(OrganType.BASIC, PlayerProteinStock))
             {
-                Console.Error.WriteLine("GetRandomBasicGrow");
+                //Console.Error.WriteLine("GetRandomBasicGrow");
                 action = GetRandomBasicGrow(organism);
             }
-            Console.Error.WriteLine("3");
+
+            // If we've gotten this far without getting a move things are 
+            // desterate. We're either truly blocked or we've blocked ourselves
+            // by not wanting to grow over proteins. Try that now
+            if (string.IsNullOrEmpty(action))
+            {
+                Console.Error.WriteLine("GetDesperateDestructiveMove");
+                action = GetDesperateDestructiveMove(organism);
+            }
 
             if (string.IsNullOrEmpty(action))
             {
                 action = "WAIT";
             }
-            Console.Error.WriteLine("4");
 
             actions.Add(action);
-            Console.Error.WriteLine($"5 - Action:{action}");
         }
 
         return actions;
@@ -159,6 +162,17 @@ internal sealed class Game
                     action = $"GROW {closestOrgan} {shortestPath[0].X} {shortestPath[0].Y} HARVESTER {dir}";
                 }
             }
+
+            int maxWalkingDistance = Math.Min(5, PlayerProteinStock.A);
+
+            if (string.IsNullOrEmpty(action) && (shortestPath.Count <= maxWalkingDistance))
+            {
+                // Grow towards the nearest protein
+                if (CostCalculator.CanProduceOrgan(OrganType.BASIC, PlayerProteinStock))
+                {
+                    action = $"GROW {closestOrgan} {shortestPath[0].X} {shortestPath[0].Y} BASIC";
+                }
+            }
         }
 
         return action;
@@ -169,7 +183,6 @@ internal sealed class Game
         string action = string.Empty;
 
         int minRootSporerDistance = 5;
-        Display.Proteins(Proteins);
 
         // TODO: I should add a sensible way to have multiple sporers 
         //       on a single organism
@@ -184,13 +197,10 @@ internal sealed class Game
             {
                 if (!MapChecker.HasNearbyOrgan(protein, PlayerOrganisms))
                 {
-                    Console.Error.WriteLine("Removing protein from search");
                     proteinsToCheck.Add(protein);
                 }
             }
 
-            Console.Error.WriteLine($"proteinsToCheck: {proteinsToCheck.Count}");
-            Display.Proteins(proteinsToCheck);
             int leastStepsToProtein = int.MaxValue;
             int quickestOrganId = -1;
             Point quickestPoint = new Point(-1, -1);
@@ -199,7 +209,6 @@ internal sealed class Game
 
             foreach (Protein protein in proteinsToCheck)
             {
-                Console.Error.WriteLine($"Checking protein: {protein.Position.X},{protein.Position.Y}");
                 List<Point> possibleRootPoints = MapChecker.GetRootPoints(protein.Position, this);
 
                 // TODO: order by closest to enemy (i.e. We want to be able to block and
@@ -247,7 +256,6 @@ internal sealed class Game
                                 if (leastStepsToProtein < maxDistance)
                                 {
                                     maxDistance = leastStepsToProtein;
-                                    Console.Error.WriteLine($"Lowered max distance to {maxDistance}");
                                 }
                             }          
                         }
@@ -421,7 +429,7 @@ internal sealed class Game
         return dir;
     }
 
-    private (int,List<Point>) GetShortestPathToProtein(Organism organism, List<Protein> proteins, int minDistance)
+    private (int,List<Point>) GetShortestPathToProtein(Organism organism, List<Protein> proteins, int minDistance, bool growOnProteins)
     {
         string action = string.Empty;
 
@@ -440,7 +448,7 @@ internal sealed class Game
             {
                 foreach (var organ in organism.Organs)
                 {
-                    List<Point> path = aStar.GetShortestPath(organ.Position, protein.Position, maxDistance, false);
+                    List<Point> path = aStar.GetShortestPath(organ.Position, protein.Position, maxDistance, growOnProteins);
                     
                     if (path.Count < shortest && path.Count >= minDistance && path.Count != 0)
                     {
@@ -452,14 +460,11 @@ internal sealed class Game
                         if (shortest < maxDistance)
                         {
                             maxDistance = shortest;
-                            Console.Error.WriteLine($"Lowered max distance to {maxDistance}");
                         }
                     }
                 }
             }
         }
-
-        Console.Error.WriteLine($"closestId: {closestId}");
 
         return (closestId, shortestPath);
     }
@@ -500,4 +505,24 @@ internal sealed class Game
         return action;
     }
 
+    private string GetDesperateDestructiveMove(Organism organism)
+    {
+        (int closestOrgan, List<Point> shortestPath) = GetShortestPathToProtein(organism, Proteins, 1, true);
+
+        Console.Error.WriteLine($"closestOrgan:{closestOrgan}");
+        if (closestOrgan != -1)
+        {
+            string organToGrow = string.Empty;
+            if (CostCalculator.CanProduceOrgan(OrganType.BASIC, PlayerProteinStock))
+            {
+                organToGrow = OrganType.BASIC.ToString();
+            }
+
+            return $"GROW {closestOrgan} {shortestPath[0].X} {shortestPath[0].Y} {organToGrow}";
+        
+            // TODO: IF we can't afford a basic just make another organ type
+        }
+
+        return string.Empty;
+    }
 }

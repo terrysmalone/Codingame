@@ -64,7 +64,7 @@ internal sealed class AStar
                 if (existingNode == null)
                 {
                     // Create a node if the position is walkable
-                    if (pointToCheck == startPoint || pointToCheck == targetPoint || MapChecker.CanGrowOn(pointToCheck, growStrategy, _game))
+                    if (pointToCheck == startPoint || pointToCheck == targetPoint || MapChecker.CanGrowOn(pointToCheck, _game, growStrategy))
                     {                        
                         Node node = new Node(pointToCheck);
 

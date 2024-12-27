@@ -15,10 +15,10 @@ internal static class MapChecker
 
     internal static bool CanGrowOn(Point pointToCheck, Game game)
     {
-        return CanGrowOn(pointToCheck, GrowStrategy.NO_PROTEINS, game);
+        return CanGrowOn(pointToCheck, game, GrowStrategy.NO_PROTEINS);
     }
 
-    internal static bool CanGrowOn(Point pointToCheck, GrowStrategy growStrategy, Game game)
+    internal static bool CanGrowOn(Point pointToCheck, Game game, GrowStrategy growStrategy)
     {
         if (pointToCheck.X < 0 || 
             pointToCheck.Y < 0 || 
@@ -188,7 +188,7 @@ internal static class MapChecker
                 }
             }
 
-            if (!CanGrowOn(checkPoint, GrowStrategy.UNHARVESTED, game))
+            if (!CanGrowOn(checkPoint, game, GrowStrategy.UNHARVESTED))
             {
                 hitSomething = true;    
 

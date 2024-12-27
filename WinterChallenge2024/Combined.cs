@@ -360,6 +360,9 @@ internal sealed class Game
     public List<Point> Walls { get; private set; }
     public List<Protein> Proteins { get; private set; }
 
+    private bool[,] _sporerPoints;
+    int _minRootSporerDistance = 4;
+
     internal Game(int width, int height)
     {
         Width = width;
@@ -387,6 +390,8 @@ internal sealed class Game
     int turn = 0;
     internal List<string> GetActions()
     {
+        _sporerPoints = new bool[Width, Height];
+
         // TODO: Add an Action struct to prioritise different actions and choose
         // between them
 
@@ -401,6 +406,8 @@ internal sealed class Game
 
             if (string.IsNullOrEmpty(action))
             {
+                Console.Error.WriteLine("Update sporer spawn points");
+                UpdateSporerSpawnPoints();
                 Console.Error.WriteLine("CheckForSporeRootAction");
                 action = CheckForSporeRootAction(organism);
             }
@@ -411,23 +418,24 @@ internal sealed class Game
                 action = CheckForSporerAction(organism);
             }
 
-            Console.Error.WriteLine("GetShortestPathToProtein");
-            (int closestOrgan, List<Point> shortestPath) = GetShortestPathToProtein(organism, Proteins, 2, 10, GrowStrategy.NO_PROTEINS);
 
             Console.Error.WriteLine("Got closest path");
             if (string.IsNullOrEmpty(action))
             {
+                Console.Error.WriteLine("GetShortestPathToProtein");
+                (int closestOrgan, List<Point> shortestPath) = GetShortestPathToProtein(organism, Proteins, 2, 10, GrowStrategy.NO_PROTEINS);
+
                 Console.Error.WriteLine("CheckForHarvestAction");
                 action = CheckForHarvestAction(closestOrgan, shortestPath);
-            }
 
-            if (string.IsNullOrEmpty(action))
-            {
-                // We've already pretty much tried this as part of the 
-                // Harvester check but do it again now since we're willing 
-                // to go a further now
-                Console.Error.WriteLine("CheckForBasicAction");
-                action = CheckForBasicAction(closestOrgan, shortestPath);
+                if (string.IsNullOrEmpty(action))
+                {
+                    // We've already pretty much tried this as part of the 
+                    // Harvester check but do it again now since we're willing 
+                    // to go a further now
+                    Console.Error.WriteLine("CheckForBasicAction");
+                    action = CheckForBasicAction(closestOrgan, shortestPath);
+                }
             }
 
             // If we've gotten this far without getting a move things are 
@@ -464,6 +472,25 @@ internal sealed class Game
         }
 
         return actions;
+    }
+
+    private void UpdateSporerSpawnPoints()
+    {
+        foreach (Protein protein in Proteins.Where(p => !p.IsHarvested))
+        {
+            if (MapChecker.HasNearbyOrgan(protein, PlayerOrganisms))
+            {
+                continue;
+            }
+
+            List<Point> possibleRootPoints = MapChecker.GetRootPoints(protein.Position, this);
+            foreach (var possPoint in possibleRootPoints)
+            {
+                _sporerPoints[possPoint.X, possPoint.Y] = true;
+            }
+
+            // Console.Error.WriteLine($"{possibleRootPoints.Count} possible root points added for protein {protein.Position.X},{protein.Position.Y}");
+        }
     }
 
     // Check to see if any protein is being harvested and mark it as such
@@ -529,28 +556,7 @@ internal sealed class Game
 
     private string CheckForSporerAction(Organism organism)
     {
-        // Create protein spawn map 
-        bool[,] sporerPoints = new bool[Width, Height];
-
-        foreach (Protein protein in Proteins.Where(p => !p.IsHarvested))
-        {
-            if (MapChecker.HasNearbyOrgan(protein, PlayerOrganisms))
-            {
-                continue;
-            }
-
-            List<Point> possibleRootPoints = MapChecker.GetRootPoints(protein.Position, this);
-            foreach (var possPoint in possibleRootPoints)
-            {
-                sporerPoints[possPoint.X, possPoint.Y] = true;
-            }
-
-            // Console.Error.WriteLine($"{possibleRootPoints.Count} possible root points added for protein {protein.Position.X},{protein.Position.Y}");
-        }
-
         string action = string.Empty;
-
-        int minRootSporerDistance = 4;
 
         if (CostCalculator.CanProduceOrgan(OrganType.ROOT, PlayerProteinStock) &&
             CostCalculator.CanProduceOrgan(OrganType.SPORER, PlayerProteinStock))
@@ -565,37 +571,38 @@ internal sealed class Game
                 List<Point> directions = new List<Point>();
 
                 // Check south
-                if (organPoint.Y <= Height - minRootSporerDistance - 1)
+                if (organPoint.Y <= Height - _minRootSporerDistance - 1)
                 {
                     directions.Add(new Point(0, 1));
                 }
 
                 // Check North
-                if (organPoint.Y >= minRootSporerDistance)
+                if (organPoint.Y >= _minRootSporerDistance)
                 {
                     directions.Add(new Point(0, -1));
                 }
 
                 // Check East
-                if (organPoint.X <= Width - minRootSporerDistance - 1)
+                if (organPoint.X <= Width - _minRootSporerDistance - 1)
                 {
                     directions.Add(new Point(1, 0));
                 }
 
                 // Check West
-                if (organPoint.X >= minRootSporerDistance)
+                if (organPoint.X >= _minRootSporerDistance)
                 {
                     directions.Add(new Point(-1, 0));
                 }
 
                 foreach (Point direction in directions)
                 {
-                    Console.Error.WriteLine($"Checking direction {direction.X},{direction.Y}");
-
                     Point sporerPoint = new Point(organPoint.X + direction.X, 
                                                   organPoint.Y + direction.Y);
 
-                    Console.Error.WriteLine($"Sporer point {sporerPoint.X},{sporerPoint.Y}");
+                    if (!MapChecker.CanGrowOn(sporerPoint, GrowStrategy.NO_PROTEINS, this))
+                    {
+                        continue;
+                    }
 
                     Point checkPoint = new Point(sporerPoint.X, sporerPoint.Y);
 
@@ -616,11 +623,11 @@ internal sealed class Game
 
                         if (checkPoint.Y >= Height) { break; }
 
-                        if (distance >= minRootSporerDistance)
+                        if (distance >= _minRootSporerDistance)
                         {
                             Console.Error.WriteLine($"Distance viable");
                             //    if it's on a spawn point 
-                            if (sporerPoints[checkPoint.X, checkPoint.Y])
+                            if (_sporerPoints[checkPoint.X, checkPoint.Y])
                             {
                                 Console.Error.WriteLine($"There's a spore point");
                                 string dir = string.Empty;
@@ -698,58 +705,66 @@ internal sealed class Game
 
             Console.Error.WriteLine($"Selected sporer is {sporer.Id}");
 
-            // foreach protein
-            foreach (Protein protein in Proteins)
+            Point direction = new Point(0, 0);
+
+            switch (sporer.Direction)
             {
-                List<Point> possibleRootPoints = MapChecker.GetRootPoints(protein.Position, this);
-                // TODO: order by closest to enemy (i.e. We want to be able to block and
-                //       destroy the enemy before they can get to the protein
+                case OrganDirection.N:
+                    direction = new Point(0, -1);
+                    break;
+                case OrganDirection.E:
+                    direction = new Point(1, 0);
+                    break;
+                case OrganDirection.S:
+                    direction = new Point(0, 1);
+                    break;
+                case OrganDirection.W:
+                    direction = new Point(-1, 0);
+                    break;
+            }
 
-                foreach (Point possibleRootPoint in possibleRootPoints)
+            if (direction == new Point(0,0))
+            {
+                Console.Error.WriteLine($"ERROR: Couldn't get sporer direction for {sporer.Position.X}{sporer.Position.Y}");
+            }
+
+            Point checkPoint = new Point(sporer.Position.X, sporer.Position.Y);
+
+            int distance = 1;
+            bool pathClear = true;
+            while (pathClear)
+            {
+                checkPoint = new Point(checkPoint.X + direction.X,
+                                       checkPoint.Y + direction.Y);
+
+                Console.Error.WriteLine($"checkPoint {checkPoint.X},{checkPoint.Y}");
+
+                if (checkPoint.X < 0) { break; }
+
+                if (checkPoint.X >= Width) { break; }
+
+                if (checkPoint.Y < 0) { break; }
+
+                if (checkPoint.Y >= Height) { break; }
+
+                if (distance >= _minRootSporerDistance)
                 {
-                    Point checkPoint = new Point(possibleRootPoint.X, possibleRootPoint.Y);
-                    int xDelta = 0;
-                    int yDelta = 0;
-
-                    switch (sporer.Direction)
+                    Console.Error.WriteLine($"Distance viable");
+                    //    if it's on a spawn point 
+                    if (_sporerPoints[checkPoint.X, checkPoint.Y])
                     {
-                        case OrganDirection.N:
-                            xDelta = 0;
-                            yDelta = 1;
-                            break;
-                        case OrganDirection.E:
-                            xDelta = -1;
-                            yDelta = 0;
-                            break;
-                        case OrganDirection.S:
-                            xDelta = 0;
-                            yDelta = -1;
-                            break;
-                        case OrganDirection.W:
-                            xDelta = 1;
-                            yDelta = 0;
-                            break;
-                    }
-
-                    bool canStillMove = true;
-
-                    while (canStillMove)
-                    {
-                        if (!MapChecker.CanGrowOn(checkPoint, this))
-                        {
-                            canStillMove = false;
-                            continue;
-                        }
-
-                        // Return the first valid spore we can. It shouldn't make a difference
-                        if (checkPoint == new Point(sporer.Position.X - xDelta, sporer.Position.Y - yDelta))
-                        {
-                            return $"SPORE {sporer.Id} {possibleRootPoint.X} {possibleRootPoint.Y}";
-                        }
-
-                        checkPoint = new Point(checkPoint.X + xDelta, checkPoint.Y + yDelta);
+                        return $"SPORE {sporer.Id} {checkPoint.X} {checkPoint.Y}";
                     }
                 }
+
+                if (!MapChecker.CanGrowOn(checkPoint, GrowStrategy.ALL_PROTEINS, this))
+                {
+                    Console.Error.WriteLine($"Path not clear");
+
+                    pathClear = false;
+                }
+
+                distance++;
             }
         }
 
@@ -1138,22 +1153,18 @@ internal static class MapChecker
 
         while(!hitSomething)
         {
-            Console.Error.WriteLine($"Checking {checkPoint.X},{checkPoint.Y}");
-
             foreach (Organism organism in game.PlayerOrganisms)
             {
                 if(organism.Organs.Any(o => o.Type == OrganType.ROOT &&
                                             o.Position == checkPoint))
                 {
-                    Console.Error.WriteLine("Hit a root");
                     return true;
                 }
             }
 
             if (!CanGrowOn(checkPoint, GrowStrategy.UNHARVESTED, game))
             {
-                hitSomething = true;
-                Console.Error.WriteLine("hitSomething");
+                hitSomething = true;    
 
             }
 

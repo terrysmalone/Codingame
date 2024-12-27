@@ -203,22 +203,18 @@ internal static class MapChecker
 
         while(!hitSomething)
         {
-            Console.Error.WriteLine($"Checking {checkPoint.X},{checkPoint.Y}");
-
             foreach (Organism organism in game.PlayerOrganisms)
             {
                 if(organism.Organs.Any(o => o.Type == OrganType.ROOT &&
                                             o.Position == checkPoint))
                 {
-                    Console.Error.WriteLine("Hit a root");
                     return true;
                 }
             }
 
             if (!CanGrowOn(checkPoint, GrowStrategy.UNHARVESTED, game))
             {
-                hitSomething = true;
-                Console.Error.WriteLine("hitSomething");
+                hitSomething = true;    
 
             }
 

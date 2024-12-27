@@ -24,10 +24,10 @@ internal sealed class AStar
 
     internal List<Point> GetShortestPath(Point startPoint, Point targetPoint, int maxDistance)
     {
-        return GetShortestPath(startPoint, targetPoint, maxDistance, false);
+        return GetShortestPath(startPoint, targetPoint, maxDistance, GrowStrategy.NO_PROTEINS);
     }
 
-    internal List<Point> GetShortestPath(Point startPoint, Point targetPoint, int maxDistance, bool canGrowOnProteins)
+    internal List<Point> GetShortestPath(Point startPoint, Point targetPoint, int maxDistance, GrowStrategy growStrategy)
     {
         _diagnosticCount = 0;
         _nodes = new List<Node>();
@@ -58,7 +58,7 @@ internal sealed class AStar
                 if (existingNode == null)
                 {
                     // Create a node if the position is walkable
-                    if (pointToCheck == startPoint || pointToCheck == targetPoint || MapChecker.CanGrowOn(pointToCheck, canGrowOnProteins, _game))
+                    if (pointToCheck == startPoint || pointToCheck == targetPoint || MapChecker.CanGrowOn(pointToCheck, growStrategy, _game))
                     {                        
                         Node node = new Node(pointToCheck);
 
@@ -69,7 +69,7 @@ internal sealed class AStar
                         if (node.G > maxDistance)
                             continue;
 
-                        node.H = (Math.Abs(targetPoint.X - pointToCheck.X) + Math.Abs(targetPoint.Y - pointToCheck.Y));
+                        node.H = MapChecker.CalculateManhattanDistance(pointToCheck, targetPoint);
                         node.F = node.G + node.H;
 
                         _nodes.Add(node);

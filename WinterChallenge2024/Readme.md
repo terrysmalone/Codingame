@@ -35,3 +35,7 @@ seed=-7134633389896397000
 I block myself in pretty early here
 seed=-3605073768287950000
 
+Pretty nice battle I should be able to test lots on
+seed=8520556949647951000
+
+

@@ -202,7 +202,7 @@ public class AStarTests
 
         Console.WriteLine($"Elapsed Time: {elapsedTime.TotalMilliseconds} ms");
 
-        //Assert.That(elapsedTime.TotalMilliseconds, Is.EqualTo(-1));
+        Assert.That(elapsedTime.TotalMilliseconds, Is.EqualTo(-1));
 
         // 75ms
     }

@@ -38,4 +38,6 @@ seed=-3605073768287950000
 Pretty nice battle I should be able to test lots on
 seed=8520556949647951000
 
+Lots of proteins, not many walls
+seed=-6630469394645055000
 

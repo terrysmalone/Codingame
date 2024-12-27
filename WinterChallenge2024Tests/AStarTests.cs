@@ -11,6 +11,9 @@ public class AStarTests
     public void TestCutOff()
     {
         Game game = new Game(10, 3);
+        game.UpdateHasProteins();
+        game.UpdateIsBlocked();
+
 
         AStar aStar = new AStar(game);
         List<Point> shortestPath = aStar.GetShortestPath(new Point(1, 1), new Point(8, 1), 4);
@@ -29,6 +32,8 @@ public class AStarTests
     public void TestSimpleSearchIsCorrect(Point startPoint, Point targetPoint, int expectedSteps)
     {
         Game game = new Game(10, 10);
+        game.UpdateHasProteins();
+        game.UpdateIsBlocked();
 
         AStar aStar = new AStar(game);
         List<Point> shortestPath = aStar.GetShortestPath(startPoint, targetPoint, 20);
@@ -78,12 +83,52 @@ public class AStarTests
         },
     };
 
+    [Test]
+    public void TestOnlyOnePossibility()
+    {
+        List<Point> walls = new List<Point>()
+        {
+            new Point(0,0),
+            new Point(1,0),
+            new Point(2,0),
+            new Point(3,0),
+
+            new Point(0,1),
+            new Point(3,1),
+
+            new Point(0,2),
+            new Point(1,2),
+            new Point(3,2),
+
+            new Point(0,3),
+            new Point(1,3),
+            new Point(2,3),
+            new Point(3,3),
+
+        };
+
+        Game game = new Game(4, 4);
+        game.SetWalls(walls);
+        game.UpdateHasProteins();
+        game.UpdateIsBlocked();
+
+        AStar aStar = new AStar(game);
+        List<Point> shortestPath = aStar.GetShortestPath(new Point(1,1), new Point(2,2), 2);
+
+        Assert.That(shortestPath.Count, Is.EqualTo(2));
+        Assert.That(shortestPath[0], Is.EqualTo(new Point(2,1)));
+        Assert.That(shortestPath[1], Is.EqualTo(new Point(2, 2)));
+
+    }
+
     [TestCaseSource(nameof(BlockingWalls))]
     public void TestWallTraversal(
         Point startPoint, Point targetPoint, List<Point> walls, int expectedSteps)
     {
         Game game = new Game(10, 10);
         game.SetWalls(walls);
+        game.UpdateHasProteins();
+        game.UpdateIsBlocked();
 
         AStar aStar = new AStar(game);
         List<Point> shortestPath = aStar.GetShortestPath(startPoint, targetPoint, 20);
@@ -150,6 +195,8 @@ public class AStarTests
     {
         Game game = new Game(10, 10);
         game.SetWalls(walls);
+        game.UpdateHasProteins();
+        game.UpdateIsBlocked();
 
         AStar aStar = new AStar(game);
         List<Point> shortestPath = aStar.GetShortestPath(startPoint, targetPoint, 20);
@@ -185,6 +232,8 @@ public class AStarTests
                 new Point(9, 5),
             };
         game.SetWalls(walls);
+        game.UpdateHasProteins();
+        game.UpdateIsBlocked();
 
         AStar aStar = new AStar(game);
 

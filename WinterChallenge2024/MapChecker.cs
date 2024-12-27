@@ -17,6 +17,7 @@ internal static class MapChecker
     {
         return CanGrowOn(pointToCheck, GrowStrategy.NO_PROTEINS, game);
     }
+
     internal static bool CanGrowOn(Point pointToCheck, GrowStrategy growStrategy, Game game)
     {
         if (pointToCheck.X < 0 || 
@@ -27,41 +28,16 @@ internal static class MapChecker
             return false; 
         }
 
-        // Not walkable if player organ on that spot
-        foreach (Organism organism in game.PlayerOrganisms)
+        if (game.isBlocked[pointToCheck.X, pointToCheck.Y])
         {
-            if (organism.Organs.Any(o => o.Position == pointToCheck))
-            {
-                return false;
-            }
+            return false;
         }
 
-        // Not walkable if opponent organ on that spot
-        foreach (Organism organism in game.OpponentOrganisms)
+        if (growStrategy == GrowStrategy.NO_PROTEINS && game.hasAnyProtein[pointToCheck.X, pointToCheck.Y])
         {
-            if (organism.Organs.Any(o => o.Position == pointToCheck))
-            {
-                return false;
-            }
+            return false;
         }
-
-        if (growStrategy == GrowStrategy.NO_PROTEINS)
-        {
-            if (game.Proteins.Any(p => p.Position == pointToCheck))
-            {
-                return false;
-            }
-        }
-        else if (growStrategy == GrowStrategy.UNHARVESTED)
-        {
-            if (game.Proteins.Any(p => p.IsHarvested && p.Position == pointToCheck))
-            {
-                return false;
-            }
-        }
-
-        // Not walkable if wall on that spot
-        if (game.Walls.Any(w => w == pointToCheck))
+        else if (growStrategy == GrowStrategy.UNHARVESTED && game.hasHarvestedProtein[pointToCheck.X, pointToCheck.Y])
         {
             return false;
         }

@@ -43,6 +43,7 @@ internal sealed class AStar
 
         // Create a node for the start Point
         Node currentNode = new Node(startPoint);
+
         _nodes.Add(currentNode);
 
         bool targetFound = false;
@@ -50,6 +51,11 @@ internal sealed class AStar
         int timeToSearch = 0;
         while (!targetFound)
         {
+            if (_nodes.Count(n => n.Closed == false) == 0)
+            {
+                return new List<Point>();
+            }
+
             Point[] pointsToCheck = new Point[4];
 
             pointsToCheck[0] = new Point(currentNode.Position.X, currentNode.Position.Y + 1);
@@ -106,11 +112,6 @@ internal sealed class AStar
             }
 
             currentNode.Closed = true;
-
-            if (_nodes.Count(n => n.Closed == false) == 0)
-            {
-                return new List<Point>();
-            }
 
             if (currentNode.Position == targetPoint)
             {
@@ -373,6 +374,10 @@ internal sealed class Game
     private bool[,] _sporerPoints;
     int _minRootSporerDistance = 4;
 
+    internal bool[,] isBlocked;
+    internal bool[,] hasAnyProtein;
+    internal bool[,] hasHarvestedProtein;
+
     internal Game(int width, int height)
     {
         Width = width;
@@ -402,6 +407,9 @@ internal sealed class Game
     {
         _sporerPoints = new bool[Width, Height];
 
+        UpdateIsBlocked();
+        UpdateHasProteins();
+      
         // TODO: Add an Action struct to prioritise different actions and choose
         // between them
 
@@ -414,15 +422,14 @@ internal sealed class Game
 
         foreach (Organism organism in PlayerOrganisms)
         {
-            Console.Error.WriteLine($"Checking organism {organism.RootId}");
             string action = string.Empty;
-
-            Display.Proteins(Proteins);
 
             Console.Error.WriteLine("GetShortestPathToProtein");
             (int closestOrgan, List<Point> shortestPath) = GetShortestPathToProtein(organism, Proteins, 2, 10, GrowStrategy.NO_PROTEINS);
 
-            shortestPath.ForEach(p => Console.Error.WriteLine($"{p.X}:{p.Y}"));
+            Console.Error.WriteLine($"Closest organ:{closestOrgan}");
+            Display.Path(shortestPath);
+
             Console.Error.WriteLine("Got closest path");
             if (string.IsNullOrEmpty(action))
             {
@@ -488,6 +495,53 @@ internal sealed class Game
         }
 
         return actions;
+    }
+
+    internal void UpdateIsBlocked()
+    {
+        isBlocked = new bool[Width, Height];
+        // Not walkable if player organ on that spot
+        foreach (Organism organism in PlayerOrganisms)
+        {
+            foreach (Organ organ in organism.Organs)
+            {
+                isBlocked[organ.Position.X, organ.Position.Y] = true;
+            }
+        }
+
+        // Not walkable if opponent organ on that spot
+        foreach (Organism organism in OpponentOrganisms)
+        {
+            foreach (Organ organ in organism.Organs)
+            {
+                isBlocked[organ.Position.X, organ.Position.Y] = true;
+            }
+        }
+
+        // Not walkable if wall on that spot
+        foreach (Point wall in Walls)
+        {
+            isBlocked[wall.X, wall.Y] = true;
+        }
+    }
+
+    internal void UpdateHasProteins()
+    {
+        hasHarvestedProtein = new bool[Width, Height];
+        hasAnyProtein = new bool[Width, Height];
+
+        foreach (Protein protein in Proteins)
+        {
+            if (protein.IsHarvested)
+            {
+                hasHarvestedProtein[protein.Position.X, protein.Position.Y] = true;
+                hasAnyProtein[protein.Position.X, protein.Position.Y] = true;
+            }
+            else
+            {
+                hasAnyProtein[protein.Position.X, protein.Position.Y] = true;
+            }
+        }
     }
 
     private void UpdateSporerSpawnPoints()
@@ -580,7 +634,6 @@ internal sealed class Game
             // for each organ
             foreach (Organ organ in organism.Organs)
             {
-                Console.Error.WriteLine($"Checking organ {organ.Position.X},{organ.Position.Y}");
                 Point organPoint = organ.Position;
 
                 //    for each direction
@@ -854,19 +907,37 @@ internal sealed class Game
         // Get the closest protein to Organs
         foreach (Protein protein in proteins)
         {
+            bool debug = false;
+
+            if (protein.Position == new Point(3, 7))
+            {
+                debug = true;
+            }
+
+            if (debug)
+            {
+                Console.Error.WriteLine($"Checking protein: {protein.Position.X},{protein.Position.Y}");
+            }
+
             if (protein.IsHarvested)
             {
                 continue;
             }
 
-            Console.Error.WriteLine($"Protein:{protein.Position.X},{protein.Position.Y}");
-
             foreach (var organ in organism.Organs)
             {
-                Console.Error.WriteLine($"Organ:{organ.Position.X},{organ.Position.Y}");
+                if (debug)
+                {
+                    Console.Error.WriteLine($"Checking organ: {organ.Position.X},{organ.Position.Y}");
+                }
 
                 int manhattanDistance = MapChecker.CalculateManhattanDistance(organ.Position, protein.Position);
-                Console.Error.WriteLine($"manhattanDistance:{manhattanDistance}");
+
+                if (debug)
+                {
+                    Console.Error.WriteLine($"Manhattan distance: {manhattanDistance}");
+                    Console.Error.WriteLine($"Max distance: {maxDistance}");
+                }
 
                 if (manhattanDistance > maxDistance)
                 {
@@ -875,7 +946,11 @@ internal sealed class Game
 
                 List<Point> path = aStar.GetShortestPath(organ.Position, protein.Position, maxDistance, growStrategy);
 
-                Display.Path(shortestPath);
+                if (debug)
+                {
+                    Console.Error.WriteLine($"Shortest path count: {path.Count}");
+                    Display.Path(shortestPath);
+                }
 
                 if (path.Count < shortest && path.Count >= minDistance && path.Count != 0)
                 {
@@ -937,8 +1012,6 @@ internal sealed class Game
         // TODO: I want max distance to be 2 here but then it bugs out
         (int closestOrgan, List<Point> shortestPath) = GetShortestPathToProtein(organism, Proteins, 1, 10, growStrategy);
 
-        Console.Error.WriteLine($"closestOrgan: {closestOrgan}");
-        Console.Error.WriteLine($"shortestPath: {shortestPath.Count}");
         if (closestOrgan != -1)
         {
             string organToGrow = string.Empty;
@@ -990,6 +1063,7 @@ internal static class MapChecker
     {
         return CanGrowOn(pointToCheck, GrowStrategy.NO_PROTEINS, game);
     }
+
     internal static bool CanGrowOn(Point pointToCheck, GrowStrategy growStrategy, Game game)
     {
         if (pointToCheck.X < 0 || 
@@ -1000,41 +1074,16 @@ internal static class MapChecker
             return false; 
         }
 
-        // Not walkable if player organ on that spot
-        foreach (Organism organism in game.PlayerOrganisms)
+        if (game.isBlocked[pointToCheck.X, pointToCheck.Y])
         {
-            if (organism.Organs.Any(o => o.Position == pointToCheck))
-            {
-                return false;
-            }
+            return false;
         }
 
-        // Not walkable if opponent organ on that spot
-        foreach (Organism organism in game.OpponentOrganisms)
+        if (growStrategy == GrowStrategy.NO_PROTEINS && game.hasAnyProtein[pointToCheck.X, pointToCheck.Y])
         {
-            if (organism.Organs.Any(o => o.Position == pointToCheck))
-            {
-                return false;
-            }
+            return false;
         }
-
-        if (growStrategy == GrowStrategy.NO_PROTEINS)
-        {
-            if (game.Proteins.Any(p => p.Position == pointToCheck))
-            {
-                return false;
-            }
-        }
-        else if (growStrategy == GrowStrategy.UNHARVESTED)
-        {
-            if (game.Proteins.Any(p => p.IsHarvested && p.Position == pointToCheck))
-            {
-                return false;
-            }
-        }
-
-        // Not walkable if wall on that spot
-        if (game.Walls.Any(w => w == pointToCheck))
+        else if (growStrategy == GrowStrategy.UNHARVESTED && game.hasHarvestedProtein[pointToCheck.X, pointToCheck.Y])
         {
             return false;
         }

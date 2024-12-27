@@ -34,6 +34,7 @@ internal sealed class AStar
 
         // Create a node for the start Point
         Node currentNode = new Node(startPoint);
+
         _nodes.Add(currentNode);
 
         bool targetFound = false;
@@ -41,6 +42,11 @@ internal sealed class AStar
         int timeToSearch = 0;
         while (!targetFound)
         {
+            if (_nodes.Count(n => n.Closed == false) == 0)
+            {
+                return new List<Point>();
+            }
+
             Point[] pointsToCheck = new Point[4];
 
             pointsToCheck[0] = new Point(currentNode.Position.X, currentNode.Position.Y + 1);
@@ -97,11 +103,6 @@ internal sealed class AStar
             }
 
             currentNode.Closed = true;
-
-            if (_nodes.Count(n => n.Closed == false) == 0)
-            {
-                return new List<Point>();
-            }
 
             if (currentNode.Position == targetPoint)
             {

@@ -647,8 +647,6 @@ internal sealed class Game
             foreach (Organ organ in organism.Organs)
             {
                 Point organPoint = organ.Position;
-
-                //    for each direction
                 List<Point> directions = new List<Point>();
 
                 // Check south
@@ -675,71 +673,77 @@ internal sealed class Game
                     directions.Add(new Point(-1, 0));
                 }
 
-                foreach (Point direction in directions)
+                // Check the four points around the organ
+                foreach (Point side in directions)
                 {
-                    Point sporerPoint = new Point(organPoint.X + direction.X, 
-                                                  organPoint.Y + direction.Y);
+                    Point sporerPoint = new Point(organPoint.X + side.X,
+                                                  organPoint.Y + side.Y);
 
                     if (!MapChecker.CanGrowOn(sporerPoint, GrowStrategy.NO_PROTEINS, this))
                     {
                         continue;
                     }
 
-                    Point checkPoint = new Point(sporerPoint.X, sporerPoint.Y);
-
-                    int distance = 1;
-                    bool pathClear = true;
-                    while (pathClear)
+                    // Check in all 4 directions
+                    foreach (Point direction in directions)
                     {
-                        checkPoint = new Point(checkPoint.X + direction.X,
-                                               checkPoint.Y + direction.Y);
-                        
-                        if (checkPoint.X < 0) { break; }
+                        Point checkPoint = new Point(sporerPoint.X,
+                                                     sporerPoint.Y);
 
-                        if (checkPoint.X >= Width) { break; }
-
-                        if (checkPoint.Y < 0) { break; }
-
-                        if (checkPoint.Y >= Height) { break; }
-
-                        if (distance >= minRootSporerDistance)
+                        int distance = 1;
+                        bool pathClear = true;
+                        while (pathClear)
                         {
-                            // Console.Error.WriteLine($"Distance viable");
-                            //    if it's on a spawn point 
-                            if (_sporerPoints[checkPoint.X, checkPoint.Y])
+                            checkPoint = new Point(checkPoint.X + direction.X,
+                                                   checkPoint.Y + direction.Y);
+
+                            if (checkPoint.X < 0) { break; }
+
+                            if (checkPoint.X >= Width) { break; }
+
+                            if (checkPoint.Y < 0) { break; }
+
+                            if (checkPoint.Y >= Height) { break; }
+
+                            if (distance >= minRootSporerDistance)
                             {
-                                // Console.Error.WriteLine($"There's a spore point");
-                                string dir = string.Empty;
+                                // Console.Error.WriteLine($"Distance viable");
+                                //    if it's on a spawn point 
+                                if (_sporerPoints[checkPoint.X, checkPoint.Y])
+                                {
+                                    // Console.Error.WriteLine($"There's a spore point");
+                                    string dir = string.Empty;
 
-                                if (direction.X == 1)
-                                {
-                                    dir = "E";
-                                }
-                                else if (direction.X == -1)
-                                {
-                                    dir = "W";
-                                }
-                                else if (direction.Y == -1)
-                                {
-                                    dir = "N";
-                                }
-                                else if (direction.Y == 1)
-                                {
-                                    dir = "S";
-                                }
+                                    if (direction.X == 1)
+                                    {
+                                        dir = "E";
+                                    }
+                                    else if (direction.X == -1)
+                                    {
+                                        dir = "W";
+                                    }
+                                    else if (direction.Y == -1)
+                                    {
+                                        dir = "N";
+                                    }
+                                    else if (direction.Y == 1)
+                                    {
+                                        dir = "S";
+                                    }
 
-                                return $"GROW {organ.Id} {sporerPoint.X} {sporerPoint.Y} SPORER {dir}";
+                                    return $"GROW {organ.Id} {sporerPoint.X} {sporerPoint.Y} SPORER {dir}";
+                                }
                             }
+
+                            if (!MapChecker.CanGrowOn(checkPoint, GrowStrategy.ALL_PROTEINS, this))
+                            {
+                                Console.Error.WriteLine($"Path not clear");
+
+                                pathClear = false;
+                            }
+
+                            distance++;
                         }
-
-                        if (!MapChecker.CanGrowOn(checkPoint, GrowStrategy.ALL_PROTEINS, this))
-                        {
-                            Console.Error.WriteLine($"Path not clear");
-
-                            pathClear = false;
-                        }
-
-                        distance++;
                     }
                 }
             }

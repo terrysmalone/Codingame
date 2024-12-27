@@ -433,109 +433,85 @@ internal sealed class Game
         if (organism.Organs.Any(o => o.Type == OrganType.SPORER) &&
                 CostCalculator.CanProduceOrgan(OrganType.ROOT, PlayerProteinStock))
         {
-            Organ sporer = new Organ();
             List<Organ> sporers = organism.Organs.Where(o => o.Type == OrganType.SPORER).ToList();
 
-            if (sporers.Count == 0)
-            {
-                return string.Empty;
-            }
-            else if (sporers.Count == 1)
-            {
-                sporer = sporers[0];
-            }
-            else
-            {
-                bool assigned = false;
-                foreach (Organ o in sporers)
-                {
-                    if (!MapChecker.HasSporerSpored(o, this))
-                    {
-                        sporer = o;
-                        assigned = true;
-                    }
-                }
-
-                if (!assigned)
-                {
-                    return string.Empty;
-                }
-            }
-
-            Console.Error.WriteLine($"Selected sporer is {sporer.Id}");
-
             int furthestDistance = -1;
+            int furthestSporerId = -1;
             Point furthestRootPoint = new Point(0, 0);
 
-            Point direction = new Point(0, 0);
-
-            switch (sporer.Direction)
+            foreach (Organ sporer in sporers)
             {
-                case OrganDirection.N:
-                    direction = new Point(0, -1);
-                    break;
-                case OrganDirection.E:
-                    direction = new Point(1, 0);
-                    break;
-                case OrganDirection.S:
-                    direction = new Point(0, 1);
-                    break;
-                case OrganDirection.W:
-                    direction = new Point(-1, 0);
-                    break;
-            }
+                Point direction = new Point(0, 0);
 
-            if (direction == new Point(0,0))
-            {
-                Console.Error.WriteLine($"ERROR: Couldn't get sporer direction for {sporer.Position.X}{sporer.Position.Y}");
-            }
-
-            Point checkPoint = new Point(sporer.Position.X, sporer.Position.Y);
-
-            int distance = 1;
-            bool pathClear = true;
-            while (pathClear)
-            {
-                checkPoint = new Point(checkPoint.X + direction.X,
-                                       checkPoint.Y + direction.Y);
-
-                Console.Error.WriteLine($"checkPoint {checkPoint.X},{checkPoint.Y}");
-
-                if (checkPoint.X < 0) { break; }
-
-                if (checkPoint.X >= Width) { break; }
-
-                if (checkPoint.Y < 0) { break; }
-
-                if (checkPoint.Y >= Height) { break; }
-
-                if (distance >= minRootSporerDistance)
+                switch (sporer.Direction)
                 {
-                    Console.Error.WriteLine($"Distance viable");
-                    //    if it's on a spawn point 
-                    if (_sporerPoints[checkPoint.X, checkPoint.Y])
+                    case OrganDirection.N:
+                        direction = new Point(0, -1);
+                        break;
+                    case OrganDirection.E:
+                        direction = new Point(1, 0);
+                        break;
+                    case OrganDirection.S:
+                        direction = new Point(0, 1);
+                        break;
+                    case OrganDirection.W:
+                        direction = new Point(-1, 0);
+                        break;
+                }
+
+                if (direction == new Point(0, 0))
+                {
+                    Console.Error.WriteLine($"ERROR: Couldn't get sporer direction for {sporer.Position.X}{sporer.Position.Y}");
+                }
+
+                Point checkPoint = new Point(sporer.Position.X, sporer.Position.Y);
+
+                int distance = 1;
+                bool pathClear = true;
+                while (pathClear)
+                {
+                    checkPoint = new Point(checkPoint.X + direction.X,
+                                           checkPoint.Y + direction.Y);
+
+                    Console.Error.WriteLine($"checkPoint {checkPoint.X},{checkPoint.Y}");
+
+                    if (checkPoint.X < 0) { break; }
+
+                    if (checkPoint.X >= Width) { break; }
+
+                    if (checkPoint.Y < 0) { break; }
+
+                    if (checkPoint.Y >= Height) { break; }
+
+                    if (distance >= minRootSporerDistance)
                     {
-                        if (distance > furthestDistance)
+                        Console.Error.WriteLine($"Distance viable");
+                        //    if it's on a spawn point 
+                        if (_sporerPoints[checkPoint.X, checkPoint.Y])
                         {
-                            furthestDistance = distance;
-                            furthestRootPoint = checkPoint;
+                            if (distance > furthestDistance)
+                            {
+                                furthestDistance = distance;
+                                furthestSporerId = sporer.Id;
+                                furthestRootPoint = checkPoint;
+                            }
                         }
                     }
+
+                    if (!MapChecker.CanGrowOn(checkPoint, GrowStrategy.ALL_PROTEINS, this))
+                    {
+                        Console.Error.WriteLine($"Path not clear");
+
+                        pathClear = false;
+                    }
+
+                    distance++;
                 }
-
-                if (!MapChecker.CanGrowOn(checkPoint, GrowStrategy.ALL_PROTEINS, this))
-                {
-                    Console.Error.WriteLine($"Path not clear");
-
-                    pathClear = false;
-                }
-
-                distance++;
             }
 
             if (furthestDistance != -1)
             {
-                return $"SPORE {sporer.Id} {furthestRootPoint.X} {furthestRootPoint.Y}";
+                return $"SPORE {furthestSporerId} {furthestRootPoint.X} {furthestRootPoint.Y}";
             }
         }
 

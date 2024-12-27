@@ -43,7 +43,7 @@ internal static class Display
     {
         Console.Error.WriteLine($"Proteins");
 
-        proteins.ForEach(p => 
+        proteins.ForEach(p =>
             Console.Error.WriteLine($"Type:{p.Type} - Position:({p.Position.X},{p.Position.Y}) - BeingHarvested:{p.IsHarvested}"));
     }
 
@@ -77,7 +77,7 @@ internal static class Display
 
     internal static void Nodes(List<Node> nodes)
     {
-        nodes.ForEach(n => 
+        nodes.ForEach(n =>
             Console.Error.WriteLine($"Position:({n.Position.X},{n.Position.Y}) - Closed:{n.Closed}"));
     }
 
@@ -134,5 +134,15 @@ internal static class Display
             Console.Error.WriteLine(row);
         }
         Console.Error.WriteLine("----------");
+    }
+
+    internal static void Path(List<Point> path)
+    {
+        string pathText = string.Empty;
+
+        foreach (Point point in path)
+        {
+            pathText += $"({point.X},{point.Y}) ->";
+        }
     }
 }

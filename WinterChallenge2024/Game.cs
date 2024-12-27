@@ -62,10 +62,27 @@ internal sealed class Game
         
         List<string> actions = new List<string>();
 
+        // TODO: I still think HArvesting should be the top priority.
+        // //    It's currently after sporing
+
         foreach (Organism organism in PlayerOrganisms)
         {
             Console.Error.WriteLine($"Checking organism {organism.RootId}");
             string action = string.Empty;
+
+            Display.Proteins(Proteins);
+
+            Console.Error.WriteLine("GetShortestPathToProtein");
+            (int closestOrgan, List<Point> shortestPath) = GetShortestPathToProtein(organism, Proteins, 2, 10, GrowStrategy.NO_PROTEINS);
+
+            shortestPath.ForEach(p => Console.Error.WriteLine($"{p.X}:{p.Y}"));
+            Console.Error.WriteLine("Got closest path");
+            if (string.IsNullOrEmpty(action))
+            {
+                Console.Error.WriteLine("CheckForHarvestAction");
+                action = CheckForHarvestAction(closestOrgan, shortestPath);
+            }
+
 
             if (string.IsNullOrEmpty(action))
             {
@@ -81,24 +98,13 @@ internal sealed class Game
                 action = CheckForSporerAction(organism);
             }
 
-
-            Console.Error.WriteLine("Got closest path");
             if (string.IsNullOrEmpty(action))
             {
-                Console.Error.WriteLine("GetShortestPathToProtein");
-                (int closestOrgan, List<Point> shortestPath) = GetShortestPathToProtein(organism, Proteins, 2, 10, GrowStrategy.NO_PROTEINS);
-
-                Console.Error.WriteLine("CheckForHarvestAction");
-                action = CheckForHarvestAction(closestOrgan, shortestPath);
-
-                if (string.IsNullOrEmpty(action))
-                {
-                    // We've already pretty much tried this as part of the 
-                    // Harvester check but do it again now since we're willing 
-                    // to go a further now
-                    Console.Error.WriteLine("CheckForBasicAction");
-                    action = CheckForBasicAction(closestOrgan, shortestPath);
-                }
+                // We've already pretty much tried this as part of the 
+                // Harvester check but do it again now since we're willing 
+                // to go a further now
+                Console.Error.WriteLine("CheckForBasicAction");
+                action = CheckForBasicAction(closestOrgan, shortestPath);
             }
 
             // If we've gotten this far without getting a move things are 
@@ -503,20 +509,27 @@ internal sealed class Game
         {
             if (protein.IsHarvested)
             {
-                break;
+                continue;
             }
-                
+
+            Console.Error.WriteLine($"Protein:{protein.Position.X},{protein.Position.Y}");
+
             foreach (var organ in organism.Organs)
             {
+                Console.Error.WriteLine($"Organ:{organ.Position.X},{organ.Position.Y}");
+
                 int manhattanDistance = MapChecker.CalculateManhattanDistance(organ.Position, protein.Position);
+                Console.Error.WriteLine($"manhattanDistance:{manhattanDistance}");
 
                 if (manhattanDistance > maxDistance)
                 {
-                    break;
+                    continue;
                 }
 
                 List<Point> path = aStar.GetShortestPath(organ.Position, protein.Position, maxDistance, growStrategy);
-                    
+
+                Display.Path(shortestPath);
+
                 if (path.Count < shortest && path.Count >= minDistance && path.Count != 0)
                 {
                     shortest = path.Count;

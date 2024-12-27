@@ -422,10 +422,14 @@ internal sealed class Game
         int maxProteinDistance = 5;
         int minRootSporerDistance = 4;
 
-        if (PlayerOrganisms.Count < 3)
+        if (PlayerOrganisms.Count < 2)
         {
             maxProteinDistance = 1;
-            minRootSporerDistance = 0;
+            minRootSporerDistance = 3;
+        }
+        else if (PlayerOrganisms.Count < 3)
+        {
+            maxProteinDistance = 3;
         }
 
         foreach (Organism organism in PlayerOrganisms)
@@ -643,6 +647,11 @@ internal sealed class Game
         if (CostCalculator.CanProduceOrgan(OrganType.ROOT, PlayerProteinStock) &&
             CostCalculator.CanProduceOrgan(OrganType.SPORER, PlayerProteinStock))
         {
+            int furthestDistance = -1;
+            int furthestOrgan = -1;
+            Point furthestSporerPoint = new Point(0, 0);
+            string furthestDirection = string.Empty;
+
             // for each organ
             foreach (Organ organ in organism.Organs)
             {
@@ -679,6 +688,8 @@ internal sealed class Game
                     Point sporerPoint = new Point(organPoint.X + side.X,
                                                   organPoint.Y + side.Y);
 
+                    Console.Error.WriteLine($"Checking sporer point {sporerPoint.X},{sporerPoint.Y}");
+
                     if (!MapChecker.CanGrowOn(sporerPoint, GrowStrategy.NO_PROTEINS, this))
                     {
                         continue;
@@ -697,6 +708,8 @@ internal sealed class Game
                             checkPoint = new Point(checkPoint.X + direction.X,
                                                    checkPoint.Y + direction.Y);
 
+                            Console.Error.WriteLine($"Checking point {checkPoint.X},{checkPoint.Y}");
+
                             if (checkPoint.X < 0) { break; }
 
                             if (checkPoint.X >= Width) { break; }
@@ -707,7 +720,7 @@ internal sealed class Game
 
                             if (distance >= minRootSporerDistance)
                             {
-                                // Console.Error.WriteLine($"Distance viable");
+                                Console.Error.WriteLine($"Distance viable");
                                 //    if it's on a spawn point 
                                 if (_sporerPoints[checkPoint.X, checkPoint.Y])
                                 {
@@ -731,14 +744,19 @@ internal sealed class Game
                                         dir = "S";
                                     }
 
-                                    return $"GROW {organ.Id} {sporerPoint.X} {sporerPoint.Y} SPORER {dir}";
+                                    if (distance > furthestDistance)
+                                    {
+                                        Console.Error.WriteLine("Added to furthestDistance");
+                                        furthestDistance = distance;
+                                        furthestOrgan = organ.Id;
+                                        furthestSporerPoint = new Point(sporerPoint.X, sporerPoint.Y);
+                                        furthestDirection = dir;
+                                    }
                                 }
                             }
 
                             if (!MapChecker.CanGrowOn(checkPoint, GrowStrategy.ALL_PROTEINS, this))
                             {
-                                Console.Error.WriteLine($"Path not clear");
-
                                 pathClear = false;
                             }
 
@@ -746,6 +764,12 @@ internal sealed class Game
                         }
                     }
                 }
+            }
+
+            if (furthestDistance != -1)
+            {
+                return $"GROW {furthestOrgan} {furthestSporerPoint.X} {furthestSporerPoint.Y} SPORER {furthestDirection}";
+
             }
         }
 
@@ -787,6 +811,9 @@ internal sealed class Game
             }
 
             Console.Error.WriteLine($"Selected sporer is {sporer.Id}");
+
+            int furthestDistance = -1;
+            Point furthestRootPoint = new Point(0, 0);
 
             Point direction = new Point(0, 0);
 
@@ -836,7 +863,11 @@ internal sealed class Game
                     //    if it's on a spawn point 
                     if (_sporerPoints[checkPoint.X, checkPoint.Y])
                     {
-                        return $"SPORE {sporer.Id} {checkPoint.X} {checkPoint.Y}";
+                        if (distance > furthestDistance)
+                        {
+                            furthestDistance = distance;
+                            furthestRootPoint = checkPoint;
+                        }
                     }
                 }
 
@@ -848,6 +879,11 @@ internal sealed class Game
                 }
 
                 distance++;
+            }
+
+            if (furthestDistance != -1)
+            {
+                return $"SPORE {sporer.Id} {furthestRootPoint.X} {furthestRootPoint.Y}";
             }
         }
 

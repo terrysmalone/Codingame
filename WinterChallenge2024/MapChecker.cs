@@ -8,11 +8,16 @@ using System.Threading.Tasks;
 namespace WinterChallenge2024;
 internal static class MapChecker
 {
+    internal static int CalculateManhattanDistance(Point position1, Point position2)
+    {
+        return Math.Abs(position1.X - position2.X) + Math.Abs(position1.Y - position2.Y);
+    }
+
     internal static bool CanGrowOn(Point pointToCheck, Game game)
     {
-        return CanGrowOn(pointToCheck, false, game);
+        return CanGrowOn(pointToCheck, GrowStrategy.NO_PROTEINS, game);
     }
-    internal static bool CanGrowOn(Point pointToCheck, bool canGrowOnProteins, Game game)
+    internal static bool CanGrowOn(Point pointToCheck, GrowStrategy growStrategy, Game game)
     {
         if (pointToCheck.X < 0 || 
             pointToCheck.Y < 0 || 
@@ -40,14 +45,14 @@ internal static class MapChecker
             }
         }
 
-        if (!canGrowOnProteins)
+        if (growStrategy == GrowStrategy.NO_PROTEINS)
         {
             if (game.Proteins.Any(p => p.Position == pointToCheck))
             {
                 return false;
             }
         }
-        else
+        else if (growStrategy == GrowStrategy.UNHARVESTED)
         {
             if (game.Proteins.Any(p => p.IsHarvested && p.Position == pointToCheck))
             {
@@ -206,7 +211,7 @@ internal static class MapChecker
                 }
             }
 
-            if (!CanGrowOn(checkPoint, true, game))
+            if (!CanGrowOn(checkPoint, GrowStrategy.UNHARVESTED, game))
             {
                 hitSomething = true;
             }

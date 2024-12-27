@@ -497,6 +497,9 @@ internal sealed class Game
 
         if (closestOrgan != -1)
         {
+            // TODO: If we can't harvest, check if we can consume the organisms needed
+            //       to create a harvester
+
             // See if we can make a harvester
             if (CostCalculator.CanProduceOrgan(OrganType.HARVESTER, PlayerProteinStock) &&
                 Proteins.Exists(p => p.IsHarvested == false))
@@ -892,6 +895,7 @@ internal sealed class Game
 
     private string GetDesperateDestructiveMove(Organism organism, GrowStrategy growStrategy)
     {
+        Display.Organisms(PlayerOrganisms);
         // TODO: I want max distance to be 2 here but then it bugs out
         (int closestOrgan, List<Point> shortestPath) = GetShortestPathToProtein(organism, Proteins, 1, 10, growStrategy);
 
@@ -903,6 +907,21 @@ internal sealed class Game
             if (CostCalculator.CanProduceOrgan(OrganType.BASIC, PlayerProteinStock))
             {
                 organToGrow = OrganType.BASIC.ToString();
+            }
+            else if (CostCalculator.CanProduceOrgan(OrganType.TENTACLE, PlayerProteinStock))
+            {
+                // TODO: Maybe pick a direction
+                organToGrow = OrganType.TENTACLE.ToString() + " E";
+            }
+            else if (CostCalculator.CanProduceOrgan(OrganType.HARVESTER, PlayerProteinStock))
+            {
+                // TODO: Maybe pick a direction
+                organToGrow = OrganType.HARVESTER.ToString() + " E";
+            }
+
+            if (string.IsNullOrEmpty(organToGrow))
+            {
+                return string.Empty;
             }
 
             return $"GROW {closestOrgan} {shortestPath[0].X} {shortestPath[0].Y} {organToGrow}";
@@ -1290,6 +1309,7 @@ partial class Player
 
                         case "HARVESTER":
                         case "SPORER":
+                        case "TENTACLE":
                             OrganDirection dirEnum;
                             if (Enum.TryParse(organDir, out dirEnum))
                             {

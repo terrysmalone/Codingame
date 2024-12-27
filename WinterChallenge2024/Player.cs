@@ -72,6 +72,7 @@ partial class Player
 
                         case "HARVESTER":
                         case "SPORER":
+                        case "TENTACLE":
                             OrganDirection dirEnum;
                             if (Enum.TryParse(organDir, out dirEnum))
                             {

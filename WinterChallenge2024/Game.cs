@@ -24,7 +24,6 @@ internal sealed class Game
     public List<Protein> Proteins { get; private set; }
 
     private bool[,] _sporerPoints;
-    int _minRootSporerDistance = 4;
 
     internal bool[,] isBlocked;
     internal bool[,] hasAnyProtein;
@@ -72,6 +71,15 @@ internal sealed class Game
         // TODO: I still think HArvesting should be the top priority.
         // //    It's currently after sporing
 
+        int maxProteinDistance = 5;
+        int minRootSporerDistance = 4;
+
+        if (PlayerOrganisms.Count < 3)
+        {
+            maxProteinDistance = 1;
+            minRootSporerDistance = 0;
+        }
+
         foreach (Organism organism in PlayerOrganisms)
         {
             string action = string.Empty;
@@ -80,13 +88,17 @@ internal sealed class Game
             (int closestOrgan, List<Point> shortestPath) = GetShortestPathToProtein(organism, Proteins, 2, 10, GrowStrategy.NO_PROTEINS);
 
             Console.Error.WriteLine($"Closest organ:{closestOrgan}");
-            Display.Path(shortestPath);
+            Console.Error.WriteLine($"Shortest path:{shortestPath.Count}");
+            if (shortestPath.Count > 0)
+            {
+                Display.Path(shortestPath);
+            }
 
             Console.Error.WriteLine("Got closest path");
             if (string.IsNullOrEmpty(action))
             {
                 Console.Error.WriteLine("CheckForHarvestAction");
-                action = CheckForHarvestAction(closestOrgan, shortestPath);
+                action = CheckForHarvestAction(closestOrgan, shortestPath, maxProteinDistance);
             }
 
 
@@ -95,13 +107,13 @@ internal sealed class Game
                 Console.Error.WriteLine("Update sporer spawn points");
                 UpdateSporerSpawnPoints();
                 Console.Error.WriteLine("CheckForSporeRootAction");
-                action = CheckForSporeRootAction(organism);
+                action = CheckForSporeRootAction(organism, minRootSporerDistance);
             }
 
             if (string.IsNullOrEmpty(action))
             {
                 Console.Error.WriteLine("CheckForSporerAction");
-                action = CheckForSporerAction(organism);
+                action = CheckForSporerAction(organism, minRootSporerDistance);
             }
 
             if (string.IsNullOrEmpty(action))
@@ -240,7 +252,7 @@ internal sealed class Game
         // we're still happy to consume them.
     }
 
-    private string CheckForHarvestAction(int closestOrgan, List<Point> shortestPath)
+    private string CheckForHarvestAction(int closestOrgan, List<Point> shortestPath, int maxProteinDistance)
     {
         string action = string.Empty;
 
@@ -261,7 +273,7 @@ internal sealed class Game
                 }
             }
 
-            int maxWalkingDistance = Math.Min(5, PlayerProteinStock.A);
+            int maxWalkingDistance = Math.Min(maxProteinDistance, PlayerProteinStock.A);
 
             if (string.IsNullOrEmpty(action) && (shortestPath.Count <= maxWalkingDistance))
             {
@@ -276,7 +288,7 @@ internal sealed class Game
         return action;
     }
 
-    private string CheckForSporerAction(Organism organism)
+    private string CheckForSporerAction(Organism organism, int minRootSporerDistance)
     {
         string action = string.Empty;
 
@@ -292,25 +304,25 @@ internal sealed class Game
                 List<Point> directions = new List<Point>();
 
                 // Check south
-                if (organPoint.Y <= Height - _minRootSporerDistance - 1)
+                if (organPoint.Y <= Height - minRootSporerDistance - 1)
                 {
                     directions.Add(new Point(0, 1));
                 }
 
                 // Check North
-                if (organPoint.Y >= _minRootSporerDistance)
+                if (organPoint.Y >= minRootSporerDistance)
                 {
                     directions.Add(new Point(0, -1));
                 }
 
                 // Check East
-                if (organPoint.X <= Width - _minRootSporerDistance - 1)
+                if (organPoint.X <= Width - minRootSporerDistance - 1)
                 {
                     directions.Add(new Point(1, 0));
                 }
 
                 // Check West
-                if (organPoint.X >= _minRootSporerDistance)
+                if (organPoint.X >= minRootSporerDistance)
                 {
                     directions.Add(new Point(-1, 0));
                 }
@@ -334,8 +346,6 @@ internal sealed class Game
                         checkPoint = new Point(checkPoint.X + direction.X,
                                                checkPoint.Y + direction.Y);
                         
-                        Console.Error.WriteLine($"checkPoint {checkPoint.X},{checkPoint.Y}");
-
                         if (checkPoint.X < 0) { break; }
 
                         if (checkPoint.X >= Width) { break; }
@@ -344,13 +354,13 @@ internal sealed class Game
 
                         if (checkPoint.Y >= Height) { break; }
 
-                        if (distance >= _minRootSporerDistance)
+                        if (distance >= minRootSporerDistance)
                         {
-                            Console.Error.WriteLine($"Distance viable");
+                            // Console.Error.WriteLine($"Distance viable");
                             //    if it's on a spawn point 
                             if (_sporerPoints[checkPoint.X, checkPoint.Y])
                             {
-                                Console.Error.WriteLine($"There's a spore point");
+                                // Console.Error.WriteLine($"There's a spore point");
                                 string dir = string.Empty;
 
                                 if (direction.X == 1)
@@ -390,7 +400,7 @@ internal sealed class Game
         return string.Empty;
     }
 
-    private string CheckForSporeRootAction(Organism organism)
+    private string CheckForSporeRootAction(Organism organism, int minRootSporerDistance)
     {
         if (organism.Organs.Any(o => o.Type == OrganType.SPORER) &&
                 CostCalculator.CanProduceOrgan(OrganType.ROOT, PlayerProteinStock))
@@ -468,7 +478,7 @@ internal sealed class Game
 
                 if (checkPoint.Y >= Height) { break; }
 
-                if (distance >= _minRootSporerDistance)
+                if (distance >= minRootSporerDistance)
                 {
                     Console.Error.WriteLine($"Distance viable");
                     //    if it's on a spawn point 
@@ -667,7 +677,11 @@ internal sealed class Game
         if (closestOrgan != -1)
         {
             string organToGrow = string.Empty;
-            if (CostCalculator.CanProduceOrgan(OrganType.BASIC, PlayerProteinStock))
+            if (CostCalculator.CanProduceOrgan(OrganType.SPORER, PlayerProteinStock))
+            {
+                organToGrow = OrganType.SPORER.ToString() + " E";
+            }
+            else if (CostCalculator.CanProduceOrgan(OrganType.BASIC, PlayerProteinStock))
             {
                 organToGrow = OrganType.BASIC.ToString();
             }

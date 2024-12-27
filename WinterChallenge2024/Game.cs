@@ -194,6 +194,11 @@ internal sealed class Game
 
         foreach (Protein protein in Proteins.Where(p => !p.IsHarvested))
         {
+            if (MapChecker.HasNearbyOrgan(protein, PlayerOrganisms))
+            {
+                continue;
+            }
+
             List<Point> possibleRootPoints = MapChecker.GetRootPoints(protein.Position, this);
             foreach (var possPoint in possibleRootPoints)
             {
@@ -312,94 +317,6 @@ internal sealed class Game
                     }
                 }
             }
-
-            //List<Protein> unharvestedByMeProteins = Proteins.Where(p => !p.IsHarvested).ToList();
-
-            //List<Protein> proteinsToCheck = new List<Protein>();
-
-            //foreach (Protein protein in unharvestedByMeProteins)
-            //{
-            //    if (!MapChecker.HasNearbyOrgan(protein, PlayerOrganisms))
-            //    {
-            //        proteinsToCheck.Add(protein);
-            //    }
-            //}
-
-            // int leastStepsToProtein = int.MaxValue;
-            // int quickestOrganId = -1;
-            // Point quickestPoint = new Point(-1, -1);
-
-            // int maxDistance = 10;
-
-            //foreach (Protein protein in proteinsToCheck)
-            //{
-            //    List<Point> possibleRootPoints = MapChecker.GetRootPoints(protein.Position, this);
-
-            //    // TODO: order by closest to enemy (i.e. We want to be able to block and
-            //    //       destroy the enemy before they can get to the protein
-
-            //    // TODO: This is very intensive. Maybe add a cutoff for the 
-            //    //       AStar search so that it doesn't keep searching
-            //    foreach (Point rootPoint in possibleRootPoints)
-            //    {                    
-            //        // Draw a line towards the organism
-            //        // West
-            //        bool canStillMove = true;
-            //        int distanceFromRootPoint = 1;
-
-            //        while (canStillMove)
-            //        {
-            //            Point currentPoint = new Point(rootPoint.X - distanceFromRootPoint, rootPoint.Y);
-
-            //            // If we can't grow here we've hit an obstacle. Don't check further
-            //            if (!MapChecker.CanGrowOn(currentPoint, this))
-            //            {
-            //                canStillMove = false;
-            //                continue;
-            //            }
-
-            //            // This is too close to bother spawning. Carry on 
-            //            // checking further
-            //            if (distanceFromRootPoint >= minRootSporerDistance)
-            //            {
-            //                distanceFromRootPoint++;
-            //                continue;
-            //            }
-
-            //            foreach (Organ organ in organism.Organs)
-            //            {
-            //                AStar aStar = new AStar(this);
-            //                List<Point> path = aStar.GetShortestPath(organ.Position, currentPoint, maxDistance);
-
-            //                if (path.Count < leastStepsToProtein && path.Count > 0)
-            //                {
-            //                    leastStepsToProtein = path.Count;
-            //                    quickestOrganId = organ.Id;
-            //                    quickestPoint = path[0];
-
-            //                    if (leastStepsToProtein < maxDistance)
-            //                    {
-            //                        maxDistance = leastStepsToProtein;
-            //                    }
-            //                }          
-            //            }
-
-            //            distanceFromRootPoint++;
-            //        }
-            //    }
-            //}
-
-            //if (quickestOrganId != -1)
-            //{
-            //    if (leastStepsToProtein < 2)
-            //    {
-            //        return $"GROW {quickestOrganId} {quickestPoint.X} {quickestPoint.Y} SPORER E";
-            //    }
-            //    else
-            //    {
-            //        return $"GROW {quickestOrganId} {quickestPoint.X} {quickestPoint.Y} BASIC";
-            //    }
-            //}
         }
 
         return string.Empty;
@@ -435,7 +352,7 @@ internal sealed class Game
 
                 if (!assigned)
                 {
-                    sporer = sporers[0];
+                    return string.Empty;
                 }
             }
 

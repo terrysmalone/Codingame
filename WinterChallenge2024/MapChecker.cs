@@ -173,6 +173,7 @@ internal static class MapChecker
     // If we can draw a line from the sporer to a root then it's spored
     internal static bool HasSporerSpored(Organ sporer, Game game)
     {
+        Console.Error.WriteLine($"Checking if sporer on {sporer.Position.X},{sporer.Position.Y} has spored");
         int xDelta = 0;
         int yDelta = 0;
 
@@ -202,11 +203,14 @@ internal static class MapChecker
 
         while(!hitSomething)
         {
-            foreach(Organism organism in game.PlayerOrganisms)
+            Console.Error.WriteLine($"Checking {checkPoint.X},{checkPoint.Y}");
+
+            foreach (Organism organism in game.PlayerOrganisms)
             {
                 if(organism.Organs.Any(o => o.Type == OrganType.ROOT &&
                                             o.Position == checkPoint))
                 {
+                    Console.Error.WriteLine("Hit a root");
                     return true;
                 }
             }
@@ -214,6 +218,8 @@ internal static class MapChecker
             if (!CanGrowOn(checkPoint, GrowStrategy.UNHARVESTED, game))
             {
                 hitSomething = true;
+                Console.Error.WriteLine("hitSomething");
+
             }
 
             checkPoint = new Point(checkPoint.X + xDelta, checkPoint.Y + yDelta);

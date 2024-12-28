@@ -147,4 +147,11 @@ internal static class Display
 
         Console.Error.WriteLine(pathText);
     }
+
+    internal static void TimeStamp(long totalTime, long segmentTime, string task)
+    {
+        TimeSpan total = TimeSpan.FromTicks(totalTime);
+        TimeSpan segment = TimeSpan.FromTicks(segmentTime);
+        Console.Error.WriteLine($"{total.Milliseconds}ms-{segment.Milliseconds}ms-{task}");
+    }
 }

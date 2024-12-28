@@ -43,3 +43,6 @@ seed=-6630469394645055000
 
 A D protein out of reach. I should prioritise getting to it
 seed=6911191266081234000
+
+Does some weird sporer moves
+seed=6217843155398139000

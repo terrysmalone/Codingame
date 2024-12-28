@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Xml.Linq;
 using static System.Collections.Specialized.BitVector32;
 using static System.Formats.Asn1.AsnWriter;
@@ -31,6 +33,10 @@ internal sealed class Game
     internal bool[,] opponentOrgans;
     internal bool[,] opponentOrganEdges;
 
+    private Stopwatch _timer;
+    private long _totalTime;
+    private long _segmentTime;
+    
     private readonly List<Point> _directions = new List<Point>
     {
         new Point(0, 1),
@@ -65,18 +71,25 @@ internal sealed class Game
 
     internal List<string> GetActions()
     {
+        _totalTime = 0;
+        _timer = new Stopwatch();
+        _timer.Start();
+
         _sporerPoints = new bool[Width, Height];
 
         UpdateMaps();
-      
+
+        DisplayTime("Updated maps");
+        
         // TODO: Add an Action struct to prioritise different actions and choose
         // between them
 
         CheckForHarvestedProtein();
-        
+        DisplayTime("Updated check for harvested protein");
+   
         List<string> actions = new List<string>();
 
-        // TODO: I still think HArvesting should be the top priority.
+        // TODO: I still think Harvesting should be the top priority.
         // //    It's currently after sporing
 
         int maxProteinDistance = 5;
@@ -94,16 +107,20 @@ internal sealed class Game
 
         foreach (Organism organism in PlayerOrganisms)
         {
+            Console.Error.WriteLine("-------------------------------------");
+            Console.Error.WriteLine($"Checking organism: {organism.RootId}");
             string action = string.Empty;
 
             if (string.IsNullOrEmpty(action))
             {
-                Console.Error.WriteLine("CheckForTentacleAction");
                 action = CheckForTentacleAction(organism);
+                DisplayTime("Checked for tentacle action");
             }
 
-            Console.Error.WriteLine("GetShortestPathToProtein");
-            (int closestOrgan, List<Point> shortestPath) = GetShortestPathToProtein(organism, Proteins, 2, 10, GrowStrategy.NO_PROTEINS);
+            (int closestOrgan, List<Point> shortestPath) = 
+                GetShortestPathToProtein(organism, Proteins, 2, 10, GrowStrategy.NO_PROTEINS);
+
+            DisplayTime("Checked for shortest path to protein");
 
             Console.Error.WriteLine($"Closest organ:{closestOrgan}");
             Console.Error.WriteLine($"Shortest path:{shortestPath.Count}");
@@ -112,26 +129,25 @@ internal sealed class Game
                 Display.Path(shortestPath);
             }
 
-            Console.Error.WriteLine("Got closest path");
             if (string.IsNullOrEmpty(action))
             {
-                Console.Error.WriteLine("CheckForHarvestAction");
                 action = CheckForHarvestAction(closestOrgan, shortestPath, maxProteinDistance);
+                DisplayTime("Checked for harvest action");
             }
-
 
             if (string.IsNullOrEmpty(action))
             {
                 Console.Error.WriteLine("Update sporer spawn points");
                 UpdateSporerSpawnPoints();
-                Console.Error.WriteLine("CheckForSporeRootAction");
+                DisplayTime("Updated sporer spawn points");
                 action = CheckForSporeRootAction(organism, minRootSporerDistance);
+                DisplayTime("Checked for spore root action");
             }
 
             if (string.IsNullOrEmpty(action))
             {
-                Console.Error.WriteLine("CheckForSporerAction");
                 action = CheckForSporerAction(organism, minRootSporerDistance);
+                DisplayTime("Checked for sporer action");
             }
 
             if (string.IsNullOrEmpty(action))
@@ -139,8 +155,8 @@ internal sealed class Game
                 // We've already pretty much tried this as part of the 
                 // Harvester check but do it again now since we're willing 
                 // to go a further now
-                Console.Error.WriteLine("CheckForMovementAction");
                 action = CheckForMovementAction(closestOrgan, shortestPath);
+                DisplayTime("Checked for movement action");
             }
 
             // If we've gotten this far without getting a move things are 
@@ -148,24 +164,24 @@ internal sealed class Game
             // by not wanting to grow over proteins. Try that now
             if (string.IsNullOrEmpty(action))
             {
-                Console.Error.WriteLine("GetDesperateDestructiveMove");
                 action = GetDesperateDestructiveMove(organism, GrowStrategy.UNHARVESTED);
+                DisplayTime("Checked for desperate action");
             }
 
             // We're even more desperate now. Lets consider growing on harvested 
             // proteins
             if (string.IsNullOrEmpty(action))
             {
-                Console.Error.WriteLine("GetEvenMoreDesperateDestructiveMove");
                 action = GetDesperateDestructiveMove(organism, GrowStrategy.ALL_PROTEINS);
+                DisplayTime("Checked for very desperate action");
             }
 
             // If there wasn't a protein to go to just spread randomly...for now
             if (string.IsNullOrEmpty(action) &&
                 CostCalculator.CanProduceOrgan(OrganType.BASIC, PlayerProteinStock))
-            {
-                Console.Error.WriteLine("GetRandomBasicGrow");
+            {                
                 action = GetRandomBasicGrow(organism);
+                DisplayTime("Checked for random move action");
             }
 
             if (string.IsNullOrEmpty(action))
@@ -176,7 +192,19 @@ internal sealed class Game
             actions.Add(action);
         }
 
+        DisplayTime("Done");
+
+        _timer.Stop();
+
         return actions;
+    }
+
+    private void DisplayTime(string message)
+    {
+        long segmentTime = _timer.ElapsedTicks;
+        _totalTime += segmentTime;
+        Display.TimeStamp(_totalTime, segmentTime, message);
+        _timer.Restart();
     }
 
     private string CheckForTentacleAction(Organism organism)
@@ -185,7 +213,7 @@ internal sealed class Game
         {    
             foreach (Organ organ in organism.Organs)
             {
-                Console.Error.WriteLine($"Checking organ: {organ.Id}");
+                // Console.Error.WriteLine($"Checking organ: {organ.Id}");
 
                 Point organPoint = organ.Position;
 
@@ -194,7 +222,7 @@ internal sealed class Game
                     Point checkPoint = new Point(organPoint.X + direction.X,
                                                  organPoint.Y + direction.Y);
 
-                    Console.Error.WriteLine($"Checking point {checkPoint.X},{checkPoint.Y}");
+                    // Console.Error.WriteLine($"Checking point {checkPoint.X},{checkPoint.Y}");
 
                     // TODO: I can't grow a tentacle in front of an opponent tentacle
                     //       THis can be updated in the opponent edges map
@@ -202,10 +230,10 @@ internal sealed class Game
                                              this,
                                              GrowStrategy.ALL_PROTEINS))
                     {
-                        Console.Error.WriteLine("Can grow");
+                        // Console.Error.WriteLine("Can grow");
                         if (opponentOrganEdges[checkPoint.X, checkPoint.Y])
                         {
-                            Console.Error.WriteLine("FOUND OPPONENT EDGE");
+                            // Console.Error.WriteLine("FOUND OPPONENT EDGE");
 
                             string dir = string.Empty;
 
@@ -238,6 +266,16 @@ internal sealed class Game
 
     internal void UpdateMaps()
     {
+        // Reset them all at the start because some of the calculation 
+        // will make changes to the others.
+        isBlocked = new bool[Width, Height];
+
+        hasHarvestedProtein = new bool[Width, Height];
+        hasAnyProtein = new bool[Width, Height];
+
+        opponentOrgans = new bool[Width, Height];
+        opponentOrganEdges = new bool[Width, Height];
+
         UpdateIsBlocked();
         UpdateHasProteins();
         UpdateOpponentOrgans();
@@ -245,41 +283,65 @@ internal sealed class Game
 
     private void UpdateOpponentOrgans()
     {
-        opponentOrgans = new bool[Width, Height];
-        opponentOrganEdges = new bool[Width, Height];
-
         foreach (Organism organism in OpponentOrganisms)
         {
             foreach (Organ organ in organism.Organs)
             {
                 opponentOrgans[organ.Position.X, organ.Position.Y] = true;
 
+                // We can't walk on an outward facing tentacle
+                // So add these to the isBlocked list and not to the valid edges
+
                 // North
-                if (organ.Position.Y - 1 >= 0 && 
-                    !(organ.Type == OrganType.TENTACLE && organ.Direction == OrganDirection.N))
-                {   
-                    opponentOrganEdges[organ.Position.X, organ.Position.Y - 1] = true;
+                if (organ.Position.Y - 1 >= 0)
+                {
+                    if (organ.Type == OrganType.TENTACLE && organ.Direction == OrganDirection.N)
+                    {
+                        isBlocked[organ.Position.X, organ.Position.Y - 1] = true;
+                    }
+                    else
+                    {
+                        opponentOrganEdges[organ.Position.X, organ.Position.Y - 1] = true;
+                    }
                 }
 
                 // East
-                if (organ.Position.X + 1 < Width &&
-                    !(organ.Type == OrganType.TENTACLE && organ.Direction == OrganDirection.E))
+                if (organ.Position.X + 1 < Width)
                 {
-                    opponentOrganEdges[organ.Position.X + 1, organ.Position.Y] = true;
+                    if (organ.Type == OrganType.TENTACLE && organ.Direction == OrganDirection.E)
+                    {
+                        isBlocked[organ.Position.X + 1, organ.Position.Y] = true;
+                    }
+                    else
+                    {
+                        opponentOrganEdges[organ.Position.X + 1, organ.Position.Y] = true;
+                    }
                 }
 
                 // South
-                if (organ.Position.Y + 1 < Height &&
-                    !(organ.Type == OrganType.TENTACLE && organ.Direction == OrganDirection.S))
+                if (organ.Position.Y + 1 < Height)
                 {
-                    opponentOrganEdges[organ.Position.X, organ.Position.Y + 1] = true;
+                    if (organ.Type == OrganType.TENTACLE && organ.Direction == OrganDirection.S)
+                    {
+                        isBlocked[organ.Position.X, organ.Position.Y + 1] = true;
+                    }
+                    else
+                    {
+                        opponentOrganEdges[organ.Position.X, organ.Position.Y + 1] = true;
+                    }
                 }
 
                 // WEST
-                if (organ.Position.X - 1 >= 0 &&
-                    !(organ.Type == OrganType.TENTACLE && organ.Direction == OrganDirection.W))
+                if (organ.Position.X - 1 >= 0)
                 {
-                    opponentOrganEdges[organ.Position.X - 1, organ.Position.Y] = true;
+                    if (organ.Type == OrganType.TENTACLE && organ.Direction == OrganDirection.W)
+                    {
+                        isBlocked[organ.Position.X - 1, organ.Position.Y] = true;
+                    }
+                    else
+                    {
+                        opponentOrganEdges[organ.Position.X - 1, organ.Position.Y] = true;
+                    }
                 }
             }
         }
@@ -287,7 +349,6 @@ internal sealed class Game
 
     private void UpdateIsBlocked()
     {
-        isBlocked = new bool[Width, Height];
         // Not walkable if player organ on that spot
         foreach (Organism organism in PlayerOrganisms)
         {
@@ -315,9 +376,6 @@ internal sealed class Game
 
     private void UpdateHasProteins()
     {
-        hasHarvestedProtein = new bool[Width, Height];
-        hasAnyProtein = new bool[Width, Height];
-
         foreach (Protein protein in Proteins)
         {
             if (protein.IsHarvested)

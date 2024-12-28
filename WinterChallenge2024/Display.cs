@@ -144,5 +144,7 @@ internal static class Display
         {
             pathText += $"({point.X},{point.Y}) ->";
         }
+
+        Console.Error.WriteLine(pathText);
     }
 }

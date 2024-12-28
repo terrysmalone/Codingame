@@ -397,6 +397,8 @@ internal sealed class Game
     private Stopwatch _timer;
     private long _totalTime;
     private long _segmentTime;
+
+    private List<int> _createdSporer = new List<int>();
     
     private readonly List<Point> _directions = new List<Point>
     {
@@ -490,7 +492,7 @@ internal sealed class Game
                 Display.Path(shortestPath);
             }
 
-            if (string.IsNullOrEmpty(action))
+            if (string.IsNullOrEmpty(action) && !_createdSporer.Contains(organism.RootId))
             {
                 action = CheckForHarvestAction(closestOrgan, shortestPath, maxProteinDistance);
                 DisplayTime("Checked for harvest action");
@@ -504,6 +506,16 @@ internal sealed class Game
                 action = CheckForSporeRootAction(organism, minRootSporerDistance);
                 DisplayTime("Checked for spore root action");
             }
+
+            // We skipped this earlier to check for a sporer action.
+            // We obviously didn't find one. Try it now.
+            if (string.IsNullOrEmpty(action) && _createdSporer.Contains(organism.RootId))
+            {
+                action = CheckForHarvestAction(closestOrgan, shortestPath, maxProteinDistance);
+                DisplayTime("Checked for harvest action");
+            }
+
+            _createdSporer.Remove(organism.RootId);
 
             if (string.IsNullOrEmpty(action))
             {
@@ -963,8 +975,8 @@ internal sealed class Game
 
             if (furthestDistance != -1)
             {
+                _createdSporer.Add(organism.RootId);
                 return $"GROW {furthestOrgan} {furthestSporerPoint.X} {furthestSporerPoint.Y} SPORER {furthestDirection}";
-
             }
         }
 

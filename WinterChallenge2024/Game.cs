@@ -236,7 +236,7 @@ internal sealed class Game
         return string.Empty;
     }
 
-    private void UpdateMaps()
+    internal void UpdateMaps()
     {
         UpdateIsBlocked();
         UpdateHasProteins();

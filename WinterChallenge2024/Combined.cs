@@ -386,6 +386,14 @@ internal sealed class Game
     internal bool[,] opponentOrgans;
     internal bool[,] opponentOrganEdges;
 
+    private readonly List<Point> _directions = new List<Point>
+    {
+        new Point(0, 1),
+        new Point(0, -1),
+        new Point(1, 0),
+        new Point(-1, 0)
+    };
+
     internal Game(int width, int height)
     {
         Width = width;
@@ -410,7 +418,6 @@ internal sealed class Game
 
     internal void SetProteins(List<Protein> proteins) => Proteins = proteins;
 
-    int turn = 0;
     internal List<string> GetActions()
     {
         _sporerPoints = new bool[Width, Height];
@@ -537,13 +544,7 @@ internal sealed class Game
 
                 Point organPoint = organ.Position;
 
-                List<Point> directions = new List<Point>();
-                directions.Add(new Point(0, 1));
-                directions.Add(new Point(0, -1));
-                directions.Add(new Point(1, 0));
-                directions.Add(new Point(-1, 0));
-
-                foreach (Point direction in directions)
+                foreach (Point direction in _directions)
                 {
                     Point checkPoint = new Point(organPoint.X + direction.X,
                                                  organPoint.Y + direction.Y);
@@ -590,7 +591,7 @@ internal sealed class Game
         return string.Empty;
     }
 
-    private void UpdateMaps()
+    internal void UpdateMaps()
     {
         UpdateIsBlocked();
         UpdateHasProteins();
@@ -1123,28 +1124,18 @@ internal sealed class Game
         {
             Organ current = organism.Organs[i];
 
-            if (MapChecker.CanGrowOn(new Point(current.Position.X + 1, current.Position.Y), this, GrowStrategy.ALL_PROTEINS))
+            foreach (Point direction in _directions)
             {
-                action = $"GROW {current.Id} {current.Position.X + 1} {current.Position.Y} BASIC";
-                break;
-            }
+                Point checkPoint = new Point(current.Position.X + direction.X, 
+                                             current.Position.Y + direction.Y);
 
-            if (MapChecker.CanGrowOn(new Point(current.Position.X, current.Position.Y + 1), this, GrowStrategy.ALL_PROTEINS))
-            {
-                action = $"GROW {current.Id} {current.Position.X} {current.Position.Y + 1} BASIC";
-                break;
-            }
+                if (MapChecker.CanGrowOn(checkPoint, this, GrowStrategy.ALL_PROTEINS))
+                {
+                    action = $"GROW {current.Id} {checkPoint.X} {checkPoint.Y} BASIC";
 
-            if (MapChecker.CanGrowOn(new Point(current.Position.X, current.Position.Y - 1), this, GrowStrategy.ALL_PROTEINS))
-            {
-                action = $"GROW {current.Id} {current.Position.X} {current.Position.Y - 1} BASIC";
-                break;
-            }
-
-            if (MapChecker.CanGrowOn(new Point(current.Position.X - 1, current.Position.Y), this, GrowStrategy.ALL_PROTEINS))
-            {
-                action = $"GROW {current.Id} {current.Position.X - 1} {current.Position.Y} BASIC";
-                break;
+                    // TODO: Let us choose other nodes too
+                    break;
+                }
             }
         }
 

@@ -458,7 +458,15 @@ internal sealed class Game
             if (string.IsNullOrEmpty(action) && (shortestPath.Count <= maxWalkingDistance))
             {
                 // Grow towards the nearest protein
-                if (CostCalculator.CanProduceOrgan(OrganType.BASIC, PlayerProteinStock))
+                // Grow towards the nearest protein
+                string direction = CalculateClosestOpponentDirection(OpponentOrganisms, shortestPath[0]);
+
+                // If we can make it a tentacle and still have some spare proteins then do it
+                if (CostCalculator.CanProduceOrgan(OrganType.TENTACLE, PlayerProteinStock, 5))
+                {
+                    action = $"GROW {closestOrgan} {shortestPath[0].X} {shortestPath[0].Y} TENTACLE {direction}";
+                }
+                else if (CostCalculator.CanProduceOrgan(OrganType.BASIC, PlayerProteinStock))
                 {
                     action = $"GROW {closestOrgan} {shortestPath[0].X} {shortestPath[0].Y} BASIC";
                 }

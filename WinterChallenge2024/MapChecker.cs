@@ -129,14 +129,14 @@ internal static class MapChecker
         return rootPoints;
     }
 
-    internal static bool HasNearbyOrgan(Protein protein, List<Organism> playerOrganisms)
+    internal static bool HasNearbyOrgan(Point point, List<Organism> playerOrganisms)
     {
         int maxDistance = 3;
         foreach (Organism organism in playerOrganisms)
         {
             foreach (Organ organ in organism.Organs)
             {
-                if (Math.Abs(protein.Position.X - organ.Position.X) + Math.Abs(protein.Position.Y - organ.Position.Y) <= maxDistance)
+                if (Math.Abs(point.X - organ.Position.X) + Math.Abs(point.Y - organ.Position.Y) <= maxDistance)
                 {
                     return true;
                 }

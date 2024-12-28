@@ -394,15 +394,13 @@ internal sealed class Game
     {
         foreach (Protein protein in Proteins.Where(p => !p.IsHarvested))
         {
-            if (MapChecker.HasNearbyOrgan(protein, PlayerOrganisms))
-            {
-                continue;
-            }
-
             List<Point> possibleRootPoints = MapChecker.GetRootPoints(protein.Position, this);
             foreach (var possPoint in possibleRootPoints)
             {
-                _sporerPoints[possPoint.X, possPoint.Y] = true;
+                if (!MapChecker.HasNearbyOrgan(possPoint, PlayerOrganisms))
+                {
+                    _sporerPoints[possPoint.X, possPoint.Y] = true;
+                }
             }
 
             // Console.Error.WriteLine($"{possibleRootPoints.Count} possible root points added for protein {protein.Position.X},{protein.Position.Y}");

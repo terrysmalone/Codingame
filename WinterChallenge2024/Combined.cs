@@ -1226,8 +1226,6 @@ internal sealed class Game
 
     private string GetDesperateDestructiveMove(Organism organism, GrowStrategy growStrategy)
     {
-        // Display.Organisms(PlayerOrganisms);
-        // TODO: I want max distance to be 2 here but then it bugs out
         (int closestOrgan, List<Point> shortestPath) = GetShortestPathToProtein(organism, Proteins, 1, 10, growStrategy);
 
         if (closestOrgan != -1)
@@ -1275,11 +1273,17 @@ internal sealed class Game
             // It's either east or west
             if (endPoint.X > startPoint.X)
             {
-                return "E";
+                if (!Walls.Contains(new Point(startPoint.X + 1, startPoint.Y)))
+                {
+                    return "E";
+                }
             }
             else
             {
-                return "W";
+                if (!Walls.Contains(new Point(startPoint.X - 1, startPoint.Y)))
+                {
+                    return "W";
+                }
             }
         }
         else
@@ -1287,13 +1291,39 @@ internal sealed class Game
             // It's either north or south
             if (endPoint.Y > startPoint.Y)
             {
-                return "S";
+                if (!Walls.Contains(new Point(startPoint.X, startPoint.Y + 1)))
+                {
+                    return "S";
+                }
             }
             else
             {
-                return "N";
+                if (!Walls.Contains(new Point(startPoint.X, startPoint.Y - 1)))
+                {
+                    return "N";
+                }
             }
         }
+
+        // If we've gotten this far it means that pointing towards the 
+        // opponents main root would point towards a wall. We don't want that. 
+        // Grow towards an open space
+        foreach (Point direction in _directions)
+        {
+            Point directionPoint = new Point(startPoint.X + direction.X,
+                                             startPoint.Y + direction.Y);
+
+            if (MapChecker.CanGrowOn(directionPoint,
+                                     this,
+                                     GrowStrategy.ALL_PROTEINS))
+            {
+                return GetDirection(startPoint, directionPoint);
+            }
+        }
+
+        // if we got this far it really doesn't matter 
+        return "E";
+
     }
 
     private Point GetClosestRoot(List<Organism> opponentOrganisms, Point startPoint)

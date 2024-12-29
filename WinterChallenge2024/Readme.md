@@ -2,8 +2,11 @@
 
  - Ordered list of priorities
 	- This will mean a struct to keep track of actions
+	- As a start use the struct to 
+	  - Make sure I have enough protein. Otherwise chosse another move
+	  - Make sure I'm not going to the same place with 2 organisms
  - More aggressive tentacles. Now they just go for close organs (within 2 spaces. Do an A* search and start attacking sooner)
-	
+ - Try iterative deepening for A* (it'll probably be needed for building priority lists)
 
 ## Test seeds
 
@@ -41,3 +44,6 @@ BUG: When trying to unblock myself I often make a very silly
 decision and destroy harvesters that don't let me unblock.
 I need a flood fill in there to help me understand when I should leave the harvesters alone
 seed=2134750476394718000
+
+BUG: 2 of my organisms go for the same spot on move 8
+seed=-6143774278780553000

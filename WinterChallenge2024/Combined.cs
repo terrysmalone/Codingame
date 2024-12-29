@@ -216,6 +216,64 @@ internal static class CostCalculator
 
         return false;
     }
+
+    internal static bool CanProduceOrgans(List<OrganType> organs, ProteinStock proteinStock)
+    {
+        int aNeeded = 0;
+        int bNeeded = 0;
+        int cNeeded = 0;
+        int dNeeded = 0;
+
+        foreach (OrganType organType in organs)
+        {
+            switch (organType)
+            {
+                case OrganType.BASIC:
+                    aNeeded++;
+                    break;
+                case OrganType.HARVESTER:
+                    cNeeded++;
+                    dNeeded++;
+                    break;
+                case OrganType.ROOT:
+                    aNeeded++;
+                    bNeeded++;
+                    cNeeded++;
+                    dNeeded++;
+                    break;
+                case OrganType.SPORER:
+                    bNeeded++;
+                    dNeeded++;
+                    break;
+                case OrganType.TENTACLE:
+                    bNeeded++;
+                    cNeeded++;
+                    break;
+            }
+        }
+
+        if (proteinStock.A < aNeeded)
+        {
+            return false;
+        }
+
+        if (proteinStock.B < bNeeded)
+        {
+            return false;
+        }
+
+        if (proteinStock.C < cNeeded)
+        {
+            return false;
+        }
+
+        if (proteinStock.D < dNeeded)
+        {
+            return false;
+        }
+
+        return true;
+    }
 }
 
 
@@ -608,46 +666,57 @@ internal sealed class Game
     private string CheckForTentacleAction(Organism organism)
     {
         if (CostCalculator.CanProduceOrgan(OrganType.TENTACLE, PlayerProteinStock))
-        {    
-            foreach (Organ organ in organism.Organs)
+        {
+            (int closestOrganId, string direction, List<Point> shortestPath) = GetShortestPathToOpponent(organism, 2, 4, GrowStrategy.ALL_PROTEINS);
+
+            if (closestOrganId != -1)
             {
-                Point organPoint = organ.Position;
-
-                foreach (Point direction in _directions)
-                {
-                    Point checkPoint = new Point(organPoint.X + direction.X,
-                                                 organPoint.Y + direction.Y);
-
-                    if (MapChecker.CanGrowOn(checkPoint,
-                                             this,
-                                             GrowStrategy.ALL_PROTEINS))
-                    {
-                        if (opponentOrganEdges[checkPoint.X, checkPoint.Y])
-                        {
-                            string dir = string.Empty;
-
-                            if (checkPoint.Y - 1 >= 0 && opponentOrgans[checkPoint.X, checkPoint.Y - 1])
-                            {
-                                dir = "N";
-                            }
-                            else if (checkPoint.X + 1 < Width && opponentOrgans[checkPoint.X + 1, checkPoint.Y])
-                            {
-                                dir = "E";
-                            }
-                            else if (checkPoint.Y + 1 < Height && opponentOrgans[checkPoint.X, checkPoint.Y + 1])
-                            {
-                                dir = "S";
-                            }
-                            else if (checkPoint.X - 1 >= 0 && opponentOrgans[checkPoint.X-1, checkPoint.Y])
-                            {
-                                dir = "W";
-                            }
-
-                            return $"GROW {organ.Id} {checkPoint.X} {checkPoint.Y} TENTACLE {dir}";
-                        }
-                    }
-                }
+                return $"GROW {closestOrganId} {shortestPath[0].X} {shortestPath[0].Y} TENTACLE {direction}";
             }
+
+            //foreach (Organ organ in organism.Organs)
+            //{
+            //    Point organPoint = organ.Position;
+
+
+
+
+
+            //    foreach (Point direction in _directions)
+            //    {
+            //        Point checkPoint = new Point(organPoint.X + direction.X,
+            //                                     organPoint.Y + direction.Y);
+
+            //        if (MapChecker.CanGrowOn(checkPoint,
+            //                                 this,
+            //                                 GrowStrategy.ALL_PROTEINS))
+            //        {
+            //            if (opponentOrganEdges[checkPoint.X, checkPoint.Y])
+            //            {
+            //                string dir = string.Empty;
+
+            //                if (checkPoint.Y - 1 >= 0 && opponentOrgans[checkPoint.X, checkPoint.Y - 1])
+            //                {
+            //                    dir = "N";
+            //                }
+            //                else if (checkPoint.X + 1 < Width && opponentOrgans[checkPoint.X + 1, checkPoint.Y])
+            //                {
+            //                    dir = "E";
+            //                }
+            //                else if (checkPoint.Y + 1 < Height && opponentOrgans[checkPoint.X, checkPoint.Y + 1])
+            //                {
+            //                    dir = "S";
+            //                }
+            //                else if (checkPoint.X - 1 >= 0 && opponentOrgans[checkPoint.X-1, checkPoint.Y])
+            //                {
+            //                    dir = "W";
+            //                }
+
+            //                return $"GROW {organ.Id} {checkPoint.X} {checkPoint.Y} TENTACLE {dir}";
+            //            }
+            //        }
+            //    }
+            //}
         }
 
         return string.Empty;
@@ -884,8 +953,8 @@ internal sealed class Game
     {
         string action = string.Empty;
 
-        if (CostCalculator.CanProduceOrgan(OrganType.ROOT, PlayerProteinStock) &&
-            CostCalculator.CanProduceOrgan(OrganType.SPORER, PlayerProteinStock))
+        if (CostCalculator.CanProduceOrgans(new List<OrganType> { OrganType.ROOT, OrganType.SPORER },
+                                            PlayerProteinStock))
         {
             int furthestDistance = -1;
             int furthestOrgan = -1;
@@ -1249,6 +1318,57 @@ internal sealed class Game
         return (closestId, shortestPath);
     }
 
+    private (int, string, List<Point>) GetShortestPathToOpponent(Organism organism, int minDistance, int maxDistance, GrowStrategy growStrategy)
+    {
+        string action = string.Empty;
+
+        int shortest = int.MaxValue;
+        int closestId = -1;
+        List<Point> shortestPath = new List<Point>();
+
+        AStar aStar = new AStar(this);
+
+        foreach (var organ in organism.Organs)
+        {
+            foreach (Organism opponentOrganism in OpponentOrganisms)
+            {
+                foreach (Organ opponentOrgan in opponentOrganism.Organs)
+                {
+                    int manhattanDistance = MapChecker.CalculateManhattanDistance(organ.Position, opponentOrgan.Position);
+
+                    if (manhattanDistance > maxDistance)
+                    {
+                        continue;
+                    }
+
+                    List<Point> path = aStar.GetShortestPath(organ.Position, opponentOrgan.Position, maxDistance, growStrategy);
+
+                    if (path.Count < shortest && path.Count >= minDistance && path.Count != 0)
+                    {
+                        shortest = path.Count;
+                        shortestPath = new List<Point>(path);
+
+                        closestId = organ.Id;
+
+                        if (shortest < maxDistance)
+                        {
+                            maxDistance = shortest;
+                        }
+                    }
+                }
+            }
+        }
+
+        string direction = string.Empty;
+
+        if (closestId != -1)
+        {
+            direction = GetDirection(shortestPath[0], shortestPath[shortestPath.Count - 1]);
+        }
+        
+        return (closestId, direction, shortestPath);
+    }
+
     private string GetRandomGrow(Organism organism)
     {
         if (organism.RootId == 50)
@@ -1330,7 +1450,7 @@ internal sealed class Game
         if (closestOrgan != -1)
         {
             string closestRootDirection = CalculateClosestOpponentDirection(OpponentOrganisms, shortestPath[0]);
-
+                
             string organToGrow = string.Empty;
             if (CostCalculator.CanProduceOrgan(OrganType.TENTACLE, PlayerProteinStock))
             {

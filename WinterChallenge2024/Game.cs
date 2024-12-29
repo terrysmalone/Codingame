@@ -234,8 +234,6 @@ internal sealed class Game
         {    
             foreach (Organ organ in organism.Organs)
             {
-                // Console.Error.WriteLine($"Checking organ: {organ.Id}");
-
                 Point organPoint = organ.Position;
 
                 foreach (Point direction in _directions)
@@ -243,19 +241,12 @@ internal sealed class Game
                     Point checkPoint = new Point(organPoint.X + direction.X,
                                                  organPoint.Y + direction.Y);
 
-                    // Console.Error.WriteLine($"Checking point {checkPoint.X},{checkPoint.Y}");
-
-                    // TODO: I can't grow a tentacle in front of an opponent tentacle
-                    //       THis can be updated in the opponent edges map
                     if (MapChecker.CanGrowOn(checkPoint,
                                              this,
                                              GrowStrategy.ALL_PROTEINS))
                     {
-                        // Console.Error.WriteLine("Can grow");
                         if (opponentOrganEdges[checkPoint.X, checkPoint.Y])
                         {
-                            // Console.Error.WriteLine("FOUND OPPONENT EDGE");
-
                             string dir = string.Empty;
 
                             if (checkPoint.Y - 1 >= 0 && opponentOrgans[checkPoint.X, checkPoint.Y - 1])

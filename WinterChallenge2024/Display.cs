@@ -94,9 +94,15 @@ internal static class Display
             }
         }
 
-        foreach (Point wall in game.Walls)
+        for (int y = 0; y < game.Height; y++)
         {
-            map[wall.X, wall.Y] = "X";
+            for (int x = 0; x < game.Width; x++)
+            {
+                if (game.Walls[x, y])
+                {
+                    map[x, y] = "X";
+                }
+            }
         }
 
         foreach (Protein protein in game.Proteins)

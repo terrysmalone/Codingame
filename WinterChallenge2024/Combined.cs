@@ -309,9 +309,15 @@ internal static class Display
             }
         }
 
-        foreach (Point wall in game.Walls)
+        for (int y = 0; y < game.Height; y++)
         {
-            map[wall.X, wall.Y] = "X";
+            for (int x = 0; x < game.Width; x++)
+            {
+                if (game.Walls[x, y])
+                {
+                    map[x, y] = "X";
+                }
+            }
         }
 
         foreach (Protein protein in game.Proteins)
@@ -384,7 +390,7 @@ internal sealed class Game
     internal ProteinStock PlayerProteinStock { get; private set; }
     internal ProteinStock OpponentProteinStock { get; private set; }
     
-    public List<Point> Walls { get; private set; }
+    public bool[,] Walls { get; private set; }
     public List<Protein> Proteins { get; private set; }
 
     private bool[,] _sporerPoints;
@@ -416,7 +422,7 @@ internal sealed class Game
         PlayerOrganisms = new List<Organism>();
         OpponentOrganisms = new List<Organism>();
 
-        Walls = new List<Point>();
+        Walls = new bool[Width, Height];
         Proteins = new List<Protein>();
     }
 
@@ -428,7 +434,7 @@ internal sealed class Game
 
     internal void SetOpponentOrganisms(List<Organism> opponentOrganisms) => OpponentOrganisms = opponentOrganisms;
 
-    internal void SetWalls(List<Point> walls) => Walls = walls;
+    internal void SetWalls(bool[,] walls) => Walls = walls;
 
     internal void SetProteins(List<Protein> proteins) => Proteins = proteins;
 
@@ -468,6 +474,15 @@ internal sealed class Game
             maxProteinDistance = 3;
         }
 
+        int maxPathSearch = 10;
+
+        int organCount = PlayerOrganisms.SelectMany(o => o.Organs).Count();
+        if (organCount > 30)
+        {
+            maxPathSearch = 5;
+        }
+        Console.Error.WriteLine($"Organ count: {organCount}");
+
         foreach (Organism organism in PlayerOrganisms)
         {
             Console.Error.WriteLine("-------------------------------------");
@@ -481,7 +496,7 @@ internal sealed class Game
             }
 
             (int closestOrgan, List<Point> shortestPath) = 
-                GetShortestPathToProtein(organism, Proteins, 2, 10, GrowStrategy.NO_PROTEINS);
+                GetShortestPathToProtein(organism, Proteins, 2, maxPathSearch, GrowStrategy.NO_PROTEINS);
 
             DisplayTime("Checked for shortest path to protein");
 
@@ -500,7 +515,6 @@ internal sealed class Game
 
             if (string.IsNullOrEmpty(action))
             {
-                Console.Error.WriteLine("Update sporer spawn points");
                 UpdateSporerSpawnPoints();
                 DisplayTime("Updated sporer spawn points");
                 (action, int fireDistance) = CheckForSporeRootAction(organism, minRootSporerDistance);
@@ -597,8 +611,6 @@ internal sealed class Game
         {    
             foreach (Organ organ in organism.Organs)
             {
-                // Console.Error.WriteLine($"Checking organ: {organ.Id}");
-
                 Point organPoint = organ.Position;
 
                 foreach (Point direction in _directions)
@@ -606,19 +618,12 @@ internal sealed class Game
                     Point checkPoint = new Point(organPoint.X + direction.X,
                                                  organPoint.Y + direction.Y);
 
-                    // Console.Error.WriteLine($"Checking point {checkPoint.X},{checkPoint.Y}");
-
-                    // TODO: I can't grow a tentacle in front of an opponent tentacle
-                    //       THis can be updated in the opponent edges map
                     if (MapChecker.CanGrowOn(checkPoint,
                                              this,
                                              GrowStrategy.ALL_PROTEINS))
                     {
-                        // Console.Error.WriteLine("Can grow");
                         if (opponentOrganEdges[checkPoint.X, checkPoint.Y])
                         {
-                            // Console.Error.WriteLine("FOUND OPPONENT EDGE");
-
                             string dir = string.Empty;
 
                             if (checkPoint.Y - 1 >= 0 && opponentOrgans[checkPoint.X, checkPoint.Y - 1])
@@ -752,9 +757,15 @@ internal sealed class Game
         }
 
         // Not walkable if wall on that spot
-        foreach (Point wall in Walls)
+        for (int x = 0; x < Width; x++)
         {
-            isBlocked[wall.X, wall.Y] = true;
+            for (int y = 0; y < Height; y++)
+            {
+                if (Walls[x, y])
+                {
+                    isBlocked[x, y] = true;
+                }
+            }
         }
     }
 
@@ -1361,14 +1372,15 @@ internal sealed class Game
             // It's either east or west
             if (endPoint.X > startPoint.X)
             {
-                if (!Walls.Contains(new Point(startPoint.X + 1, startPoint.Y)))
+
+                if (startPoint.X + 1 < Width && !Walls[startPoint.X + 1, startPoint.Y])
                 {
                     return "E";
                 }
             }
             else
             {
-                if (!Walls.Contains(new Point(startPoint.X - 1, startPoint.Y)))
+                if (startPoint.X -1 >= 0 && !Walls[startPoint.X - 1, startPoint.Y])
                 {
                     return "W";
                 }
@@ -1379,14 +1391,14 @@ internal sealed class Game
             // It's either north or south
             if (endPoint.Y > startPoint.Y)
             {
-                if (!Walls.Contains(new Point(startPoint.X, startPoint.Y + 1)))
+                if (startPoint.Y + 1 < Height && !Walls[startPoint.X, startPoint.Y + 1])
                 {
                     return "S";
                 }
             }
             else
             {
-                if (!Walls.Contains(new Point(startPoint.X, startPoint.Y - 1)))
+                if (startPoint.Y - 1 >= 0 && !Walls[startPoint.X, startPoint.Y - 1])
                 {
                     return "N";
                 }
@@ -1736,8 +1748,8 @@ partial class Player
         {
             List<Organ> unsortedPlayerOrgans = new List<Organ>();
             List<Organ> unsortedOpponentOrgans = new List<Organ>();
-            List<Point> walls = new List<Point>();
             List<Protein> proteins = new List<Protein>();
+            bool[,] walls = new bool[width, height]; 
 
             int entityCount = int.Parse(Console.ReadLine());
             for (int i = 0; i < entityCount; i++)
@@ -1827,7 +1839,7 @@ partial class Player
                             proteins.Add(new Protein(ProteinType.D, new Point(x, y)));
                             break;
                         case "WALL":
-                            walls.Add(new Point(x, y));
+                            walls[x, y] = true;
                             break;
                     }
                 }

@@ -22,7 +22,7 @@ internal sealed class Game
     internal ProteinStock PlayerProteinStock { get; private set; }
     internal ProteinStock OpponentProteinStock { get; private set; }
     
-    public List<Point> Walls { get; private set; }
+    public bool[,] Walls { get; private set; }
     public List<Protein> Proteins { get; private set; }
 
     private bool[,] _sporerPoints;
@@ -54,7 +54,7 @@ internal sealed class Game
         PlayerOrganisms = new List<Organism>();
         OpponentOrganisms = new List<Organism>();
 
-        Walls = new List<Point>();
+        Walls = new bool[Width, Height];
         Proteins = new List<Protein>();
     }
 
@@ -66,7 +66,7 @@ internal sealed class Game
 
     internal void SetOpponentOrganisms(List<Organism> opponentOrganisms) => OpponentOrganisms = opponentOrganisms;
 
-    internal void SetWalls(List<Point> walls) => Walls = walls;
+    internal void SetWalls(bool[,] walls) => Walls = walls;
 
     internal void SetProteins(List<Protein> proteins) => Proteins = proteins;
 
@@ -106,6 +106,15 @@ internal sealed class Game
             maxProteinDistance = 3;
         }
 
+        int maxPathSearch = 10;
+
+        int organCount = PlayerOrganisms.SelectMany(o => o.Organs).Count();
+        if (organCount > 30)
+        {
+            maxPathSearch = 5;
+        }
+        Console.Error.WriteLine($"Organ count: {organCount}");
+
         foreach (Organism organism in PlayerOrganisms)
         {
             Console.Error.WriteLine("-------------------------------------");
@@ -119,7 +128,7 @@ internal sealed class Game
             }
 
             (int closestOrgan, List<Point> shortestPath) = 
-                GetShortestPathToProtein(organism, Proteins, 2, 10, GrowStrategy.NO_PROTEINS);
+                GetShortestPathToProtein(organism, Proteins, 2, maxPathSearch, GrowStrategy.NO_PROTEINS);
 
             DisplayTime("Checked for shortest path to protein");
 
@@ -380,9 +389,15 @@ internal sealed class Game
         }
 
         // Not walkable if wall on that spot
-        foreach (Point wall in Walls)
+        for (int x = 0; x < Width; x++)
         {
-            isBlocked[wall.X, wall.Y] = true;
+            for (int y = 0; y < Height; y++)
+            {
+                if (Walls[x, y])
+                {
+                    isBlocked[x, y] = true;
+                }
+            }
         }
     }
 
@@ -989,14 +1004,15 @@ internal sealed class Game
             // It's either east or west
             if (endPoint.X > startPoint.X)
             {
-                if (!Walls.Contains(new Point(startPoint.X + 1, startPoint.Y)))
+
+                if (startPoint.X + 1 < Width && !Walls[startPoint.X + 1, startPoint.Y])
                 {
                     return "E";
                 }
             }
             else
             {
-                if (!Walls.Contains(new Point(startPoint.X - 1, startPoint.Y)))
+                if (startPoint.X -1 >= 0 && !Walls[startPoint.X - 1, startPoint.Y])
                 {
                     return "W";
                 }
@@ -1007,14 +1023,14 @@ internal sealed class Game
             // It's either north or south
             if (endPoint.Y > startPoint.Y)
             {
-                if (!Walls.Contains(new Point(startPoint.X, startPoint.Y + 1)))
+                if (startPoint.Y + 1 < Height && !Walls[startPoint.X, startPoint.Y + 1])
                 {
                     return "S";
                 }
             }
             else
             {
-                if (!Walls.Contains(new Point(startPoint.X, startPoint.Y - 1)))
+                if (startPoint.Y - 1 >= 0 && !Walls[startPoint.X, startPoint.Y - 1])
                 {
                     return "N";
                 }

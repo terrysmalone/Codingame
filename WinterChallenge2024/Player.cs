@@ -26,8 +26,8 @@ partial class Player
         {
             List<Organ> unsortedPlayerOrgans = new List<Organ>();
             List<Organ> unsortedOpponentOrgans = new List<Organ>();
-            List<Point> walls = new List<Point>();
             List<Protein> proteins = new List<Protein>();
+            bool[,] walls = new bool[width, height]; 
 
             int entityCount = int.Parse(Console.ReadLine());
             for (int i = 0; i < entityCount; i++)
@@ -117,7 +117,7 @@ partial class Player
                             proteins.Add(new Protein(ProteinType.D, new Point(x, y)));
                             break;
                         case "WALL":
-                            walls.Add(new Point(x, y));
+                            walls[x, y] = true;
                             break;
                     }
                 }

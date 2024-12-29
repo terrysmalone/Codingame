@@ -138,7 +138,6 @@ internal sealed class Game
 
             if (string.IsNullOrEmpty(action))
             {
-                Console.Error.WriteLine("Update sporer spawn points");
                 UpdateSporerSpawnPoints();
                 DisplayTime("Updated sporer spawn points");
                 (action, int fireDistance) = CheckForSporeRootAction(organism, minRootSporerDistance);

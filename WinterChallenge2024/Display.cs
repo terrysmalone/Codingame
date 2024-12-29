@@ -69,6 +69,7 @@ internal static class Display
 
                 case OrganType.HARVESTER:
                 case OrganType.SPORER:
+                case OrganType.TENTACLE:
                     Console.Error.WriteLine($" ID:{organ.Id} - Type:{organ.Type.ToString()} - Position:({organ.Position.X},{organ.Position.Y}) - Direction:{organ.Direction.ToString()}");
                     break;
             }

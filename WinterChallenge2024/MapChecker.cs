@@ -129,14 +129,13 @@ internal static class MapChecker
         return rootPoints;
     }
 
-    internal static bool HasNearbyOrgan(Point point, List<Organism> playerOrganisms)
+    internal static bool HasNearbyOrgan(Point point, List<Organism> playerOrganisms, int minDistance)
     {
-        int maxDistance = 3;
         foreach (Organism organism in playerOrganisms)
         {
             foreach (Organ organ in organism.Organs)
             {
-                if (Math.Abs(point.X - organ.Position.X) + Math.Abs(point.Y - organ.Position.Y) <= maxDistance)
+                if (Math.Abs(point.X - organ.Position.X) + Math.Abs(point.Y - organ.Position.Y) <= minDistance)
                 {
                     return true;
                 }
@@ -149,7 +148,6 @@ internal static class MapChecker
     // If we can draw a line from the sporer to a root then it's spored
     internal static bool HasSporerSpored(Organ sporer, Game game)
     {
-        Console.Error.WriteLine($"Checking if sporer on {sporer.Position.X},{sporer.Position.Y} has spored");
         int xDelta = 0;
         int yDelta = 0;
 

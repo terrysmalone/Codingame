@@ -35,7 +35,6 @@ internal sealed class Game
 
     private Stopwatch _timer;
     private long _totalTime;
-    private long _segmentTime;
 
     private List<int> _createdSporer = new List<int>();
     
@@ -79,6 +78,9 @@ internal sealed class Game
 
         _sporerPoints = new bool[Width, Height];
 
+        CheckForHarvestedProtein();
+        DisplayTime("Updated check for harvested protein");
+
         UpdateMaps();
 
         DisplayTime("Updated maps");
@@ -86,9 +88,6 @@ internal sealed class Game
         // TODO: Add an Action struct to prioritise different actions and choose
         // between them
 
-        CheckForHarvestedProtein();
-        DisplayTime("Updated check for harvested protein");
-   
         List<string> actions = new List<string>();
 
         // TODO: I still think Harvesting should be the top priority.
@@ -142,8 +141,15 @@ internal sealed class Game
                 Console.Error.WriteLine("Update sporer spawn points");
                 UpdateSporerSpawnPoints();
                 DisplayTime("Updated sporer spawn points");
-                action = CheckForSporeRootAction(organism, minRootSporerDistance);
+                (action, int fireDistance) = CheckForSporeRootAction(organism, minRootSporerDistance);
                 DisplayTime("Checked for spore root action");
+
+                // If we did a root action we can remove this... 
+                // unless we fired really far, then give it a chance to do another
+                if (!string.IsNullOrEmpty(action) && fireDistance < 10)
+                {
+                    _createdSporer.Remove(organism.RootId);
+                }
             }
 
             // We skipped this earlier to check for a sporer action.
@@ -151,10 +157,15 @@ internal sealed class Game
             if (string.IsNullOrEmpty(action) && _createdSporer.Contains(organism.RootId))
             {
                 action = CheckForHarvestAction(closestOrgan, shortestPath, maxProteinDistance);
-                DisplayTime("Checked for harvest action");
-            }
+                DisplayTime("Checked for harvest action (later than usual)");
 
-            _createdSporer.Remove(organism.RootId);
+                // We hit this if we couldn't get a spore root action, even though 
+                // we prioritised it. There's no point trying again.
+                if (string.IsNullOrEmpty(action))
+                {
+                    _createdSporer.Remove(organism.RootId);
+                }
+            }
 
             if (string.IsNullOrEmpty(action))
             {
@@ -182,17 +193,16 @@ internal sealed class Game
 
             // We're even more desperate now. Lets consider growing on harvested 
             // proteins
-            if (string.IsNullOrEmpty(action))
-            {
-                action = GetDesperateDestructiveMove(organism, GrowStrategy.ALL_PROTEINS);
-                DisplayTime("Checked for very desperate action");
-            }
+            //if (string.IsNullOrEmpty(action))
+            //{
+            //    action = GetDesperateDestructiveMove(organism, GrowStrategy.ALL_PROTEINS);
+            //    DisplayTime("Checked for very desperate action");
+            //}
 
             // If there wasn't a protein to go to just spread randomly...for now
-            if (string.IsNullOrEmpty(action) &&
-                CostCalculator.CanProduceOrgan(OrganType.BASIC, PlayerProteinStock))
+            if (string.IsNullOrEmpty(action))
             {                
-                action = GetRandomBasicGrow(organism);
+                action = GetRandomGrow(organism);
                 DisplayTime("Checked for random move action");
             }
 
@@ -394,6 +404,7 @@ internal sealed class Game
             {
                 hasHarvestedProtein[protein.Position.X, protein.Position.Y] = true;
                 hasAnyProtein[protein.Position.X, protein.Position.Y] = true;
+
             }
             else
             {
@@ -409,7 +420,20 @@ internal sealed class Game
             List<Point> possibleRootPoints = MapChecker.GetRootPoints(protein.Position, this);
             foreach (var possPoint in possibleRootPoints)
             {
-                if (!MapChecker.HasNearbyOrgan(possPoint, PlayerOrganisms))
+                int minDistance = 3;
+
+                // If we've just created a sporer there's a chance that it'll be
+                // one closer now. Account for this.
+                // Note: This is coupled very tightly to the wole issue around
+                //       sporer and then sporing a root in the next turn. I 
+                //       may have to do something about it...
+                if (_createdSporer.Any())
+                {
+                    minDistance = 2;
+                }
+
+                
+                if (!MapChecker.HasNearbyOrgan(possPoint, PlayerOrganisms, minDistance))
                 {
                     _sporerPoints[possPoint.X, possPoint.Y] = true;
                 }
@@ -469,19 +493,14 @@ internal sealed class Game
 
             if (string.IsNullOrEmpty(action) && (shortestPath.Count <= maxWalkingDistance))
             {
-                // Grow towards the nearest protein
-                // Grow towards the nearest protein
-                string direction = CalculateClosestOpponentDirection(OpponentOrganisms, shortestPath[0]);
+                string organAction = GetOrganAction(shortestPath[0]);
 
-                // If we can make it a tentacle and still have some spare proteins then do it
-                if (CostCalculator.CanProduceOrgan(OrganType.TENTACLE, PlayerProteinStock, 5))
+                if (string.IsNullOrEmpty(organAction))
                 {
-                    action = $"GROW {closestOrgan} {shortestPath[0].X} {shortestPath[0].Y} TENTACLE {direction}";
+                    return string.Empty;
                 }
-                else if (CostCalculator.CanProduceOrgan(OrganType.BASIC, PlayerProteinStock))
-                {
-                    action = $"GROW {closestOrgan} {shortestPath[0].X} {shortestPath[0].Y} BASIC";
-                }
+
+                action = $"GROW {closestOrgan} {shortestPath[0].X} {shortestPath[0].Y} {organAction}";
             }
         }
 
@@ -622,7 +641,7 @@ internal sealed class Game
         return string.Empty;
     }
 
-    private string CheckForSporeRootAction(Organism organism, int minRootSporerDistance)
+    private (string, int) CheckForSporeRootAction(Organism organism, int minRootSporerDistance)
     {
         if (organism.Organs.Any(o => o.Type == OrganType.SPORER) &&
                 CostCalculator.CanProduceOrgan(OrganType.ROOT, PlayerProteinStock))
@@ -667,7 +686,7 @@ internal sealed class Game
                     checkPoint = new Point(checkPoint.X + direction.X,
                                            checkPoint.Y + direction.Y);
 
-                    // Console.Error.WriteLine($"checkPoint {checkPoint.X},{checkPoint.Y}");
+                    Console.Error.WriteLine($"checkPoint {checkPoint.X},{checkPoint.Y}");
 
                     if (checkPoint.X < 0) { break; }
 
@@ -683,8 +702,10 @@ internal sealed class Game
                         //    if it's on a spawn point 
                         if (_sporerPoints[checkPoint.X, checkPoint.Y])
                         {
+                            Console.Error.WriteLine($"On spawn point");
                             if (distance > furthestDistance)
                             {
+                                Console.Error.WriteLine($"distance {distance} is more than furthestDistance {furthestDistance}");
                                 furthestDistance = distance;
                                 furthestSporerId = sporer.Id;
                                 furthestRootPoint = checkPoint;
@@ -705,11 +726,11 @@ internal sealed class Game
 
             if (furthestDistance != -1)
             {
-                return $"SPORE {furthestSporerId} {furthestRootPoint.X} {furthestRootPoint.Y}";
+                return ($"SPORE {furthestSporerId} {furthestRootPoint.X} {furthestRootPoint.Y}", furthestDistance);
             }
         }
 
-        return string.Empty;
+        return (string.Empty, -1);
     }
 
     private string CheckForMovementAction(int closestOrgan, List<Point> shortestPath)
@@ -718,29 +739,47 @@ internal sealed class Game
 
         if (closestOrgan != -1)
         {
-            // Grow towards the nearest protein
-            string direction = CalculateClosestOpponentDirection(OpponentOrganisms, shortestPath[0]);
+            string organAction = GetOrganAction(shortestPath[0]);
 
-            // If we can make it a tentacle and still have some spare proteins then do it
-            if (CostCalculator.CanProduceOrgan(OrganType.TENTACLE, PlayerProteinStock, 5))
+            if (string.IsNullOrEmpty(organAction))
             {
-                action = $"GROW {closestOrgan} {shortestPath[0].X} {shortestPath[0].Y} TENTACLE {direction}";
+                return string.Empty;
             }
-            else if (CostCalculator.CanProduceOrgan(OrganType.BASIC, PlayerProteinStock))
-            {
-                action = $"GROW {closestOrgan} {shortestPath[0].X} {shortestPath[0].Y} BASIC";
-            }
-            else if (CostCalculator.CanProduceOrgan(OrganType.SPORER, PlayerProteinStock))
-            {
-                action = $"GROW {closestOrgan} {shortestPath[0].X} {shortestPath[0].Y} SPORER {direction}";
-            }
-            else if (CostCalculator.CanProduceOrgan(OrganType.HARVESTER, PlayerProteinStock))
-            {
-                action = $"GROW {closestOrgan} {shortestPath[0].X} {shortestPath[0].Y} HARVESTER {direction}";
-            }
+
+            action = $"GROW {closestOrgan} {shortestPath[0].X} {shortestPath[0].Y} {organAction}";
         }
 
         return action;
+    }
+
+    private string GetOrganAction(Point point)
+    {
+        // Grow towards the nearest protein
+        string direction = CalculateClosestOpponentDirection(OpponentOrganisms, point);
+
+        // If we can make it a tentacle and still have some spare proteins then do it
+        if (CostCalculator.CanProduceOrgan(OrganType.TENTACLE, PlayerProteinStock, 5))
+        {
+            return $"TENTACLE {direction}";
+        }
+        else if (CostCalculator.CanProduceOrgan(OrganType.BASIC, PlayerProteinStock))
+        {
+            return $"BASIC {direction}";
+        }
+        else if (CostCalculator.CanProduceOrgan(OrganType.SPORER, PlayerProteinStock))
+        {
+            return $"SPORER {direction}";
+        }
+        else if (CostCalculator.CanProduceOrgan(OrganType.HARVESTER, PlayerProteinStock))
+        {
+            return $"HARVESTER {direction}";
+        }
+        else if (CostCalculator.CanProduceOrgan(OrganType.TENTACLE, PlayerProteinStock))
+        {
+            return $"TENTACLE {direction}";
+        }
+
+        return string.Empty;
     }
 
     private static Point GetHarvestedPosition(Organ organ)
@@ -837,9 +876,12 @@ internal sealed class Game
         return (closestId, shortestPath);
     }
 
-    private string GetRandomBasicGrow(Organism organism)
+    private string GetRandomGrow(Organism organism)
     {
-        string action = string.Empty;
+        if (organism.RootId == 50)
+        {
+            Display.Organism(organism);
+        }
 
         for (int i = organism.Organs.Count - 1; i >= 0; i--)
         {
@@ -850,23 +892,66 @@ internal sealed class Game
                 Point checkPoint = new Point(current.Position.X + direction.X, 
                                              current.Position.Y + direction.Y);
 
+                // If we can grow on here without destroying a harvester protein 
+                // just do it
+                if (MapChecker.CanGrowOn(checkPoint, this, GrowStrategy.UNHARVESTED))
+                {
+                    string organAction = GetOrganAction(checkPoint);
+
+                    if (string.IsNullOrEmpty(organAction))
+                    {
+                        continue;
+                    }
+
+                    return $"GROW {current.Id} {checkPoint.X} {checkPoint.Y} {organAction}";
+                }
+
+                // If we couldn't lets check if we can move by destroying a
+                // harvested protein
                 if (MapChecker.CanGrowOn(checkPoint, this, GrowStrategy.ALL_PROTEINS))
                 {
-                    action = $"GROW {current.Id} {checkPoint.X} {checkPoint.Y} BASIC";
+                    string organAction = GetOrganAction(checkPoint);
 
-                    // TODO: Let us choose other nodes too
-                    break;
+                    if (string.IsNullOrEmpty(organAction))
+                    {
+                        continue;
+                    }
+
+                    // Check all around it. If there's space let it do it. 
+                    // Otherwise save it and hope for better.
+                    // TODO: This is a very naieve implementation that only really
+                    //       helps if we have one harvested protein sitting on its
+                    //       own hoping to be protected
+                    foreach (Point d in _directions)
+                    {
+                        if(MapChecker.CanGrowOn(new Point(checkPoint.X + d.X, checkPoint.Y + d.Y), 
+                                                this, 
+                                                GrowStrategy.ALL_PROTEINS))
+                        {
+                            return $"GROW {current.Id} {checkPoint.X} {checkPoint.Y} {organAction}";
+                        }
+                    }
+
+                    //Console.Error.WriteLine($"Saving for later");
+
+
+                    //bestMoveId = current.Id;
+                    //bestMovePoint = checkPoint;
+                    //bestMoveAction = organAction;
                 }
             }
         }
 
-        return action;
+        //if (bestMoveId != -1)
+        //{
+        //    return $"GROW {bestMoveId} {bestMovePoint.X} {bestMovePoint.Y} {bestMoveAction}";
+        //}
+
+        return string.Empty;
     }
 
     private string GetDesperateDestructiveMove(Organism organism, GrowStrategy growStrategy)
-    {
-        // Display.Organisms(PlayerOrganisms);
-        // TODO: I want max distance to be 2 here but then it bugs out
+    {   
         (int closestOrgan, List<Point> shortestPath) = GetShortestPathToProtein(organism, Proteins, 1, 10, growStrategy);
 
         if (closestOrgan != -1)

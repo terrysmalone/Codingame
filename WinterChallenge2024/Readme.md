@@ -1,16 +1,9 @@
 ## TODO
 
-Semi-ordered list of priorities
-
-- Calculate sporers in all directions (currently only do west)
-- Add tentacles (As a first pass just attack the enemy if they get close)
-- If I run out of options at the end just try to do something (i.e. Spawn any organ that I have the points for)
-
-### Speed up
-
-- Calculate useful boards at the start of each round so we don't have to do so many searches
-  - Walkable squares board
-  - Adjacent squares board (All squares neext to my organism)
+ - Ordered list of priorities
+	- This will mean a struct to keep track of actions
+ - More aggressive tentacles. Now they just go for close organs (within 2 spaces. Do an A* search and start attacking sooner)
+	
 
 ## Test seeds
 
@@ -43,3 +36,8 @@ seed=-6630469394645055000
 
 A D protein out of reach. I should prioritise getting to it
 seed=6911191266081234000
+
+BUG: When trying to unblock myself I often make a very silly
+decision and destroy harvesters that don't let me unblock.
+I need a flood fill in there to help me understand when I should leave the harvesters alone
+seed=2134750476394718000

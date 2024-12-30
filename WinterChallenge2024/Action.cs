@@ -34,7 +34,11 @@ internal sealed class Action
         }
         else if (ActionType == ActionType.SPORE)
         {
-            return $"SPORE {BaseOrganId} {TargetPoint.X} {TargetPoint.Y}";
+            return $"SPORE {BaseOrganId} {TargetPosition.X} {TargetPosition.Y}";
+        }
+        else if (ActionType == ActionType.WAIT)
+        {
+            return "WAIT";
         }
 
         return string.Empty;

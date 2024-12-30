@@ -3,5 +3,6 @@
 internal enum ActionType
 {
     GROW,
-    SPORE
+    SPORE,
+    WAIT
 }

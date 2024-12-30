@@ -1027,7 +1027,15 @@ internal sealed class Game
 
         if (closestId != -1)
         {
-            direction = CalculateClosestOpponentDirection(OpponentOrganisms, shortestPath[0]);
+            // If it's a direct attack then face it. Otherwise get the direction right
+            if (shortestPath.Count == 2)
+            {
+                direction = GetDirection(shortestPath[0], shortestPath[1]);
+            }
+            else
+            {
+                direction = CalculateClosestOpponentDirection(OpponentOrganisms, shortestPath[0]);
+            }
         }
 
         return (closestId, direction, shortestPath);

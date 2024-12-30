@@ -535,7 +535,7 @@ internal sealed class Game
 
         if (closestId != -1)
         {
-            direction = GetDirection(shortestPath[0], shortestPath[shortestPath.Count - 1]);
+            direction = CalculateClosestOpponentDirection(OpponentOrganisms, shortestPath[0]);
         }
 
         return (closestId, direction, shortestPath);

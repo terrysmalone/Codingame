@@ -14,4 +14,12 @@ internal class Protein
         Type = type;
         Position = position;
     }
+
+    internal Protein Clone()
+    {
+        return new Protein(Type, Position)
+        {
+            IsHarvested = IsHarvested
+        };
+    }
 }

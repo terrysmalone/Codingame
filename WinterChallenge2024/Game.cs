@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Reflection.Metadata.Ecma335;
 
@@ -31,6 +32,8 @@ internal sealed class Game
 
     private Stopwatch _timer;
     private long _totalTime;
+
+    internal int DebugAStarCounter = 0;
 
     private List<int> _createdSporer = new List<int>();
     
@@ -68,6 +71,8 @@ internal sealed class Game
 
     internal List<Action> GetActions()
     {
+        DebugAStarCounter = 0;
+
         _totalTime = 0;
         _timer = new Stopwatch();
         _timer.Start();
@@ -78,16 +83,9 @@ internal sealed class Game
         DisplayTime("Updated check for harvested protein");
 
         UpdateMaps();
-
         DisplayTime("Updated maps");
-        
-        // TODO: Add an Action struct to prioritise different actions and choose
-        // between them
 
         List<Action> actions = new List<Action>();
-
-        // TODO: I still think Harvesting should be the top priority.
-        // //    It's currently after sporing
 
         int maxProteinDistance = 5;
         int minRootSporerDistance = 4;
@@ -102,7 +100,7 @@ internal sealed class Game
             maxProteinDistance = 3;
         }
 
-        int maxPathSearch = 10;
+        int maxPathSearch = 5;
 
         int organCount = PlayerOrganisms.SelectMany(o => o.Organs).Count();
         if (organCount > 30)
@@ -123,12 +121,13 @@ internal sealed class Game
             }
 
             (int closestOrgan, List<Point> shortestPath) = 
-                GetShortestPathToProtein(organism, Proteins, 2, maxPathSearch, GrowStrategy.NO_PROTEINS);
+                GetShortestPathToProtein(organism, Proteins, 2, 5, GrowStrategy.NO_PROTEINS);
 
             DisplayTime("Checked for shortest path to protein");
 
             Console.Error.WriteLine($"Closest organ:{closestOrgan}");
             Console.Error.WriteLine($"Shortest path:{shortestPath.Count}");
+            
             if (shortestPath.Count > 0)
             {
                 Display.Path(shortestPath);
@@ -223,6 +222,8 @@ internal sealed class Game
         DisplayTime("Done");
 
         _timer.Stop();
+
+        Console.Error.WriteLine($"DebugAStarCounter:{DebugAStarCounter}");
 
         return actions;
     }
@@ -532,7 +533,7 @@ internal sealed class Game
         }
 
         OrganDirection? direction = null;
-
+        
         if (closestId != -1)
         {
             // If it's a direct attack then face it. Otherwise get the direction right
@@ -1147,5 +1148,78 @@ internal sealed class Game
         }
 
         return closestPoint;
+    }
+}
+
+internal sealed class PathFinder
+{
+    private readonly Game _game;
+    private readonly AStar _aStar;
+
+    private List<Protein> _proteinsToCheck;
+
+    public PathFinder(Game game, AStar aStar)
+    {
+        _game = game;
+        _aStar = aStar;
+    }
+
+    internal List<Tuple<int, ProteinType, Point[]>> GetShortestPathsToProteins(Organism organism, List<Protein> proteins, int maxDistance)
+    {
+        List<Tuple<int, ProteinType, Point[]>> paths = new List<Tuple<int, ProteinType, Point[]>>();
+
+        List<Protein> _proteinsToCheck = new List<Protein>();
+
+        foreach (Protein protein in proteins)
+        {
+            if (!protein.IsHarvested)
+            {
+                _proteinsToCheck.Add(protein.Clone());
+            }
+        }
+
+        if (_proteinsToCheck.Count == 0)
+        {
+            return paths;
+        }
+
+        // Search at max distance of 2
+        paths.AddRange(GetShortestPathsToProteins(organism, 2));
+
+        // Search at max distance of 3, being willing to walk over other proteins
+        // Search at max distance of 3, being not willing to walk over other proteins
+
+        // Search at max distance of 4, being willing to walk over other proteins
+        // Search at max distance of 4, being not willing to walk over other proteins
+
+        // Search at max distance of 5, being willing to walk over other proteins
+        // Search at max distance of 5, being not willing to walk over other proteins
+
+        return paths;   
+    }
+
+    private IEnumerable<Tuple<int, ProteinType, List<Point>>> GetShortestPathsToProteins(Organism organism, int maxDistance)
+    {
+        List<Tuple<int, ProteinType, List<Point>>> paths = new List<Tuple<int, ProteinType, List<Point>>>();
+
+        foreach (Protein protein in _proteinsToCheck)
+        {
+            foreach (Organ organ in organism.Organs)
+            {
+                int manhattanDistance = MapChecker.CalculateManhattanDistance(organ.Position, protein.Position);
+                if (manhattanDistance > maxDistance)
+                {
+                    continue;
+                }
+
+                List<Point> path = _aStar.GetShortestPath(organ.Position, protein.Position, maxDistance);
+                
+                if (path.Count > 0)
+                {
+                    paths.Add(new Tuple<int, ProteinType, List<Point>>(organ.Id, protein.Type, path));
+                }
+            }
+        }
+        return paths;
     }
 }

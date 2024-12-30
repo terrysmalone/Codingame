@@ -83,8 +83,6 @@ internal enum ActionType
 
 internal sealed class AStar
 {
-    private int _diagnosticCount = 0;
-
     private readonly Game _game;
 
     private List<Node> _nodes = new List<Node>();
@@ -101,7 +99,6 @@ internal sealed class AStar
 
     internal List<Point> GetShortestPath(Point startPoint, Point targetPoint, int maxDistance, GrowStrategy growStrategy)
     {
-        _diagnosticCount = 0;
         _nodes = new List<Node>();
 
         // Create a node for the start Point
@@ -119,17 +116,17 @@ internal sealed class AStar
                 return new List<Point>();
             }
 
-            Point[] pointsToCheck = new Point[4];
-
-            pointsToCheck[0] = new Point(currentNode.Position.X, currentNode.Position.Y + 1);
-            pointsToCheck[1] = new Point(currentNode.Position.X + 1, currentNode.Position.Y);
-            pointsToCheck[2] = new Point(currentNode.Position.X, currentNode.Position.Y - 1);
-            pointsToCheck[3] = new Point(currentNode.Position.X - 1, currentNode.Position.Y);
+            Point[] pointsToCheck =
+            [
+                new Point(currentNode.Position.X, currentNode.Position.Y + 1),
+                new Point(currentNode.Position.X + 1, currentNode.Position.Y),
+                new Point(currentNode.Position.X, currentNode.Position.Y - 1),
+                new Point(currentNode.Position.X - 1, currentNode.Position.Y),
+            ];
 
             // for each adjacent square
             foreach (Point pointToCheck in pointsToCheck)
             {
-                _diagnosticCount++;
                 Node? existingNode = _nodes.SingleOrDefault(n => n.Position == pointToCheck);
 
                 // If a node doesnt exists  
@@ -198,8 +195,7 @@ internal sealed class AStar
 
         int numberOfSteps = currentNode.G;
 
-        List<Point> shortestPath = new List<Point>();
-        shortestPath.Add(currentNode.Position);
+        List<Point> shortestPath = [currentNode.Position];
 
         bool atStart = false;
 
@@ -218,11 +214,6 @@ internal sealed class AStar
         }
 
         return shortestPath;
-    }
-
-    internal int GetDiagnosticCount()
-    {
-        return _diagnosticCount;
     }
 }
 
@@ -524,6 +515,8 @@ internal sealed class Game
     private Stopwatch _timer;
     private long _totalTime;
 
+    internal int DebugAStarCounter = 0;
+
     private List<int> _createdSporer = new List<int>();
     
     private readonly List<Point> _directions = new List<Point>
@@ -560,6 +553,8 @@ internal sealed class Game
 
     internal List<Action> GetActions()
     {
+        DebugAStarCounter = 0;
+
         _totalTime = 0;
         _timer = new Stopwatch();
         _timer.Start();
@@ -570,16 +565,9 @@ internal sealed class Game
         DisplayTime("Updated check for harvested protein");
 
         UpdateMaps();
-
         DisplayTime("Updated maps");
-        
-        // TODO: Add an Action struct to prioritise different actions and choose
-        // between them
 
         List<Action> actions = new List<Action>();
-
-        // TODO: I still think Harvesting should be the top priority.
-        // //    It's currently after sporing
 
         int maxProteinDistance = 5;
         int minRootSporerDistance = 4;
@@ -594,7 +582,7 @@ internal sealed class Game
             maxProteinDistance = 3;
         }
 
-        int maxPathSearch = 10;
+        int maxPathSearch = 5;
 
         int organCount = PlayerOrganisms.SelectMany(o => o.Organs).Count();
         if (organCount > 30)
@@ -615,12 +603,13 @@ internal sealed class Game
             }
 
             (int closestOrgan, List<Point> shortestPath) = 
-                GetShortestPathToProtein(organism, Proteins, 2, maxPathSearch, GrowStrategy.NO_PROTEINS);
+                GetShortestPathToProtein(organism, Proteins, 2, 2, GrowStrategy.NO_PROTEINS);
 
             DisplayTime("Checked for shortest path to protein");
 
             Console.Error.WriteLine($"Closest organ:{closestOrgan}");
             Console.Error.WriteLine($"Shortest path:{shortestPath.Count}");
+            
             if (shortestPath.Count > 0)
             {
                 Display.Path(shortestPath);
@@ -715,6 +704,8 @@ internal sealed class Game
         DisplayTime("Done");
 
         _timer.Stop();
+
+        Console.Error.WriteLine($"DebugAStarCounter:{DebugAStarCounter}");
 
         return actions;
     }

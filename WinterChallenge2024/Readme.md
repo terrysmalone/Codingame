@@ -40,10 +40,12 @@ seed=-6630469394645055000
 A D protein out of reach. I should prioritise getting to it
 seed=6911191266081234000
 
-BUG: When trying to unblock myself I often make a very silly
-decision and destroy harvesters that don't let me unblock.
+BUG: Unnecessarily destroys harvested spawns
 I need a flood fill in there to help me understand when I should leave the harvesters alone
 seed=2134750476394718000
 
 BUG: 2 of my organisms go for the same spot on move 8
 seed=-6143774278780553000
+
+BUG: Timeout (It no longer times out but this is a good test of sporing. It spores on turns 7 and 8 then runs out of proteins to use them sensibly)
+seed=-6809659612317972000

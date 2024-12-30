@@ -137,12 +137,12 @@ partial class Player
             ProteinStock opponentProteins = GetProteins();
             game.SetOpponentProteinStock(opponentProteins);
 
-            List<string> actions = game.GetActions();
+            List<Action> actions = game.GetActions();
 
             int requiredActionsCount = int.Parse(Console.ReadLine()); // your number of organisms, output an action for each one in any order
             for (int i = 0; i < requiredActionsCount; i++)
             {
-                Console.WriteLine(actions[i]);
+                Console.WriteLine(actions[i].ToString());
 
                 // Write an action using Console.WriteLine()
                 // To debug: Console.Error.WriteLine("Debug messages...");

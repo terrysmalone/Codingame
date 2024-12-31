@@ -161,4 +161,13 @@ internal static class Display
         TimeSpan segment = TimeSpan.FromTicks(segmentTime);
         Console.Error.WriteLine($"{total.Milliseconds}ms-{segment.Milliseconds}ms-{task}");
     }
+
+    internal static void ProteinPaths(List<Tuple<int, ProteinType, List<Point>>> proteinPaths)
+    {
+        foreach (Tuple<int, ProteinType, List<Point>> proteinPath in proteinPaths)
+        {
+            Console.Error.WriteLine($"OrganId:{proteinPath.Item1} - ProteinType:{proteinPath.Item2}");
+            Path(proteinPath.Item3);
+        }
+    }
 }

@@ -49,3 +49,6 @@ seed=-6143774278780553000
 
 BUG: Timeout (It no longer times out but this is a good test of sporing. It spores on turns 7 and 8 then runs out of proteins to use them sensibly)
 seed=-6809659612317972000
+
+Lots of proteins at the spawn point
+seed=5422269799341382000

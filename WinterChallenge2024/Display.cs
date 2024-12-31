@@ -152,6 +152,11 @@ internal static class Display
             pathText += $"({point.X},{point.Y}) ->";
         }
 
+        if (!string.IsNullOrEmpty(pathText))
+        {
+            pathText = pathText.Substring(0, pathText.Length - 3);
+        }
+
         Console.Error.WriteLine(pathText);
     }
 
@@ -168,6 +173,17 @@ internal static class Display
         {
             Console.Error.WriteLine($"OrganId:{proteinPath.Item1} - ProteinType:{proteinPath.Item2}");
             Path(proteinPath.Item3);
+        }
+    }
+
+    internal static void ProteinActions(List<Action> proteinActions)
+    {
+        Console.Error.WriteLine("Protein actions");
+        foreach (Action action in proteinActions)
+        {
+            Console.Error.WriteLine("-----------------------------------");
+            Console.Error.WriteLine($"Goal type:{action.GoalType}, Protein type:{action.GoalProteinType}, Turns:{action.TurnsToGoal}, score:{action.Score}");
+            Console.Error.WriteLine(action.ToString());
         }
     }
 }

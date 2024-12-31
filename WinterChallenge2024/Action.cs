@@ -9,21 +9,29 @@ internal sealed class Action
     internal int OrganismId;
 
     internal ActionType ActionType;
-    internal int BaseOrganId;
+    internal int OrganId;
     internal Point TargetPosition;
     internal OrganType? OrganType;
     internal OrganDirection? OrganDirection;
 
-    internal ActionResult Goal;
-    internal List<ActionResult> SideEffects;
-
+    internal GoalType GoalType;
+    internal ProteinType GoalProteinType;
+    internal OrganType GoalOrganType;
+    internal Dictionary<ProteinType, int> ConsumedProteins; // If harvesting a protein would result in consuming proteins along it's path
     internal int TurnsToGoal;
+
+    internal int Score = 0;
+
+    public Action()
+    {
+        ConsumedProteins = new Dictionary<ProteinType, int>();
+    }
 
     public override string ToString()
     {
         if (ActionType == ActionType.GROW)
         {
-            string action = $"GROW {BaseOrganId} {TargetPosition.X} {TargetPosition.Y} {OrganType.ToString()}";
+            string action = $"GROW {OrganId} {TargetPosition.X} {TargetPosition.Y} {OrganType.ToString()}";
 
             if (OrganDirection != null)
             {
@@ -34,7 +42,7 @@ internal sealed class Action
         }
         else if (ActionType == ActionType.SPORE)
         {
-            return $"SPORE {BaseOrganId} {TargetPosition.X} {TargetPosition.Y}";
+            return $"SPORE {OrganId} {TargetPosition.X} {TargetPosition.Y}";
         }
         else if (ActionType == ActionType.WAIT)
         {

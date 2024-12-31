@@ -52,3 +52,6 @@ seed=-6809659612317972000
 
 Lots of proteins at the spawn point
 seed=5422269799341382000
+
+BUG: On turn 2 I don't "see" a B harvest in 2 moves because of the CONSUME in 1
+seed=4756974866352816000

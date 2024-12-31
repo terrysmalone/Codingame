@@ -2,6 +2,7 @@
 
 internal enum ProteinType
 {
+    NONE = 0,
     A,
     B,
     C,

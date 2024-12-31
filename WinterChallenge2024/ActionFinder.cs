@@ -19,7 +19,7 @@ internal sealed class ActionFinder
         _aStar = new AStar(game);
     }
 
-    internal List<Action> GetProteinActions(Organism organism, List<Protein> proteins, int maxDistance)
+    internal List<Action> GetProteinActions(Organism organism, List<Protein> proteins)
     {
         List<Action> actions = new List<Action>();
 
@@ -36,7 +36,7 @@ internal sealed class ActionFinder
         if (_proteinsToCheck.Count == 0) return actions;
 
         // TODO: Just get the one move Harvests by checkeing to the sides
-
+            
         // Search at max distance of 1
         actions.AddRange(GetShortestPathsToProteins(organism, 1, GrowStrategy.ALL_PROTEINS));
         if (_proteinsToCheck.Count == 0) return actions;
@@ -82,6 +82,7 @@ internal sealed class ActionFinder
             Protein protein = _proteinsToCheck[i];
             foreach (Organ organ in organism.Organs)
             {
+                //Console.Error.WriteLine($"Checking protein {protein.Position} to organ {organ.Position}");
                 int manhattanDistance = MapChecker.CalculateManhattanDistance(organ.Position, protein.Position);
                 
                 if (manhattanDistance > maxDistance)
@@ -91,6 +92,7 @@ internal sealed class ActionFinder
 
                 List<Point> path = _aStar.GetShortestPath(organ.Position, protein.Position, maxDistance, growStrategy);
                 
+               // Console.Error.WriteLine($"Path from {organ.Position} to {protein.Position} is {path.Count} long");
                 if (path.Count > 0)
                 {
                     //actions.Add(new Tuple<int, ProteinType, List<Point>>(organ.Id, protein.Type, path));
@@ -129,6 +131,8 @@ internal sealed class ActionFinder
         
         action.GoalProteinType = proteinType;
 
+        // TODO: Add longer consume actions (We might need to consume something if we 
+        //       Have no stock or harvests for C or D
         if (path.Count == 1)
         {
             action.TurnsToGoal = 1;

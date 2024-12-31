@@ -12,7 +12,7 @@ internal sealed class Action
     internal int OrganId;
     internal Point TargetPosition;
     internal OrganType? OrganType;
-    internal OrganDirection? OrganDirection;
+    internal OrganDirection? OrganDirection;    
 
     internal GoalType GoalType;
     internal ProteinType GoalProteinType;

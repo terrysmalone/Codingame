@@ -11,6 +11,8 @@ using System.Xml.Linq;
 namespace WinterChallenge2024;
 internal sealed class AStar
 {
+    private int _diagnosticCount = 0;
+
     private readonly Game _game;
 
     private List<Node> _nodes = new List<Node>();
@@ -27,6 +29,7 @@ internal sealed class AStar
 
     internal List<Point> GetShortestPath(Point startPoint, Point targetPoint, int maxDistance, GrowStrategy growStrategy)
     {
+        _diagnosticCount = 0;
         _nodes = new List<Node>();
 
         // Create a node for the start Point
@@ -55,6 +58,7 @@ internal sealed class AStar
             // for each adjacent square
             foreach (Point pointToCheck in pointsToCheck)
             {
+                _diagnosticCount++;
                 Node? existingNode = _nodes.SingleOrDefault(n => n.Position == pointToCheck);
 
                 // If a node doesnt exists  
@@ -142,5 +146,10 @@ internal sealed class AStar
         }
 
         return shortestPath;
+    }
+
+    internal int GetDiagnosticCount()
+    {
+        return _diagnosticCount;
     }
 }

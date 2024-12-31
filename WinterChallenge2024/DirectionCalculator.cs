@@ -77,7 +77,8 @@ internal class DirectionCalculator
 
 
 
-            if (MapChecker.CanGrowOn(directionPoint,
+            if (MapChecker.CanGrowOn(
+                directionPoint,
                 _game,
                 GrowStrategy.ALL_PROTEINS))
             {

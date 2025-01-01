@@ -21,6 +21,7 @@ internal sealed class Action
     internal int TurnsToGoal;
 
     internal int Score = 0;
+    internal string Source = string.Empty;
 
     public Action()
     {

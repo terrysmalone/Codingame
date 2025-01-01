@@ -27,7 +27,8 @@ internal sealed class ActionFinder
 
         foreach (Protein protein in proteins)
         {
-            if (!protein.IsHarvested)
+            // If it's harvested or blocked (this can only be from a tentacle facing it) then ignore it
+            if (!protein.IsHarvested && !_game.isBlocked[protein.Position.X, protein.Position.Y])
             {
                 _proteinsToCheck.Add(protein.Clone());
             }
@@ -130,6 +131,8 @@ internal sealed class ActionFinder
         action.OrganId = organId;
         
         action.GoalProteinType = proteinType;
+
+        action.Source = "GetShortestPathsToProteins";
 
         // TODO: Add longer consume actions (We might need to consume something if we 
         //       Have no stock or harvests for C or D

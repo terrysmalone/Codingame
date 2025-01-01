@@ -7,5 +7,6 @@ internal enum GoalType
     HARVEST,
     SPORE,
     ROOT,
-    GROW
+    GROW,
+    WAIT
 }

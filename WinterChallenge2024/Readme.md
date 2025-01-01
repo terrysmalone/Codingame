@@ -55,6 +55,3 @@ seed=5422269799341382000
 
 BUG: I harvest the same protein twice
 seed=-6315449913002574000
-
-BUG: I time out
-seed=9040899471297750000

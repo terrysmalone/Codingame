@@ -781,23 +781,7 @@ internal sealed class Game
 
             foreach (Organ sporer in sporers)
             {
-                Point direction = new Point(0, 0);
-
-                switch (sporer.Direction)
-                {
-                    case OrganDirection.N:
-                        direction = new Point(0, -1);
-                        break;
-                    case OrganDirection.E:
-                        direction = new Point(1, 0);
-                        break;
-                    case OrganDirection.S:
-                        direction = new Point(0, 1);
-                        break;
-                    case OrganDirection.W:
-                        direction = new Point(-1, 0);
-                        break;
-                }
+                Point direction = _directionCalculator.GetDelta(sporer.Direction);
 
                 if (direction == new Point(0, 0))
                 {
@@ -1208,7 +1192,10 @@ internal sealed class Game
         List<Action> chosenActions = new List<Action>();
 
         bool[] chosen = new bool[PlayerOrganisms.Count];
-        
+
+        List<Point> targetPositions = new List<Point>();
+        List<Point> harvestTargetPositions = new List<Point>();
+
         bool allChosen = false;
         int count = 0;
 
@@ -1241,27 +1228,46 @@ internal sealed class Game
 
                         while (!canCreate)
                         {
-                            if (possibleActions[actionIndex].ActionType == ActionType.WAIT)
+                            Action checkAction = possibleActions[actionIndex];
+                            if (checkAction.ActionType == ActionType.WAIT)
                             {
                                 canCreate = true;
                             }
-                            if (possibleActions[actionIndex].ActionType == ActionType.GROW)
+                            if (checkAction.ActionType == ActionType.GROW)
                             {
-                                if (possibleActions[actionIndex].OrganType is null)
+                                if (checkAction.OrganType is null)
                                 {
                                     Console.Error.WriteLine("ERROR: Organ type is null");
 
                                 }
-                                if (CostCalculator.CanProduceOrgan(possibleActions[actionIndex].OrganType.Value, tempProteinStock))
+                                if (CostCalculator.CanProduceOrgan(checkAction.OrganType.Value, tempProteinStock))
                                 {
                                     canCreate = true;
                                 }
                             }
-                            else if (possibleActions[actionIndex].ActionType == ActionType.SPORE)
+                            else if (checkAction.ActionType == ActionType.SPORE)
                             {
                                 if (CostCalculator.CanProduceOrgan(OrganType.ROOT, tempProteinStock))
                                 {
                                     canCreate = true;
+                                }
+                            }
+
+                            // If another action has used this position move on
+                            if (canCreate && targetPositions.Contains(checkAction.TargetPosition))
+                            {
+                                canCreate = false;
+                            }
+
+                            // If another action has harvested on this position move on
+                            if (canCreate && checkAction.OrganType == OrganType.HARVESTER)
+                            {
+                                Point delta = _directionCalculator.GetDelta(checkAction.OrganDirection.Value);
+
+                                if (harvestTargetPositions.Contains(new Point(checkAction.TargetPosition.X + delta.X,
+                                                                              checkAction.TargetPosition.Y + delta.Y)))
+                                {
+                                    canCreate = false;
                                 }
                             }
 
@@ -1300,6 +1306,13 @@ internal sealed class Game
             Action chosenAction = allPossibleActions[highestScoreIndex][highestActionIndex];
 
             chosenActions.Add(chosenAction);
+            targetPositions.Add(chosenAction.TargetPosition);
+            if (chosenAction.OrganType == OrganType.HARVESTER)
+            {
+                Point delta = _directionCalculator.GetDelta(chosenAction.OrganDirection.Value);
+                harvestTargetPositions.Add(new Point(chosenAction.TargetPosition.X + delta.X, 
+                                                     chosenAction.TargetPosition.Y + delta.Y));
+            }
 
             // Deduct the cost of the action from the protein stock
             if (chosenAction.ActionType == ActionType.GROW)

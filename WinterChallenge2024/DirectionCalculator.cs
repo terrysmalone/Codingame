@@ -110,6 +110,23 @@ internal class DirectionCalculator
         return dir;
     }
 
+    internal Point GetDelta(OrganDirection organDirection)
+    {
+        switch (organDirection)
+        {
+            case OrganDirection.N:
+                return new Point(0, -1);
+            case OrganDirection.E:
+                return new Point(1, 0);
+            case OrganDirection.S:
+                return new Point(0, 1);
+            case OrganDirection.W:
+                return new Point(-1, 0);
+            default:
+                return new Point(0, 0);
+        }
+    }
+
     private Point GetClosestRoot(Point startPoint)
     {
         int closestDistance = int.MaxValue;

@@ -1596,12 +1596,19 @@ internal sealed class Game
                 // Only 1 shot moves consume
                 proteinAction.Score += 5;
 
-                
-                if (proteinAction.GoalProteinType == ProteinType.C && PlayerProteinStock.C < 0)
+                if (proteinAction.GoalProteinType == ProteinType.A && PlayerProteinStock.A <= 0)
                 {
                     proteinAction.Score += noStockScore;
                 }
-                else if (proteinAction.GoalProteinType == ProteinType.D && PlayerProteinStock.D < 0)
+                else if (proteinAction.GoalProteinType == ProteinType.B && PlayerProteinStock.B <= 0)
+                {
+                    proteinAction.Score += noStockScore;
+                }
+                else if (proteinAction.GoalProteinType == ProteinType.C && PlayerProteinStock.C <= 0)
+                {
+                    proteinAction.Score += noStockScore;
+                }
+                else if (proteinAction.GoalProteinType == ProteinType.D && PlayerProteinStock.D <= 0)
                 {
                     proteinAction.Score += noStockScore;
                 }
@@ -1930,13 +1937,6 @@ internal sealed class Game
         List<Action> possibleActions = new List<Action>();
         for (int i = organism.Organs.Count - 1; i >= 0; i--)
         {
-            // At this point we don't score random actions so we don't need to get them
-            // all. Stop if it goes above 15
-            if (possibleActions.Count > 15)
-            {
-                break;
-            }
-
             Organ current = organism.Organs[i];
 
             foreach (Point direction in _directions)

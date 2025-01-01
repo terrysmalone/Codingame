@@ -47,12 +47,13 @@ internal sealed class AStar
                 return new List<Point>();
             }
 
-            Point[] pointsToCheck = new Point[4];
-
-            pointsToCheck[0] = new Point(currentNode.Position.X, currentNode.Position.Y + 1);
-            pointsToCheck[1] = new Point(currentNode.Position.X + 1, currentNode.Position.Y);
-            pointsToCheck[2] = new Point(currentNode.Position.X, currentNode.Position.Y - 1);
-            pointsToCheck[3] = new Point(currentNode.Position.X - 1, currentNode.Position.Y);
+            Point[] pointsToCheck =
+            [
+                new Point(currentNode.Position.X, currentNode.Position.Y + 1),
+                new Point(currentNode.Position.X + 1, currentNode.Position.Y),
+                new Point(currentNode.Position.X, currentNode.Position.Y - 1),
+                new Point(currentNode.Position.X - 1, currentNode.Position.Y),
+            ];
 
             // for each adjacent square
             foreach (Point pointToCheck in pointsToCheck)
@@ -126,8 +127,7 @@ internal sealed class AStar
 
         int numberOfSteps = currentNode.G;
 
-        List<Point> shortestPath = new List<Point>();
-        shortestPath.Add(currentNode.Position);
+        List<Point> shortestPath = [currentNode.Position];
 
         bool atStart = false;
 

@@ -49,3 +49,9 @@ seed=-6143774278780553000
 
 BUG: Timeout (It no longer times out but this is a good test of sporing. It spores on turns 7 and 8 then runs out of proteins to use them sensibly)
 seed=-6809659612317972000
+
+Lots of proteins at the spawn point (Last check I won this in 41 moves by 65-0. I started off by getting all proteins early)
+seed=5422269799341382000
+
+BUG: I harvest the same protein twice
+seed=-6315449913002574000

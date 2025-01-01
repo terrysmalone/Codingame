@@ -152,6 +152,11 @@ internal static class Display
             pathText += $"({point.X},{point.Y}) ->";
         }
 
+        if (!string.IsNullOrEmpty(pathText))
+        {
+            pathText = pathText.Substring(0, pathText.Length - 3);
+        }
+
         Console.Error.WriteLine(pathText);
     }
 
@@ -160,5 +165,25 @@ internal static class Display
         TimeSpan total = TimeSpan.FromTicks(totalTime);
         TimeSpan segment = TimeSpan.FromTicks(segmentTime);
         Console.Error.WriteLine($"{total.Milliseconds}ms-{segment.Milliseconds}ms-{task}");
+    }
+
+    internal static void ProteinPaths(List<Tuple<int, ProteinType, List<Point>>> proteinPaths)
+    {
+        foreach (Tuple<int, ProteinType, List<Point>> proteinPath in proteinPaths)
+        {
+            Console.Error.WriteLine($"OrganId:{proteinPath.Item1} - ProteinType:{proteinPath.Item2}");
+            Path(proteinPath.Item3);
+        }
+    }
+
+    internal static void Actions(List<Action> actions)
+    {
+        Console.Error.WriteLine("Actions");
+        foreach (Action action in actions)
+        {
+            Console.Error.WriteLine("-----------------------------------");
+            Console.Error.WriteLine($"Goal type:{action.GoalType}, Protein type:{action.GoalProteinType}, Turns:{action.TurnsToGoal}, score:{action.Score}");
+            Console.Error.WriteLine(action.ToString());
+        }
     }
 }

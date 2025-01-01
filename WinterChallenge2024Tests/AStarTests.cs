@@ -20,6 +20,28 @@ public class AStarTests
         Assert.That(shortestPath.Count, Is.EqualTo(0));
     }
 
+    public static object[] MaxDistance =
+    {
+        new object[] { new Point(1, 2), new Point(2, 2), 1, 1 },
+        new object[] { new Point(1, 1), new Point(1, 3), 2, 2 },
+        new object[] { new Point(2, 2), new Point(6, 6), 8, 8 },
+        new object[] { new Point(2, 2), new Point(6, 6), 8, 8 },
+
+        new object[] { new Point(0,0), new Point(0, 2), 1, 0 }, // No solution should exist
+    };
+
+    [TestCaseSource(nameof(MaxDistance))]
+    public void TestMaxDistance(Point startPoint, Point targetPoint, int maxDistance, int expectedSteps)
+    {
+        Game game = new Game(10, 10);
+        game.UpdateMaps();
+
+        AStar aStar = new AStar(game);
+        List<Point> shortestPath = aStar.GetShortestPath(startPoint, targetPoint, maxDistance);
+
+        Assert.That(shortestPath.Count, Is.EqualTo(expectedSteps));
+    }
+
     public static object[] SimpleSearches =
     {
         new object[] { new Point(1, 2), new Point(1, 7), 5 },
@@ -84,28 +106,30 @@ public class AStarTests
     [Test]
     public void TestOnlyOnePossibility()
     {
-        List<Point> walls = new List<Point>()
-        {
-            new Point(0,0),
-            new Point(1,0),
-            new Point(2,0),
-            new Point(3,0),
+        int width = 4;
+        int height = 4;
 
-            new Point(0,1),
-            new Point(3,1),
+        Game game = new Game(width, height);
 
-            new Point(0,2),
-            new Point(1,2),
-            new Point(3,2),
+        bool[,] walls = new bool[width, height];
+        walls[0, 0] = true;
 
-            new Point(0,3),
-            new Point(1,3),
-            new Point(2,3),
-            new Point(3,3),
-
-        };
-
-        Game game = new Game(4, 4);
+        walls[1,0] = true;
+        walls[2,0] = true;
+        walls[3,0] = true;
+  
+        walls[0,1] = true;
+        walls[3,1] = true;
+            
+        walls[0,2] = true;
+        walls[1,2] = true;
+        walls[3,2] = true;
+            
+        walls[0,3] = true;
+        walls[1,3] = true;
+        walls[2,3] = true;
+        walls[3,3] = true;
+            
         game.SetWalls(walls);
         game.UpdateMaps();
 
@@ -120,9 +144,20 @@ public class AStarTests
 
     [TestCaseSource(nameof(BlockingWalls))]
     public void TestWallTraversal(
-        Point startPoint, Point targetPoint, List<Point> walls, int expectedSteps)
+        Point startPoint, Point targetPoint, List<Point> wallsList, int expectedSteps)
     {
-        Game game = new Game(10, 10);
+        int width = 10;
+        int height = 10;
+
+        Game game = new Game(width, height);
+
+        bool[,] walls = new bool[width, height];
+
+        foreach (Point wall in wallsList)
+        {
+            walls[wall.X, wall.Y] = true;
+        }
+
         game.SetWalls(walls);
         game.UpdateMaps();
 
@@ -187,9 +222,19 @@ public class AStarTests
 
     [TestCaseSource(nameof(NoPath))]
     public void TestNoPath(
-        Point startPoint, Point targetPoint, List<Point> walls, int expectedDiagnosticCount)
+        Point startPoint, Point targetPoint, List<Point> wallsList, int expectedDiagnosticCount)
     {
-        Game game = new Game(10, 10);
+        int width = 10;
+        int height = 10;
+
+        bool[,] walls = new bool[width, height];
+
+        foreach (Point wall in wallsList)
+        {
+            walls[wall.X, wall.Y] = true;
+        }
+
+        Game game = new Game(width, height);
         game.SetWalls(walls);
         game.UpdateMaps();
 
@@ -204,10 +249,13 @@ public class AStarTests
     [Test]
     public void Time()
     {
-        Game game = new Game(10, 10);
+        int width = 10;
+        int height = 10;
+
+        Game game = new Game(width, height);
 
 
-        List<Point> walls = new List<Point>()
+        List<Point> wallsList = new List<Point>()
             {
                 new Point(0, 3),
                 new Point(1, 3),
@@ -226,6 +274,14 @@ public class AStarTests
                 new Point(8, 5),
                 new Point(9, 5),
             };
+
+        bool[,] walls = new bool[width, height];
+
+        foreach (Point wall in wallsList)
+        {
+            walls[wall.X, wall.Y] = true;
+        }
+
         game.SetWalls(walls);
         game.UpdateMaps();
 

@@ -670,6 +670,8 @@ internal sealed class Game
                         break;
                 }
 
+                // BUG: THere's a whole bunch of "< 0" checks that can never ne hit. Changing them
+                // is risky though since it's a delicate balance. I'll leave them for now.
                 if (proteinAction.GoalProteinType == ProteinType.A && _harvestedAProteins < 1)
                 {
                     proteinAction.Score += notHarvestingScore;

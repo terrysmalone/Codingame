@@ -186,4 +186,14 @@ internal static class Display
             Console.Error.WriteLine(action.ToString());
         }
     }
+
+    internal static void ActionsDictionary(Dictionary<int, List<Action>> actionsDictionarly)
+    {
+        foreach (KeyValuePair<int, List<Action>> actions in actionsDictionarly)
+        {
+            Console.Error.WriteLine("-----------------------------------");
+            Console.Error.WriteLine($"OrganismId:{actions.Key}");
+            Actions(actions.Value);
+        }
+    }
 }

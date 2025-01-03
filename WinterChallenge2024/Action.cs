@@ -22,6 +22,8 @@ internal sealed class Action
 
     internal int Score = 0;
     internal string Source = string.Empty;
+    internal bool BlockC = false;
+    internal bool BlockD = false;
 
     public Action()
     {

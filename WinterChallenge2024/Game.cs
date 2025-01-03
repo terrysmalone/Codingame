@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -264,6 +265,8 @@ internal sealed class Game
         }
 
         DisplayTime("Done scoring");
+
+        Display.ActionsDictionary(allPossibleActions);
 
         List<Action> chosenActions = PickBestActions(allPossibleActions);
 
@@ -644,7 +647,7 @@ internal sealed class Game
         }
 
         int notHarvestingScore = 28;
-        int noStockScore = 18;
+        int noStockScore = 48;
         int harvesterProducingProteinScore = 10;
 
         foreach (Action proteinAction in proteinActions)
@@ -670,13 +673,11 @@ internal sealed class Game
                         break;
                 }
 
-                // BUG: THere's a whole bunch of "< 0" checks that can never ne hit. Changing them
-                // is risky though since it's a delicate balance. I'll leave them for now.
                 if (proteinAction.GoalProteinType == ProteinType.A && _harvestedAProteins < 1)
                 {
                     proteinAction.Score += notHarvestingScore;
 
-                    if (PlayerProteinStock.A < 0)
+                    if (PlayerProteinStock.A <= 1)
                     {
                         proteinAction.Score += noStockScore;
                     }
@@ -685,7 +686,7 @@ internal sealed class Game
                 {
                     proteinAction.Score += notHarvestingScore;
 
-                    if (PlayerProteinStock.B < 0)
+                    if (PlayerProteinStock.B <= 1)
                     {
                         proteinAction.Score += noStockScore;
                     }
@@ -695,9 +696,10 @@ internal sealed class Game
                     proteinAction.Score += notHarvestingScore;
                     proteinAction.Score += harvesterProducingProteinScore;
 
-                    if (PlayerProteinStock.C < 0)
+                    if (PlayerProteinStock.C <= 1)
                     {
                         proteinAction.Score += noStockScore;
+                        proteinAction.BlockC = true;
                     }
                 }
                 else if (proteinAction.GoalProteinType == ProteinType.D && _harvestedDProteins < 1)
@@ -705,9 +707,10 @@ internal sealed class Game
                     proteinAction.Score += notHarvestingScore;
                     proteinAction.Score += harvesterProducingProteinScore;
 
-                    if (PlayerProteinStock.D < 0)
+                    if (PlayerProteinStock.D <= 1)
                     {
                         proteinAction.Score += noStockScore;
+                        proteinAction.BlockD = true;
                     }
                 }
 
@@ -841,6 +844,7 @@ internal sealed class Game
                     TargetPosition = furthestRootPoint,
                     TurnsToGoal = 1,
                     Score = 200,
+                    OrganType = OrganType.ROOT,
 
                     Source = "CheckForSporeRootAction"
                 };
@@ -1199,7 +1203,9 @@ internal sealed class Game
         List<Point> harvestTargetPositions = new List<Point>();
 
         bool allChosen = false;
-        int count = 0;
+
+        bool blockC = false;
+        bool blockD = false;
 
         while (!allChosen)
         {
@@ -1273,6 +1279,28 @@ internal sealed class Game
                                 }
                             }
 
+                            if (blockC)
+                            {
+                                // If this action would use a C (i.e. Root, Harvester or Tentacle)
+                                if (checkAction.OrganType == OrganType.ROOT ||
+                                    checkAction.OrganType == OrganType.HARVESTER ||
+                                    checkAction.OrganType == OrganType.TENTACLE)
+                                {
+                                    canCreate = false;
+                                }
+                            }
+
+                            if (blockD)
+                            {
+                                // If this action would use a D (i.e . Root, Harvester or Sporer)
+                                if (checkAction.OrganType == OrganType.ROOT ||
+                                    checkAction.OrganType == OrganType.HARVESTER ||
+                                    checkAction.OrganType == OrganType.SPORER)
+                                {
+                                    canCreate = false;
+                                }
+                            }
+
                             if (!canCreate)
                             {
                                 actionIndex++;
@@ -1299,8 +1327,21 @@ internal sealed class Game
                     {
                         // THIS SHOULD NEVER HAPPEN. MAYBE THROW A WAIT IN JUST IN CASE
                     }
-                }
-                count++;
+
+                    // An action was chosen set any relevant flags
+                    if (highestActionIndex != -1)
+                    {
+                        if (possibleActions[highestActionIndex].BlockC)
+                        {
+                            blockC = true;
+                        }
+
+                        if (possibleActions[highestActionIndex].BlockD)
+                        {
+                            blockD = true;
+                        }
+                    }
+                }   
             }
 
             chosen[highestOganismIndex] = true;

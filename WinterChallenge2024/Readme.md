@@ -1,57 +1,58 @@
 ## TODO
 
- - Ordered list of priorities
-	- This will mean a struct to keep track of actions
-	- As a start use the struct to 
-	  - Make sure I have enough protein. Otherwise chosse another move
-	  - Make sure I'm not going to the same place with 2 organisms
- - More aggressive tentacles. Now they just go for close organs (within 2 spaces. Do an A* search and start attacking sooner)
- - Try iterative deepening for A* (it'll probably be needed for building priority lists)
+ - [ ] Fix `ArgumentOutOfRangeException` bug listed below
+ - [ ] Fix bug where ene organism destroys a protein on the same move that another harvests it.
+ - [ ] Fix bug where I don't get any tentacle moves at the start (because it can't see opponents 1 move away)
+ - [ ] Harvest attacks shouldn't prioritise placing tentacles (add others and prioritise BASIC, unless we have a ton of tentacle stock)
+ - [ ] Fix bug - Why don't I harvest the C proteins on turn 5
+ - [ ] Fix bug - Unnecessarily destroys harvested spawns
 
-## Test seeds
+## Seeds
 
-Lots of Protein near the original root 
-seed=-8773989171102688000
+### BUGS
 
-No walls
-seed=-5857682269723621000
+MAJOR BUG: I get an ArgumentOutOfRangeException (I suspect this is on the blocksC/blocksD code)
+Turn 27 - seed=-8773989171102688000 
+Turn 14 - seed=-9015237039626058000
+Turn 7 - seed=-1361847611390843400
 
-It creates a spore and then blocks it straight away
-seed=8116729794577537000
-
-On move 14 I should buld a harvester on 3,6
-seed=-9015237039626058000
-
-Lots of Protein all over a big map. My code times out pretty quickly on this
-seed=-1361847611390843400
-
-Starting with a spore here would be good
-seed=-7134633389896397000
-
-I block myself in pretty early here
-seed=-3605073768287950000
-
-Pretty nice battle I should be able to test lots on
-seed=8520556949647951000
-
-Lots of proteins, not many walls
-seed=-6630469394645055000
-
+BUG: One organism destroys a protein on the same move that another harvests it. 
+I need to update check that we're not harvesting on the same spot....
 A D protein out of reach. I should prioritise getting to it
 seed=6911191266081234000
 
+BUG: Why don't I get any tentacle moves at the start? (I can't "see" opponent organisms if they're right next to me)
+seed=6928531867582551000
+
+More tests of the above
+seed=-5857682269723621000
+seed=8520556949647951000
+
+BUG: Why don't I harvest the C proteins on turn 5
+seed=8116729794577537000
+
 BUG: Unnecessarily destroys harvested spawns
+Organ 1 is trapped and starts destroying harvested proteins from the other organism.
 I need a flood fill in there to help me understand when I should leave the harvesters alone
 seed=2134750476394718000
 
-BUG: 2 of my organisms go for the same spot on move 8
-seed=-6143774278780553000
+### TESTING 
 
-BUG: Timeout (It no longer times out but this is a good test of sporing. It spores on turns 7 and 8 then runs out of proteins to use them sensibly)
+TEST: Good test of sporing early
 seed=-6809659612317972000
 
-Lots of proteins at the spawn point (Last check I won this in 41 moves by 65-0. I started off by getting all proteins early)
+TEST: Lots of proteins early start. Hard fought battle
+I lost 69-68 to Boss 7 on move 100
 seed=5422269799341382000
 
-BUG: I harvest the same protein twice
-seed=-6315449913002574000
+TEST: This is a fairly close won battle. We block off from each other early. Make sure I then use up all available space
+seed=-6143774278780553000
+
+TEST: Lots of proteins, not many walls. Test of battles
+seed=-6630469394645055000
+
+TEST: Lots of walls to navigate here. I lose this battle in testing
+seed=-3605073768287950000
+
+TEST: Early battle I lose badly
+seed=-7134633389896397000

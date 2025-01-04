@@ -2150,7 +2150,6 @@ internal sealed class Game
             for (int i = 0; i < PlayerOrganisms.Count; i++)
             {
                 Organism organism = PlayerOrganisms[i];
-                Console.Error.WriteLine($"Organism: {organism.RootId}");
 
                 if (chosen[i])
                 {
@@ -2224,8 +2223,6 @@ internal sealed class Game
                                     }
                                 }
 
-                                Console.Error.WriteLine($"Can create 3: {canCreate}");
-
                                 if (blockD)
                                 {
                                     if (checkAction.OrganType == OrganType.ROOT ||
@@ -2280,8 +2277,7 @@ internal sealed class Game
             chosen[highestOganismIndex] = true;
 
             Action chosenAction = allPossibleActions[highestScoreIndex][highestActionIndex];
-            Console.Error.WriteLine($"Chosen action");
-            Display.Actions(new List<Action> { chosenAction });
+            
             chosenActions.Add(chosenAction);
             targetPositions.Add(chosenAction.TargetPosition);
             if (chosenAction.OrganType == OrganType.HARVESTER)

@@ -55,6 +55,8 @@ internal sealed class Game
     private int _harvestedCProteins;
     private int _harvestedDProteins;
 
+    private int _waitCount = 0;
+
     internal Game(int width, int height)
     {
         Width = width;
@@ -245,15 +247,27 @@ internal sealed class Game
             
             if (possibleActions.Count == 0)
             {
-                Action? waitAction = new Action()
+                // If we've done only WAIT moves for more than 3 moves assume that 
+                // We're done and start destroying proteins
+                if (_waitCount > 3)
                 {
-                    OrganismId = organism.RootId,
-                    GoalType = GoalType.WAIT,
-                    ActionType = ActionType.WAIT,
+                   List<Action> endGameDestroyMoves = GetEndGameDestroyMoves(organism);
+                    possibleActions.AddRange(endGameDestroyMoves);
+                    DisplayTime($"Checked for end game destroy moves. {endGameDestroyMoves.Count} possible actions");
+                }
 
-                    Source = "No other actions found"
-                };
-                possibleActions.Add(waitAction);
+                if (possibleActions.Count == 0)
+                {
+                    Action? waitAction = new Action()
+                    {
+                        OrganismId = organism.RootId,
+                        GoalType = GoalType.WAIT,
+                        ActionType = ActionType.WAIT,
+
+                        Source = "No other actions found"
+                    };
+                    possibleActions.Add(waitAction);
+                }
             }
 
             possibleActions = possibleActions.OrderByDescending(p => p.Score).ToList();
@@ -270,6 +284,8 @@ internal sealed class Game
 
         List<Action> chosenActions = PickBestActions(allPossibleActions);
 
+        bool allWait = true;
+
         foreach (Action action in chosenActions)
         {
             if (action.OrganType == OrganType.SPORER)
@@ -277,14 +293,68 @@ internal sealed class Game
                 _createdSporer.Add(action.OrganismId);
             }
 
+            if (action.ActionType != ActionType.WAIT)
+            {
+                allWait = false;
+            }
+
             Console.Error.WriteLine($"{action.ToString()} - from {action.Source}");
+        }
+
+        if (allWait)
+        {
+            _waitCount++; 
+        }
+        else
+        {
+            _waitCount = 0;
         }
 
         DisplayTime("Done picking best actions");
 
+        
+
         _timer.Stop();
 
         return chosenActions;
+    }
+
+    private List<Action> GetEndGameDestroyMoves(Organism organism)
+    {
+        Console.Error.WriteLine("Checking for end game destroy moves");
+        foreach (Protein protein in Proteins)
+        {
+            foreach (Point direction in _directions)
+            {
+                Point checkPoint = new Point(protein.Position.X + direction.X,
+                                             protein.Position.Y + direction.Y);
+
+                if (CheckBounds(checkPoint))
+                {
+                    // if organ is on the check point create an action
+                    if (organism.Organs.Any(organ => organ.Position == checkPoint))
+                    {
+                        Organ organ = organism.Organs.Single(organ => organ.Position == checkPoint);
+
+                        Console.Error.WriteLine($"Found organ to destroy: {organ.Position.X},{organ.Position.Y}");
+                        // Create 4 grow type actions for tis check point 
+                        return CreateGrowActions(organism.RootId, organ.Id, protein.Position, 0, "End game destroy move").ToList();
+                    }
+                }
+            }
+        }
+
+        return new List<Action>();
+    }
+
+    private bool CheckBounds(Point checkPoint)
+    {
+        if (checkPoint.X < 0 || checkPoint.X >= Width || checkPoint.Y < 0 || checkPoint.Y >= Height)
+        {
+            return false;
+        }
+
+        return true;
     }
 
     // Check to see if any protein is being harvested and mark it as such
@@ -1002,29 +1072,42 @@ internal sealed class Game
 
         if (closestOrgan != -1)
         {
-            OrganDirection? closestRootDirection = _directionCalculator.CalculateClosestOpponentDirection(shortestPath[0]);
-
-            if (CostCalculator.CanProduceOrgan(OrganType.TENTACLE, PlayerProteinStock))
-            {
-                possibleActions.Add(CreateGrowAction(organism.RootId, OrganType.TENTACLE, closestOrgan, shortestPath[0], closestRootDirection, score, "GetDesperateDestructiveMove"));
-            }
-            
-            if (CostCalculator.CanProduceOrgan(OrganType.BASIC, PlayerProteinStock))
-            {
-                possibleActions.Add(CreateGrowAction(organism.RootId, OrganType.BASIC, closestOrgan, shortestPath[0], null, score, "GetDesperateDestructiveMove"));
-            }
-            
-            if (CostCalculator.CanProduceOrgan(OrganType.SPORER, PlayerProteinStock))
-            {
-                possibleActions.Add(CreateGrowAction(organism.RootId, OrganType.SPORER, closestOrgan, shortestPath[0], closestRootDirection, score, "GetDesperateDestructiveMove"));
-            }
-            
-            if (CostCalculator.CanProduceOrgan(OrganType.HARVESTER, PlayerProteinStock))
-            {
-                possibleActions.Add(CreateGrowAction(organism.RootId, OrganType.HARVESTER, closestOrgan, shortestPath[0], closestRootDirection, score, "GetDesperateDestructiveMove"));
-            }
+            possibleActions.AddRange(CreateGrowActions(organism.RootId, 
+                                                       closestOrgan, 
+                                                       shortestPath[0],
+                                                       score, 
+                                                       "GetDesperateDestructiveMove"));
         }
         return possibleActions;
+    }
+
+    private IEnumerable<Action> CreateGrowActions(int rootId, int closestOrgan, Point point, int score, string v)
+    {
+        List<Action> actions = new List<Action>();
+
+        OrganDirection? closestRootDirection = _directionCalculator.CalculateClosestOpponentDirection(point);
+
+        if (CostCalculator.CanProduceOrgan(OrganType.BASIC, PlayerProteinStock))
+        {
+            actions.Add(CreateGrowAction(rootId, OrganType.BASIC, closestOrgan, point, null, score + 3, "GetDesperateDestructiveMove"));
+        }
+
+        if (CostCalculator.CanProduceOrgan(OrganType.TENTACLE, PlayerProteinStock))
+        {
+            actions.Add(CreateGrowAction(rootId, OrganType.TENTACLE, closestOrgan, point, closestRootDirection, score + 2, "GetDesperateDestructiveMove"));
+        }
+
+        if (CostCalculator.CanProduceOrgan(OrganType.SPORER, PlayerProteinStock))
+        {
+            actions.Add(CreateGrowAction(rootId, OrganType.SPORER, closestOrgan, point, closestRootDirection, score + 1, "GetDesperateDestructiveMove"));
+        }
+
+        if (CostCalculator.CanProduceOrgan(OrganType.HARVESTER, PlayerProteinStock))
+        {
+            actions.Add(CreateGrowAction(rootId, OrganType.HARVESTER, closestOrgan, point, closestRootDirection, score, "GetDesperateDestructiveMove"));
+        }
+
+        return actions;
     }
 
     private Action CreateGrowAction(int organismRootId, 
@@ -1085,27 +1168,7 @@ internal sealed class Game
                 // just do it
                 if (MapChecker.CanGrowOn(checkPoint, this, GrowStrategy.UNHARVESTED))
                 {
-                    OrganDirection? closestRootDirection = _directionCalculator.CalculateClosestOpponentDirection(checkPoint);
-
-                    if (CostCalculator.CanProduceOrgan(OrganType.TENTACLE, PlayerProteinStock))
-                    {
-                        possibleActions.Add(CreateGrowAction(organism.RootId, OrganType.TENTACLE, current.Id, checkPoint, closestRootDirection, 2, "GetRandomGrowActions"));
-                    }
-
-                    if (CostCalculator.CanProduceOrgan(OrganType.BASIC, PlayerProteinStock))
-                    {
-                        possibleActions.Add(CreateGrowAction(organism.RootId, OrganType.BASIC, current.Id, checkPoint, null, 2, "GetRandomGrowActions"));
-                    }
-
-                    if (CostCalculator.CanProduceOrgan(OrganType.SPORER, PlayerProteinStock))
-                    {
-                        possibleActions.Add(CreateGrowAction(organism.RootId, OrganType.SPORER, current.Id, checkPoint, closestRootDirection, 2, "GetRandomGrowActions"));
-                    }
-
-                    if (CostCalculator.CanProduceOrgan(OrganType.HARVESTER, PlayerProteinStock))
-                    {
-                        possibleActions.Add(CreateGrowAction(organism.RootId, OrganType.HARVESTER, current.Id, checkPoint, closestRootDirection, 2, "GetRandomGrowActions"));
-                    }
+                    possibleActions.AddRange(CreateGrowActions(organism.RootId, current.Id, checkPoint, 2, "GetRandomGrowActions"));
                 }
 
                 // If we couldn't lets check if we can move by destroying a
@@ -1123,27 +1186,7 @@ internal sealed class Game
                                                 this, 
                                                 GrowStrategy.ALL_PROTEINS))
                         {
-                            OrganDirection? closestRootDirection = _directionCalculator.CalculateClosestOpponentDirection(checkPoint);
-
-                            if (CostCalculator.CanProduceOrgan(OrganType.TENTACLE, PlayerProteinStock))
-                            {
-                                possibleActions.Add(CreateGrowAction(organism.RootId, OrganType.TENTACLE, current.Id, checkPoint, closestRootDirection, 1, "GetRandomGrowActions"));
-                            }
-
-                            if (CostCalculator.CanProduceOrgan(OrganType.BASIC, PlayerProteinStock))
-                            {
-                                possibleActions.Add(CreateGrowAction(organism.RootId, OrganType.BASIC, current.Id, checkPoint, null, 1, "GetRandomGrowActions"));
-                            }
-
-                            if (CostCalculator.CanProduceOrgan(OrganType.SPORER, PlayerProteinStock))
-                            {
-                                possibleActions.Add(CreateGrowAction(organism.RootId, OrganType.SPORER, current.Id, checkPoint, closestRootDirection, 1, "GetRandomGrowActions"));
-                            }
-
-                            if (CostCalculator.CanProduceOrgan(OrganType.HARVESTER, PlayerProteinStock))
-                            {
-                                possibleActions.Add(CreateGrowAction(organism.RootId, OrganType.HARVESTER, current.Id, checkPoint, closestRootDirection, 1, "GetRandomGrowActions"));
-                            }
+                            possibleActions.AddRange(CreateGrowActions(organism.RootId, current.Id, checkPoint, 1, "GetRandomGrowActions"));
                         }
                     }
                 }

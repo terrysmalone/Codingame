@@ -121,6 +121,7 @@ internal sealed class ActionFinder
         return actions;
     }
 
+    // TODO: Where does it decide on using a tentacle??
     private Action? CreateAction(int organismId, int organId, ProteinType proteinType, List<Point> path)
     {
         Action? action = new Action();
@@ -161,15 +162,6 @@ internal sealed class ActionFinder
             action.OrganType = OrganType.HARVESTER;
 
             action.OrganDirection = _directionCalculator.GetDirection(path[0], path[1]);
-
-            // Check if there are any consumed proteins on the path 
-            if (_game.hasAnyProtein[path[0].X, path[0].Y])
-            {
-                ProteinType pType = _game.proteinTypes[path[0].X, path[0].Y];
-
-                action.ConsumedProteins.TryGetValue(pType, out var currentCount);
-                action.ConsumedProteins[pType] = currentCount + 1;
-            }
         }
         else
         {
@@ -180,15 +172,6 @@ internal sealed class ActionFinder
 
             action.TurnsToGoal = path.Count - 1;
             action.GoalType = GoalType.HARVEST;
-
-            // Check if there are any consumed proteins on the path 
-            if (_game.hasAnyProtein[path[0].X, path[0].Y])
-            {
-                ProteinType pType = _game.proteinTypes[path[0].X, path[0].Y];
-
-                action.ConsumedProteins.TryGetValue(pType, out var currentCount);
-                action.ConsumedProteins[pType] = currentCount + 1;
-            }
 
             action.OrganType = GetOrgan(path[0]);
 

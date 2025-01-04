@@ -642,6 +642,39 @@ internal sealed class Game
 
                 };
             }
+
+
+            // If we didn't find a path check we're just not seeing it because it's too close
+            foreach (Organ organ in organism.Organs)
+            {
+                foreach (Point dir in _directions)
+                {
+                    Point checkPoint = new Point(organ.Position.X + dir.X, organ.Position.Y + dir.Y);
+
+                    if (CheckBounds(checkPoint) && MapChecker.CanGrowOn(checkPoint, this, GrowStrategy.ALL_PROTEINS))
+                    {
+                        (direction, shortestPath) = GetShortestPathToOpponent(checkPoint, 2, 2, GrowStrategy.ALL_PROTEINS);
+
+                        if (shortestPath.Count > 0)
+                        {
+                            return new Action()
+                            {
+                                OrganismId = organism.RootId,
+                                ActionType = ActionType.GROW,
+
+                                OrganId = organ.Id,
+                                TargetPosition = shortestPath[0],
+                                OrganType = OrganType.TENTACLE,
+                                OrganDirection = direction,
+                                Score = 500, // Tentacle moves are higher than the rest by default
+
+                                Source = "CheckForTentacleAction"
+
+                            };
+                        }
+                    }
+                }
+            }
         }
 
         return null;
@@ -704,6 +737,60 @@ internal sealed class Game
         }
 
         return (closestId, direction, shortestPath);
+    }
+
+    private (OrganDirection?, List<Point>) GetShortestPathToOpponent(Point point, int minDistance, int maxDistance, GrowStrategy growStrategy)
+    {
+        string action = string.Empty;
+
+        int shortest = int.MaxValue;
+        List<Point> shortestPath = new List<Point>();
+
+        AStar aStar = new AStar(this);
+
+        foreach (Organism opponentOrganism in OpponentOrganisms)
+        {
+            foreach (Organ opponentOrgan in opponentOrganism.Organs)
+            {
+                int manhattanDistance = MapChecker.CalculateManhattanDistance(point, opponentOrgan.Position);
+
+                if (manhattanDistance > maxDistance)
+                {
+                    continue;
+                }
+
+                List<Point> path = aStar.GetShortestPath(point, opponentOrgan.Position, maxDistance, growStrategy);
+
+                if (path.Count < shortest && path.Count >= minDistance && path.Count != 0)
+                {
+                    shortest = path.Count;
+                    shortestPath = new List<Point>(path);
+
+                    if (shortest < maxDistance)
+                    {
+                        maxDistance = shortest;
+                    }
+                }
+            }
+        }
+        
+
+        OrganDirection? direction = null;
+
+        if (shortest < int.MaxValue)
+        {
+            // If it's a direct attack then face it. Otherwise get the direction right
+            //if (shortestPath.Count == 2)
+            //{
+                direction = _directionCalculator.GetDirection(point, shortestPath[0]);
+            //}
+            //else
+            //{
+            //    direction = _directionCalculator.CalculateClosestOpponentDirection(shortestPath[0], shortestPath[shortestPath.Count - 1]);
+            //}
+        }
+
+        return (direction, shortestPath);
     }
 
     private List<Action> GetHarvestAndConsumeActions(Organism organism, int maxProteinDistance)

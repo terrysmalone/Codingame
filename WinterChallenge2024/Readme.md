@@ -2,19 +2,13 @@
 
  - [x] Fix `ArgumentOutOfRangeException` bug listed below
  - [x] Fix bug where ene organism destroys a protein on the same move that another harvests it.
- - [ ] Fix bug where I don't get any tentacle moves at the start (because it can't see opponents 1 move away)
- - [ ] Harvest attacks shouldn't prioritise placing tentacles (add others and prioritise BASIC, unless we have a ton of tentacle stock)
+ - [x] Harvest attacks shouldn't prioritise placing tentacles (add others and prioritise BASIC, unless we have a ton of tentacle stock)
  - [ ] Fix bug - Why don't I harvest the C proteins on turn 5
  - [ ] Fix bug - Unnecessarily destroys harvested spawns
 
 ## Seeds
 
 ### BUGS
-
-BUG: One organism destroys a protein on the same move that another harvests it. 
-I need to update check that we're not harvesting on the same spot....
-A D protein out of reach. I should prioritise getting to it
-seed=6911191266081234000
 
 BUG: Why don't I get any tentacle moves at the start? (I can't "see" opponent organisms if they're right next to me)
 seed=6928531867582551000

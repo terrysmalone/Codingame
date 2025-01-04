@@ -1584,7 +1584,7 @@ internal sealed class Game
         if (closestId != -1)
         {
             // If it's a direct attack then face it. Otherwise get the direction right
-            if (shortestPath.Count == 2)
+            if (shortestPath.Count == 2 || shortestPath.Count == 3)
             {
                 direction = _directionCalculator.GetDirection(shortestPath[0], shortestPath[1]);
             }

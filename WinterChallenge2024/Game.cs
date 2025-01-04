@@ -1081,7 +1081,7 @@ internal sealed class Game
         return possibleActions;
     }
 
-    private IEnumerable<Action> CreateGrowActions(int rootId, int closestOrgan, Point point, int score, string v)
+    private IEnumerable<Action> CreateGrowActions(int rootId, int closestOrgan, Point point, int score, string actionSource)
     {
         List<Action> actions = new List<Action>();
 
@@ -1089,22 +1089,22 @@ internal sealed class Game
 
         if (CostCalculator.CanProduceOrgan(OrganType.BASIC, PlayerProteinStock))
         {
-            actions.Add(CreateGrowAction(rootId, OrganType.BASIC, closestOrgan, point, null, score + 3, "GetDesperateDestructiveMove"));
+            actions.Add(CreateGrowAction(rootId, OrganType.BASIC, closestOrgan, point, null, score + 3, actionSource));
         }
 
         if (CostCalculator.CanProduceOrgan(OrganType.TENTACLE, PlayerProteinStock))
         {
-            actions.Add(CreateGrowAction(rootId, OrganType.TENTACLE, closestOrgan, point, closestRootDirection, score + 2, "GetDesperateDestructiveMove"));
+            actions.Add(CreateGrowAction(rootId, OrganType.TENTACLE, closestOrgan, point, closestRootDirection, score + 2, actionSource));
         }
 
         if (CostCalculator.CanProduceOrgan(OrganType.SPORER, PlayerProteinStock))
         {
-            actions.Add(CreateGrowAction(rootId, OrganType.SPORER, closestOrgan, point, closestRootDirection, score + 1, "GetDesperateDestructiveMove"));
+            actions.Add(CreateGrowAction(rootId, OrganType.SPORER, closestOrgan, point, closestRootDirection, score + 1, actionSource));
         }
 
         if (CostCalculator.CanProduceOrgan(OrganType.HARVESTER, PlayerProteinStock))
         {
-            actions.Add(CreateGrowAction(rootId, OrganType.HARVESTER, closestOrgan, point, closestRootDirection, score, "GetDesperateDestructiveMove"));
+            actions.Add(CreateGrowAction(rootId, OrganType.HARVESTER, closestOrgan, point, closestRootDirection, score, actionSource));
         }
 
         return actions;

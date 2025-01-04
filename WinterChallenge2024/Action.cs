@@ -17,18 +17,12 @@ internal sealed class Action
     internal GoalType GoalType;
     internal ProteinType GoalProteinType;
     internal OrganType GoalOrganType;
-    internal Dictionary<ProteinType, int> ConsumedProteins; // If harvesting a protein would result in consuming proteins along it's path
     internal int TurnsToGoal;
 
     internal int Score = 0;
     internal string Source = string.Empty;
     internal bool BlockC = false;
     internal bool BlockD = false;
-
-    public Action()
-    {
-        ConsumedProteins = new Dictionary<ProteinType, int>();
-    }
 
     public override string ToString()
     {

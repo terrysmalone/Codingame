@@ -1,6 +1,6 @@
 ## TODO
 
- - [ ] Fix `ArgumentOutOfRangeException` bug listed below
+ - [x] Fix `ArgumentOutOfRangeException` bug listed below
  - [ ] Fix bug where ene organism destroys a protein on the same move that another harvests it.
  - [ ] Fix bug where I don't get any tentacle moves at the start (because it can't see opponents 1 move away)
  - [ ] Harvest attacks shouldn't prioritise placing tentacles (add others and prioritise BASIC, unless we have a ton of tentacle stock)
@@ -10,11 +10,6 @@
 ## Seeds
 
 ### BUGS
-
-MAJOR BUG: I get an ArgumentOutOfRangeException (I suspect this is on the blocksC/blocksD code)
-Turn 27 - seed=-8773989171102688000 
-Turn 14 - seed=-9015237039626058000
-Turn 7 - seed=-1361847611390843400
 
 BUG: One organism destroys a protein on the same move that another harvests it. 
 I need to update check that we're not harvesting on the same spot....
@@ -31,10 +26,16 @@ seed=8520556949647951000
 BUG: Why don't I harvest the C proteins on turn 5
 seed=8116729794577537000
 
+BUG: Why don't I harvest the D protein on turn 2
+seed=5555532766085083000
+
 BUG: Unnecessarily destroys harvested spawns
 Organ 1 is trapped and starts destroying harvested proteins from the other organism.
 I need a flood fill in there to help me understand when I should leave the harvesters alone
 seed=2134750476394718000
+
+BUG: I spore twice in one move
+seed=5555532766085083000
 
 ### TESTING 
 

@@ -33,18 +33,12 @@ internal sealed class Action
     internal GoalType GoalType;
     internal ProteinType GoalProteinType;
     internal OrganType GoalOrganType;
-    internal Dictionary<ProteinType, int> ConsumedProteins; // If harvesting a protein would result in consuming proteins along it's path
     internal int TurnsToGoal;
 
     internal int Score = 0;
     internal string Source = string.Empty;
     internal bool BlockC = false;
     internal bool BlockD = false;
-
-    public Action()
-    {
-        ConsumedProteins = new Dictionary<ProteinType, int>();
-    }
 
     public override string ToString()
     {
@@ -230,15 +224,6 @@ internal sealed class ActionFinder
             action.OrganType = OrganType.HARVESTER;
 
             action.OrganDirection = _directionCalculator.GetDirection(path[0], path[1]);
-
-            // Check if there are any consumed proteins on the path 
-            if (_game.hasAnyProtein[path[0].X, path[0].Y])
-            {
-                ProteinType pType = _game.proteinTypes[path[0].X, path[0].Y];
-
-                action.ConsumedProteins.TryGetValue(pType, out var currentCount);
-                action.ConsumedProteins[pType] = currentCount + 1;
-            }
         }
         else
         {
@@ -249,15 +234,6 @@ internal sealed class ActionFinder
 
             action.TurnsToGoal = path.Count - 1;
             action.GoalType = GoalType.HARVEST;
-
-            // Check if there are any consumed proteins on the path 
-            if (_game.hasAnyProtein[path[0].X, path[0].Y])
-            {
-                ProteinType pType = _game.proteinTypes[path[0].X, path[0].Y];
-
-                action.ConsumedProteins.TryGetValue(pType, out var currentCount);
-                action.ConsumedProteins[pType] = currentCount + 1;
-            }
 
             action.OrganType = GetOrgan(path[0]);
 
@@ -1975,7 +1951,7 @@ internal sealed class Game
         return possibleActions;
     }
 
-    private IEnumerable<Action> CreateGrowActions(int rootId, int closestOrgan, Point point, int score, string v)
+    private IEnumerable<Action> CreateGrowActions(int rootId, int closestOrgan, Point point, int score, string actionSource)
     {
         List<Action> actions = new List<Action>();
 
@@ -1983,22 +1959,22 @@ internal sealed class Game
 
         if (CostCalculator.CanProduceOrgan(OrganType.BASIC, PlayerProteinStock))
         {
-            actions.Add(CreateGrowAction(rootId, OrganType.BASIC, closestOrgan, point, null, score + 3, "GetDesperateDestructiveMove"));
+            actions.Add(CreateGrowAction(rootId, OrganType.BASIC, closestOrgan, point, null, score + 3, actionSource));
         }
 
         if (CostCalculator.CanProduceOrgan(OrganType.TENTACLE, PlayerProteinStock))
         {
-            actions.Add(CreateGrowAction(rootId, OrganType.TENTACLE, closestOrgan, point, closestRootDirection, score + 2, "GetDesperateDestructiveMove"));
+            actions.Add(CreateGrowAction(rootId, OrganType.TENTACLE, closestOrgan, point, closestRootDirection, score + 2, actionSource));
         }
 
         if (CostCalculator.CanProduceOrgan(OrganType.SPORER, PlayerProteinStock))
         {
-            actions.Add(CreateGrowAction(rootId, OrganType.SPORER, closestOrgan, point, closestRootDirection, score + 1, "GetDesperateDestructiveMove"));
+            actions.Add(CreateGrowAction(rootId, OrganType.SPORER, closestOrgan, point, closestRootDirection, score + 1, actionSource));
         }
 
         if (CostCalculator.CanProduceOrgan(OrganType.HARVESTER, PlayerProteinStock))
         {
-            actions.Add(CreateGrowAction(rootId, OrganType.HARVESTER, closestOrgan, point, closestRootDirection, score, "GetDesperateDestructiveMove"));
+            actions.Add(CreateGrowAction(rootId, OrganType.HARVESTER, closestOrgan, point, closestRootDirection, score, actionSource));
         }
 
         return actions;

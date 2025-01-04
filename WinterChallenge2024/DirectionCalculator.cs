@@ -80,7 +80,8 @@ internal class DirectionCalculator
             if (MapChecker.CanGrowOn(
                 directionPoint,
                 _game,
-                GrowStrategy.ALL_PROTEINS))
+                GrowStrategy.ALL_PROTEINS,
+                false))
             {
                 return GetDirection(startPoint, directionPoint);
             }

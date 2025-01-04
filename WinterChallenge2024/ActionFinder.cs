@@ -28,7 +28,7 @@ internal sealed class ActionFinder
         foreach (Protein protein in proteins)
         {
             // If it's harvested or blocked (this can only be from a tentacle facing it) then ignore it
-            if (!protein.IsHarvested && !_game.isBlocked[protein.Position.X, protein.Position.Y])
+            if (!protein.IsHarvested && !_game.opponentTentaclePath[protein.Position.X, protein.Position.Y])
             {
                 _proteinsToCheck.Add(protein.Clone());
             }
@@ -36,34 +36,24 @@ internal sealed class ActionFinder
 
         if (_proteinsToCheck.Count == 0) return actions;
 
-        // TODO: Just get the one move Harvests by checkeing to the sides
-            
-        // Search at max distance of 1
         actions.AddRange(GetShortestPathsToProteins(organism, 1, GrowStrategy.ALL_PROTEINS));
         if (_proteinsToCheck.Count == 0) return actions;
 
-        // Search at max distance of 2
         actions.AddRange(GetShortestPathsToProteins(organism, 2, GrowStrategy.NO_PROTEINS));
         if (_proteinsToCheck.Count == 0) return actions;
         actions.AddRange(GetShortestPathsToProteins(organism, 2, GrowStrategy.UNHARVESTED));
         if (_proteinsToCheck.Count == 0) return actions;
 
-        // Search at max distance of 3, being willing to walk over other proteins
-        // Search at max distance of 3, being not willing to walk over other proteins
         actions.AddRange(GetShortestPathsToProteins(organism, 3, GrowStrategy.NO_PROTEINS));
         if (_proteinsToCheck.Count == 0) return actions;
         actions.AddRange(GetShortestPathsToProteins(organism, 3, GrowStrategy.UNHARVESTED));
         if (_proteinsToCheck.Count == 0) return actions;
 
-        // Search at max distance of 4, being willing to walk over other proteins
-        // Search at max distance of 4, being not willing to walk over other proteins
         actions.AddRange(GetShortestPathsToProteins(organism, 4, GrowStrategy.NO_PROTEINS));
         if (_proteinsToCheck.Count == 0) return actions;
         actions.AddRange(GetShortestPathsToProteins(organism, 4, GrowStrategy.UNHARVESTED));
         if (_proteinsToCheck.Count == 0) return actions;
 
-        // Search at max distance of 5, being willing to walk over other proteins
-        // Search at max distance of 5, being not willing to walk over other proteins
         actions.AddRange(GetShortestPathsToProteins(organism, 5, GrowStrategy.NO_PROTEINS));
         if (_proteinsToCheck.Count == 0) return actions;
         actions.AddRange(GetShortestPathsToProteins(organism, 5, GrowStrategy.UNHARVESTED));
@@ -91,7 +81,7 @@ internal sealed class ActionFinder
                     continue;
                 }
 
-                List<Point> path = _aStar.GetShortestPath(organ.Position, protein.Position, maxDistance, growStrategy);
+                List<Point> path = _aStar.GetShortestPath(organ.Position, protein.Position, maxDistance, growStrategy, false);
                 
                // Console.Error.WriteLine($"Path from {organ.Position} to {protein.Position} is {path.Count} long");
                 if (path.Count > 0)
@@ -132,11 +122,12 @@ internal sealed class ActionFinder
         action.OrganId = organId;
         
         action.GoalProteinType = proteinType;
+        action.GoalPosition = path[path.Count - 1];
 
         action.Source = "GetShortestPathsToProteins";
 
         // TODO: Add longer consume actions (We might need to consume something if we 
-        //       Have no stock or harvests for C or D
+        //       Have no stock or harvests for C or alculator.CanProduceOrgan(OrganType.H
         if (path.Count == 1)
         {
             action.TurnsToGoal = 1;
@@ -187,12 +178,7 @@ internal sealed class ActionFinder
     private OrganType GetOrgan(Point point)
     {
         bool hasProtein = _game.hasAnyProtein[point.X, point.Y];
-        // If we can make it a tentacle and still have some spare proteins then do it
-        if (CostCalculator.CanProduceOrgan(OrganType.TENTACLE, _game.PlayerProteinStock, 3) && !hasProtein)
-        {
-            return OrganType.TENTACLE;
-        }
-        else if (CostCalculator.CanProduceOrgan(OrganType.BASIC, _game.PlayerProteinStock))
+        if (CostCalculator.CanProduceOrgan(OrganType.BASIC, _game.PlayerProteinStock))
         {
             return OrganType.BASIC;
         }

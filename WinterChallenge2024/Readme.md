@@ -10,6 +10,10 @@
 
 ### BUGS
 
+Major bug: I don't see the opponents tentacles on turn 22
+Orange (Syj) - Blue (me)
+seed=-1367723123811444200
+
 BUG: Why don't I get any tentacle moves at the start? (I can't "see" opponent organisms if they're right next to me)
 seed=6928531867582551000
 
@@ -19,9 +23,6 @@ seed=8520556949647951000
 
 BUG: Why don't I harvest the C proteins on turn 5
 seed=8116729794577537000
-
-BUG: Why don't I harvest the D protein on turn 2
-seed=5555532766085083000
 
 BUG: Unnecessarily destroys harvested spawns
 Organ 1 is trapped and starts destroying harvested proteins from the other organism.

@@ -2,11 +2,6 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
-using System.Net;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml.Linq;
 
 namespace WinterChallenge2024;
 internal sealed class AStar
@@ -24,15 +19,14 @@ internal sealed class AStar
 
     internal List<Point> GetShortestPath(Point startPoint, Point targetPoint, int maxDistance)
     {
-        return GetShortestPath(startPoint, targetPoint, maxDistance, GrowStrategy.NO_PROTEINS);
+        return GetShortestPath(startPoint, targetPoint, maxDistance, GrowStrategy.NO_PROTEINS, false);
     }
 
-    internal List<Point> GetShortestPath(Point startPoint, Point targetPoint, int maxDistance, GrowStrategy growStrategy)
+    internal List<Point> GetShortestPath(Point startPoint, Point targetPoint, int maxDistance, GrowStrategy growStrategy, bool walkOnOpponentTentaclePath)
     {
         _diagnosticCount = 0;
         _nodes = new List<Node>();
 
-        // Create a node for the start Point
         Node currentNode = new Node(startPoint);
 
         _nodes.Add(currentNode);
@@ -55,17 +49,14 @@ internal sealed class AStar
                 new Point(currentNode.Position.X - 1, currentNode.Position.Y),
             ];
 
-            // for each adjacent square
             foreach (Point pointToCheck in pointsToCheck)
             {
                 _diagnosticCount++;
                 Node? existingNode = _nodes.SingleOrDefault(n => n.Position == pointToCheck);
-
-                // If a node doesnt exists  
+ 
                 if (existingNode == null)
                 {
-                    // Create a node if the position is walkable
-                    if (pointToCheck == startPoint || pointToCheck == targetPoint || MapChecker.CanGrowOn(pointToCheck, _game, growStrategy))
+                    if (pointToCheck == startPoint || pointToCheck == targetPoint || MapChecker.CanGrowOn(pointToCheck, _game, growStrategy, walkOnOpponentTentaclePath))
                     {                        
                         Node node = new Node(pointToCheck);
 
@@ -111,7 +102,6 @@ internal sealed class AStar
             }
             else
             {
-                // Sort nodes
                 _nodes = _nodes.OrderBy(n => n.Closed == true).ThenBy(n => n.F).ToList();
 
                 currentNode = _nodes.First();

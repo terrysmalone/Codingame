@@ -3,21 +3,16 @@
   It combined all classes in the project to work in Codingame.
 ***************************************************************/
 
-using System.Collections.Generic;
 using System.Drawing;
-using System.Threading;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
-using System.Collections.Concurrent;
 using System.Diagnostics;
-using System.IO;
-using System.Reflection.Metadata.Ecma335;
-using static System.Formats.Asn1.AsnWriter;
 using System.ComponentModel;
 
 internal sealed class Action
@@ -1000,17 +995,12 @@ internal sealed class Game
                 possibleActions.Add(action);
             }
             DisplayTime($"Checked for tentacle action. {possibleActions.Count} possible actions");
-            
-
-            // TODO
-            // We're happy to just go with these if we can definitely afford 
-            // to grow the tentacle. Otherwise we need some other backups.
-
+           
             if (possibleActions.Count == 0 && !_createdSporer.Contains(organism.RootId))
             {
                 List<Action> actions = GetHarvestAndConsumeActions(organism, maxProteinDistance);
                 DisplayTime($"Checked for harvest action. {actions.Count} possible actions");
-
+                Display.Actions(actions);
                 if (actions.Count > 0)
                 {
                     possibleActions.AddRange(actions);
@@ -1444,8 +1434,6 @@ internal sealed class Game
         // Get the closest protein to Organs
         foreach (Protein protein in proteins)
         {
-            // Console.Error.WriteLine($"Checking protein: {protein.Position.X},{protein.Position.Y}");
-
             if (protein.IsHarvested || isBlocked[protein.Position.X, protein.Position.Y])
             {
                 continue;
@@ -1453,12 +1441,7 @@ internal sealed class Game
 
             foreach (var organ in organism.Organs)
             {
-                // Console.Error.WriteLine($"Checking organ: {organ.Position.X},{organ.Position.Y}");
-
                 int manhattanDistance = MapChecker.CalculateManhattanDistance(organ.Position, protein.Position);
-
-                // Console.Error.WriteLine($"Manhattan distance: {manhattanDistance}");
-                // Console.Error.WriteLine($"Max distance: {maxDistance}");
 
                 if (manhattanDistance > maxDistance)
                 {
@@ -1466,9 +1449,6 @@ internal sealed class Game
                 }
 
                 List<Point> path = aStar.GetShortestPath(organ.Position, protein.Position, maxDistance, growStrategy);
-
-                // Console.Error.WriteLine($"Shortest path count: {path.Count}");
-                // Display.Path(shortestPath);
 
                 if (path.Count < shortest && path.Count >= minDistance && path.Count != 0)
                 {
@@ -1494,8 +1474,17 @@ internal sealed class Game
         {
             (int closestOrganId, OrganDirection? direction, List<Point> shortestPath) = GetShortestPathToOpponent(organism, 2, 4, GrowStrategy.ALL_PROTEINS);
 
+            
             if (closestOrganId != -1)
             {
+                Console.Error.WriteLine($"Closest organ: {closestOrganId}");
+                Console.Error.WriteLine($"direction: {direction.Value.ToString()}");
+                Console.Error.WriteLine($"Shortest path: {shortestPath.Count}");
+
+                foreach (Point point in shortestPath)
+                {
+                    Console.Error.WriteLine($"Shortest path: {point}");
+                }
                 return new Action()
                 {
                     OrganismId = organism.RootId,
@@ -2206,6 +2195,8 @@ internal sealed class Game
         bool blockC = false;
         bool blockD = false;
 
+        bool madeSporer = false;
+
         while (!allChosen)
         {
             Console.Error.WriteLine($"Protein stock: {tempProteinStock.A}, {tempProteinStock.B}, {tempProteinStock.C}, {tempProteinStock.D}");
@@ -2303,6 +2294,11 @@ internal sealed class Game
                                         canCreate = false;
                                     }
                                 }
+
+                                if (checkAction.OrganType == OrganType.SPORER && madeSporer)
+                                {
+                                    canCreate = false; 
+                                }
                             }
 
                             if (!canCreate)
@@ -2366,7 +2362,12 @@ internal sealed class Game
             {
                 blockD = true;
             }
-            
+
+            if (chosenAction.OrganType == OrganType.SPORER)
+            {
+                madeSporer = true;
+            }
+
             // Deduct the cost of the action from the protein stock
             if (chosenAction.ActionType == ActionType.GROW)
             {

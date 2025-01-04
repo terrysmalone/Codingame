@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Drawing;
-using System.Threading;
+﻿using System.Drawing;
 
 namespace WinterChallenge2024;
 

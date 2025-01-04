@@ -121,6 +121,7 @@ internal sealed class ActionFinder
         return actions;
     }
 
+    // TODO: Where does it decide on using a tentacle??
     private Action? CreateAction(int organismId, int organId, ProteinType proteinType, List<Point> path)
     {
         Action? action = new Action();

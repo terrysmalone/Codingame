@@ -189,6 +189,7 @@ internal sealed class ActionFinder
         return actions;
     }
 
+    // TODO: Where does it decide on using a tentacle??
     private Action? CreateAction(int organismId, int organId, ProteinType proteinType, List<Point> path)
     {
         Action? action = new Action();
@@ -1159,7 +1160,7 @@ internal sealed class Game
 
         DisplayTime("Done scoring");
 
-        Display.ActionsDictionary(allPossibleActions);
+        // Display.ActionsDictionary(allPossibleActions);
 
         List<Action> chosenActions = PickBestActions(allPossibleActions);
 
@@ -1485,7 +1486,6 @@ internal sealed class Game
             {
                 foreach (Organ opponentOrgan in opponentOrganism.Organs)
                 {
-
                     int manhattanDistance = MapChecker.CalculateManhattanDistance(organ.Position, opponentOrgan.Position);
 
                     if (manhattanDistance > maxDistance)
@@ -2102,6 +2102,8 @@ internal sealed class Game
 
         while (!allChosen)
         {
+            Console.Error.WriteLine($"Protein stock: {tempProteinStock.A}, {tempProteinStock.B}, {tempProteinStock.C}, {tempProteinStock.D}");
+
             int highestScore = -1;
             int highestScoreIndex = -1;
             int highestActionIndex = -1;
@@ -2154,43 +2156,46 @@ internal sealed class Game
                                 }
                             }
 
-                            // If another action has used this position move on
-                            if (canCreate && targetPositions.Contains(checkAction.TargetPosition))
+                            if (canCreate)
                             {
-                                canCreate = false;
-                            }
-
-                            // If another action has harvested on this position move on
-                            if (canCreate && checkAction.OrganType == OrganType.HARVESTER)
-                            {
-                                Point delta = _directionCalculator.GetDelta(checkAction.OrganDirection.Value);
-
-                                if (harvestTargetPositions.Contains(new Point(checkAction.TargetPosition.X + delta.X,
-                                                                              checkAction.TargetPosition.Y + delta.Y)))
+                                // If another action has used this position move on
+                                if (targetPositions.Contains(checkAction.TargetPosition))
                                 {
                                     canCreate = false;
                                 }
-                            }
 
-                            if (blockC)
-                            {
-                                // If this action would use a C (i.e. Root, Harvester or Tentacle)
-                                if (checkAction.OrganType == OrganType.ROOT ||
-                                    checkAction.OrganType == OrganType.HARVESTER ||
-                                    checkAction.OrganType == OrganType.TENTACLE)
+                                // If another action has harvested on this position move on
+                                if (checkAction.OrganType == OrganType.HARVESTER)
                                 {
-                                    canCreate = false;
+                                    Point delta = _directionCalculator.GetDelta(checkAction.OrganDirection.Value);
+
+                                    if (harvestTargetPositions.Contains(new Point(checkAction.TargetPosition.X + delta.X,
+                                                                                  checkAction.TargetPosition.Y + delta.Y)))
+                                    {
+                                        canCreate = false;
+                                    }
                                 }
-                            }
 
-                            if (blockD)
-                            {
-                                // If this action would use a D (i.e . Root, Harvester or Sporer)
-                                if (checkAction.OrganType == OrganType.ROOT ||
-                                    checkAction.OrganType == OrganType.HARVESTER ||
-                                    checkAction.OrganType == OrganType.SPORER)
+                                if (blockC)
                                 {
-                                    canCreate = false;
+                                    // If this action would use a C (i.e. Root, Harvester or Tentacle)
+                                    if (checkAction.OrganType == OrganType.ROOT ||
+                                        checkAction.OrganType == OrganType.HARVESTER ||
+                                        checkAction.OrganType == OrganType.TENTACLE)
+                                    {
+                                        canCreate = false;
+                                    }
+                                }
+
+                                if (blockD)
+                                {
+                                    // If this action would use a D (i.e . Root, Harvester or Sporer)
+                                    if (checkAction.OrganType == OrganType.ROOT ||
+                                        checkAction.OrganType == OrganType.HARVESTER ||
+                                        checkAction.OrganType == OrganType.SPORER)
+                                    {
+                                        canCreate = false;
+                                    }
                                 }
                             }
 
@@ -2218,21 +2223,8 @@ internal sealed class Game
                     }
                     else
                     {
+                        Console.Error.WriteLine("ERROR: No possible actions for organism");
                         // THIS SHOULD NEVER HAPPEN. MAYBE THROW A WAIT IN JUST IN CASE
-                    }
-
-                    // An action was chosen set any relevant flags
-                    if (highestActionIndex != -1)
-                    {
-                        if (possibleActions[highestActionIndex].BlockC)
-                        {
-                            blockC = true;
-                        }
-
-                        if (possibleActions[highestActionIndex].BlockD)
-                        {
-                            blockD = true;
-                        }
                     }
                 }   
             }
@@ -2250,6 +2242,19 @@ internal sealed class Game
                                                      chosenAction.TargetPosition.Y + delta.Y));
             }
 
+            Console.Error.WriteLine($"Chosen action: {chosenAction.ActionType} {chosenAction.OrganType} for organism {highestScoreIndex} with score {chosenAction.Score}");
+
+
+            if (chosenAction.BlockC)
+            {
+                blockC = true;
+            }
+
+            if (chosenAction.BlockD)
+            {
+                blockD = true;
+            }
+            
             // Deduct the cost of the action from the protein stock
             if (chosenAction.ActionType == ActionType.GROW)
             {

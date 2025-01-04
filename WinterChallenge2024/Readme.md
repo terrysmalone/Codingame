@@ -1,7 +1,7 @@
 ## TODO
 
  - [x] Fix `ArgumentOutOfRangeException` bug listed below
- - [ ] Fix bug where ene organism destroys a protein on the same move that another harvests it.
+ - [x] Fix bug where ene organism destroys a protein on the same move that another harvests it.
  - [ ] Fix bug where I don't get any tentacle moves at the start (because it can't see opponents 1 move away)
  - [ ] Harvest attacks shouldn't prioritise placing tentacles (add others and prioritise BASIC, unless we have a ton of tentacle stock)
  - [ ] Fix bug - Why don't I harvest the C proteins on turn 5

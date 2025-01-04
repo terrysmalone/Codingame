@@ -2254,11 +2254,15 @@ internal sealed class Game
 
             chosenActions.Add(chosenAction);
             targetPositions.Add(chosenAction.TargetPosition);
+            Console.Error.WriteLine($"targetPosition added: {chosenAction.TargetPosition.X}, {chosenAction.TargetPosition.Y}");
             if (chosenAction.OrganType == OrganType.HARVESTER)
             {
                 Point delta = _directionCalculator.GetDelta(chosenAction.OrganDirection.Value);
                 harvestTargetPositions.Add(new Point(chosenAction.TargetPosition.X + delta.X, 
                                                      chosenAction.TargetPosition.Y + delta.Y));
+
+                targetPositions.Add(new Point(chosenAction.TargetPosition.X + delta.X,
+                                             chosenAction.TargetPosition.Y + delta.Y));
             }
 
             Console.Error.WriteLine($"Chosen action: {chosenAction.ActionType} {chosenAction.OrganType} for organism {highestScoreIndex} with score {chosenAction.Score}");

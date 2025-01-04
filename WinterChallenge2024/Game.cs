@@ -6,6 +6,7 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Reflection.Metadata.Ecma335;
+using System.Runtime.CompilerServices;
 using System.Xml.Linq;
 using static System.Formats.Asn1.AsnWriter;
 
@@ -1384,11 +1385,17 @@ internal sealed class Game
 
             chosenActions.Add(chosenAction);
             targetPositions.Add(chosenAction.TargetPosition);
+            Console.Error.WriteLine($"targetPosition added: {chosenAction.TargetPosition.X}, {chosenAction.TargetPosition.Y}");
             if (chosenAction.OrganType == OrganType.HARVESTER)
             {
+                // We don't want to harvest the same protein
                 Point delta = _directionCalculator.GetDelta(chosenAction.OrganDirection.Value);
                 harvestTargetPositions.Add(new Point(chosenAction.TargetPosition.X + delta.X, 
                                                      chosenAction.TargetPosition.Y + delta.Y));
+
+                // We don't want to land on a harvested protein
+                targetPositions.Add(new Point(chosenAction.TargetPosition.X + delta.X,
+                                             chosenAction.TargetPosition.Y + delta.Y));
             }
 
             Console.Error.WriteLine($"Chosen action: {chosenAction.ActionType} {chosenAction.OrganType} for organism {highestScoreIndex} with score {chosenAction.Score}");

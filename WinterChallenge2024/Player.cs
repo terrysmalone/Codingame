@@ -1,49 +1,42 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
-using System.Net;
 
 namespace WinterChallenge2024;
 
-/**
- * Grow and multiply your organisms to end up larger than your opponent.
- **/
 partial class Player
 {
     static void Main(string[] args)
     {
         string[] inputs;
         inputs = Console.ReadLine().Split(' ');
-        int width = int.Parse(inputs[0]); // columns in the game grid
-        int height = int.Parse(inputs[1]); // rows in the game grid
+        var width = int.Parse(inputs[0]);
+        var height = int.Parse(inputs[1]);
 
         Game game = new Game(width, height);
 
-        // game loop
         while (true)
         {
-            List<Organ> unsortedPlayerOrgans = new List<Organ>();
-            List<Organ> unsortedOpponentOrgans = new List<Organ>();
-            List<Protein> proteins = new List<Protein>();
-            bool[,] walls = new bool[width, height]; 
+            var unsortedPlayerOrgans = new List<Organ>();
+            var unsortedOpponentOrgans = new List<Organ>();
+            var proteins = new List<Protein>();
+            var walls = new bool[width, height]; 
 
             int entityCount = int.Parse(Console.ReadLine());
             for (int i = 0; i < entityCount; i++)
             {
                 inputs = Console.ReadLine().Split(' ');
                 int x = int.Parse(inputs[0]);
-                int y = int.Parse(inputs[1]); // grid coordinate
-                string type = inputs[2]; // WALL, ROOT, BASIC, TENTACLE, HARVESTER, SPORER, A, B, C, D
-                int owner = int.Parse(inputs[3]); // 1 if your organ, 0 if enemy organ, -1 if neither
-                int organId = int.Parse(inputs[4]); // id of this entity if it's an organ, 0 otherwise
-                string organDir = inputs[5]; // N,E,S,W or X if not an organ
+                int y = int.Parse(inputs[1]);
+                string type = inputs[2];
+                int owner = int.Parse(inputs[3]);
+                int organId = int.Parse(inputs[4]); 
+                string organDir = inputs[5];
                 int organParentId = int.Parse(inputs[6]);
                 int organRootId = int.Parse(inputs[7]);
 
-                OrganType organTypeEnum;
-                if (Enum.TryParse(type, out organTypeEnum))
+                if (Enum.TryParse(type, out OrganType organTypeEnum))
                 {
                     switch (type)
                     {
@@ -143,15 +136,10 @@ partial class Player
 
             List<Action> actions = game.GetActions();
 
-            int requiredActionsCount = int.Parse(Console.ReadLine()); // your number of organisms, output an action for each one in any order
+            int requiredActionsCount = int.Parse(Console.ReadLine()); 
             for (int i = 0; i < requiredActionsCount; i++)
             {
                 Console.WriteLine(actions[i].ToString());
-
-                // Write an action using Console.WriteLine()
-                // To debug: Console.Error.WriteLine("Debug messages...");
-
-                // Console.WriteLine("WAIT");
             }
         }
     }

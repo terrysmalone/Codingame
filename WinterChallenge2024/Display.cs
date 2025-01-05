@@ -195,4 +195,13 @@ internal static class Display
             Actions(actions.Value);
         }
     }
+
+    internal static void ActionSources(Dictionary<ActionSource, int> trackedActions)
+    {
+        Console.Error.WriteLine("Tracked actions count");
+        foreach (KeyValuePair<ActionSource, int> trackedAction in trackedActions)
+        {
+            Console.Error.WriteLine($"{trackedAction.Key} - {trackedAction.Value}");
+        }
+    }
 }

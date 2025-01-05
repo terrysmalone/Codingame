@@ -14,7 +14,6 @@ using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Threading.Tasks;
 using System.ComponentModel;
-using System.Net;
 
 internal sealed class Action
 {
@@ -33,7 +32,7 @@ internal sealed class Action
     internal int TurnsToGoal;
 
     internal int Score = 0;
-    internal string Source = string.Empty;
+    internal ActionSource Source = ActionSource.NONE;
     internal bool BlockC = false;
     internal bool BlockD = false;
 
@@ -61,6 +60,20 @@ internal sealed class Action
 
         return string.Empty;
     }
+}
+
+internal enum ActionSource
+{
+    NONE,
+    FINAL_WAIT,
+    CHECK_FOR_TENTACLES,
+    CHECK_FOR_SPORER,
+    CHECK_FOR_ROOT,
+    VERY_DESPERATE_DESTRUCTIVE_MOVE,
+    RANDOM_GROW_ACTIONS,
+    END_GAME_DESTROY,
+    CHECK_FOR_HARVESTS,
+    DESPERATE_DESTRUCTIVE_MOVE,
 }
 
 internal sealed class ActionFinder
@@ -183,7 +196,7 @@ internal sealed class ActionFinder
         action.GoalProteinType = proteinType;
         action.GoalPosition = path[path.Count - 1];
 
-        action.Source = "GetShortestPathsToProteins";
+        action.Source = ActionSource.CHECK_FOR_HARVESTS;
 
         // TODO: Add longer consume actions (We might need to consume something if we 
         //       Have no stock or harvests for C or alculator.CanProduceOrgan(OrganType.H
@@ -855,6 +868,15 @@ internal static class Display
             Actions(actions.Value);
         }
     }
+
+    internal static void ActionSources(Dictionary<ActionSource, int> trackedActions)
+    {
+        Console.Error.WriteLine("Tracked actions count");
+        foreach (KeyValuePair<ActionSource, int> trackedAction in trackedActions)
+        {
+            Console.Error.WriteLine($"{trackedAction.Key} - {trackedAction.Value}");
+        }
+    }
 }
 
 
@@ -891,7 +913,9 @@ internal sealed class Game
     private long _totalTime;
 
     private List<int> _createdSporer = new List<int>();
-    
+
+    private Dictionary<ActionSource, int> _trackedActions = new Dictionary<ActionSource, int>();
+
     private readonly List<Point> _directions = new List<Point>
     {
         new Point(0, 1),
@@ -1070,11 +1094,11 @@ internal sealed class Game
                 Console.Error.WriteLine($"Checked for Action that was rejected by CheckForHarvestOrConsumeAction. {actions.Count} possible actions");
             }
 
-            List<Action> desperateActions = GetDesperateDestructiveMove(organism, GrowStrategy.UNHARVESTED, 4);
+            List<Action> desperateActions = GetDesperateDestructiveMove(organism, GrowStrategy.UNHARVESTED, 4, ActionSource.DESPERATE_DESTRUCTIVE_MOVE);
             DisplayTime($"Checked for desperate actions. {desperateActions.Count} possible actions");
             possibleActions.AddRange(desperateActions);
             
-            List<Action> veryDesperateActions = GetDesperateDestructiveMove(organism, GrowStrategy.ALL_PROTEINS,3);
+            List<Action> veryDesperateActions = GetDesperateDestructiveMove(organism, GrowStrategy.ALL_PROTEINS,3, ActionSource.VERY_DESPERATE_DESTRUCTIVE_MOVE);
             DisplayTime($"Checked for very desperate actions. {veryDesperateActions.Count} possible actions");
             possibleActions.AddRange(veryDesperateActions);
             
@@ -1103,7 +1127,7 @@ internal sealed class Game
                         GoalType = GoalType.WAIT,
                         ActionType = ActionType.WAIT,
 
-                        Source = "No other actions found"
+                        Source = ActionSource.FINAL_WAIT
                     };
                     possibleActions.Add(waitAction);
                 }
@@ -1134,6 +1158,10 @@ internal sealed class Game
             {
                 allWait = false;
             }
+
+
+            _trackedActions.TryGetValue(action.Source, out int count);
+            _trackedActions[action.Source] = count + 1;
         }
 
         if (allWait)
@@ -1142,12 +1170,13 @@ internal sealed class Game
         }
         else
         {
-            _waitCount = 0;
+            if (_waitCount <= 3)
+                _waitCount = 0;
         }
 
         DisplayTime("Done picking best actions");
 
-        
+        Display.ActionSources(_trackedActions);
 
         _timer.Stop();
 
@@ -1185,7 +1214,7 @@ internal sealed class Game
 
                         Console.Error.WriteLine($"Found organ to destroy: {organ.Position.X},{organ.Position.Y}");
                         // Create 4 grow type actions for tis check point 
-                        return CreateGrowActions(organism.RootId, organ.Id, protein.Position, 0, "End game destroy move").ToList();
+                        return CreateGrowActions(organism.RootId, organ.Id, protein.Position, 0, ActionSource.END_GAME_DESTROY).ToList();
                     }
                 }
             }
@@ -1564,8 +1593,8 @@ internal sealed class Game
                             TargetPosition = path[0],
                             OrganType = OrganType.TENTACLE,
                             OrganDirection = direction,
-                            Score = 500 + childCount, 
-                            Source = "CheckForTentacleAction - " + source
+                            Score = 500 + childCount,
+                            Source = ActionSource.CHECK_FOR_TENTACLES
                         });
                     }   
                 }
@@ -1618,7 +1647,7 @@ internal sealed class Game
                         OrganType = OrganType.TENTACLE,
                         OrganDirection = direction,
                         Score = 500, // Tentacle moves are higher than the rest by default
-                        Source = "CheckForTentacleAction - " + source 
+                        Source = ActionSource.CHECK_FOR_TENTACLES
                     });
                 }
             }
@@ -1824,7 +1853,7 @@ internal sealed class Game
                     Score = 200,
                     OrganType = OrganType.ROOT,
 
-                    Source = "CheckForSporeRootAction"
+                    Source = ActionSource.CHECK_FOR_ROOT
                 };
 
                 return (action, furthestDistance);
@@ -1961,7 +1990,7 @@ internal sealed class Game
                     GoalType = GoalType.SPORE,
                     TurnsToGoal = 1,
                     Score = 40 + extraPriorityScore,
-                    Source = "CheckForSporerAction"
+                    Source = ActionSource.CHECK_FOR_SPORER
                 };
             }
         }
@@ -1969,7 +1998,7 @@ internal sealed class Game
         return null;
     }
 
-    private List<Action> GetDesperateDestructiveMove(Organism organism, GrowStrategy growStrategy, int score)
+    private List<Action> GetDesperateDestructiveMove(Organism organism, GrowStrategy growStrategy, int score, ActionSource actionSource)
     {
         List<Action> possibleActions = new List<Action>();
 
@@ -1977,16 +2006,54 @@ internal sealed class Game
 
         if (closestOrgan != -1)
         {
-            possibleActions.AddRange(CreateGrowActions(organism.RootId, 
-                                                       closestOrgan, 
+            if (!(hasHarvestedProtein[shortestPath[0].X, shortestPath[0].Y] && !CanFloodFillTo(shortestPath[0], 5)))
+            {
+                possibleActions.AddRange(CreateGrowActions(organism.RootId,
+                                                       closestOrgan,
                                                        shortestPath[0],
-                                                       score, 
-                                                       "GetDesperateDestructiveMove"));
+                                                       score,
+                                                       actionSource));
+            }
         }
         return possibleActions;
     }
 
-    private IEnumerable<Action> CreateGrowActions(int rootId, int closestOrgan, Point point, int score, string actionSource)
+    private bool CanFloodFillTo(Point startPoint, int minAmount)
+    {
+        var filledCount = 0;
+        var visited = new bool[Width, Height];
+        var queue = new Queue<Point>();
+        queue.Enqueue(startPoint);
+        visited[startPoint.X, startPoint.Y] = true;
+
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+            filledCount++;
+
+            if (filledCount >= minAmount)
+            {
+                return true;
+            }
+
+            foreach (Point direction in _directions)
+            {
+                var nextPoint = new Point(current.X + direction.X, current.Y + direction.Y);
+
+                if (CheckBounds(nextPoint) && !visited[nextPoint.X, nextPoint.Y] && 
+                    !isBlocked[nextPoint.X, nextPoint.Y] && 
+                    !opponentTentaclePath[nextPoint.X, nextPoint.Y])
+                {
+                    queue.Enqueue(nextPoint);
+                    visited[nextPoint.X, nextPoint.Y] = true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private IEnumerable<Action> CreateGrowActions(int rootId, int closestOrgan, Point point, int score, ActionSource actionSource)
     {
         List<Action> actions = new List<Action>();
 
@@ -2021,7 +2088,7 @@ internal sealed class Game
                                     Point targetPosition, 
                                     OrganDirection? closestRootDirection, 
                                     int score,
-                                    string source)
+                                    ActionSource source)
     {
         return new Action()
         {
@@ -2069,19 +2136,26 @@ internal sealed class Game
 
                 if (MapChecker.CanGrowOn(checkPoint, this, GrowStrategy.UNHARVESTED, false))
                 {
-                    possibleActions.AddRange(CreateGrowActions(organism.RootId, current.Id, checkPoint, 2, "GetRandomGrowActions"));
+                    if (!(hasHarvestedProtein[checkPoint.X, checkPoint.Y] && !CanFloodFillTo(checkPoint, 5)))
+                    {
+                        possibleActions.AddRange(CreateGrowActions(organism.RootId, current.Id, checkPoint, 2, ActionSource.RANDOM_GROW_ACTIONS));
+                    }
                 }
 
                 if (MapChecker.CanGrowOn(checkPoint, this, GrowStrategy.ALL_PROTEINS, false))
                 {
                     foreach (Point d in _directions)
                     {
-                        if(MapChecker.CanGrowOn(new Point(checkPoint.X + d.X, checkPoint.Y + d.Y), 
-                                                this, 
+                        if (MapChecker.CanGrowOn(new Point(checkPoint.X + d.X, checkPoint.Y + d.Y),
+                                                this,
                                                 GrowStrategy.ALL_PROTEINS,
                                                 false))
                         {
-                            possibleActions.AddRange(CreateGrowActions(organism.RootId, current.Id, checkPoint, 1, "GetRandomGrowActions"));
+                            if (!(hasHarvestedProtein[checkPoint.X, checkPoint.Y] && !CanFloodFillTo(checkPoint, 5)))
+                            {
+                                possibleActions.AddRange(CreateGrowActions(organism.RootId, current.Id, checkPoint, 1, ActionSource.RANDOM_GROW_ACTIONS));
+
+                            }
                         }
                     }
                 }
@@ -2170,7 +2244,7 @@ internal sealed class Game
                         while (!canCreate)
                         {
                             Action checkAction = possibleActions[actionIndex];
-                            Display.Actions(new List<Action> { checkAction });
+                            
                             if (checkAction.ActionType == ActionType.WAIT)
                             {
                                 canCreate = true;
@@ -2676,34 +2750,32 @@ partial class Player
     {
         string[] inputs;
         inputs = Console.ReadLine().Split(' ');
-        int width = int.Parse(inputs[0]); // columns in the game grid
-        int height = int.Parse(inputs[1]); // rows in the game grid
+        var width = int.Parse(inputs[0]);
+        var height = int.Parse(inputs[1]);
 
         Game game = new Game(width, height);
 
-        // game loop
         while (true)
         {
-            List<Organ> unsortedPlayerOrgans = new List<Organ>();
-            List<Organ> unsortedOpponentOrgans = new List<Organ>();
-            List<Protein> proteins = new List<Protein>();
-            bool[,] walls = new bool[width, height]; 
+            var unsortedPlayerOrgans = new List<Organ>();
+            var unsortedOpponentOrgans = new List<Organ>();
+            var proteins = new List<Protein>();
+            var walls = new bool[width, height]; 
 
             int entityCount = int.Parse(Console.ReadLine());
             for (int i = 0; i < entityCount; i++)
             {
                 inputs = Console.ReadLine().Split(' ');
                 int x = int.Parse(inputs[0]);
-                int y = int.Parse(inputs[1]); // grid coordinate
-                string type = inputs[2]; // WALL, ROOT, BASIC, TENTACLE, HARVESTER, SPORER, A, B, C, D
-                int owner = int.Parse(inputs[3]); // 1 if your organ, 0 if enemy organ, -1 if neither
-                int organId = int.Parse(inputs[4]); // id of this entity if it's an organ, 0 otherwise
-                string organDir = inputs[5]; // N,E,S,W or X if not an organ
+                int y = int.Parse(inputs[1]);
+                string type = inputs[2];
+                int owner = int.Parse(inputs[3]);
+                int organId = int.Parse(inputs[4]); 
+                string organDir = inputs[5];
                 int organParentId = int.Parse(inputs[6]);
                 int organRootId = int.Parse(inputs[7]);
 
-                OrganType organTypeEnum;
-                if (Enum.TryParse(type, out organTypeEnum))
+                if (Enum.TryParse(type, out OrganType organTypeEnum))
                 {
                     switch (type)
                     {
@@ -2803,15 +2875,10 @@ partial class Player
 
             List<Action> actions = game.GetActions();
 
-            int requiredActionsCount = int.Parse(Console.ReadLine()); // your number of organisms, output an action for each one in any order
+            int requiredActionsCount = int.Parse(Console.ReadLine()); 
             for (int i = 0; i < requiredActionsCount; i++)
             {
                 Console.WriteLine(actions[i].ToString());
-
-                // Write an action using Console.WriteLine()
-                // To debug: Console.Error.WriteLine("Debug messages...");
-
-                // Console.WriteLine("WAIT");
             }
         }
     }

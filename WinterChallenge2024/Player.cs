@@ -56,7 +56,8 @@ partial class Player
                                         organId,
                                         organRootId,
                                         organTypeEnum,
-                                        new Point(x, y)));
+                                        new Point(x, y),
+                                        organParentId));
                             }
                             else if (owner == 0)
                             {
@@ -65,7 +66,8 @@ partial class Player
                                         organId,
                                         organRootId,
                                         organTypeEnum,
-                                        new Point(x, y)));
+                                        new Point(x, y),
+                                        organParentId));
                             }
 
                             break;
@@ -84,6 +86,7 @@ partial class Player
                                             organRootId,
                                             organTypeEnum,
                                             new Point(x, y),
+                                            organParentId,
                                             dirEnum));
                                 }
                                 else if (owner == 0)
@@ -94,6 +97,7 @@ partial class Player
                                             organRootId,
                                             organTypeEnum,
                                             new Point(x, y),
+                                            organParentId,
                                             dirEnum));
                                 }
                             }
@@ -165,14 +169,14 @@ partial class Player
         return proteins;
     }
 
-    private static Organ CreateOrgan(int organId, int rootId, OrganType organType, Point point)
+    private static Organ CreateOrgan(int organId, int rootId, OrganType organType, Point point, int parentId)
     {
-        return new Organ(organId, rootId, organType, point);
+        return new Organ(organId, rootId, organType, point, parentId);
     }
 
-    private static Organ CreateDirectionOrgan(int organId, int rootId, OrganType organType, Point point, OrganDirection direction)
+    private static Organ CreateDirectionOrgan(int organId, int rootId, OrganType organType, Point point, int parentId, OrganDirection direction)
     {
-        return new Organ(organId, rootId, organType, point, direction);
+        return new Organ(organId, rootId, organType, point, parentId, direction);
     }
 
     private static List<Organism> SortOrgans(List<Organ> unsortedOrgans)

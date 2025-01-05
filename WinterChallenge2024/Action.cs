@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Drawing;
-using System.Threading;
+﻿using System.Drawing;
 
 namespace WinterChallenge2024;
 
@@ -17,6 +15,7 @@ internal sealed class Action
     internal GoalType GoalType;
     internal ProteinType GoalProteinType;
     internal OrganType GoalOrganType;
+    internal Point GoalPosition = new Point(-1, -1);
     internal int TurnsToGoal;
 
     internal int Score = 0;

@@ -46,7 +46,8 @@ public class AStarTests
     {
         new object[] { new Point(1, 2), new Point(1, 7), 5 },
         new object[] { new Point(9, 6), new Point(2, 6), 7 },
-        new object[] { new Point(2, 2), new Point(3, 8), 7 }
+        new object[] { new Point(2, 2), new Point(3, 8), 7 },
+        new object[] { new Point(9, 0), new Point(6, 0), 3 }
     };
 
     [TestCaseSource(nameof(SimpleSearches))]

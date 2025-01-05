@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Xml.Linq;
+using static System.Formats.Asn1.AsnWriter;
 
 namespace WinterChallenge2024;
 internal static class Display
@@ -178,12 +179,10 @@ internal static class Display
 
     internal static void Actions(List<Action> actions)
     {
-        Console.Error.WriteLine("Actions");
         foreach (Action action in actions)
         {
-            Console.Error.WriteLine("-----------------------------------");
-            Console.Error.WriteLine($"Goal type:{action.GoalType}, Protein type:{action.GoalProteinType}, Turns:{action.TurnsToGoal}, score:{action.Score}");
-            Console.Error.WriteLine(action.ToString());
+            // Console.Error.WriteLine($"Goal type:{action.GoalType}, Protein type:{action.GoalProteinType}, Turns:{action.TurnsToGoal}, score:{action.Score}");
+            Console.Error.WriteLine(action.ToString() + $" - score:{ action.Score} - from {action.Source}");
         }
     }
 

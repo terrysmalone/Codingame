@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -15,10 +16,10 @@ internal static class MapChecker
 
     internal static bool CanGrowOn(Point pointToCheck, Game game)
     {
-        return CanGrowOn(pointToCheck, game, GrowStrategy.NO_PROTEINS);
+        return CanGrowOn(pointToCheck, game, GrowStrategy.NO_PROTEINS, false);
     }
 
-    internal static bool CanGrowOn(Point pointToCheck, Game game, GrowStrategy growStrategy)
+    internal static bool CanGrowOn(Point pointToCheck, Game game, GrowStrategy growStrategy, bool walkAcrossEnemyTentacles)
     {
         if (pointToCheck.X < 0 || 
             pointToCheck.Y < 0 || 
@@ -31,6 +32,15 @@ internal static class MapChecker
         if (game.isBlocked[pointToCheck.X, pointToCheck.Y])
         {
             return false;
+        }
+
+        if (!walkAcrossEnemyTentacles)
+        {
+            if (game.opponentTentaclePath[pointToCheck.X, pointToCheck.Y])
+            {
+                return false;
+            }
+            
         }
 
         if (growStrategy == GrowStrategy.NO_PROTEINS && game.hasAnyProtein[pointToCheck.X, pointToCheck.Y])
@@ -186,7 +196,7 @@ internal static class MapChecker
                 }
             }
 
-            if (!CanGrowOn(checkPoint, game, GrowStrategy.UNHARVESTED))
+            if (!CanGrowOn(checkPoint, game, GrowStrategy.UNHARVESTED, false))
             {
                 hitSomething = true;    
 

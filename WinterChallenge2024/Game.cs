@@ -39,7 +39,9 @@ internal sealed class Game
     private long _totalTime;
 
     private List<int> _createdSporer = new List<int>();
-    
+
+    private Dictionary<ActionSource, int> _trackedActions = new Dictionary<ActionSource, int>();
+
     private readonly List<Point> _directions = new List<Point>
     {
         new Point(0, 1),
@@ -131,7 +133,7 @@ internal sealed class Game
             {
                 List<Action> actions = GetHarvestAndConsumeActions(organism, maxProteinDistance);
                 DisplayTime($"Checked for harvest action. {actions.Count} possible actions");
-                Display.Actions(actions);
+                
                 if (actions.Count > 0)
                 {
                     possibleActions.AddRange(actions);
@@ -218,17 +220,20 @@ internal sealed class Game
                 Console.Error.WriteLine($"Checked for Action that was rejected by CheckForHarvestOrConsumeAction. {actions.Count} possible actions");
             }
 
-            List<Action> desperateActions = GetDesperateDestructiveMove(organism, GrowStrategy.UNHARVESTED, 4);
+            List<Action> desperateActions = GetDesperateDestructiveMove(organism, GrowStrategy.UNHARVESTED, 4, ActionSource.DESPERATE_DESTRUCTIVE_MOVE);
             DisplayTime($"Checked for desperate actions. {desperateActions.Count} possible actions");
             possibleActions.AddRange(desperateActions);
             
-            List<Action> veryDesperateActions = GetDesperateDestructiveMove(organism, GrowStrategy.ALL_PROTEINS,3);
+            List<Action> veryDesperateActions = GetDesperateDestructiveMove(organism, GrowStrategy.ALL_PROTEINS,3, ActionSource.VERY_DESPERATE_DESTRUCTIVE_MOVE);
             DisplayTime($"Checked for very desperate actions. {veryDesperateActions.Count} possible actions");
             possibleActions.AddRange(veryDesperateActions);
+
+            var getFloodFillScores = possibleActions.Count == 0;
             
-            List<Action> randomActions = GetRandomGrowActions(organism);
+            List<Action> randomActions = GetRandomGrowActions(organism, getFloodFillScores);
             DisplayTime($"Checked for random move action. {randomActions.Count} possible actions");
-            //Display.Actions(randomActions);
+            randomActions = randomActions.OrderByDescending(a => a.Score).ToList();
+            Display.Actions(randomActions);
 
             possibleActions.AddRange(randomActions);
             
@@ -243,18 +248,17 @@ internal sealed class Game
                     DisplayTime($"Checked for end game destroy moves. {endGameDestroyMoves.Count} possible actions");
                 }
 
-                if (possibleActions.Count == 0)
+                Action? waitAction = new Action()
                 {
-                    Action? waitAction = new Action()
-                    {
-                        OrganismId = organism.RootId,
-                        GoalType = GoalType.WAIT,
-                        ActionType = ActionType.WAIT,
+                    OrganismId = organism.RootId,
+                    GoalType = GoalType.WAIT,
+                    ActionType = ActionType.WAIT,
 
-                        Source = "No other actions found"
-                    };
-                    possibleActions.Add(waitAction);
-                }
+                    Source = ActionSource.FINAL_WAIT,
+                    Score = -1
+                };
+                possibleActions.Add(waitAction);
+                
             }
 
             possibleActions = possibleActions.OrderByDescending(p => p.Score).ToList();
@@ -282,6 +286,10 @@ internal sealed class Game
             {
                 allWait = false;
             }
+
+
+            _trackedActions.TryGetValue(action.Source, out int count);
+            _trackedActions[action.Source] = count + 1;
         }
 
         if (allWait)
@@ -290,12 +298,13 @@ internal sealed class Game
         }
         else
         {
-            _waitCount = 0;
+            if (_waitCount <= 3)
+                _waitCount = 0;
         }
 
         DisplayTime("Done picking best actions");
 
-        
+        // Display.ActionSources(_trackedActions);
 
         _timer.Stop();
 
@@ -333,7 +342,7 @@ internal sealed class Game
 
                         Console.Error.WriteLine($"Found organ to destroy: {organ.Position.X},{organ.Position.Y}");
                         // Create 4 grow type actions for tis check point 
-                        return CreateGrowActions(organism.RootId, organ.Id, protein.Position, 0, "End game destroy move").ToList();
+                        return CreateGrowActions(organism.RootId, organ.Id, protein.Position, 0, ActionSource.END_GAME_DESTROY).ToList();
                     }
                 }
             }
@@ -712,8 +721,8 @@ internal sealed class Game
                             TargetPosition = path[0],
                             OrganType = OrganType.TENTACLE,
                             OrganDirection = direction,
-                            Score = 500 + childCount, 
-                            Source = "CheckForTentacleAction - " + source
+                            Score = 500 + childCount,
+                            Source = ActionSource.CHECK_FOR_TENTACLES
                         });
                     }   
                 }
@@ -766,7 +775,7 @@ internal sealed class Game
                         OrganType = OrganType.TENTACLE,
                         OrganDirection = direction,
                         Score = 500, // Tentacle moves are higher than the rest by default
-                        Source = "CheckForTentacleAction - " + source 
+                        Source = ActionSource.CHECK_FOR_TENTACLES
                     });
                 }
             }
@@ -972,7 +981,7 @@ internal sealed class Game
                     Score = 200,
                     OrganType = OrganType.ROOT,
 
-                    Source = "CheckForSporeRootAction"
+                    Source = ActionSource.CHECK_FOR_ROOT
                 };
 
                 return (action, furthestDistance);
@@ -1109,7 +1118,7 @@ internal sealed class Game
                     GoalType = GoalType.SPORE,
                     TurnsToGoal = 1,
                     Score = 40 + extraPriorityScore,
-                    Source = "CheckForSporerAction"
+                    Source = ActionSource.CHECK_FOR_SPORER
                 };
             }
         }
@@ -1117,7 +1126,7 @@ internal sealed class Game
         return null;
     }
 
-    private List<Action> GetDesperateDestructiveMove(Organism organism, GrowStrategy growStrategy, int score)
+    private List<Action> GetDesperateDestructiveMove(Organism organism, GrowStrategy growStrategy, int score, ActionSource actionSource)
     {
         List<Action> possibleActions = new List<Action>();
 
@@ -1125,16 +1134,54 @@ internal sealed class Game
 
         if (closestOrgan != -1)
         {
-            possibleActions.AddRange(CreateGrowActions(organism.RootId, 
-                                                       closestOrgan, 
+            if (!(hasHarvestedProtein[shortestPath[0].X, shortestPath[0].Y] && !CanFloodFillTo(shortestPath[0], 5)))
+            {
+                possibleActions.AddRange(CreateGrowActions(organism.RootId,
+                                                       closestOrgan,
                                                        shortestPath[0],
-                                                       score, 
-                                                       "GetDesperateDestructiveMove"));
+                                                       score,
+                                                       actionSource));
+            }
         }
         return possibleActions;
     }
 
-    private IEnumerable<Action> CreateGrowActions(int rootId, int closestOrgan, Point point, int score, string actionSource)
+    private bool CanFloodFillTo(Point startPoint, int minAmount)
+    {
+        var filledCount = 0;
+        var visited = new bool[Width, Height];
+        var queue = new Queue<Point>();
+        queue.Enqueue(startPoint);
+        visited[startPoint.X, startPoint.Y] = true;
+
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+            filledCount++;
+
+            if (filledCount >= minAmount)
+            {
+                return true;
+            }
+
+            foreach (Point direction in _directions)
+            {
+                var nextPoint = new Point(current.X + direction.X, current.Y + direction.Y);
+
+                if (CheckBounds(nextPoint) && !visited[nextPoint.X, nextPoint.Y] && 
+                    !isBlocked[nextPoint.X, nextPoint.Y] && 
+                    !opponentTentaclePath[nextPoint.X, nextPoint.Y])
+                {
+                    queue.Enqueue(nextPoint);
+                    visited[nextPoint.X, nextPoint.Y] = true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private IEnumerable<Action> CreateGrowActions(int rootId, int closestOrgan, Point point, int score, ActionSource actionSource)
     {
         List<Action> actions = new List<Action>();
 
@@ -1169,7 +1216,7 @@ internal sealed class Game
                                     Point targetPosition, 
                                     OrganDirection? closestRootDirection, 
                                     int score,
-                                    string source)
+                                    ActionSource source)
     {
         return new Action()
         {
@@ -1185,16 +1232,11 @@ internal sealed class Game
         };
     }
 
-    private List<Action> GetRandomGrowActions(Organism organism)
+    private List<Action> GetRandomGrowActions(Organism organism, bool floodFillScore)
     {
         List<Action> possibleActions = new List<Action>();
         for (int i = organism.Organs.Count - 1; i >= 0; i--)
         {
-            if (possibleActions.Count > 15)
-            {
-                break;
-            }
-
             Organ current = organism.Organs[i];
 
             foreach (Point direction in _directions)
@@ -1215,21 +1257,48 @@ internal sealed class Game
                     continue;
                 }
 
-                if (MapChecker.CanGrowOn(checkPoint, this, GrowStrategy.UNHARVESTED, false))
+                var unharvestedScore = 2;
+                var harvestedScore = 1;
+
+                if (floodFillScore)
                 {
-                    possibleActions.AddRange(CreateGrowActions(organism.RootId, current.Id, checkPoint, 2, "GetRandomGrowActions"));
+                    unharvestedScore = 200;
+                    harvestedScore = 100;
+
+                    int floodFill = FloodFill(checkPoint);
+
+                    if (floodFill > 80)
+                    {
+                        floodFill = 80;
+                    }
+                    unharvestedScore += floodFill;
+                    harvestedScore += floodFill;
                 }
 
-                if (MapChecker.CanGrowOn(checkPoint, this, GrowStrategy.ALL_PROTEINS, false))
+                List<Action> actions = new List<Action>();
+                if (MapChecker.CanGrowOn(checkPoint, this, GrowStrategy.UNHARVESTED, false))
+                {
+                    if (!(hasHarvestedProtein[checkPoint.X, checkPoint.Y] && !CanFloodFillTo(checkPoint, 5)))
+                    {
+                        actions.AddRange(CreateGrowActions(organism.RootId, current.Id, checkPoint, unharvestedScore, ActionSource.RANDOM_GROW_ACTIONS));
+                        possibleActions.AddRange(actions);
+                    }
+                }
+
+                if (actions.Count == 0 && MapChecker.CanGrowOn(checkPoint, this, GrowStrategy.ALL_PROTEINS, false))
                 {
                     foreach (Point d in _directions)
                     {
-                        if(MapChecker.CanGrowOn(new Point(checkPoint.X + d.X, checkPoint.Y + d.Y), 
-                                                this, 
-                                                GrowStrategy.ALL_PROTEINS,
-                                                false))
+                        if (MapChecker.CanGrowOn(new Point(checkPoint.X + d.X, checkPoint.Y + d.Y),
+                                                 this,
+                                                 GrowStrategy.ALL_PROTEINS,
+                                                 false))
                         {
-                            possibleActions.AddRange(CreateGrowActions(organism.RootId, current.Id, checkPoint, 1, "GetRandomGrowActions"));
+                            if (!(hasHarvestedProtein[checkPoint.X, checkPoint.Y] && !CanFloodFillTo(checkPoint, 5)))
+                            {
+                                possibleActions.AddRange(CreateGrowActions(organism.RootId, current.Id, checkPoint, harvestedScore, ActionSource.RANDOM_GROW_ACTIONS));
+
+                            }
                         }
                     }
                 }
@@ -1237,6 +1306,32 @@ internal sealed class Game
         }
 
         return possibleActions;
+    }
+
+    private int FloodFill(Point checkPoint)
+    {
+        int score = 0;
+        var visited = new bool[Width, Height];
+        var queue = new Queue<Point>();
+        queue.Enqueue(checkPoint);
+        visited[checkPoint.X, checkPoint.Y] = true;
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+            score++;
+            foreach (var direction in _directions)
+            {
+                var nextPoint = new Point(current.X + direction.X, current.Y + direction.Y);
+                if (CheckBounds(nextPoint) && !visited[nextPoint.X, nextPoint.Y] &&
+                    !isBlocked[nextPoint.X, nextPoint.Y] &&
+                    !opponentTentaclePath[nextPoint.X, nextPoint.Y])
+                {
+                    queue.Enqueue(nextPoint);
+                    visited[nextPoint.X, nextPoint.Y] = true;
+                }
+            }
+        }
+        return score;
     }
 
     private (OrganType?, OrganDirection?) GetOrganAction(Point point)
@@ -1290,7 +1385,7 @@ internal sealed class Game
 
         while (!allChosen)
         { 
-            int highestScore = -1;
+            int highestScore = int.MinValue;
             int highestScoreIndex = -1;
             int highestActionIndex = -1;
             int highestOganismIndex = -1;
@@ -1318,7 +1413,7 @@ internal sealed class Game
                         while (!canCreate)
                         {
                             Action checkAction = possibleActions[actionIndex];
-                            Display.Actions(new List<Action> { checkAction });
+                            
                             if (checkAction.ActionType == ActionType.WAIT)
                             {
                                 canCreate = true;

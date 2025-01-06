@@ -10,6 +10,10 @@
 
 ### BUGS
 
+BUG: GetDesperateDestructiveMove destroys harvested proteins when it shouldn't 
+seed=-404675561261330200
+Turn 18
+
 Major bug: I don't see the opponents tentacles on turn 22
 Orange (Syj) - Blue (me)
 seed=-1367723123811444200
@@ -52,3 +56,6 @@ seed=-3605073768287950000
 
 TEST: Early battle I lose badly
 seed=-7134633389896397000
+
+TEST: This will be a good test of changing my flood fill
+seed=6317245032757462000

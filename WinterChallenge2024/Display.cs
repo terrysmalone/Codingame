@@ -7,31 +7,6 @@ using static System.Formats.Asn1.AsnWriter;
 namespace WinterChallenge2024;
 internal static class Display
 {
-    internal static void Summary(Game game)
-    {
-        Console.Error.WriteLine($"PROTEINS");
-        Proteins(game.Proteins);
-        Console.Error.WriteLine("==================================");
-
-        Console.Error.WriteLine($"ORGANISMS");
-        Console.Error.WriteLine("----------------------------------");
-        Console.Error.WriteLine($"Player organisms");
-        Organisms(game.PlayerOrganisms);
-        Console.Error.WriteLine("----------------------------------");
-        Console.Error.WriteLine($"Opponent organisms");
-        Organisms(game.OpponentOrganisms);
-        Console.Error.WriteLine("==================================");
-
-        Console.Error.WriteLine($"PROTEIN STOCK");
-        Console.Error.WriteLine("----------------------------------");
-        Console.Error.WriteLine($"Player protein stock");
-        ProteinStock(game.PlayerProteinStock);
-        Console.Error.WriteLine("----------------------------------");
-        Console.Error.WriteLine($"Opponent protein stock");
-        ProteinStock(game.OpponentProteinStock);
-        Console.Error.WriteLine("==================================");
-    }
-
     internal static void ProteinStock(ProteinStock proteinStock)
     {
         Console.Error.WriteLine($"A: {proteinStock.A}");
@@ -144,37 +119,11 @@ internal static class Display
         Console.Error.WriteLine("----------");
     }
 
-    internal static void Path(List<Point> path)
-    {
-        string pathText = string.Empty;
-
-        foreach (Point point in path)
-        {
-            pathText += $"({point.X},{point.Y}) ->";
-        }
-
-        if (!string.IsNullOrEmpty(pathText))
-        {
-            pathText = pathText.Substring(0, pathText.Length - 3);
-        }
-
-        Console.Error.WriteLine(pathText);
-    }
-
     internal static void TimeStamp(long totalTime, long segmentTime, string task)
     {
         TimeSpan total = TimeSpan.FromTicks(totalTime);
         TimeSpan segment = TimeSpan.FromTicks(segmentTime);
         Console.Error.WriteLine($"{total.Milliseconds}ms-{segment.Milliseconds}ms-{task}");
-    }
-
-    internal static void ProteinPaths(List<Tuple<int, ProteinType, List<Point>>> proteinPaths)
-    {
-        foreach (Tuple<int, ProteinType, List<Point>> proteinPath in proteinPaths)
-        {
-            Console.Error.WriteLine($"OrganId:{proteinPath.Item1} - ProteinType:{proteinPath.Item2}");
-            Path(proteinPath.Item3);
-        }
     }
 
     internal static void Actions(List<Action> actions)
@@ -193,6 +142,15 @@ internal static class Display
             Console.Error.WriteLine("-----------------------------------");
             Console.Error.WriteLine($"OrganismId:{actions.Key}");
             Actions(actions.Value);
+        }
+    }
+
+    internal static void ActionSources(Dictionary<ActionSource, int> trackedActions)
+    {
+        Console.Error.WriteLine("Tracked actions count");
+        foreach (KeyValuePair<ActionSource, int> trackedAction in trackedActions)
+        {
+            Console.Error.WriteLine($"{trackedAction.Key} - {trackedAction.Value}");
         }
     }
 }

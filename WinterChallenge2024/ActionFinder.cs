@@ -124,7 +124,7 @@ internal sealed class ActionFinder
         action.GoalProteinType = proteinType;
         action.GoalPosition = path[path.Count - 1];
 
-        action.Source = "GetShortestPathsToProteins";
+        action.Source = ActionSource.CHECK_FOR_HARVESTS;
 
         // TODO: Add longer consume actions (We might need to consume something if we 
         //       Have no stock or harvests for C or alculator.CanProduceOrgan(OrganType.H

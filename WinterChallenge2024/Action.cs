@@ -19,7 +19,7 @@ internal sealed class Action
     internal int TurnsToGoal;
 
     internal int Score = 0;
-    internal string Source = string.Empty;
+    internal ActionSource Source = ActionSource.NONE;
     internal bool BlockC = false;
     internal bool BlockD = false;
 
@@ -47,4 +47,18 @@ internal sealed class Action
 
         return string.Empty;
     }
+}
+
+internal enum ActionSource
+{
+    NONE,
+    FINAL_WAIT,
+    CHECK_FOR_TENTACLES,
+    CHECK_FOR_SPORER,
+    CHECK_FOR_ROOT,
+    VERY_DESPERATE_DESTRUCTIVE_MOVE,
+    RANDOM_GROW_ACTIONS,
+    END_GAME_DESTROY,
+    CHECK_FOR_HARVESTS,
+    DESPERATE_DESTRUCTIVE_MOVE,
 }

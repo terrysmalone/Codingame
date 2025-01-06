@@ -133,7 +133,7 @@ internal sealed class Game
             {
                 List<Action> actions = GetHarvestAndConsumeActions(organism, maxProteinDistance);
                 DisplayTime($"Checked for harvest action. {actions.Count} possible actions");
-                Display.Actions(actions);
+                
                 if (actions.Count > 0)
                 {
                     possibleActions.AddRange(actions);
@@ -227,10 +227,13 @@ internal sealed class Game
             List<Action> veryDesperateActions = GetDesperateDestructiveMove(organism, GrowStrategy.ALL_PROTEINS,3, ActionSource.VERY_DESPERATE_DESTRUCTIVE_MOVE);
             DisplayTime($"Checked for very desperate actions. {veryDesperateActions.Count} possible actions");
             possibleActions.AddRange(veryDesperateActions);
+
+            var getFloodFillScores = possibleActions.Count == 0;
             
-            List<Action> randomActions = GetRandomGrowActions(organism);
+            List<Action> randomActions = GetRandomGrowActions(organism, getFloodFillScores);
             DisplayTime($"Checked for random move action. {randomActions.Count} possible actions");
-            //Display.Actions(randomActions);
+            randomActions = randomActions.OrderByDescending(a => a.Score).ToList();
+            Display.Actions(randomActions);
 
             possibleActions.AddRange(randomActions);
             
@@ -245,18 +248,17 @@ internal sealed class Game
                     DisplayTime($"Checked for end game destroy moves. {endGameDestroyMoves.Count} possible actions");
                 }
 
-                if (possibleActions.Count == 0)
+                Action? waitAction = new Action()
                 {
-                    Action? waitAction = new Action()
-                    {
-                        OrganismId = organism.RootId,
-                        GoalType = GoalType.WAIT,
-                        ActionType = ActionType.WAIT,
+                    OrganismId = organism.RootId,
+                    GoalType = GoalType.WAIT,
+                    ActionType = ActionType.WAIT,
 
-                        Source = ActionSource.FINAL_WAIT
-                    };
-                    possibleActions.Add(waitAction);
-                }
+                    Source = ActionSource.FINAL_WAIT,
+                    Score = -1
+                };
+                possibleActions.Add(waitAction);
+                
             }
 
             possibleActions = possibleActions.OrderByDescending(p => p.Score).ToList();
@@ -302,7 +304,7 @@ internal sealed class Game
 
         DisplayTime("Done picking best actions");
 
-        Display.ActionSources(_trackedActions);
+        // Display.ActionSources(_trackedActions);
 
         _timer.Stop();
 
@@ -1230,16 +1232,11 @@ internal sealed class Game
         };
     }
 
-    private List<Action> GetRandomGrowActions(Organism organism)
+    private List<Action> GetRandomGrowActions(Organism organism, bool floodFillScore)
     {
         List<Action> possibleActions = new List<Action>();
         for (int i = organism.Organs.Count - 1; i >= 0; i--)
         {
-            if (possibleActions.Count > 15)
-            {
-                break;
-            }
-
             Organ current = organism.Organs[i];
 
             foreach (Point direction in _directions)
@@ -1260,11 +1257,24 @@ internal sealed class Game
                     continue;
                 }
 
+                var unharvestedScore = 2;
+                var harvestedScore = 1;
+
+                if (floodFillScore)
+                {
+                    unharvestedScore = 200;
+                    harvestedScore = 100;
+
+                    int floodFill = FloodFill(checkPoint);
+                    unharvestedScore += floodFill;
+                    harvestedScore += floodFill;
+                }
+
                 if (MapChecker.CanGrowOn(checkPoint, this, GrowStrategy.UNHARVESTED, false))
                 {
                     if (!(hasHarvestedProtein[checkPoint.X, checkPoint.Y] && !CanFloodFillTo(checkPoint, 5)))
                     {
-                        possibleActions.AddRange(CreateGrowActions(organism.RootId, current.Id, checkPoint, 2, ActionSource.RANDOM_GROW_ACTIONS));
+                        possibleActions.AddRange(CreateGrowActions(organism.RootId, current.Id, checkPoint, unharvestedScore, ActionSource.RANDOM_GROW_ACTIONS));
                     }
                 }
 
@@ -1279,7 +1289,7 @@ internal sealed class Game
                         {
                             if (!(hasHarvestedProtein[checkPoint.X, checkPoint.Y] && !CanFloodFillTo(checkPoint, 5)))
                             {
-                                possibleActions.AddRange(CreateGrowActions(organism.RootId, current.Id, checkPoint, 1, ActionSource.RANDOM_GROW_ACTIONS));
+                                possibleActions.AddRange(CreateGrowActions(organism.RootId, current.Id, checkPoint, harvestedScore, ActionSource.RANDOM_GROW_ACTIONS));
 
                             }
                         }
@@ -1289,6 +1299,32 @@ internal sealed class Game
         }
 
         return possibleActions;
+    }
+
+    private int FloodFill(Point checkPoint)
+    {
+        int score = 0;
+        var visited = new bool[Width, Height];
+        var queue = new Queue<Point>();
+        queue.Enqueue(checkPoint);
+        visited[checkPoint.X, checkPoint.Y] = true;
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+            score++;
+            foreach (var direction in _directions)
+            {
+                var nextPoint = new Point(current.X + direction.X, current.Y + direction.Y);
+                if (CheckBounds(nextPoint) && !visited[nextPoint.X, nextPoint.Y] &&
+                    !isBlocked[nextPoint.X, nextPoint.Y] &&
+                    !opponentTentaclePath[nextPoint.X, nextPoint.Y])
+                {
+                    queue.Enqueue(nextPoint);
+                    visited[nextPoint.X, nextPoint.Y] = true;
+                }
+            }
+        }
+        return score;
     }
 
     private (OrganType?, OrganDirection?) GetOrganAction(Point point)
@@ -1342,7 +1378,7 @@ internal sealed class Game
 
         while (!allChosen)
         { 
-            int highestScore = -1;
+            int highestScore = int.MinValue;
             int highestScoreIndex = -1;
             int highestActionIndex = -1;
             int highestOganismIndex = -1;

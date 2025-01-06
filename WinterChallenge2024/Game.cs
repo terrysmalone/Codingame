@@ -1266,26 +1266,33 @@ internal sealed class Game
                     harvestedScore = 100;
 
                     int floodFill = FloodFill(checkPoint);
+
+                    if (floodFill > 80)
+                    {
+                        floodFill = 80;
+                    }
                     unharvestedScore += floodFill;
                     harvestedScore += floodFill;
                 }
 
+                List<Action> actions = new List<Action>();
                 if (MapChecker.CanGrowOn(checkPoint, this, GrowStrategy.UNHARVESTED, false))
                 {
                     if (!(hasHarvestedProtein[checkPoint.X, checkPoint.Y] && !CanFloodFillTo(checkPoint, 5)))
                     {
-                        possibleActions.AddRange(CreateGrowActions(organism.RootId, current.Id, checkPoint, unharvestedScore, ActionSource.RANDOM_GROW_ACTIONS));
+                        actions.AddRange(CreateGrowActions(organism.RootId, current.Id, checkPoint, unharvestedScore, ActionSource.RANDOM_GROW_ACTIONS));
+                        possibleActions.AddRange(actions);
                     }
                 }
 
-                if (MapChecker.CanGrowOn(checkPoint, this, GrowStrategy.ALL_PROTEINS, false))
+                if (actions.Count == 0 && MapChecker.CanGrowOn(checkPoint, this, GrowStrategy.ALL_PROTEINS, false))
                 {
                     foreach (Point d in _directions)
                     {
                         if (MapChecker.CanGrowOn(new Point(checkPoint.X + d.X, checkPoint.Y + d.Y),
-                                                this,
-                                                GrowStrategy.ALL_PROTEINS,
-                                                false))
+                                                 this,
+                                                 GrowStrategy.ALL_PROTEINS,
+                                                 false))
                         {
                             if (!(hasHarvestedProtein[checkPoint.X, checkPoint.Y] && !CanFloodFillTo(checkPoint, 5)))
                             {

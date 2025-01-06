@@ -792,37 +792,11 @@ internal static class Display
         Console.Error.WriteLine("----------");
     }
 
-    internal static void Path(List<Point> path)
-    {
-        string pathText = string.Empty;
-
-        foreach (Point point in path)
-        {
-            pathText += $"({point.X},{point.Y}) ->";
-        }
-
-        if (!string.IsNullOrEmpty(pathText))
-        {
-            pathText = pathText.Substring(0, pathText.Length - 3);
-        }
-
-        Console.Error.WriteLine(pathText);
-    }
-
     internal static void TimeStamp(long totalTime, long segmentTime, string task)
     {
         TimeSpan total = TimeSpan.FromTicks(totalTime);
         TimeSpan segment = TimeSpan.FromTicks(segmentTime);
         Console.Error.WriteLine($"{total.Milliseconds}ms-{segment.Milliseconds}ms-{task}");
-    }
-
-    internal static void ProteinPaths(List<Tuple<int, ProteinType, List<Point>>> proteinPaths)
-    {
-        foreach (Tuple<int, ProteinType, List<Point>> proteinPath in proteinPaths)
-        {
-            Console.Error.WriteLine($"OrganId:{proteinPath.Item1} - ProteinType:{proteinPath.Item2}");
-            Path(proteinPath.Item3);
-        }
     }
 
     internal static void Actions(List<Action> actions)
@@ -2115,26 +2089,33 @@ internal sealed class Game
                     harvestedScore = 100;
 
                     int floodFill = FloodFill(checkPoint);
+
+                    if (floodFill > 80)
+                    {
+                        floodFill = 80;
+                    }
                     unharvestedScore += floodFill;
                     harvestedScore += floodFill;
                 }
 
+                List<Action> actions = new List<Action>();
                 if (MapChecker.CanGrowOn(checkPoint, this, GrowStrategy.UNHARVESTED, false))
                 {
                     if (!(hasHarvestedProtein[checkPoint.X, checkPoint.Y] && !CanFloodFillTo(checkPoint, 5)))
                     {
-                        possibleActions.AddRange(CreateGrowActions(organism.RootId, current.Id, checkPoint, unharvestedScore, ActionSource.RANDOM_GROW_ACTIONS));
+                        actions.AddRange(CreateGrowActions(organism.RootId, current.Id, checkPoint, unharvestedScore, ActionSource.RANDOM_GROW_ACTIONS));
+                        possibleActions.AddRange(actions);
                     }
                 }
 
-                if (MapChecker.CanGrowOn(checkPoint, this, GrowStrategy.ALL_PROTEINS, false))
+                if (actions.Count == 0 && MapChecker.CanGrowOn(checkPoint, this, GrowStrategy.ALL_PROTEINS, false))
                 {
                     foreach (Point d in _directions)
                     {
                         if (MapChecker.CanGrowOn(new Point(checkPoint.X + d.X, checkPoint.Y + d.Y),
-                                                this,
-                                                GrowStrategy.ALL_PROTEINS,
-                                                false))
+                                                 this,
+                                                 GrowStrategy.ALL_PROTEINS,
+                                                 false))
                         {
                             if (!(hasHarvestedProtein[checkPoint.X, checkPoint.Y] && !CanFloodFillTo(checkPoint, 5)))
                             {

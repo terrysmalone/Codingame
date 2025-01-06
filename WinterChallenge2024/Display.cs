@@ -119,37 +119,11 @@ internal static class Display
         Console.Error.WriteLine("----------");
     }
 
-    internal static void Path(List<Point> path)
-    {
-        string pathText = string.Empty;
-
-        foreach (Point point in path)
-        {
-            pathText += $"({point.X},{point.Y}) ->";
-        }
-
-        if (!string.IsNullOrEmpty(pathText))
-        {
-            pathText = pathText.Substring(0, pathText.Length - 3);
-        }
-
-        Console.Error.WriteLine(pathText);
-    }
-
     internal static void TimeStamp(long totalTime, long segmentTime, string task)
     {
         TimeSpan total = TimeSpan.FromTicks(totalTime);
         TimeSpan segment = TimeSpan.FromTicks(segmentTime);
         Console.Error.WriteLine($"{total.Milliseconds}ms-{segment.Milliseconds}ms-{task}");
-    }
-
-    internal static void ProteinPaths(List<Tuple<int, ProteinType, List<Point>>> proteinPaths)
-    {
-        foreach (Tuple<int, ProteinType, List<Point>> proteinPath in proteinPaths)
-        {
-            Console.Error.WriteLine($"OrganId:{proteinPath.Item1} - ProteinType:{proteinPath.Item2}");
-            Path(proteinPath.Item3);
-        }
     }
 
     internal static void Actions(List<Action> actions)

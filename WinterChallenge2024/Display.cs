@@ -7,31 +7,6 @@ using static System.Formats.Asn1.AsnWriter;
 namespace WinterChallenge2024;
 internal static class Display
 {
-    internal static void Summary(Game game)
-    {
-        Console.Error.WriteLine($"PROTEINS");
-        Proteins(game.Proteins);
-        Console.Error.WriteLine("==================================");
-
-        Console.Error.WriteLine($"ORGANISMS");
-        Console.Error.WriteLine("----------------------------------");
-        Console.Error.WriteLine($"Player organisms");
-        Organisms(game.PlayerOrganisms);
-        Console.Error.WriteLine("----------------------------------");
-        Console.Error.WriteLine($"Opponent organisms");
-        Organisms(game.OpponentOrganisms);
-        Console.Error.WriteLine("==================================");
-
-        Console.Error.WriteLine($"PROTEIN STOCK");
-        Console.Error.WriteLine("----------------------------------");
-        Console.Error.WriteLine($"Player protein stock");
-        ProteinStock(game.PlayerProteinStock);
-        Console.Error.WriteLine("----------------------------------");
-        Console.Error.WriteLine($"Opponent protein stock");
-        ProteinStock(game.OpponentProteinStock);
-        Console.Error.WriteLine("==================================");
-    }
-
     internal static void ProteinStock(ProteinStock proteinStock)
     {
         Console.Error.WriteLine($"A: {proteinStock.A}");

@@ -50,6 +50,11 @@ class Player
                 int x = int.Parse(inputs[3 * j]);// X coordinate, 0 is left edge
                 int y = int.Parse(inputs[3 * j + 1]);// Y coordinate, 0 is top edge
                 int tileType = int.Parse(inputs[3 * j + 2]);
+
+                if (tileType > 0)
+                {
+                    game.SetCover(x, y, tileType);
+                }
             }
         }
 
@@ -63,15 +68,15 @@ class Player
             {
                 Console.ReadLine();
             }
-            Console.Error.WriteLine("Starting new game loop...");
+
             game.MarkAllAgentsForCulling();
 
             int agentCount = int.Parse(Console.ReadLine()); // Total number of agents still in the game
-            Console.Error.WriteLine($"Processing {agentCount} agents...");
+            
             for (int i = 0; i < agentCount; i++)
             {
                 inputs = Console.ReadLine().Split(' ');
-                Console.Error.WriteLine($"Processing agent data: {string.Join(", ", inputs)}");
+                
                 int agentId = int.Parse(inputs[0]);
                 int x = int.Parse(inputs[1]);
                 int y = int.Parse(inputs[2]);

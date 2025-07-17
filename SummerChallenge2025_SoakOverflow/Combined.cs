@@ -4,6 +4,7 @@
 ***************************************************************/
 
 using System.Drawing;
+using System.Runtime.CompilerServices;
 using System.Net.WebSockets;
 using System;
 using System.Linq;
@@ -43,6 +44,168 @@ class Agent
     }
 }
 
+public class CoverMap
+{
+    private int width, height;
+    public double[,] CreateCoverMap(int xPos, int yPos, int[,] cover)
+    {
+        width = cover.GetLength(0);
+        height = cover.GetLength(1);
+        var coverMap = new double[width, height];
+
+        // Populate all elements with 1.0
+        for (int i = 0; i < width; i++)
+        {
+            for (int j = 0; j < height; j++)
+            {
+                coverMap[i, j] = 1.0;
+            }
+        }
+
+        // Set the current position to 0.0
+        coverMap[xPos, yPos] = 0.0; 
+
+        // Check if north is protected
+        if (yPos - 2 >= 0 && cover[xPos, yPos - 1] > 0)
+        {
+            var fillValue = GetCoverProtectionValue(cover[xPos, yPos - 1]);
+                
+            // Fill all values to the north
+            for (int y = 0; y <= yPos - 2; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    coverMap[x, y] = fillValue;
+                }
+            }
+
+            // Set adjacent tiles back to 1.0
+            if (xPos - 1 >= 0)
+            {
+                coverMap[xPos - 1, yPos - 2] = 1.0;
+            }
+            coverMap[xPos, yPos - 2] = 1.0;
+            if (xPos + 1 < width)
+            {
+                coverMap[xPos + 1, yPos - 2] = 1.0;
+            }
+        }
+
+        // Check if south is protected
+        if (yPos + 2 <= height-1 && cover[xPos, yPos + 1] > 0)
+        {
+            var fillValue = GetCoverProtectionValue(cover[xPos, yPos + 1]);
+            // Fill all values to the south
+            for (int y = yPos + 2; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    coverMap[x, y] = fillValue;
+                }
+            }
+
+            // Set adjacent tiles back to 1.0
+            if (xPos - 1 >= 0)
+            {
+                coverMap[xPos - 1, yPos + 2] = 1.0;
+            }
+            coverMap[xPos, yPos + 2] = 1.0;
+            if (xPos + 1 < width)
+            {
+                coverMap[xPos + 1, yPos + 2] = 1.0;
+            }
+        }
+
+        // Check if east is protected
+        if (xPos + 2 < width && cover[xPos + 1, yPos] > 0)
+        {
+            var fillValue = GetCoverProtectionValue(cover[xPos + 1, yPos]);
+            // Fill all values to the east
+            for (int x = xPos + 2; x < width; x++)
+            {
+                for (int y = 0; y < height; y++)
+                {
+                    // Don't fill it if it's already covered by large cover
+                    if (coverMap[x, y] != 0.25)
+                    {
+                        coverMap[x, y] = fillValue;
+                    }
+                }
+            }
+            // Set adjacent tiles back to 1.0
+            if (yPos - 1 >= 0)
+            {
+                coverMap[xPos + 2, yPos - 1] = 1.0;
+            }
+            coverMap[xPos + 2, yPos] = 1.0;
+            if (yPos + 1 < height)
+            {
+                coverMap[xPos + 2, yPos + 1] = 1.0;
+            }
+        }
+
+        // Check if west is protected
+        if (xPos - 2 >= 0 && cover[xPos - 1, yPos] > 0)
+        {
+            var fillValue = GetCoverProtectionValue(cover[xPos - 1, yPos]);
+            // Fill all values to the west
+            for (int x = 0; x <= xPos - 2; x++)
+            {
+                for (int y = 0; y < height; y++)
+                {
+                    // Don't fill it if it's already covered by large cover
+                    if (coverMap[x, y] != 0.25)
+                    {
+                        coverMap[x, y] = fillValue;
+                    }
+                }
+            }
+            // Set adjacent tiles back to 1.0
+            if (yPos - 1 >= 0)
+            {
+                coverMap[xPos - 2, yPos - 1] = 1.0;
+            }
+            coverMap[xPos - 2, yPos] = 1.0;
+            if (yPos + 1 < height)
+            {
+                coverMap[xPos - 2, yPos + 1] = 1.0;
+            }
+        }
+
+        return coverMap;
+    }
+
+    private double GetCoverProtectionValue(int coverType)
+    {
+        if (coverType == 1)
+        {
+            return 0.5;
+        }
+        else if (coverType == 2)
+        {
+            return 0.25;
+        }
+
+        return 1.0;
+    }
+}
+
+internal static class Display
+{
+    internal static void CoverMap(double[,] coverMap)
+    {
+        Console.Error.WriteLine("Cover Map:");
+        for (int y = 0; y < coverMap.GetLength(1); y++)
+        {
+            for (int x = 0; x < coverMap.GetLength(0); x++)
+            {
+                Console.Error.Write($"{coverMap[x, y]:F2} ");
+            }
+            Console.Error.WriteLine();
+        }
+    }
+}
+
 class Game
 {
     public int Width { get; private set; }
@@ -53,27 +216,33 @@ class Game
     List<Agent> playerAgents = new List<Agent>();
     List<Agent> opponentAgents = new List<Agent>();
 
+    int[,] cover;
+
+    private CoverMap coverMap;
+
     public Game(int myId)
     {
         MyId = myId;
+
+        coverMap = new CoverMap();
     }
 
     public void SetGameSize(int width, int height)
     {
         Width = width;
         Height = height;
+
+        cover = new int[Width, Height];
     }
 
     internal void AddAgent(int id, int player, int shootCooldown, int optimalRange, int soakingPower, int splashBombs)
     {
         if (player == MyId)
         {
-            Console.Error.WriteLine($"Adding player agent {id} with cooldown {shootCooldown}, range {optimalRange}, soaking power {soakingPower}, splash bombs {splashBombs}");
             playerAgents.Add(new Agent(id, player, shootCooldown, optimalRange, soakingPower, splashBombs));
         }
         else
         {
-            Console.Error.WriteLine($"Adding opponent agent {id} with cooldown {shootCooldown}, range {optimalRange}, soaking power {soakingPower}, splash bombs {splashBombs}");
             opponentAgents.Add(new Agent(id, player, shootCooldown, optimalRange, soakingPower, splashBombs));
         }
     }
@@ -93,13 +262,8 @@ class Game
 
     internal void DestroyMarkedAgents()
     {
-        Console.Error.WriteLine("Destroying marked agents...");
-        Console.Error.WriteLine($"Player agents before culling: {playerAgents.Count}");
-        Console.Error.WriteLine($"Opponent agents before culling: {opponentAgents.Count}");
         playerAgents.RemoveAll(agent => !agent.InGame);
         opponentAgents.RemoveAll(agent => !agent.InGame);
-        Console.Error.WriteLine($"Player agents after culling: {playerAgents.Count}");
-        Console.Error.WriteLine($"Opponent agents after culling: {opponentAgents.Count}");
     }
 
     internal void UpdateAgent(int agentId, int x, int y, int cooldown, int splashBombs, int wetness)
@@ -120,30 +284,143 @@ class Game
     // One line per agent: <agentId>;<action1;action2;...> actions are "MOVE x y | SHOOT id | THROW x y | HUNKER_DOWN | MESSAGE text"
     internal List<string> GetMoves()
     {
-        Console.Error.WriteLine($"Player agent count: {playerAgents.Count}");
-        Console.Error.WriteLine($"Opponent agent count: {opponentAgents.Count}");
-
-        Console.Error.WriteLine("In get moves");
         List<string> moves = new List<string>();
-
-        int wettestOpponent = GetWettestOpponentId();
 
         foreach (var agent in playerAgents)
         {
-            // Example action: Move towards a fixed position
-            if (agent.Id == playerAgents[0].Id)
+            Console.Error.WriteLine($"Agent {agent.Id}");
+            // Get highest adjacent protection
+            Point bestProtection = GetBestAdjacentProtection(agent.Position);
+
+            var bestAttack = 0.0;
+            var bestAttackId = -1;
+
+            foreach (var enemy in opponentAgents)
             {
-                moves.Add($"{agent.Id};SHOOT {wettestOpponent}");
+                Console.Error.WriteLine($"Enemy {enemy.Id}");
+
+                var damage = CalculateDamage(
+                    bestProtection.X, 
+                    bestProtection.Y, 
+                    agent.OptimalRange,
+                    agent.SoakingPower, 
+                    enemy);
+
+                Console.Error.WriteLine($"Damage {damage}");
+
+                if (damage > bestAttack)
+                {
+                    bestAttack = damage;
+                    bestAttackId = enemy.Id;
+                }
             }
-            else
-            {
-                moves.Add($"{agent.Id};SHOOT {wettestOpponent}");
-            }
+
+            moves.Add($"{agent.Id}; MOVE {bestProtection.X} {bestProtection.Y}; SHOOT {bestAttackId}");
 
             // To debug: Console.Error.WriteLine("Debug messages...");
         }
 
         return moves;
+    }
+
+    private double CalculateDamage(int x, int y, int optimalRange, int soakingPower, Agent enemy)
+    {
+        double[,] map = coverMap.CreateCoverMap(enemy.Position.X, enemy.Position.Y, cover);
+
+        var damageMultiplier = map[x, y];
+        var baseDamage = soakingPower * damageMultiplier;
+
+        int manhattanDistance = Math.Abs(enemy.Position.X - x) + Math.Abs(enemy.Position.Y - y);
+
+        if (manhattanDistance <= optimalRange)
+        {
+            return baseDamage;
+        }
+        //else if (manhattanDistance <= optimalRange * 2)
+        //{
+        //    return baseDamage / 2;
+        //}
+        else
+        {
+            return 0;
+        }
+
+    }
+
+    // Get the compass pooint square (N,E,S,W) with the best cover
+    private Point GetBestAdjacentProtection(Point position)
+    {
+        var north = GetHighestCover(position.X, position.Y - 1);
+
+        var best = north;
+        var bestX = position.X;
+        var bestY = position.Y - 1;
+
+        var south = GetHighestCover(position.X, position.Y + 1);
+
+        if (south > best)
+        {
+            best = south;
+            bestX = position.X;
+            bestY = position.Y + 1;
+        }
+
+        var east = GetHighestCover(position.X + 1, position.Y);
+
+        if (east > best)
+        {
+            best = east;
+            bestX = position.X + 1;
+            bestY = position.Y;
+        }
+
+        var west = GetHighestCover(position.X - 1, position.Y);
+
+        if (west > best)
+        {
+            best = west;
+            bestX = position.X - 1;
+            bestY = position.Y;
+        }
+
+        return new Point(bestX, bestY);
+    }
+
+    private int GetHighestCover(int x, int y)
+    {
+        if (x < 0 || x >= Width || y < 0 || y >= Height)
+        {
+            // Out of bounds
+            return 0; 
+        }
+
+        var best = 0;
+
+        // Check North
+        if (y - 1 >= 0 && cover[x, y - 1] > best)
+        {
+            best = cover[x, y - 1];
+        }
+
+        // Check South
+        if (y + 1 < Height && cover[x, y + 1] > best)
+        {
+            best = cover[x, y + 1];
+        }
+
+        // Check east
+        if (x + 1 < Width && cover[x + 1, y] > best)
+        {
+            best = cover[x + 1, y];
+        }
+
+        // Check west   
+        if (x - 1 >= 0 && cover[x - 1, y] > best)
+        {
+            best = cover[x - 1, y];
+        }
+
+        return best;
     }
 
     private int GetWettestOpponentId()
@@ -162,7 +439,18 @@ class Game
 
         return wettestOpponentId;
     }
+
+    internal void SetCover(int x, int y, int tileType)
+    {
+        if (x < 0 || x >= Width || y < 0 || y >= Height)
+        {
+            Console.Error.WriteLine($"Cover position {x}, {y} out of bounds");
+            return;
+        }
+        cover[x, y] = tileType;
+    }
 }
+
 
 class Player
 {
@@ -203,6 +491,11 @@ class Player
                 int x = int.Parse(inputs[3 * j]);// X coordinate, 0 is left edge
                 int y = int.Parse(inputs[3 * j + 1]);// Y coordinate, 0 is top edge
                 int tileType = int.Parse(inputs[3 * j + 2]);
+
+                if (tileType > 0)
+                {
+                    game.SetCover(x, y, tileType);
+                }
             }
         }
 
@@ -216,15 +509,15 @@ class Player
             {
                 Console.ReadLine();
             }
-            Console.Error.WriteLine("Starting new game loop...");
+
             game.MarkAllAgentsForCulling();
 
             int agentCount = int.Parse(Console.ReadLine()); // Total number of agents still in the game
-            Console.Error.WriteLine($"Processing {agentCount} agents...");
+            
             for (int i = 0; i < agentCount; i++)
             {
                 inputs = Console.ReadLine().Split(' ');
-                Console.Error.WriteLine($"Processing agent data: {string.Join(", ", inputs)}");
+                
                 int agentId = int.Parse(inputs[0]);
                 int x = int.Parse(inputs[1]);
                 int y = int.Parse(inputs[2]);

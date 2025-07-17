@@ -1,4 +1,8 @@
 ﻿
+
+using System.Drawing;
+using System.Runtime.CompilerServices;
+
 namespace SummerChallenge2025_SoakOverflow;
 
 class Game
@@ -11,27 +15,33 @@ class Game
     List<Agent> playerAgents = new List<Agent>();
     List<Agent> opponentAgents = new List<Agent>();
 
+    int[,] cover;
+
+    private CoverMap coverMap;
+
     public Game(int myId)
     {
         MyId = myId;
+
+        coverMap = new CoverMap();
     }
 
     public void SetGameSize(int width, int height)
     {
         Width = width;
         Height = height;
+
+        cover = new int[Width, Height];
     }
 
     internal void AddAgent(int id, int player, int shootCooldown, int optimalRange, int soakingPower, int splashBombs)
     {
         if (player == MyId)
         {
-            Console.Error.WriteLine($"Adding player agent {id} with cooldown {shootCooldown}, range {optimalRange}, soaking power {soakingPower}, splash bombs {splashBombs}");
             playerAgents.Add(new Agent(id, player, shootCooldown, optimalRange, soakingPower, splashBombs));
         }
         else
         {
-            Console.Error.WriteLine($"Adding opponent agent {id} with cooldown {shootCooldown}, range {optimalRange}, soaking power {soakingPower}, splash bombs {splashBombs}");
             opponentAgents.Add(new Agent(id, player, shootCooldown, optimalRange, soakingPower, splashBombs));
         }
     }
@@ -51,13 +61,8 @@ class Game
 
     internal void DestroyMarkedAgents()
     {
-        Console.Error.WriteLine("Destroying marked agents...");
-        Console.Error.WriteLine($"Player agents before culling: {playerAgents.Count}");
-        Console.Error.WriteLine($"Opponent agents before culling: {opponentAgents.Count}");
         playerAgents.RemoveAll(agent => !agent.InGame);
         opponentAgents.RemoveAll(agent => !agent.InGame);
-        Console.Error.WriteLine($"Player agents after culling: {playerAgents.Count}");
-        Console.Error.WriteLine($"Opponent agents after culling: {opponentAgents.Count}");
     }
 
     internal void UpdateAgent(int agentId, int x, int y, int cooldown, int splashBombs, int wetness)
@@ -78,30 +83,143 @@ class Game
     // One line per agent: <agentId>;<action1;action2;...> actions are "MOVE x y | SHOOT id | THROW x y | HUNKER_DOWN | MESSAGE text"
     internal List<string> GetMoves()
     {
-        Console.Error.WriteLine($"Player agent count: {playerAgents.Count}");
-        Console.Error.WriteLine($"Opponent agent count: {opponentAgents.Count}");
-
-        Console.Error.WriteLine("In get moves");
         List<string> moves = new List<string>();
-
-        int wettestOpponent = GetWettestOpponentId();
 
         foreach (var agent in playerAgents)
         {
-            // Example action: Move towards a fixed position
-            if (agent.Id == playerAgents[0].Id)
+            Console.Error.WriteLine($"Agent {agent.Id}");
+            // Get highest adjacent protection
+            Point bestProtection = GetBestAdjacentProtection(agent.Position);
+
+            var bestAttack = 0.0;
+            var bestAttackId = -1;
+
+            foreach (var enemy in opponentAgents)
             {
-                moves.Add($"{agent.Id};SHOOT {wettestOpponent}");
+                Console.Error.WriteLine($"Enemy {enemy.Id}");
+
+                var damage = CalculateDamage(
+                    bestProtection.X, 
+                    bestProtection.Y, 
+                    agent.OptimalRange,
+                    agent.SoakingPower, 
+                    enemy);
+
+                Console.Error.WriteLine($"Damage {damage}");
+
+                if (damage > bestAttack)
+                {
+                    bestAttack = damage;
+                    bestAttackId = enemy.Id;
+                }
             }
-            else
-            {
-                moves.Add($"{agent.Id};SHOOT {wettestOpponent}");
-            }
+
+            moves.Add($"{agent.Id}; MOVE {bestProtection.X} {bestProtection.Y}; SHOOT {bestAttackId}");
 
             // To debug: Console.Error.WriteLine("Debug messages...");
         }
 
         return moves;
+    }
+
+    private double CalculateDamage(int x, int y, int optimalRange, int soakingPower, Agent enemy)
+    {
+        double[,] map = coverMap.CreateCoverMap(enemy.Position.X, enemy.Position.Y, cover);
+
+        var damageMultiplier = map[x, y];
+        var baseDamage = soakingPower * damageMultiplier;
+
+        int manhattanDistance = Math.Abs(enemy.Position.X - x) + Math.Abs(enemy.Position.Y - y);
+
+        if (manhattanDistance <= optimalRange)
+        {
+            return baseDamage;
+        }
+        //else if (manhattanDistance <= optimalRange * 2)
+        //{
+        //    return baseDamage / 2;
+        //}
+        else
+        {
+            return 0;
+        }
+
+    }
+
+    // Get the compass pooint square (N,E,S,W) with the best cover
+    private Point GetBestAdjacentProtection(Point position)
+    {
+        var north = GetHighestCover(position.X, position.Y - 1);
+
+        var best = north;
+        var bestX = position.X;
+        var bestY = position.Y - 1;
+
+        var south = GetHighestCover(position.X, position.Y + 1);
+
+        if (south > best)
+        {
+            best = south;
+            bestX = position.X;
+            bestY = position.Y + 1;
+        }
+
+        var east = GetHighestCover(position.X + 1, position.Y);
+
+        if (east > best)
+        {
+            best = east;
+            bestX = position.X + 1;
+            bestY = position.Y;
+        }
+
+        var west = GetHighestCover(position.X - 1, position.Y);
+
+        if (west > best)
+        {
+            best = west;
+            bestX = position.X - 1;
+            bestY = position.Y;
+        }
+
+        return new Point(bestX, bestY);
+    }
+
+    private int GetHighestCover(int x, int y)
+    {
+        if (x < 0 || x >= Width || y < 0 || y >= Height)
+        {
+            // Out of bounds
+            return 0; 
+        }
+
+        var best = 0;
+
+        // Check North
+        if (y - 1 >= 0 && cover[x, y - 1] > best)
+        {
+            best = cover[x, y - 1];
+        }
+
+        // Check South
+        if (y + 1 < Height && cover[x, y + 1] > best)
+        {
+            best = cover[x, y + 1];
+        }
+
+        // Check east
+        if (x + 1 < Width && cover[x + 1, y] > best)
+        {
+            best = cover[x + 1, y];
+        }
+
+        // Check west   
+        if (x - 1 >= 0 && cover[x - 1, y] > best)
+        {
+            best = cover[x - 1, y];
+        }
+
+        return best;
     }
 
     private int GetWettestOpponentId()
@@ -119,5 +237,15 @@ class Game
         }
 
         return wettestOpponentId;
+    }
+
+    internal void SetCover(int x, int y, int tileType)
+    {
+        if (x < 0 || x >= Width || y < 0 || y >= Height)
+        {
+            Console.Error.WriteLine($"Cover position {x}, {y} out of bounds");
+            return;
+        }
+        cover[x, y] = tileType;
     }
 }

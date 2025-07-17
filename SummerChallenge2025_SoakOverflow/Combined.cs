@@ -204,6 +204,19 @@ internal static class Display
             Console.Error.WriteLine();
         }
     }
+
+    internal static void SplashMap(int[,] splashMap)
+    {
+        Console.Error.WriteLine("Splash Map:");
+        for (int y = 0; y < splashMap.GetLength(1); y++)
+        {
+            for (int x = 0; x < splashMap.GetLength(0); x++)
+            {
+                Console.Error.Write($"{splashMap[x, y]} ");
+            }
+            Console.Error.WriteLine();
+        }
+    }
 }
 
 class Game
@@ -284,43 +297,86 @@ class Game
     // One line per agent: <agentId>;<action1;action2;...> actions are "MOVE x y | SHOOT id | THROW x y | HUNKER_DOWN | MESSAGE text"
     internal List<string> GetMoves()
     {
+        SplashMap splashMap = new SplashMap(Width, Height, playerAgents, opponentAgents);
+        int[,] splashDamageMap = splashMap.CreateSplashMap();
+
+        Display.SplashMap(splashDamageMap);
+
         List<string> moves = new List<string>();
 
         foreach (var agent in playerAgents)
         {
-            Console.Error.WriteLine($"Agent {agent.Id}");
-            // Get highest adjacent protection
-            Point bestProtection = GetBestAdjacentProtection(agent.Position);
+            moves.Add(GetRunAndThrowMove(agent, splashDamageMap));
 
-            var bestAttack = 0.0;
-            var bestAttackId = -1;
-
-            foreach (var enemy in opponentAgents)
-            {
-                Console.Error.WriteLine($"Enemy {enemy.Id}");
-
-                var damage = CalculateDamage(
-                    bestProtection.X, 
-                    bestProtection.Y, 
-                    agent.OptimalRange,
-                    agent.SoakingPower, 
-                    enemy);
-
-                Console.Error.WriteLine($"Damage {damage}");
-
-                if (damage > bestAttack)
-                {
-                    bestAttack = damage;
-                    bestAttackId = enemy.Id;
-                }
-            }
-
-            moves.Add($"{agent.Id}; MOVE {bestProtection.X} {bestProtection.Y}; SHOOT {bestAttackId}");
-
+            // moves.Add(GetRunAndGunMove(agent));
             // To debug: Console.Error.WriteLine("Debug messages...");
         }
 
         return moves;
+    }
+
+    private string GetRunAndThrowMove(Agent agent, int[,] splashDamageMap)
+    {
+        // Get position of highest value in splashDamageMap
+        int bestX = -1;
+        int bestY = -1;
+        int bestValue = -1;
+
+        for (int x = 0; x < Width; x++)
+        {
+            for (int y = 0; y < Height; y++)
+            {
+                if (splashDamageMap[x, y] > bestValue)
+                {
+                    bestValue = splashDamageMap[x, y];
+                    bestX = x;
+                    bestY = y;
+                }
+            }
+        }
+
+        // Get distance from bestX, bestY to agent's position
+        int distance = Math.Abs(agent.Position.X - bestX) + Math.Abs(agent.Position.Y - bestY);
+
+        if (distance > 4)
+        {
+            // If the distance is greater than 4, we need to move closer
+            var moveX = agent.Position.X < bestX ? agent.Position.X + 1 : agent.Position.X - 1;
+            var moveY = agent.Position.Y < bestY ? agent.Position.Y + 1 : agent.Position.Y - 1;
+            return $"{agent.Id}; MOVE {moveX} {moveY}; THROW {bestX} {bestY}";
+        }
+        else
+        {
+            // If we are close enough, throw the splash bomb
+            return $"{agent.Id}; THROW {bestX} {bestY}";
+        }
+    }
+
+    private string GetRunAndGunMove(Agent agent)
+    {
+        // Get highest adjacent protection
+        Point bestProtection = GetBestAdjacentProtection(agent.Position);
+
+        var bestAttack = 0.0;
+        var bestAttackId = -1;
+
+        foreach (var enemy in opponentAgents)
+        {
+            var damage = CalculateDamage(
+                bestProtection.X,
+                bestProtection.Y,
+                agent.OptimalRange,
+                agent.SoakingPower,
+                enemy);
+
+            if (damage > bestAttack)
+            {
+                bestAttack = damage;
+                bestAttackId = enemy.Id;
+            }
+        }
+
+        return $"{agent.Id}; MOVE {bestProtection.X} {bestProtection.Y}; SHOOT {bestAttackId}";
     }
 
     private double CalculateDamage(int x, int y, int optimalRange, int soakingPower, Agent enemy)
@@ -541,4 +597,70 @@ class Player
     }
 }
 
+
+internal class SplashMap
+{
+    private int width;
+    private int height;
+    private List<Agent> playerAgents;
+    private List<Agent> opponentAgents;
+
+    public SplashMap(int width, int height, List<Agent> playerAgents, List<Agent> opponentAgents)
+    {
+        this.width = width;
+        this.height = height;
+        this.playerAgents = playerAgents;
+        this.opponentAgents = opponentAgents;
+    }
+
+    internal int[,] CreateSplashMap()
+    {
+        int[,] splashMap = new int[width, height];
+
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                splashMap[x, y] = CalculateDamage(x, y);
+            }
+        }
+
+        return splashMap;
+    }
+
+    private int CalculateDamage(int x, int y)
+    {
+        var damage = 0;
+
+        var minX = Math.Max(0, x - 1);
+        var maxX = Math.Min(width - 1, x + 1);
+        var minY = Math.Max(0, y - 1);
+        var maxY = Math.Min(height - 1, y + 1);
+
+        for (int i = minX; i <= maxX; i++)
+        {
+            for (int j = minY; j <= maxY; j++)
+            {
+                foreach (var agent in playerAgents)
+                {
+                    if (agent.Position.X == i && agent.Position.Y == j)
+                    {
+                        // If we hit an agent we want to return no damage
+                        return 0;
+                    }
+                }
+
+                foreach (var enemy in opponentAgents)
+                {
+                    if (enemy.Position.X == i && enemy.Position.Y == j)
+                    {
+                        damage += 30;
+                    }
+                }
+            }
+        }
+
+        return damage;
+    }
+}
 

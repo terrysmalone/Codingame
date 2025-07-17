@@ -300,22 +300,60 @@ class Game
         SplashMap splashMap = new SplashMap(Width, Height, playerAgents, opponentAgents);
         int[,] splashDamageMap = splashMap.CreateSplashMap();
 
-        Display.SplashMap(splashDamageMap);
-
         List<string> moves = new List<string>();
 
         foreach (var agent in playerAgents)
         {
-            moves.Add(GetRunAndThrowMove(agent, splashDamageMap));
+            string move = "";
 
-            // moves.Add(GetRunAndGunMove(agent));
+            // If we can hit with a splash bomb without moving, do that
+            if (agent.SplashBombs > 0)
+            {
+                move = GetThrowMove(agent, splashDamageMap);
+            }
+
+            if (move== "")
+            {
+                if (agent.ShootCooldown <= 0)
+                {
+                    move = GetRunAndGunMove(agent);
+                }
+            }
+
+            if (move == "")
+            {
+                // If we can't shoot or throw, we need to move
+                Point closestEnemyPosition = GetClosestEnemyPosition(agent);
+                move = $"{agent.Id}; MOVE {closestEnemyPosition.X} {closestEnemyPosition.Y}; HUNKER_DOWN";
+            }
+
+            moves.Add(move);
+
             // To debug: Console.Error.WriteLine("Debug messages...");
         }
 
         return moves;
     }
 
-    private string GetRunAndThrowMove(Agent agent, int[,] splashDamageMap)
+    private Point GetClosestEnemyPosition(Agent agent)
+    {
+        Point closestEnemyPosition = new Point(-1, -1);
+        int closestDistance = int.MaxValue;
+
+        foreach (var enemy in opponentAgents)
+        {
+            int distance = Math.Abs(agent.Position.X - enemy.Position.X) + Math.Abs(agent.Position.Y - enemy.Position.Y);
+            if (distance < closestDistance)
+            {
+                closestDistance = distance;
+                closestEnemyPosition = enemy.Position;
+            }
+        }
+
+        return closestEnemyPosition;
+    }
+
+    private string GetThrowMove(Agent agent, int[,] splashDamageMap)
     {
         // Get position of highest value in splashDamageMap
         int bestX = -1;
@@ -338,18 +376,20 @@ class Game
         // Get distance from bestX, bestY to agent's position
         int distance = Math.Abs(agent.Position.X - bestX) + Math.Abs(agent.Position.Y - bestY);
 
-        if (distance > 4)
-        {
-            // If the distance is greater than 4, we need to move closer
-            var moveX = agent.Position.X < bestX ? agent.Position.X + 1 : agent.Position.X - 1;
-            var moveY = agent.Position.Y < bestY ? agent.Position.Y + 1 : agent.Position.Y - 1;
-            return $"{agent.Id}; MOVE {moveX} {moveY}; THROW {bestX} {bestY}";
-        }
-        else
+        //if (distance > 4)
+        //{
+        //    // If the distance is greater than 4, we need to move closer
+        //    var moveX = agent.Position.X < bestX ? agent.Position.X + 1 : agent.Position.X - 1;
+        //    var moveY = agent.Position.Y < bestY ? agent.Position.Y + 1 : agent.Position.Y - 1;
+        //    return $"{agent.Id}; THROW {bestX} {bestY}";
+        //}
+        if (distance <= 4)
         {
             // If we are close enough, throw the splash bomb
             return $"{agent.Id}; THROW {bestX} {bestY}";
         }
+
+        return "";
     }
 
     private string GetRunAndGunMove(Agent agent)
@@ -376,6 +416,12 @@ class Game
             }
         }
 
+        if (bestAttack <= 0.0)
+        {
+            // No valid attack found, return empty move
+            return "";
+        }
+
         return $"{agent.Id}; MOVE {bestProtection.X} {bestProtection.Y}; SHOOT {bestAttackId}";
     }
 
@@ -392,15 +438,14 @@ class Game
         {
             return baseDamage;
         }
-        //else if (manhattanDistance <= optimalRange * 2)
-        //{
-        //    return baseDamage / 2;
-        //}
+        else if (manhattanDistance <= optimalRange * 2)
+        {
+            return baseDamage / 2;
+        }
         else
         {
             return 0;
         }
-
     }
 
     // Get the compass pooint square (N,E,S,W) with the best cover
@@ -447,7 +492,7 @@ class Game
         if (x < 0 || x >= Width || y < 0 || y >= Height)
         {
             // Out of bounds
-            return 0; 
+            return -1; 
         }
 
         var best = 0;

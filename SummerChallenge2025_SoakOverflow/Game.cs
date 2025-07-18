@@ -193,7 +193,7 @@ class Game
             }
         }
 
-        if (bestValue > 0)
+        if (bestValue > 30)
         {
             return $"{agent.Id}; THROW {bestX} {bestY}";
         }

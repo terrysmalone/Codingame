@@ -355,8 +355,6 @@ class Game
 
     private string GetBestThrowMove(Agent agent, int[,] splashDamageMap)
     {
-        Console.Error.WriteLine($"Checking throw damage for agent {agent.Id}");
-
         int bestX = -1;
         int bestY = -1;
         int bestValue = 0;
@@ -372,7 +370,6 @@ class Game
         {
             for (int y = minY; y <= maxY; y++)
             {
-                Console.Error.WriteLine($"Checking position {x}, {y} with value {splashDamageMap[x, y]}");
                 var manhattanDistance = Math.Abs(agent.Position.X - x) + Math.Abs(agent.Position.Y - y);
                 if (manhattanDistance <= 4 && splashDamageMap[x, y] > bestValue)
                 {
@@ -393,20 +390,68 @@ class Game
 
     private string GetRunAndGunMove(Agent agent)
     {
-        // Get highest adjacent protection
-        Point bestProtection = GetBestAdjacentProtection(agent.Position);
+        Console.Error.WriteLine($"Calculating run and gun move for agent {agent.Id}");
+        // get best protection (including current space)
+        double stationaryReceivingDamage = CalculateReceivingPlayerDamage(agent.Position.X, agent.Position.Y);
 
+        double northReceivingDamage = CalculateReceivingPlayerDamage(agent.Position.X, agent.Position.Y-1);
+
+        var minReceivingDamage = northReceivingDamage;
+        var minReceivingDamagePosition = new Point(agent.Position.X, agent.Position.Y - 1);
+
+        double southReceivingDamage = CalculateReceivingPlayerDamage(agent.Position.X, agent.Position.Y + 1);
+        if (southReceivingDamage < minReceivingDamage)
+        {
+            minReceivingDamage = southReceivingDamage;
+            minReceivingDamagePosition = new Point(agent.Position.X, agent.Position.Y + 1);
+        }
+
+        double eastReceivingDamage = CalculateReceivingPlayerDamage(agent.Position.X + 1, agent.Position.Y);
+        if (eastReceivingDamage < minReceivingDamage)
+        {
+            minReceivingDamage = eastReceivingDamage;
+            minReceivingDamagePosition = new Point(agent.Position.X + 1, agent.Position.Y);
+        }
+
+        double westReceivingDamage = CalculateReceivingPlayerDamage(agent.Position.X - 1, agent.Position.Y);
+        if (westReceivingDamage < minReceivingDamage)
+        {
+            minReceivingDamage = westReceivingDamage;
+            minReceivingDamagePosition = new Point(agent.Position.X - 1, agent.Position.Y);
+        }
+
+        Console.Error.WriteLine($"North damage: {northReceivingDamage}");
+        Console.Error.WriteLine($"South damage: {southReceivingDamage}");
+        Console.Error.WriteLine($"East damage: {eastReceivingDamage}");
+        Console.Error.WriteLine($"West damage: {westReceivingDamage}");
+        Console.Error.WriteLine($"Stationary damage: {stationaryReceivingDamage}");
+
+        var attackPoint = new Point(-1, -1);
+
+        if (stationaryReceivingDamage <= minReceivingDamage)
+        {
+            // Stay in place
+            attackPoint = new Point(agent.Position.X, agent.Position.Y);
+        }
+        else
+        {
+            // Move to the position with the least damage
+            attackPoint = minReceivingDamagePosition;
+        }
+
+        // Get target
         var bestAttack = 0.0;
         var bestAttackId = -1;
 
         foreach (var enemy in opponentAgents)
         {
             var damage = CalculateDamage(
-                bestProtection.X,
-                bestProtection.Y,
+                attackPoint.X,
+                attackPoint.Y,
                 agent.OptimalRange,
                 agent.SoakingPower,
-                enemy);
+                enemy.Position.X,
+                enemy.Position.Y);
 
             if (damage > bestAttack)
             {
@@ -421,17 +466,49 @@ class Game
             return "";
         }
 
-        return $"{agent.Id}; MOVE {bestProtection.X} {bestProtection.Y}; SHOOT {bestAttackId}";
+        if (stationaryReceivingDamage <= minReceivingDamage)
+        {
+            return $"{agent.Id}; SHOOT {bestAttackId}";
+        }
+
+        return $"{agent.Id}; MOVE {attackPoint.X} {attackPoint.Y}; SHOOT {bestAttackId}";
     }
 
-    private double CalculateDamage(int x, int y, int optimalRange, int soakingPower, Agent enemy)
+    private double CalculateReceivingPlayerDamage(int x, int y)
     {
-        double[,] map = coverMap.CreateCoverMap(enemy.Position.X, enemy.Position.Y, cover);
+        // Check bounds
+        if (x < 0 || x >= Width || y < 0 || y >= Height)
+        {
+            return Double.MaxValue;
+        }
 
-        var damageMultiplier = map[x, y];
+        var stationaryReceivingDamage = 0.0;
+        foreach (var enemy in opponentAgents)
+        {
+            if (enemy.ShootCooldown <= 0)
+            {
+                stationaryReceivingDamage += CalculateDamage(
+                    enemy.Position.X,
+                    enemy.Position.Y,
+                    enemy.OptimalRange,
+                    enemy.SoakingPower,
+                    x,
+                    y);
+            }
+        }
+
+        return stationaryReceivingDamage;
+    }
+
+    private double CalculateDamage(int fromX, int fromY, int optimalRange, int soakingPower, int targetX, int targetY)
+    {
+        double[,] map = coverMap.CreateCoverMap(targetX, targetY, cover);
+        // Display.CoverMap(map);
+
+        var damageMultiplier = map[targetX, targetY];
         var baseDamage = soakingPower * damageMultiplier;
 
-        int manhattanDistance = Math.Abs(enemy.Position.X - x) + Math.Abs(enemy.Position.Y - y);
+        int manhattanDistance = Math.Abs(targetX - fromX) + Math.Abs(targetY - fromY);
 
         if (manhattanDistance <= optimalRange)
         {
@@ -445,82 +522,6 @@ class Game
         {
             return 0;
         }
-    }
-
-    // Get the compass pooint square (N,E,S,W) with the best cover
-    private Point GetBestAdjacentProtection(Point position)
-    {
-        var north = GetHighestCover(position.X, position.Y - 1);
-
-        var best = north;
-        var bestX = position.X;
-        var bestY = position.Y - 1;
-
-        var south = GetHighestCover(position.X, position.Y + 1);
-
-        if (south > best)
-        {
-            best = south;
-            bestX = position.X;
-            bestY = position.Y + 1;
-        }
-
-        var east = GetHighestCover(position.X + 1, position.Y);
-
-        if (east > best)
-        {
-            best = east;
-            bestX = position.X + 1;
-            bestY = position.Y;
-        }
-
-        var west = GetHighestCover(position.X - 1, position.Y);
-
-        if (west > best)
-        {
-            best = west;
-            bestX = position.X - 1;
-            bestY = position.Y;
-        }
-
-        return new Point(bestX, bestY);
-    }
-
-    private int GetHighestCover(int x, int y)
-    {
-        if (x < 0 || x >= Width || y < 0 || y >= Height)
-        {
-            // Out of bounds
-            return -1; 
-        }
-
-        var best = 0;
-
-        // Check North
-        if (y - 1 >= 0 && cover[x, y - 1] > best)
-        {
-            best = cover[x, y - 1];
-        }
-
-        // Check South
-        if (y + 1 < Height && cover[x, y + 1] > best)
-        {
-            best = cover[x, y + 1];
-        }
-
-        // Check east
-        if (x + 1 < Width && cover[x + 1, y] > best)
-        {
-            best = cover[x + 1, y];
-        }
-
-        // Check west   
-        if (x - 1 >= 0 && cover[x - 1, y] > best)
-        {
-            best = cover[x - 1, y];
-        }
-
-        return best;
     }
 
     private int GetWettestOpponentId()

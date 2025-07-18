@@ -302,10 +302,6 @@ class Game
 
         List<string> moves = new List<string>();
 
-        // In a very naive attempt to spread out more have no two agents target
-        // the same enemy.
-        List<Point> usedMoves = new List<Point>();
-
         foreach (var agent in playerAgents)
         {
             string move = "";
@@ -328,7 +324,7 @@ class Game
             if (move == "")
             {
                 // If we can't shoot or throw, we need to move
-                Point closestEnemyPosition = GetClosestEnemyPosition(agent, usedMoves);
+                Point closestEnemyPosition = GetClosestEnemyPosition(agent);
 
                 var distanceToClosestEnemy = Math.Abs(agent.Position.X - closestEnemyPosition.X) 
                         + Math.Abs(agent.Position.Y - closestEnemyPosition.Y);
@@ -338,12 +334,10 @@ class Game
                     var bestAttackPoint = GetBestAttackPoint(agent);
 
                     move = $"{agent.Id}; MOVE {bestAttackPoint.X} {bestAttackPoint.Y}; HUNKER_DOWN";
-                    usedMoves.Add(bestAttackPoint);
                 }
                 else
                 {
                     move = $"{agent.Id}; MOVE {closestEnemyPosition.X} {closestEnemyPosition.Y}; HUNKER_DOWN";
-                    usedMoves.Add(closestEnemyPosition);
                 }
             }
 
@@ -355,20 +349,13 @@ class Game
         return moves;
     }
 
-    private Point GetClosestEnemyPosition(Agent agent, List<Point> excludingMoves)
+    private Point GetClosestEnemyPosition(Agent agent)
     {
         Point closestEnemyPosition = new Point(-1, -1);
         int closestDistance = int.MaxValue;
 
         foreach (var enemy in opponentAgents)
         {
-            if (excludingMoves.Count < opponentAgents.Count &&
-                excludingMoves.Contains(enemy.Position))
-            {
-                // Skip enemies that are already targeted by another agent
-                continue;
-            }
-
             int distance = Math.Abs(agent.Position.X - enemy.Position.X) + Math.Abs(agent.Position.Y - enemy.Position.Y);
             if (distance < closestDistance)
             {

@@ -115,8 +115,22 @@ class Game
             {
                 // If we can't shoot or throw, we need to move
                 Point closestEnemyPosition = GetClosestEnemyPosition(agent, usedMoves);
-                usedMoves.Add(closestEnemyPosition);
-                move = $"{agent.Id}; MOVE {closestEnemyPosition.X} {closestEnemyPosition.Y}; HUNKER_DOWN";
+
+                var distanceToClosestEnemy = Math.Abs(agent.Position.X - closestEnemyPosition.X) 
+                        + Math.Abs(agent.Position.Y - closestEnemyPosition.Y);
+
+                if (distanceToClosestEnemy < agent.OptimalRange)
+                {
+                    var bestAttackPoint = GetBestAttackPoint(agent);
+
+                    move = $"{agent.Id}; MOVE {bestAttackPoint.X} {bestAttackPoint.Y}; HUNKER_DOWN";
+                    usedMoves.Add(bestAttackPoint);
+                }
+                else
+                {
+                    move = $"{agent.Id}; MOVE {closestEnemyPosition.X} {closestEnemyPosition.Y}; HUNKER_DOWN";
+                    usedMoves.Add(closestEnemyPosition);
+                }
             }
 
             moves.Add(move);
@@ -189,54 +203,7 @@ class Game
 
     private string GetRunAndGunMove(Agent agent)
     {
-        Console.Error.WriteLine($"Calculating run and gun move for agent {agent.Id}");
-        // get best protection (including current space)
-        double stationaryReceivingDamage = CalculateReceivingPlayerDamage(agent.Position.X, agent.Position.Y);
-
-        double northReceivingDamage = CalculateReceivingPlayerDamage(agent.Position.X, agent.Position.Y-1);
-
-        var minReceivingDamage = northReceivingDamage;
-        var minReceivingDamagePosition = new Point(agent.Position.X, agent.Position.Y - 1);
-
-        double southReceivingDamage = CalculateReceivingPlayerDamage(agent.Position.X, agent.Position.Y + 1);
-        if (southReceivingDamage < minReceivingDamage)
-        {
-            minReceivingDamage = southReceivingDamage;
-            minReceivingDamagePosition = new Point(agent.Position.X, agent.Position.Y + 1);
-        }
-
-        double eastReceivingDamage = CalculateReceivingPlayerDamage(agent.Position.X + 1, agent.Position.Y);
-        if (eastReceivingDamage < minReceivingDamage)
-        {
-            minReceivingDamage = eastReceivingDamage;
-            minReceivingDamagePosition = new Point(agent.Position.X + 1, agent.Position.Y);
-        }
-
-        double westReceivingDamage = CalculateReceivingPlayerDamage(agent.Position.X - 1, agent.Position.Y);
-        if (westReceivingDamage < minReceivingDamage)
-        {
-            minReceivingDamage = westReceivingDamage;
-            minReceivingDamagePosition = new Point(agent.Position.X - 1, agent.Position.Y);
-        }
-
-        Console.Error.WriteLine($"North damage: {northReceivingDamage}");
-        Console.Error.WriteLine($"South damage: {southReceivingDamage}");
-        Console.Error.WriteLine($"East damage: {eastReceivingDamage}");
-        Console.Error.WriteLine($"West damage: {westReceivingDamage}");
-        Console.Error.WriteLine($"Stationary damage: {stationaryReceivingDamage}");
-
-        var attackPoint = new Point(-1, -1);
-
-        if (stationaryReceivingDamage <= minReceivingDamage)
-        {
-            // Stay in place
-            attackPoint = new Point(agent.Position.X, agent.Position.Y);
-        }
-        else
-        {
-            // Move to the position with the least damage
-            attackPoint = minReceivingDamagePosition;
-        }
+        Point attackPoint = GetBestAttackPoint(agent);
 
         // Get target
         var bestAttack = 0.0;
@@ -266,12 +233,59 @@ class Game
             return "";
         }
 
-        if (stationaryReceivingDamage <= minReceivingDamage)
+        if (attackPoint == agent.Position)
         {
             return $"{agent.Id}; SHOOT {bestAttackId}";
         }
 
         return $"{agent.Id}; MOVE {attackPoint.X} {attackPoint.Y}; SHOOT {bestAttackId}";
+    }
+
+    private Point GetBestAttackPoint(Agent agent)
+    {
+        // get best protection (including current space)
+        double stationaryReceivingDamage = CalculateReceivingPlayerDamage(agent.Position.X, agent.Position.Y);
+
+        double northReceivingDamage = CalculateReceivingPlayerDamage(agent.Position.X, agent.Position.Y - 1);
+
+        var minReceivingDamage = northReceivingDamage;
+        var minReceivingDamagePosition = new Point(agent.Position.X, agent.Position.Y - 1);
+
+        double southReceivingDamage = CalculateReceivingPlayerDamage(agent.Position.X, agent.Position.Y + 1);
+        if (southReceivingDamage < minReceivingDamage)
+        {
+            minReceivingDamage = southReceivingDamage;
+            minReceivingDamagePosition = new Point(agent.Position.X, agent.Position.Y + 1);
+        }
+
+        double eastReceivingDamage = CalculateReceivingPlayerDamage(agent.Position.X + 1, agent.Position.Y);
+        if (eastReceivingDamage < minReceivingDamage)
+        {
+            minReceivingDamage = eastReceivingDamage;
+            minReceivingDamagePosition = new Point(agent.Position.X + 1, agent.Position.Y);
+        }
+
+        double westReceivingDamage = CalculateReceivingPlayerDamage(agent.Position.X - 1, agent.Position.Y);
+        if (westReceivingDamage < minReceivingDamage)
+        {
+            minReceivingDamage = westReceivingDamage;
+            minReceivingDamagePosition = new Point(agent.Position.X - 1, agent.Position.Y);
+        }
+
+        var attackPoint = new Point(-1, -1);
+
+        if (stationaryReceivingDamage <= minReceivingDamage)
+        {
+            // Stay in place
+            attackPoint = new Point(agent.Position.X, agent.Position.Y);
+        }
+        else
+        {
+            // Move to the position with the least damage
+            attackPoint = minReceivingDamagePosition;
+        }
+
+        return attackPoint;
     }
 
     private double CalculateReceivingPlayerDamage(int x, int y)

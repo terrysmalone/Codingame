@@ -102,7 +102,6 @@ class Game
             {
                 if (agent.ShootCooldown <= 0)
                 {
-                    Console.Error.WriteLine($"Agent {agent.Id} can shoot, checking for targets...");
                     move = GetRunAndGunMove(agent);
                 }
             }
@@ -115,9 +114,14 @@ class Game
                 var distanceToClosestEnemy = Math.Abs(agent.Position.X - closestEnemyPosition.X) 
                         + Math.Abs(agent.Position.Y - closestEnemyPosition.Y);
 
-                if (distanceToClosestEnemy < agent.OptimalRange)
+                if (distanceToClosestEnemy < agent.OptimalRange * 2)
                 {
+                    // TODO: Change this so that the agent just moves towards cover. 
+                    // Cover should be more of a priority.
+                    // If it gets to this stage, look in a widening circle for nearby cover. 
+                    // If it finds cover, make sure the cover won't take it too far from the enemy.               
                     var bestAttackPoint = GetBestAttackPoint(agent);
+                    Console.Error.WriteLine($"Best attack point for agent {agent.Id} is {bestAttackPoint.X}, {bestAttackPoint.Y}");
 
                     move = $"{agent.Id}; MOVE {bestAttackPoint.X} {bestAttackPoint.Y}; HUNKER_DOWN";
                 }
@@ -215,7 +219,6 @@ class Game
 
         if (bestAttack <= 0.0)
         {
-            Console.Error.WriteLine($"No valid attack found for agent {agent.Id} at position {attackPoint.X}, {attackPoint.Y}");
             // No valid attack found, return empty move
             return "";
         }
@@ -311,20 +314,16 @@ class Game
 
         int manhattanDistance = Math.Abs(targetX - fromX) + Math.Abs(targetY - fromY);
 
-        Console.Error.WriteLine($"Manhattan Distance from ({fromX}, {fromY}) to ({targetX}, {targetY}): {manhattanDistance}");
-        Console.Error.WriteLine($"Base Damage: {baseDamage}, Optimal Range: {optimalRange}, Damage Multiplier: {damageMultiplier}");
         if (manhattanDistance <= optimalRange)
         {
-            Console.Error.WriteLine($"Returning {baseDamage} for target at ({targetX}, {targetY})");
             return baseDamage;
         }
-        //else if (manhattanDistance <= optimalRange * 2)
-        //{
-        //    return baseDamage / 2;
-        //}
+        else if (manhattanDistance <= optimalRange * 2)
+        {
+            return baseDamage / 2;
+        }
         else
         {
-            Console.Error.WriteLine($"Returning 0 for target at ({targetX}, {targetY})");
             return 0;
         }
     }

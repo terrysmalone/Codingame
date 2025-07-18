@@ -302,6 +302,10 @@ class Game
 
         List<string> moves = new List<string>();
 
+        // In a very naive attempt to spread out more have no two agents target
+        // the same enemy.
+        List<Point> usedMoves = new List<Point>();
+
         foreach (var agent in playerAgents)
         {
             string move = "";
@@ -316,6 +320,7 @@ class Game
             {
                 if (agent.ShootCooldown <= 0)
                 {
+                    Console.Error.WriteLine($"Agent {agent.Id} can shoot, checking for targets...");
                     move = GetRunAndGunMove(agent);
                 }
             }
@@ -323,7 +328,8 @@ class Game
             if (move == "")
             {
                 // If we can't shoot or throw, we need to move
-                Point closestEnemyPosition = GetClosestEnemyPosition(agent);
+                Point closestEnemyPosition = GetClosestEnemyPosition(agent, usedMoves);
+                usedMoves.Add(closestEnemyPosition);
                 move = $"{agent.Id}; MOVE {closestEnemyPosition.X} {closestEnemyPosition.Y}; HUNKER_DOWN";
             }
 
@@ -335,13 +341,20 @@ class Game
         return moves;
     }
 
-    private Point GetClosestEnemyPosition(Agent agent)
+    private Point GetClosestEnemyPosition(Agent agent, List<Point> excludingMoves)
     {
         Point closestEnemyPosition = new Point(-1, -1);
         int closestDistance = int.MaxValue;
 
         foreach (var enemy in opponentAgents)
         {
+            if (excludingMoves.Count < opponentAgents.Count &&
+                excludingMoves.Contains(enemy.Position))
+            {
+                // Skip enemies that are already targeted by another agent
+                continue;
+            }
+
             int distance = Math.Abs(agent.Position.X - enemy.Position.X) + Math.Abs(agent.Position.Y - enemy.Position.Y);
             if (distance < closestDistance)
             {
@@ -462,6 +475,7 @@ class Game
 
         if (bestAttack <= 0.0)
         {
+            Console.Error.WriteLine($"No valid attack found for agent {agent.Id} at position {attackPoint.X}, {attackPoint.Y}");
             // No valid attack found, return empty move
             return "";
         }
@@ -505,13 +519,16 @@ class Game
         double[,] map = coverMap.CreateCoverMap(targetX, targetY, cover);
         // Display.CoverMap(map);
 
-        var damageMultiplier = map[targetX, targetY];
+        var damageMultiplier = map[fromX, fromY];
         var baseDamage = soakingPower * damageMultiplier;
 
         int manhattanDistance = Math.Abs(targetX - fromX) + Math.Abs(targetY - fromY);
 
+        Console.Error.WriteLine($"Manhattan Distance from ({fromX}, {fromY}) to ({targetX}, {targetY}): {manhattanDistance}");
+        Console.Error.WriteLine($"Base Damage: {baseDamage}, Optimal Range: {optimalRange}, Damage Multiplier: {damageMultiplier}");
         if (manhattanDistance <= optimalRange)
         {
+            Console.Error.WriteLine($"Returning {baseDamage} for target at ({targetX}, {targetY})");
             return baseDamage;
         }
         //else if (manhattanDistance <= optimalRange * 2)
@@ -520,6 +537,7 @@ class Game
         //}
         else
         {
+            Console.Error.WriteLine($"Returning 0 for target at ({targetX}, {targetY})");
             return 0;
         }
     }

@@ -223,10 +223,10 @@ class Game
         {
             return baseDamage;
         }
-        else if (manhattanDistance <= optimalRange * 2)
-        {
-            return baseDamage / 2;
-        }
+        //else if (manhattanDistance <= optimalRange * 2)
+        //{
+        //    return baseDamage / 2;
+        //}
         else
         {
             return 0;

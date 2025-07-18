@@ -95,7 +95,7 @@ class Game
             // If we can hit with a splash bomb without moving, do that
             if (agent.SplashBombs > 0)
             {
-                move = GetThrowMove(agent, splashDamageMap);
+                move = GetBestThrowMove(agent, splashDamageMap);
             }
 
             if (move== "")
@@ -139,18 +139,28 @@ class Game
         return closestEnemyPosition;
     }
 
-    private string GetThrowMove(Agent agent, int[,] splashDamageMap)
+    private string GetBestThrowMove(Agent agent, int[,] splashDamageMap)
     {
-        // Get position of highest value in splashDamageMap
+        Console.Error.WriteLine($"Checking throw damage for agent {agent.Id}");
+
         int bestX = -1;
         int bestY = -1;
-        int bestValue = -1;
+        int bestValue = 0;
 
-        for (int x = 0; x < Width; x++)
+        // Get highest score from splashDamageMap within 4 
+        // Manhattan distance from agent's position
+        int minX = Math.Max(0, agent.Position.X - 4);
+        int maxX = Math.Min(Width - 1, agent.Position.X + 4);
+        int minY = Math.Max(0, agent.Position.Y - 4);
+        int maxY = Math.Min(Height - 1, agent.Position.Y + 4);
+
+        for (int x = minX; x <= maxX; x++)
         {
-            for (int y = 0; y < Height; y++)
+            for (int y = minY; y <= maxY; y++)
             {
-                if (splashDamageMap[x, y] > bestValue)
+                Console.Error.WriteLine($"Checking position {x}, {y} with value {splashDamageMap[x, y]}");
+                var manhattanDistance = Math.Abs(agent.Position.X - x) + Math.Abs(agent.Position.Y - y);
+                if (manhattanDistance <= 4 && splashDamageMap[x, y] > bestValue)
                 {
                     bestValue = splashDamageMap[x, y];
                     bestX = x;
@@ -159,19 +169,8 @@ class Game
             }
         }
 
-        // Get distance from bestX, bestY to agent's position
-        int distance = Math.Abs(agent.Position.X - bestX) + Math.Abs(agent.Position.Y - bestY);
-
-        //if (distance > 4)
-        //{
-        //    // If the distance is greater than 4, we need to move closer
-        //    var moveX = agent.Position.X < bestX ? agent.Position.X + 1 : agent.Position.X - 1;
-        //    var moveY = agent.Position.Y < bestY ? agent.Position.Y + 1 : agent.Position.Y - 1;
-        //    return $"{agent.Id}; THROW {bestX} {bestY}";
-        //}
-        if (distance <= 4)
+        if (bestValue > 0)
         {
-            // If we are close enough, throw the splash bomb
             return $"{agent.Id}; THROW {bestX} {bestY}";
         }
 

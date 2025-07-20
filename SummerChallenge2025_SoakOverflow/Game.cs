@@ -21,6 +21,8 @@ class Game
     private DamageMapGenerator damageMapGenerator;
     private int[,] coverHillMap;
 
+    AStar _aStar;
+
     public Game(int myId)
     {
         MyId = myId;
@@ -41,13 +43,13 @@ class Game
             (var move, Point nextMove) = GetBestMove(agent, splashMap, coverMaps, coverHillMap);
             fullMove += move;
 
-            // Convert the move to the next adjacent move so we know exactly where we'll be on the next turn
-            AStar aStar = new AStar(cover);
-            List<Point> bestPath = aStar.GetShortestPath(agent.Position, nextMove);
-            Point bestPoint = bestPath[0];
+            if (CalculationUtil.GetManhattanDistance(nextMove, agent.Position) > 1)
+            {
+                Console.Error.WriteLine($"ERROR: Agent {agent.Id}: Next Move ({nextMove.X},{nextMove.Y} is too far away from agent at ({agent.Position.X},{agent.Position.Y}))");
+            }
 
             // Get the best action
-            fullMove += GetBestAction(agent, bestPoint, splashMap);
+            fullMove += GetBestAction(agent, nextMove, splashMap);
 
             moves.Add(fullMove);
         }
@@ -94,14 +96,25 @@ class Game
                 agent.Position,
                 agentDamageMap);
 
-            move += $"MOVE {bestAttackPoint.X} {bestAttackPoint.Y}; ";
-            nextMove = bestAttackPoint;
+            Point bestPoint = new Point(bestAttackPoint.X, bestAttackPoint.Y);
+
+            if (agent.Position != bestAttackPoint)
+            {
+                // Convert the move to the next adjacent move so we know exactly where we'll be on the next turn
+                List<Point> bestPath = _aStar.GetShortestPath(agent.Position, bestAttackPoint);
+                bestPoint = bestPath[0];
+            }
+            
+            move += $"MOVE {bestPoint.X} {bestPoint.Y}; ";
+            nextMove = bestPoint;
+
             Console.Error.WriteLine($"Agent {agent.Id} move source - Move to best attack position");
         }
 
         if (nextMove == new Point(-1, -1))
         {
             (var coverMove, nextMove) = GetClosestCoverMove(agent, coverHillMap);
+
             move += coverMove;
             Console.Error.WriteLine($"Agent {agent.Id} move source - Move to best cover");
         }
@@ -188,7 +201,6 @@ class Game
                     }
                     else
                     {
-
                         Console.Error.WriteLine($"Found better cover at {x}, {y} with damage {possibleDamage}");
                         min = possibleDamage;
                         minDistance = distance;
@@ -203,9 +215,18 @@ class Game
         {
             Console.Error.WriteLine($"Target cover score: {coverHillMap[move.X, move.Y]}");
 
-
             Console.Error.WriteLine($"Agent {agent.Id} move source - close - looking for cover");
-            return ($"MOVE {move.X} {move.Y}; ", move);
+
+            Point bestPoint = new Point(move.X, move.Y);
+
+            if (agent.Position != move)
+            {
+                // Convert the move to the next adjacent move so we know exactly where we'll be on the next turn
+                List<Point> bestPath = _aStar.GetShortestPath(agent.Position, move);
+                bestPoint = bestPath[0];
+            }
+
+            return ($"MOVE {bestPoint.X} {bestPoint.Y}; ", bestPoint);
         }
 
         return ("", move);
@@ -296,10 +317,10 @@ class Game
         // If the movePoint is more than one away from the agents position don't throw
         if (CalculationUtil.GetManhattanDistance(agent.Position, movePoint) > 1)
         {
+            Console.Error.WriteLine($"ERROR: WE SHOULD NEVER BE HITTING THIS BECAUSE OF THE A* PATH FINDING");
             return "";
         }
 
-        Display.Map(splashDamageMap);
         int bestX = -1;
         int bestY = -1;
         int bestValue = 0;
@@ -317,11 +338,9 @@ class Game
         {
             for (int y = minY; y <= maxY; y++)
             {
-                Console.Error.WriteLine($"Checking splash damage at {x}, {y} with value {splashDamageMap[x, y]}");
                 // We don't want to throw a bomb if it would hit the point we're moving to (movePoint)
                 if (Math.Abs(x - movePoint.X) <= 1 && Math.Abs(y - movePoint.Y) <= 1)
                 {
-                    Console.Error.WriteLine($"Skipping");
                     continue;
                 }
 
@@ -470,5 +489,7 @@ class Game
     {
         coverMapGenerator = new CoverMapGenerator(cover);
         coverHillMap = CoverHillMapGenerator.CreateMap(cover);
+
+        _aStar = new AStar(cover);
     }
 }

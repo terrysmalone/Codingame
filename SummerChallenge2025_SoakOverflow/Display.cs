@@ -3,27 +3,25 @@ namespace SummerChallenge2025_SoakOverflow;
 
 internal static class Display
 {
-    internal static void CoverMap(double[,] coverMap)
+    internal static void Map(double[,] map)
     {
-        Console.Error.WriteLine("Cover Map:");
-        for (int y = 0; y < coverMap.GetLength(1); y++)
+        for (int y = 0; y < map.GetLength(1); y++)
         {
-            for (int x = 0; x < coverMap.GetLength(0); x++)
+            for (int x = 0; x < map.GetLength(0); x++)
             {
-                Console.Error.Write($"{coverMap[x, y]:F2} ");
+                Console.Error.Write($"{map[x, y]:F2} ");
             }
             Console.Error.WriteLine();
         }
     }
 
-    internal static void SplashMap(int[,] splashMap)
+    internal static void Map(int[,] map)
     {
-        Console.Error.WriteLine("Splash Map:");
-        for (int y = 0; y < splashMap.GetLength(1); y++)
+        for (int y = 0; y < map.GetLength(1); y++)
         {
-            for (int x = 0; x < splashMap.GetLength(0); x++)
+            for (int x = 0; x < map.GetLength(0); x++)
             {
-                Console.Error.Write($"{splashMap[x, y]} ");
+                Console.Error.Write($"{map[x, y]} ");
             }
             Console.Error.WriteLine();
         }

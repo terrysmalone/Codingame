@@ -4,14 +4,15 @@
 ***************************************************************/
 
 using System.Drawing;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 using System.Runtime.CompilerServices;
 using System.Net.WebSockets;
-using System;
-using System.Linq;
 using System.IO;
-using System.Text;
 using System.Collections;
-using System.Collections.Generic;
 
 class Agent
 {
@@ -44,19 +45,163 @@ class Agent
     }
 }
 
-public class CoverMap
+public static class CalculationUtil
 {
-    private int width, height;
-    public double[,] CreateCoverMap(int xPos, int yPos, int[,] cover)
+    public static int GetManhattanDistance(Point point1, Point point2)
     {
-        width = cover.GetLength(0);
-        height = cover.GetLength(1);
-        var coverMap = new double[width, height];
+        return Math.Abs(point1.X - point2.X) + Math.Abs(point1.Y - point2.Y);
+
+    }
+}
+
+
+public static class ClosestPeakFinder
+{
+    public static (Point, double) FindClosestPeak(Point position, double[,] damageMap)
+    {
+        double highestValue = damageMap.Cast<double>().Max();
+
+        Queue<Point> queue = new Queue<Point>();
+        HashSet<Point> visited = new HashSet<Point>();
+        queue.Enqueue(position);
+        visited.Add(position);
+
+        while (queue.Count > 0)
+        {
+            Point current = queue.Dequeue();
+            if (current.X < 0 || current.Y < 0 || current.X >= damageMap.GetLength(0) || current.Y >= damageMap.GetLength(1))
+            {
+                continue; 
+            }
+
+            double value = damageMap[current.X, current.Y];
+
+            if (value == highestValue)
+            {
+                return (current, value);
+            }
+            // Add neighbors to the queue
+            foreach (Point neighbor in GetNeighbors(current))
+            {
+                if (!visited.Contains(neighbor))
+                {
+                    visited.Add(neighbor);
+                    queue.Enqueue(neighbor);
+                }
+            }
+        }
+
+        Console.Error.WriteLine("ERROR: No peak found in the damage map.");
+        return (new Point(-1, -1), -1);
+
+    }
+
+    private static IEnumerable<Point> GetNeighbors(Point current)
+    {
+        yield return new Point(current.X - 1, current.Y); // Left
+        yield return new Point(current.X + 1, current.Y); // Right
+        yield return new Point(current.X, current.Y - 1); // Up
+        yield return new Point(current.X, current.Y + 1); // Down
+        yield return new Point(current.X - 1, current.Y - 1); // Top-left
+        yield return new Point(current.X + 1, current.Y - 1); // Top-right
+        yield return new Point(current.X - 1, current.Y + 1); // Bottom-left
+        yield return new Point(current.X + 1, current.Y + 1); // Bottom-right
+    }
+}
+
+
+public static class CoverHillMapGenerator
+{
+    public static int[,] CreateMap(int[,] cover)
+    {
+        int width = cover.GetLength(0);
+        int height = cover.GetLength(1);
+        int[,] scoreGrid = new int[width, height];
+
+        Queue<(int x, int y, int score)> queue = new Queue<(int, int, int)>();
+
+        // Initialize queue with cover positions and assign base scores
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                if (cover[x, y] == 1) // medium cover
+                {
+                    scoreGrid[x, y] = 50;
+                    queue.Enqueue((x, y, 50));
+                }
+                else if (cover[x, y] == 2) // high cover
+                {
+                    scoreGrid[x, y] = 100;
+                    queue.Enqueue((x, y, 100));
+                }
+            }
+        }
+
+        // Directions: up, down, left, right
+        int[] xChange = { 0, 0, -1, 1 };
+        int[] yChange = { -1, 1, 0, 0 };
+
+        int decay = 1;
+
+        while (queue.Count > 0)
+        {
+            var (x, y, score) = queue.Dequeue();
+
+            for (int direction = 0; direction < 4; direction++)
+            {
+                int xPos = x + xChange[direction];
+                int yPos = y + yChange[direction];
+
+                if (xPos >= 0 && xPos < width && yPos >= 0 && yPos < height)
+                {
+                    int newScore = score - decay;
+                    if (newScore > scoreGrid[xPos, yPos])
+                    {
+                        scoreGrid[xPos, yPos] = newScore;
+                        queue.Enqueue((xPos, yPos, newScore));
+                    }
+                }
+            }
+        }
+
+        // We don't want to attempt to move onto the cover so set all actual cover to 0
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                if (cover[x, y] > 0)
+                {
+                    scoreGrid[x, y] = 0;
+                }
+            }
+        }
+
+        return scoreGrid;
+    }
+}
+
+
+public class CoverMapGenerator
+{
+    private int _width, _height;
+    private int[,] _cover;
+
+    public CoverMapGenerator(int[,] cover)
+    {
+        _width = cover.GetLength(0);
+        _height = cover.GetLength(1);
+        _cover = cover;
+    }
+
+    public double[,] CreateCoverMap(int xPos, int yPos)
+    {
+        var coverMap = new double[_width, _height];
 
         // Populate all elements with 1.0
-        for (int i = 0; i < width; i++)
+        for (int i = 0; i < _width; i++)
         {
-            for (int j = 0; j < height; j++)
+            for (int j = 0; j < _height; j++)
             {
                 coverMap[i, j] = 1.0;
             }
@@ -66,14 +211,14 @@ public class CoverMap
         coverMap[xPos, yPos] = 0.0; 
 
         // Check if north is protected
-        if (yPos - 2 >= 0 && cover[xPos, yPos - 1] > 0)
+        if (yPos - 2 >= 0 && _cover[xPos, yPos - 1] > 0)
         {
-            var fillValue = GetCoverProtectionValue(cover[xPos, yPos - 1]);
+            var fillValue = GetCoverProtectionValue(_cover[xPos, yPos - 1]);
                 
             // Fill all values to the north
             for (int y = 0; y <= yPos - 2; y++)
             {
-                for (int x = 0; x < width; x++)
+                for (int x = 0; x < _width; x++)
                 {
                     coverMap[x, y] = fillValue;
                 }
@@ -85,20 +230,20 @@ public class CoverMap
                 coverMap[xPos - 1, yPos - 2] = 1.0;
             }
             coverMap[xPos, yPos - 2] = 1.0;
-            if (xPos + 1 < width)
+            if (xPos + 1 < _width)
             {
                 coverMap[xPos + 1, yPos - 2] = 1.0;
             }
         }
 
         // Check if south is protected
-        if (yPos + 2 <= height-1 && cover[xPos, yPos + 1] > 0)
+        if (yPos + 2 <= _height-1 && _cover[xPos, yPos + 1] > 0)
         {
-            var fillValue = GetCoverProtectionValue(cover[xPos, yPos + 1]);
+            var fillValue = GetCoverProtectionValue(_cover[xPos, yPos + 1]);
             // Fill all values to the south
-            for (int y = yPos + 2; y < height; y++)
+            for (int y = yPos + 2; y < _height; y++)
             {
-                for (int x = 0; x < width; x++)
+                for (int x = 0; x < _width; x++)
                 {
                     coverMap[x, y] = fillValue;
                 }
@@ -110,20 +255,20 @@ public class CoverMap
                 coverMap[xPos - 1, yPos + 2] = 1.0;
             }
             coverMap[xPos, yPos + 2] = 1.0;
-            if (xPos + 1 < width)
+            if (xPos + 1 < _width)
             {
                 coverMap[xPos + 1, yPos + 2] = 1.0;
             }
         }
 
         // Check if east is protected
-        if (xPos + 2 < width && cover[xPos + 1, yPos] > 0)
+        if (xPos + 2 < _width && _cover[xPos + 1, yPos] > 0)
         {
-            var fillValue = GetCoverProtectionValue(cover[xPos + 1, yPos]);
+            var fillValue = GetCoverProtectionValue(_cover[xPos + 1, yPos]);
             // Fill all values to the east
-            for (int x = xPos + 2; x < width; x++)
+            for (int x = xPos + 2; x < _width; x++)
             {
-                for (int y = 0; y < height; y++)
+                for (int y = 0; y < _height; y++)
                 {
                     // Don't fill it if it's already covered by large cover
                     if (coverMap[x, y] != 0.25)
@@ -138,20 +283,20 @@ public class CoverMap
                 coverMap[xPos + 2, yPos - 1] = 1.0;
             }
             coverMap[xPos + 2, yPos] = 1.0;
-            if (yPos + 1 < height)
+            if (yPos + 1 < _height)
             {
                 coverMap[xPos + 2, yPos + 1] = 1.0;
             }
         }
 
         // Check if west is protected
-        if (xPos - 2 >= 0 && cover[xPos - 1, yPos] > 0)
+        if (xPos - 2 >= 0 && _cover[xPos - 1, yPos] > 0)
         {
-            var fillValue = GetCoverProtectionValue(cover[xPos - 1, yPos]);
+            var fillValue = GetCoverProtectionValue(_cover[xPos - 1, yPos]);
             // Fill all values to the west
             for (int x = 0; x <= xPos - 2; x++)
             {
-                for (int y = 0; y < height; y++)
+                for (int y = 0; y < _height; y++)
                 {
                     // Don't fill it if it's already covered by large cover
                     if (coverMap[x, y] != 0.25)
@@ -166,7 +311,7 @@ public class CoverMap
                 coverMap[xPos - 2, yPos - 1] = 1.0;
             }
             coverMap[xPos - 2, yPos] = 1.0;
-            if (yPos + 1 < height)
+            if (yPos + 1 < _height)
             {
                 coverMap[xPos - 2, yPos + 1] = 1.0;
             }
@@ -190,29 +335,142 @@ public class CoverMap
     }
 }
 
+internal class DamageMapGenerator
+{
+    const double SPLASH_CUTOFF = 60.0; // Minimum splash damage to consider
+    private int width;
+    private int height;
+
+    public DamageMapGenerator(int width, int height)
+    {
+        this.width = width;
+        this.height = height;
+    }
+
+    internal double[,] CreateDamageMap(Agent agent,
+                                       List<Agent> opponentAgents, 
+                                       int[,] splashMap, 
+                                       Dictionary<int, double[,]> coverMaps,
+                                       int[,] cover)
+    {
+        double[,] damageMap = new double[width, height];
+
+        int maxRange = agent.OptimalRange * 2;
+
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                if (cover[x, y] > 0)
+                {
+                    // If there is cover on this spot we can't shoot from here
+                    damageMap[x, y] = 0.0;
+                    continue;
+                }
+
+                var maxDamage = 0.0;
+
+                if (agent.SplashBombs > 0)
+                {
+                    maxDamage = GetBestBombThrow(x, y, splashMap);
+                }
+
+                // Only check for max shoot damage if we haven't already added bomb damage
+                if (maxDamage <= 0.0) 
+                { 
+                    foreach (var opponentAgent in opponentAgents)
+                    {
+                        // Check if it's within max range
+                        if (CalculationUtil.GetManhattanDistance(opponentAgent.Position, new Point(x, y)) <= maxRange)
+                        {
+                            double damage = agent.SoakingPower / 2;
+
+                            if (CalculationUtil.GetManhattanDistance(opponentAgent.Position, new Point(x, y)) <= agent.OptimalRange)
+                            {
+                                damage = agent.SoakingPower;
+                            }
+
+                            // Deduct points for cover
+                            double[,]? opponentCoverMap = coverMaps.GetValueOrDefault(opponentAgent.Id);
+
+                            if (opponentCoverMap == null)
+                            {
+                                Console.Error.WriteLine($"ERROR: No cover map found for agent {opponentAgent.Id}");
+                            }
+                            else
+                            {
+                                var coverValue = opponentCoverMap[x, y];
+                                if (coverValue < 1.0)
+                                {
+                                    damage *= coverValue;
+                                }
+                            }
+
+                            if (damage > maxDamage)
+                            {
+                                maxDamage = damage;
+                            }
+                        }
+                    }
+                }
+
+                damageMap[x, y] = maxDamage;
+            }
+        }
+
+        return damageMap;
+    }
+
+    private double GetBestBombThrow(int x, int y, int[,] splashMap)
+    {
+        var maxDamage = 0.0;
+        // Get the highest value in splashMap within 4 manhattan distance of x, y
+        for (int dx = -4; dx <= 4; dx++)
+        {
+            for (int dy = -4; dy <= 4; dy++)
+            {
+                int splashX = x + dx;
+                int splashY = y + dy;
+
+                if (splashX >= 0 && splashX < width && splashY >= 0 && splashY < height)
+                {
+                    if (CalculationUtil.GetManhattanDistance(new Point(splashX, splashY), new Point(x, y)) <= 4)
+                    {
+                        double splashValue = splashMap[splashX, splashY];
+                        if (splashValue > maxDamage && splashValue >= SPLASH_CUTOFF)
+                        {
+                            maxDamage = splashValue;
+                        }
+                    }
+                }
+            }
+        }
+
+        return maxDamage;
+    }
+}
+
 internal static class Display
 {
-    internal static void CoverMap(double[,] coverMap)
+    internal static void Map(double[,] map)
     {
-        Console.Error.WriteLine("Cover Map:");
-        for (int y = 0; y < coverMap.GetLength(1); y++)
+        for (int y = 0; y < map.GetLength(1); y++)
         {
-            for (int x = 0; x < coverMap.GetLength(0); x++)
+            for (int x = 0; x < map.GetLength(0); x++)
             {
-                Console.Error.Write($"{coverMap[x, y]:F2} ");
+                Console.Error.Write($"{map[x, y]:F2} ");
             }
             Console.Error.WriteLine();
         }
     }
 
-    internal static void SplashMap(int[,] splashMap)
+    internal static void Map(int[,] map)
     {
-        Console.Error.WriteLine("Splash Map:");
-        for (int y = 0; y < splashMap.GetLength(1); y++)
+        for (int y = 0; y < map.GetLength(1); y++)
         {
-            for (int x = 0; x < splashMap.GetLength(0); x++)
+            for (int x = 0; x < map.GetLength(0); x++)
             {
-                Console.Error.Write($"{splashMap[x, y]} ");
+                Console.Error.Write($"{map[x, y]} ");
             }
             Console.Error.WriteLine();
         }
@@ -231,13 +489,13 @@ class Game
 
     int[,] cover;
 
-    private CoverMap coverMap;
+    private CoverMapGenerator coverMapGenerator;
+    private DamageMapGenerator damageMapGenerator;
+    private int[,] coverHillMap;
 
     public Game(int myId)
     {
         MyId = myId;
-
-        coverMap = new CoverMap();
     }
 
     public void SetGameSize(int width, int height)
@@ -246,6 +504,8 @@ class Game
         Height = height;
 
         cover = new int[Width, Height];
+        
+        damageMapGenerator = new DamageMapGenerator(width, height);
     }
 
     internal void AddAgent(int id, int player, int shootCooldown, int optimalRange, int soakingPower, int splashBombs)
@@ -297,49 +557,93 @@ class Game
     // One line per agent: <agentId>;<action1;action2;...> actions are "MOVE x y | SHOOT id | THROW x y | HUNKER_DOWN | MESSAGE text"
     internal List<string> GetMoves()
     {
-        SplashMap splashMap = new SplashMap(Width, Height, playerAgents, opponentAgents);
-        int[,] splashDamageMap = splashMap.CreateSplashMap();
+        int[,] splashMap = CreateSplashMap();
+
+        // Creates a map for each agent, player and opponent, showing how much cover 
+        // they have from being attacked from any cell
+        Dictionary<int, double[,]> coverMaps = CreateCoverMaps();
 
         List<string> moves = new List<string>();
 
         foreach (var agent in playerAgents)
         {
-            string move = "";
+            string move = $"{agent.Id}; ";
 
-            // If we can hit with a splash bomb without moving, do that
-            if (agent.SplashBombs > 0)
-            {
-                move = GetBestThrowMove(agent, splashDamageMap);
-            }
+            // Calculate Agent attack map - How much damage he can do at every position on the map
+            // based on current enemy positions
+            double[,] agentDamageMap = damageMapGenerator.CreateDamageMap(agent, opponentAgents, splashMap, coverMaps, cover);
 
-            if (move== "")
+            // If the nearest enemy is more than two times the agent's optimal range away
+            // then we should move towards the nearest high damage spot
+            (_, var closestEnemyDistance) = GetClosestEnemyPosition(agent);
+
+            // If closestEnemyDistance > agent.OptimalRange * 2 we want to move to the best shoot point and then hunker down
+            // If closestEnemyDistance > agent.OptimalRange we want to move to the best shoot point and then see if we can attack
+            // else we want to move to the best cover point and then see if we can attack
+
+            var nextMove = new Point(-1, -1);
+
+            if (closestEnemyDistance > agent.OptimalRange)
             {
-                if (agent.ShootCooldown <= 0)
+                // TODO: Get the closest high position from agentDamageMap and head there
+                (Point bestAttackPoint, _) = ClosestPeakFinder.FindClosestPeak(
+                    agent.Position,
+                    agentDamageMap);
+
+                if (closestEnemyDistance > agent.OptimalRange * 2)
                 {
-                    move = GetRunAndGunMove(agent);
-                }
-            }
-
-            if (move == "")
-            {
-                // If we can't shoot or throw, we need to move
-                Point closestEnemyPosition = GetClosestEnemyPosition(agent);
-
-                var distanceToClosestEnemy = Math.Abs(agent.Position.X - closestEnemyPosition.X) 
-                        + Math.Abs(agent.Position.Y - closestEnemyPosition.Y);
-
-                if (distanceToClosestEnemy < agent.OptimalRange * 2)
-                {
-                    var bestAttackPoint = GetBestAttackPoint(agent);
-                    Console.Error.WriteLine($"Best attack point for agent {agent.Id} is {bestAttackPoint.X}, {bestAttackPoint.Y}");
-
-                    move = $"{agent.Id}; MOVE {bestAttackPoint.X} {bestAttackPoint.Y}; HUNKER_DOWN";
+                    // We just want to move and hunker down
+                    move += $"MOVE {bestAttackPoint.X} {bestAttackPoint.Y}; ";
+                    nextMove = bestAttackPoint;
+                    Console.Error.WriteLine($"Agent {agent.Id} move source - further than max distance");
                 }
                 else
                 {
-                    move = $"{agent.Id}; MOVE {closestEnemyPosition.X} {closestEnemyPosition.Y}; HUNKER_DOWN";
+                    move += $"MOVE {bestAttackPoint.X} {bestAttackPoint.Y}; ";
+                    nextMove = bestAttackPoint;
+                    Console.Error.WriteLine($"Agent {agent.Id} move source - further than optimal range");
                 }
             }
+
+            if (nextMove == new Point(-1, -1))
+            {
+                (var coverMove, nextMove) = GetClosestCoverMove(agent, coverHillMap);
+                move += coverMove;
+            }
+
+
+            var throwAction = "";
+
+            // Within range of a valid throw 
+            if (agent.SplashBombs > 0)
+            {
+                throwAction += GetThrowAction(agent, nextMove, splashMap);
+
+                if (throwAction != "")
+                {
+                    move += throwAction;
+                    Console.Error.WriteLine($"Agent {agent.Id} action source - throw a bomb");
+                }
+            }
+
+            var shootAction = "";
+            if (throwAction == "" && agent.ShootCooldown <= 0)
+            {
+                shootAction = GetShootAction(agent, nextMove);
+
+                if (shootAction != "")
+                {
+                    move += shootAction;
+                    Console.Error.WriteLine($"Agent {agent.Id} action source - shoot");
+                }
+            }
+
+            if (shootAction == "" && throwAction == "")
+            {
+                move += "HUNKER_DOWN;";
+                Console.Error.WriteLine($"Agent {agent.Id} action source - default to hunkering");
+            }
+            
 
             moves.Add(move);
 
@@ -349,14 +653,98 @@ class Game
         return moves;
     }
 
-    private Point GetClosestEnemyPosition(Agent agent)
+    private (string, Point) GetClosestCoverMove(Agent agent, int[,] coverHillMap)
+    {
+        Console.Error.WriteLine($"Agent {agent.Id} cover hill map");
+        Display.Map(coverHillMap);
+
+        var move = new Point(-1, -1);
+
+        (var closestEnemyPosition, var closestEnemyDistance) = GetClosestEnemyPosition(agent);
+        Console.Error.WriteLine($"Current cover score: {coverHillMap[agent.Position.X, agent.Position.Y]}");
+
+        // Get range to check
+        int minX = Math.Max(0, agent.Position.X - 1);
+        int maxX = Math.Min(Width - 1, agent.Position.X + 1);
+        int minY = Math.Max(0, agent.Position.Y - 1);
+        int maxY = Math.Min(Height - 1, agent.Position.Y + 1);
+
+        // We want to check closer to the opponent
+        if (agent.Position.X < closestEnemyPosition.X)
+        {
+            minX = (Math.Max(minX, agent.Position.X));
+        }
+        else if (agent.Position.X > closestEnemyPosition.X)
+        {
+            maxX = (Math.Min(maxX, agent.Position.X));
+        }
+
+        if (agent.Position.Y < closestEnemyPosition.Y)
+        {
+            minY = (Math.Max(minY, agent.Position.Y));
+        }
+        else if (agent.Position.Y > closestEnemyPosition.Y)
+        {
+            maxY = (Math.Min(maxY, agent.Position.Y));
+        }
+
+        double max = 0.0;
+
+        for (int x = minX; x <= maxX; x++)
+        {
+            for (int y = minY; y <= maxY; y++)
+            {
+                if (coverHillMap[x, y] > max)
+                {
+                    max = coverHillMap[x, y];
+                    move = new Point(x, y);
+                }
+            }
+        }
+
+        if (move != agent.Position)
+        {
+            Console.Error.WriteLine($"Target cover score: {coverHillMap[move.X, move.Y]}");
+
+
+            Console.Error.WriteLine($"Agent {agent.Id} move source - close - looking for cover");
+            return ($"MOVE {move.X} {move.Y}; ", move);
+        }
+
+        return ("", move);
+    }
+
+    private int[,] CreateSplashMap()
+    {
+        SplashMapGenerator splashMapGenerator = new SplashMapGenerator(Width, Height, playerAgents, opponentAgents);
+        return splashMapGenerator.CreateSplashMap();
+    }
+
+    private Dictionary<int, double[,]> CreateCoverMaps()
+    {
+        var coverMaps = new Dictionary<int, double[,]>();
+
+        foreach (var agent in playerAgents)
+        {
+            coverMaps[agent.Id] = coverMapGenerator.CreateCoverMap(agent.Position.X, agent.Position.Y);
+        }
+        foreach (var agent in opponentAgents)
+        {
+            coverMaps[agent.Id] = coverMapGenerator.CreateCoverMap(agent.Position.X, agent.Position.Y);
+        }
+
+        return coverMaps;
+    }
+
+    private (Point, int) GetClosestEnemyPosition(Agent agent)
     {
         Point closestEnemyPosition = new Point(-1, -1);
         int closestDistance = int.MaxValue;
 
         foreach (var enemy in opponentAgents)
         {
-            int distance = Math.Abs(agent.Position.X - enemy.Position.X) + Math.Abs(agent.Position.Y - enemy.Position.Y);
+            int distance = CalculationUtil.GetManhattanDistance(agent.Position, enemy.Position);
+                
             if (distance < closestDistance)
             {
                 closestDistance = distance;
@@ -364,10 +752,10 @@ class Game
             }
         }
 
-        return closestEnemyPosition;
+        return (closestEnemyPosition, closestDistance);
     }
 
-    private string GetBestThrowMove(Agent agent, int[,] splashDamageMap)
+    private string GetThrowAction(Agent agent, Point movePoint, int[,] splashDamageMap)
     {
         int bestX = -1;
         int bestY = -1;
@@ -375,16 +763,27 @@ class Game
 
         // Get highest score from splashDamageMap within 4 
         // Manhattan distance from agent's position
-        int minX = Math.Max(0, agent.Position.X - 4);
-        int maxX = Math.Min(Width - 1, agent.Position.X + 4);
-        int minY = Math.Max(0, agent.Position.Y - 4);
-        int maxY = Math.Min(Height - 1, agent.Position.Y + 4);
+        int minX = Math.Max(0, movePoint.X - 4);
+        int maxX = Math.Min(Width - 1, movePoint.X + 4);
+        int minY = Math.Max(0, movePoint.Y - 4);
+        int maxY = Math.Min(Height - 1, movePoint.Y + 4);
 
         for (int x = minX; x <= maxX; x++)
         {
             for (int y = minY; y <= maxY; y++)
             {
-                var manhattanDistance = Math.Abs(agent.Position.X - x) + Math.Abs(agent.Position.Y - y);
+                // We don't want to throw a bomb if it would hit the point we're moving to (movePoint)
+                if (Math.Abs(x - movePoint.X) <= 1 && Math.Abs(y - movePoint.Y) <= 1)
+                {
+                    Console.Error.WriteLine($"Skipping throw action at {x}, {y} because it's too close to move point {movePoint.X}, {movePoint.Y}");
+                    continue;
+                }
+
+                var manhattanDistance = CalculationUtil.GetManhattanDistance(
+                    agent.Position, new Point(x, y));
+
+                
+                    
                 if (manhattanDistance <= 4 && splashDamageMap[x, y] > bestValue)
                 {
                     bestValue = splashDamageMap[x, y];
@@ -394,31 +793,29 @@ class Game
             }
         }
 
-        if (bestValue > 30)
+        if (bestValue > 0)
         {
-            return $"{agent.Id}; THROW {bestX} {bestY}";
+            return $"THROW {bestX} {bestY}";
         }
 
         return "";
     }
 
-    private string GetRunAndGunMove(Agent agent)
+    private string GetShootAction(Agent agent, Point movePoint)
     {
-        Point attackPoint = GetBestAttackPoint(agent);
-
         // Get target
         var bestAttack = 0.0;
         var bestAttackId = -1;
-
+        
         foreach (var enemy in opponentAgents)
         {
             var damage = CalculateDamage(
-                attackPoint.X,
-                attackPoint.Y,
-                agent.OptimalRange,
-                agent.SoakingPower,
-                enemy.Position.X,
-                enemy.Position.Y);
+            movePoint.X,
+            movePoint.Y,
+            agent.OptimalRange,
+            agent.SoakingPower,
+            enemy.Position.X,
+            enemy.Position.Y);
 
             if (damage > bestAttack)
             {
@@ -427,65 +824,13 @@ class Game
             }
         }
 
+
         if (bestAttack <= 0.0)
         {
-            // No valid attack found, return empty move
             return "";
         }
 
-        if (attackPoint == agent.Position)
-        {
-            return $"{agent.Id}; SHOOT {bestAttackId}";
-        }
-
-        return $"{agent.Id}; MOVE {attackPoint.X} {attackPoint.Y}; SHOOT {bestAttackId}";
-    }
-
-    private Point GetBestAttackPoint(Agent agent)
-    {
-        // get best protection (including current space)
-        double stationaryReceivingDamage = CalculateReceivingPlayerDamage(agent.Position.X, agent.Position.Y);
-
-        double northReceivingDamage = CalculateReceivingPlayerDamage(agent.Position.X, agent.Position.Y - 1);
-
-        var minReceivingDamage = northReceivingDamage;
-        var minReceivingDamagePosition = new Point(agent.Position.X, agent.Position.Y - 1);
-
-        double southReceivingDamage = CalculateReceivingPlayerDamage(agent.Position.X, agent.Position.Y + 1);
-        if (southReceivingDamage < minReceivingDamage)
-        {
-            minReceivingDamage = southReceivingDamage;
-            minReceivingDamagePosition = new Point(agent.Position.X, agent.Position.Y + 1);
-        }
-
-        double eastReceivingDamage = CalculateReceivingPlayerDamage(agent.Position.X + 1, agent.Position.Y);
-        if (eastReceivingDamage < minReceivingDamage)
-        {
-            minReceivingDamage = eastReceivingDamage;
-            minReceivingDamagePosition = new Point(agent.Position.X + 1, agent.Position.Y);
-        }
-
-        double westReceivingDamage = CalculateReceivingPlayerDamage(agent.Position.X - 1, agent.Position.Y);
-        if (westReceivingDamage < minReceivingDamage)
-        {
-            minReceivingDamage = westReceivingDamage;
-            minReceivingDamagePosition = new Point(agent.Position.X - 1, agent.Position.Y);
-        }
-
-        var attackPoint = new Point(-1, -1);
-
-        if (stationaryReceivingDamage <= minReceivingDamage)
-        {
-            // Stay in place
-            attackPoint = new Point(agent.Position.X, agent.Position.Y);
-        }
-        else
-        {
-            // Move to the position with the least damage
-            attackPoint = minReceivingDamagePosition;
-        }
-
-        return attackPoint;
+        return $"SHOOT {bestAttackId}";
     }
 
     private double CalculateReceivingPlayerDamage(int x, int y)
@@ -516,13 +861,14 @@ class Game
 
     private double CalculateDamage(int fromX, int fromY, int optimalRange, int soakingPower, int targetX, int targetY)
     {
-        double[,] map = coverMap.CreateCoverMap(targetX, targetY, cover);
+        double[,] map = coverMapGenerator.CreateCoverMap(targetX, targetY);
         // Display.CoverMap(map);
 
         var damageMultiplier = map[fromX, fromY];
         var baseDamage = soakingPower * damageMultiplier;
 
-        int manhattanDistance = Math.Abs(targetX - fromX) + Math.Abs(targetY - fromY);
+        int manhattanDistance = CalculationUtil.GetManhattanDistance(
+            new Point(targetX, targetY), new Point(fromX, fromY));
 
         if (manhattanDistance <= optimalRange)
         {
@@ -563,6 +909,12 @@ class Game
             return;
         }
         cover[x, y] = tileType;
+    }
+
+    internal void UpdateCoverRelatedMaps()
+    {
+        coverMapGenerator = new CoverMapGenerator(cover);
+        coverHillMap = CoverHillMapGenerator.CreateMap(cover);
     }
 }
 
@@ -614,6 +966,8 @@ class Player
             }
         }
 
+        game.UpdateCoverRelatedMaps();
+
         int count = 1;
 
         // game loop
@@ -657,14 +1011,14 @@ class Player
 }
 
 
-internal class SplashMap
+internal class SplashMapGenerator
 {
-    private int width;
-    private int height;
+    private readonly int width;
+    private readonly int height;
     private List<Agent> playerAgents;
     private List<Agent> opponentAgents;
 
-    public SplashMap(int width, int height, List<Agent> playerAgents, List<Agent> opponentAgents)
+    public SplashMapGenerator(int width, int height, List<Agent> playerAgents, List<Agent> opponentAgents)
     {
         this.width = width;
         this.height = height;
@@ -704,8 +1058,8 @@ internal class SplashMap
                 {
                     if (agent.Position.X == i && agent.Position.Y == j)
                     {
-                        // If we hit an agent we want to return no damage
-                        return 0;
+                        // If we hit our own agent we want to return no damage
+                        return -1;
                     }
                 }
 

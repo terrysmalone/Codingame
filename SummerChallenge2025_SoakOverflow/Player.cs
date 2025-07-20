@@ -58,6 +58,8 @@ class Player
             }
         }
 
+        game.UpdateCoverRelatedMaps();
+
         int count = 1;
 
         // game loop

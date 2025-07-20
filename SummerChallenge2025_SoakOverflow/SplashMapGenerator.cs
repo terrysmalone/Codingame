@@ -3,14 +3,17 @@
 
 namespace SummerChallenge2025_SoakOverflow;
 
-internal class SplashMap
+// Scores every postion on the map based on how much damge it will do if 
+// a splash bomb is dropped there.
+// NOTE: Hitting a friendly agent will automatically return 0 damage.
+internal class SplashMapGenerator
 {
-    private int width;
-    private int height;
+    private readonly int width;
+    private readonly int height;
     private List<Agent> playerAgents;
     private List<Agent> opponentAgents;
 
-    public SplashMap(int width, int height, List<Agent> playerAgents, List<Agent> opponentAgents)
+    public SplashMapGenerator(int width, int height, List<Agent> playerAgents, List<Agent> opponentAgents)
     {
         this.width = width;
         this.height = height;
@@ -50,8 +53,8 @@ internal class SplashMap
                 {
                     if (agent.Position.X == i && agent.Position.Y == j)
                     {
-                        // If we hit an agent we want to return no damage
-                        return 0;
+                        // If we hit our own agent we want to return no damage
+                        return -1;
                     }
                 }
 

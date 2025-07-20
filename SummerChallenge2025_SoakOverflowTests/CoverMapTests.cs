@@ -34,8 +34,8 @@ namespace SummerChallenge2025_SoakOverflow.Tests
             var cover = new int[5, 5];
             cover[1, 2] = 2; // High cover north
 
-            var map = new CoverMap();
-            var result = map.CreateCoverMap(1, 3, cover);
+            var map = new CoverMapGenerator(cover);
+            var result = map.CreateCoverMap(1, 3);
 
             // North row should be filled with 0.5 except adjacent tiles
             Assert.AreEqual(expected, result);

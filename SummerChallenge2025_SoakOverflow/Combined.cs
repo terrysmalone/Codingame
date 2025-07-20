@@ -594,15 +594,16 @@ class Game
                     agent.Position,
                     agentDamageMap);
 
-                    move += $"MOVE {bestAttackPoint.X} {bestAttackPoint.Y}; ";
-                    nextMove = bestAttackPoint;
-                    Console.Error.WriteLine($"Agent {agent.Id} move source - further than optimal range");
+                move += $"MOVE {bestAttackPoint.X} {bestAttackPoint.Y}; ";
+                nextMove = bestAttackPoint;
+                Console.Error.WriteLine($"Agent {agent.Id} move source - Move to best attack position");
             }
 
             if (nextMove == new Point(-1, -1))
             {
                 (var coverMove, nextMove) = GetClosestCoverMove(agent, coverHillMap);
                 move += coverMove;
+                Console.Error.WriteLine($"Agent {agent.Id} move source - Move to best cover");
             }
 
 
@@ -649,44 +650,52 @@ class Game
 
     private (string, Point) GetClosestCoverMove(Agent agent, int[,] coverHillMap)
     {
+        // TODO: Check closer to current position first
+        Console.Error.WriteLine($"Agent {agent.Id} looking for cover");
         var move = new Point(-1, -1);
+
+        var distanceToCheck = 3;
+        int minX = Math.Max(0, agent.Position.X - distanceToCheck);
+        int maxX = Math.Min(Width - 1, agent.Position.X + distanceToCheck);
+        int minY = Math.Max(0, agent.Position.Y - distanceToCheck);
+        int maxY = Math.Min(Height - 1, agent.Position.Y + distanceToCheck);
 
         (var closestEnemyPosition, var closestEnemyDistance) = GetClosestEnemyPosition(agent);
 
-        // Get range to check
-        int minX = Math.Max(0, agent.Position.X - 1);
-        int maxX = Math.Min(Width - 1, agent.Position.X + 1);
-        int minY = Math.Max(0, agent.Position.Y - 1);
-        int maxY = Math.Min(Height - 1, agent.Position.Y + 1);
-
-        // We want to check closer to the opponent
-        if (agent.Position.X < closestEnemyPosition.X)
-        {
-            minX = (Math.Max(minX, agent.Position.X));
-        }
-        else if (agent.Position.X > closestEnemyPosition.X)
-        {
-            maxX = (Math.Min(maxX, agent.Position.X));
-        }
-
-        if (agent.Position.Y < closestEnemyPosition.Y)
-        {
-            minY = (Math.Max(minY, agent.Position.Y));
-        }
-        else if (agent.Position.Y > closestEnemyPosition.Y)
-        {
-            maxY = (Math.Min(maxY, agent.Position.Y));
-        }
-
-        double max = 0.0;
+        double min = Double.MaxValue;
 
         for (int x = minX; x <= maxX; x++)
         {
             for (int y = minY; y <= maxY; y++)
             {
-                if (coverHillMap[x, y] > max)
+                // If this position contains cover, skip it
+                if (cover[x, y] > 0)
                 {
-                    max = coverHillMap[x, y];
+                    continue;
+                }
+
+                // If another agent is at x, y don't bother checking it
+                if (playerAgents.Any(a => a.Position.X == x && a.Position.Y == y && a.Id != agent.Id) ||
+                    opponentAgents.Any(a => a.Position.X == x && a.Position.Y == y))
+                {
+                    continue;
+                }
+
+                // If this position would move agent further away from closest player than optimal range, skip it
+                if (CalculationUtil.GetManhattanDistance(new Point(x, y), closestEnemyPosition) > agent.OptimalRange)
+                {
+                    continue;
+                }
+
+                double possibleDamage = 0.0;
+
+                possibleDamage += CalculateReceivingPlayerDamage(x, y);
+                
+
+                if (possibleDamage < min)
+                {
+                    Console.Error.WriteLine($"Found better cover at {x}, {y} with damage {possibleDamage}");
+                    min = possibleDamage;
                     move = new Point(x, y);
                 }
             }
@@ -747,6 +756,7 @@ class Game
 
     private string GetThrowAction(Agent agent, Point movePoint, int[,] splashDamageMap)
     {
+        Display.Map(splashDamageMap);
         int bestX = -1;
         int bestY = -1;
         int bestValue = 0;
@@ -762,18 +772,19 @@ class Game
         {
             for (int y = minY; y <= maxY; y++)
             {
+                Console.Error.WriteLine($"Checking splash damage at {x}, {y} with value {splashDamageMap[x, y]}");
                 // We don't want to throw a bomb if it would hit the point we're moving to (movePoint)
                 if (Math.Abs(x - movePoint.X) <= 1 && Math.Abs(y - movePoint.Y) <= 1)
                 {
-                    Console.Error.WriteLine($"Skipping throw action at {x}, {y} because it's too close to move point {movePoint.X}, {movePoint.Y}");
+                    Console.Error.WriteLine($"Skipping");
                     continue;
                 }
 
                 var manhattanDistance = CalculationUtil.GetManhattanDistance(
-                    agent.Position, new Point(x, y));
+                    movePoint, new Point(x, y));
 
-                
-                    
+
+
                 if (manhattanDistance <= 4 && splashDamageMap[x, y] > bestValue)
                 {
                     bestValue = splashDamageMap[x, y];
@@ -799,6 +810,12 @@ class Game
         
         foreach (var enemy in opponentAgents)
         {
+            // If enemy is not in range of agent, skip it
+            if (CalculationUtil.GetManhattanDistance(enemy.Position, agent.Position) -1 > agent.OptimalRange * 2)
+            {
+                continue;
+            }
+
             var damage = CalculateDamage(
             movePoint.X,
             movePoint.Y,
@@ -825,25 +842,17 @@ class Game
 
     private double CalculateReceivingPlayerDamage(int x, int y)
     {
-        // Check bounds
-        if (x < 0 || x >= Width || y < 0 || y >= Height)
-        {
-            return Double.MaxValue;
-        }
-
         var stationaryReceivingDamage = 0.0;
         foreach (var enemy in opponentAgents)
         {
-            if (enemy.ShootCooldown <= 0)
-            {
-                stationaryReceivingDamage += CalculateDamage(
-                    enemy.Position.X,
-                    enemy.Position.Y,
-                    enemy.OptimalRange,
-                    enemy.SoakingPower,
-                    x,
-                    y);
-            }
+            stationaryReceivingDamage += CalculateDamage(
+                enemy.Position.X,
+                enemy.Position.Y,
+                enemy.OptimalRange,
+                enemy.SoakingPower,
+                x,
+                y);
+            
         }
 
         return stationaryReceivingDamage;
@@ -851,6 +860,7 @@ class Game
 
     private double CalculateDamage(int fromX, int fromY, int optimalRange, int soakingPower, int targetX, int targetY)
     {
+        //Console.Error.WriteLine($"Calculating damage from {fromX}, {fromY} to {targetX}, {targetY} with optimal range {optimalRange} and soaking power {soakingPower}");
         double[,] map = coverMapGenerator.CreateCoverMap(targetX, targetY);
         // Display.CoverMap(map);
 
@@ -862,14 +872,17 @@ class Game
 
         if (manhattanDistance <= optimalRange)
         {
+            //Console.Error.WriteLine($"Damage - baseDamage: {baseDamage}");
             return baseDamage;
         }
         else if (manhattanDistance <= optimalRange * 2)
         {
+            //Console.Error.WriteLine($"Damage - baseDamage/2: {baseDamage / 2}");
             return baseDamage / 2;
         }
         else
         {
+            //Console.Error.WriteLine($"Damage: 0");
             return 0;
         }
     }

@@ -1,6 +1,6 @@
 ﻿namespace SummerChallenge2025_SoakOverflow;
 
-// Scores how much cover affects the given position of all 
+// Scores how much cover affects the given position from all 
 // positions on the map
 public class CoverMapGenerator
 {

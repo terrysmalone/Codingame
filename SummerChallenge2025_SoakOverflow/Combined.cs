@@ -512,45 +512,16 @@ class Game
         List<string> moves = new List<string>();
         foreach (var agent in playerAgents)
         {
-            string move = $"{agent.Id}; ";
+            string fullMove = $"{agent.Id}; ";
 
-            double[,] agentDamageMap = damageMapGenerator.CreateDamageMap(agent, opponentAgents, splashMap, coverMaps, cover);
+            // Get the best move
+            (var move, Point nextMove) = GetBestMove(agent, splashMap, coverMaps, coverHillMap);
+            fullMove += move;
 
-            (move, Point nextMove) = GetBestMove(agent, agentDamageMap, coverHillMap);
-            
-            var throwAction = "";
+            // Get the best action
+            fullMove += GetBestAction(agent, nextMove, splashMap);
 
-            // Within range of a valid throw 
-            if (agent.SplashBombs > 0)
-            {
-                throwAction += GetThrowAction(agent, nextMove, splashMap);
-
-                if (throwAction != "")
-                {
-                    move += throwAction;
-                    Console.Error.WriteLine($"Agent {agent.Id} action source - throw a bomb");
-                }
-            }
-
-            var shootAction = "";
-            if (throwAction == "" && agent.ShootCooldown <= 0)
-            {
-                shootAction = GetShootAction(agent, nextMove);
-
-                if (shootAction != "")
-                {
-                    move += shootAction;
-                    Console.Error.WriteLine($"Agent {agent.Id} action source - shoot");
-                }
-            }
-
-            if (shootAction == "" && throwAction == "")
-            {
-                move += "HUNKER_DOWN;";
-                Console.Error.WriteLine($"Agent {agent.Id} action source - default to hunkering");
-            }
-
-            moves.Add(move);
+            moves.Add(fullMove);
         }
 
         return moves;
@@ -578,7 +549,7 @@ class Game
         return coverMaps;
     }
 
-    private (string move, Point nextMove) GetBestMove(Agent agent, double[,] agentDamageMap, int[,] coverHillMap)
+    private (string move, Point nextMove) GetBestMove(Agent agent, int[,] splashMap, Dictionary<int, double[,]> coverMaps, int[,] coverHillMap)
     {
         var move = "";
         var nextMove = new Point(-1, -1);
@@ -589,6 +560,8 @@ class Game
 
         if (closestEnemyDistance > agent.OptimalRange)
         {
+            double[,] agentDamageMap = damageMapGenerator.CreateDamageMap(agent, opponentAgents, splashMap, coverMaps, cover);
+
             (Point bestAttackPoint, _) = ClosestPeakFinder.FindClosestPeak(
                 agent.Position,
                 agentDamageMap);
@@ -608,60 +581,23 @@ class Game
         return (move, nextMove);
     }
 
-    public void SetGameSize(int width, int height)
+    private (Point, int) GetClosestEnemyPosition(Agent agent)
     {
-        Width = width;
-        Height = height;
+        Point closestEnemyPosition = new Point(-1, -1);
+        int closestDistance = int.MaxValue;
 
-        cover = new int[Width, Height];
-        
-        damageMapGenerator = new DamageMapGenerator(width, height);
-    }
+        foreach (var enemy in opponentAgents)
+        {
+            int distance = CalculationUtil.GetManhattanDistance(agent.Position, enemy.Position);
 
-    internal void AddAgent(int id, int player, int shootCooldown, int optimalRange, int soakingPower, int splashBombs)
-    {
-        if (player == MyId)
-        {
-            playerAgents.Add(new Agent(id, player, shootCooldown, optimalRange, soakingPower, splashBombs));
-        }
-        else
-        {
-            opponentAgents.Add(new Agent(id, player, shootCooldown, optimalRange, soakingPower, splashBombs));
-        }
-    }
-
-    internal void MarkAllAgentsForCulling()
-    {
-        foreach (var agent in playerAgents)
-        {
-            agent.InGame = false;
+            if (distance < closestDistance)
+            {
+                closestDistance = distance;
+                closestEnemyPosition = enemy.Position;
+            }
         }
 
-        foreach (var agent in opponentAgents)
-        {
-            agent.InGame = false;
-        }
-    }
-
-    internal void DestroyMarkedAgents()
-    {
-        playerAgents.RemoveAll(agent => !agent.InGame);
-        opponentAgents.RemoveAll(agent => !agent.InGame);
-    }
-
-    internal void UpdateAgent(int agentId, int x, int y, int cooldown, int splashBombs, int wetness)
-    {
-        Agent agent = playerAgents.FirstOrDefault(a => a.Id == agentId) 
-            ?? opponentAgents.FirstOrDefault(a => a.Id == agentId);
-
-        if (agent != null)
-        {
-            agent.UpdatePosition(x, y);
-            agent.ShootCooldown = cooldown;
-            agent.SplashBombs = splashBombs;
-            agent.Wetness = wetness;
-            agent.InGame = true;
-        }
+        return (closestEnemyPosition, closestDistance);
     }
 
     private (string, Point) GetClosestCoverMove(Agent agent, int[,] coverHillMap)
@@ -708,7 +644,7 @@ class Game
                 double possibleDamage = 0.0;
 
                 possibleDamage += CalculateReceivingPlayerDamage(x, y);
-                
+
                 if (possibleDamage <= min)
                 {
                     if (possibleDamage <= min)
@@ -747,24 +683,84 @@ class Game
         return ("", move);
     }
 
-
-    private (Point, int) GetClosestEnemyPosition(Agent agent)
+    private double CalculateReceivingPlayerDamage(int x, int y)
     {
-        Point closestEnemyPosition = new Point(-1, -1);
-        int closestDistance = int.MaxValue;
-
+        var stationaryReceivingDamage = 0.0;
         foreach (var enemy in opponentAgents)
         {
-            int distance = CalculationUtil.GetManhattanDistance(agent.Position, enemy.Position);
-                
-            if (distance < closestDistance)
+            stationaryReceivingDamage += CalculateDamage(
+                enemy.Position.X,
+                enemy.Position.Y,
+                enemy.OptimalRange,
+                enemy.SoakingPower,
+                x,
+                y);
+
+        }
+
+        return stationaryReceivingDamage;
+    }
+
+    private double CalculateDamage(int fromX, int fromY, int optimalRange, int soakingPower, int targetX, int targetY)
+    {
+        double[,] map = coverMapGenerator.CreateCoverMap(targetX, targetY);
+
+        var damageMultiplier = map[fromX, fromY];
+        var baseDamage = soakingPower * damageMultiplier;
+
+        int manhattanDistance = CalculationUtil.GetManhattanDistance(
+            new Point(targetX, targetY), new Point(fromX, fromY));
+
+        if (manhattanDistance <= optimalRange)
+        {
+            return baseDamage;
+        }
+        else if (manhattanDistance <= optimalRange * 2)
+        {
+            return baseDamage / 2;
+        }
+        else
+        {
+            return 0;
+        }
+    }
+
+    private string GetBestAction(Agent agent, Point nextMove, int[,] splashMap)
+    {
+        var move = "";
+        var throwAction = "";
+
+        // Within range of a valid throw 
+        if (agent.SplashBombs > 0)
+        {
+            throwAction += GetThrowAction(agent, nextMove, splashMap);
+
+            if (throwAction != "")
             {
-                closestDistance = distance;
-                closestEnemyPosition = enemy.Position;
+                move += throwAction;
+                Console.Error.WriteLine($"Agent {agent.Id} action source - throw a bomb");
             }
         }
 
-        return (closestEnemyPosition, closestDistance);
+        var shootAction = "";
+        if (throwAction == "" && agent.ShootCooldown <= 0)
+        {
+            shootAction = GetShootAction(agent, nextMove);
+
+            if (shootAction != "")
+            {
+                move += shootAction;
+                Console.Error.WriteLine($"Agent {agent.Id} action source - shoot");
+            }
+        }
+
+        if (shootAction == "" && throwAction == "")
+        {
+            move += "HUNKER_DOWN;";
+            Console.Error.WriteLine($"Agent {agent.Id} action source - default to hunkering");
+        }
+
+        return move;
     }
 
     private string GetThrowAction(Agent agent, Point movePoint, int[,] splashDamageMap)
@@ -829,11 +825,11 @@ class Game
         // Get target
         var bestAttack = 0.0;
         var bestAttackId = -1;
-        
+
         foreach (var enemy in opponentAgents)
         {
             // If enemy is not in range of agent, skip it
-            if (CalculationUtil.GetManhattanDistance(enemy.Position, agent.Position) -1 > agent.OptimalRange * 2)
+            if (CalculationUtil.GetManhattanDistance(enemy.Position, agent.Position) - 1 > agent.OptimalRange * 2)
             {
                 continue;
             }
@@ -862,50 +858,59 @@ class Game
         return $"SHOOT {bestAttackId}";
     }
 
-    private double CalculateReceivingPlayerDamage(int x, int y)
+    public void SetGameSize(int width, int height)
     {
-        var stationaryReceivingDamage = 0.0;
-        foreach (var enemy in opponentAgents)
-        {
-            stationaryReceivingDamage += CalculateDamage(
-                enemy.Position.X,
-                enemy.Position.Y,
-                enemy.OptimalRange,
-                enemy.SoakingPower,
-                x,
-                y);
-            
-        }
+        Width = width;
+        Height = height;
 
-        return stationaryReceivingDamage;
+        cover = new int[Width, Height];
+        
+        damageMapGenerator = new DamageMapGenerator(width, height);
     }
 
-    private double CalculateDamage(int fromX, int fromY, int optimalRange, int soakingPower, int targetX, int targetY)
+    internal void AddAgent(int id, int player, int shootCooldown, int optimalRange, int soakingPower, int splashBombs)
     {
-        //Console.Error.WriteLine($"Calculating damage from {fromX}, {fromY} to {targetX}, {targetY} with optimal range {optimalRange} and soaking power {soakingPower}");
-        double[,] map = coverMapGenerator.CreateCoverMap(targetX, targetY);
-        // Display.CoverMap(map);
-
-        var damageMultiplier = map[fromX, fromY];
-        var baseDamage = soakingPower * damageMultiplier;
-
-        int manhattanDistance = CalculationUtil.GetManhattanDistance(
-            new Point(targetX, targetY), new Point(fromX, fromY));
-
-        if (manhattanDistance <= optimalRange)
+        if (player == MyId)
         {
-            //Console.Error.WriteLine($"Damage - baseDamage: {baseDamage}");
-            return baseDamage;
-        }
-        else if (manhattanDistance <= optimalRange * 2)
-        {
-            //Console.Error.WriteLine($"Damage - baseDamage/2: {baseDamage / 2}");
-            return baseDamage / 2;
+            playerAgents.Add(new Agent(id, player, shootCooldown, optimalRange, soakingPower, splashBombs));
         }
         else
         {
-            //Console.Error.WriteLine($"Damage: 0");
-            return 0;
+            opponentAgents.Add(new Agent(id, player, shootCooldown, optimalRange, soakingPower, splashBombs));
+        }
+    }
+
+    internal void MarkAllAgentsForCulling()
+    {
+        foreach (var agent in playerAgents)
+        {
+            agent.InGame = false;
+        }
+
+        foreach (var agent in opponentAgents)
+        {
+            agent.InGame = false;
+        }
+    }
+
+    internal void DestroyMarkedAgents()
+    {
+        playerAgents.RemoveAll(agent => !agent.InGame);
+        opponentAgents.RemoveAll(agent => !agent.InGame);
+    }
+
+    internal void UpdateAgent(int agentId, int x, int y, int cooldown, int splashBombs, int wetness)
+    {
+        Agent agent = playerAgents.FirstOrDefault(a => a.Id == agentId) 
+            ?? opponentAgents.FirstOrDefault(a => a.Id == agentId);
+
+        if (agent != null)
+        {
+            agent.UpdatePosition(x, y);
+            agent.ShootCooldown = cooldown;
+            agent.SplashBombs = splashBombs;
+            agent.Wetness = wetness;
+            agent.InGame = true;
         }
     }
 

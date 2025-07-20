@@ -26,6 +26,111 @@ class Game
         MyId = myId;
     }
 
+    // One line per agent: <agentId>;<action1;action2;...> actions are "MOVE x y | SHOOT id | THROW x y | HUNKER_DOWN | MESSAGE text"
+    internal List<string> GetMoves()
+    {
+        int[,] splashMap = CreateSplashMap();
+        Dictionary<int, double[,]> coverMaps = CreateCoverMaps();
+
+        List<string> moves = new List<string>();
+        foreach (var agent in playerAgents)
+        {
+            string move = $"{agent.Id}; ";
+
+            double[,] agentDamageMap = damageMapGenerator.CreateDamageMap(agent, opponentAgents, splashMap, coverMaps, cover);
+
+            (move, Point nextMove) = GetBestMove(agent, agentDamageMap, coverHillMap);
+            
+            var throwAction = "";
+
+            // Within range of a valid throw 
+            if (agent.SplashBombs > 0)
+            {
+                throwAction += GetThrowAction(agent, nextMove, splashMap);
+
+                if (throwAction != "")
+                {
+                    move += throwAction;
+                    Console.Error.WriteLine($"Agent {agent.Id} action source - throw a bomb");
+                }
+            }
+
+            var shootAction = "";
+            if (throwAction == "" && agent.ShootCooldown <= 0)
+            {
+                shootAction = GetShootAction(agent, nextMove);
+
+                if (shootAction != "")
+                {
+                    move += shootAction;
+                    Console.Error.WriteLine($"Agent {agent.Id} action source - shoot");
+                }
+            }
+
+            if (shootAction == "" && throwAction == "")
+            {
+                move += "HUNKER_DOWN;";
+                Console.Error.WriteLine($"Agent {agent.Id} action source - default to hunkering");
+            }
+
+            moves.Add(move);
+        }
+
+        return moves;
+    }
+
+    private int[,] CreateSplashMap()
+    {
+        SplashMapGenerator splashMapGenerator = new SplashMapGenerator(Width, Height, playerAgents, opponentAgents);
+        return splashMapGenerator.CreateSplashMap();
+    }
+
+    private Dictionary<int, double[,]> CreateCoverMaps()
+    {
+        var coverMaps = new Dictionary<int, double[,]>();
+
+        foreach (var agent in playerAgents)
+        {
+            coverMaps[agent.Id] = coverMapGenerator.CreateCoverMap(agent.Position.X, agent.Position.Y);
+        }
+        foreach (var agent in opponentAgents)
+        {
+            coverMaps[agent.Id] = coverMapGenerator.CreateCoverMap(agent.Position.X, agent.Position.Y);
+        }
+
+        return coverMaps;
+    }
+
+    private (string move, Point nextMove) GetBestMove(Agent agent, double[,] agentDamageMap, int[,] coverHillMap)
+    {
+        var move = "";
+        var nextMove = new Point(-1, -1);
+
+        // If the nearest enemy is more than two times the agent's optimal range away
+        // then we should move towards the nearest high damage spot
+        (_, var closestEnemyDistance) = GetClosestEnemyPosition(agent);
+
+        if (closestEnemyDistance > agent.OptimalRange)
+        {
+            (Point bestAttackPoint, _) = ClosestPeakFinder.FindClosestPeak(
+                agent.Position,
+                agentDamageMap);
+
+            move += $"MOVE {bestAttackPoint.X} {bestAttackPoint.Y}; ";
+            nextMove = bestAttackPoint;
+            Console.Error.WriteLine($"Agent {agent.Id} move source - Move to best attack position");
+        }
+
+        if (nextMove == new Point(-1, -1))
+        {
+            (var coverMove, nextMove) = GetClosestCoverMove(agent, coverHillMap);
+            move += coverMove;
+            Console.Error.WriteLine($"Agent {agent.Id} move source - Move to best cover");
+        }
+
+        return (move, nextMove);
+    }
+
     public void SetGameSize(int width, int height)
     {
         Width = width;
@@ -82,95 +187,6 @@ class Game
         }
     }
 
-    // One line per agent: <agentId>;<action1;action2;...> actions are "MOVE x y | SHOOT id | THROW x y | HUNKER_DOWN | MESSAGE text"
-    internal List<string> GetMoves()
-    {
-        int[,] splashMap = CreateSplashMap();
-
-        // Creates a map for each agent, player and opponent, showing how much cover 
-        // they have from being attacked from any cell
-        Dictionary<int, double[,]> coverMaps = CreateCoverMaps();
-
-        List<string> moves = new List<string>();
-
-        foreach (var agent in playerAgents)
-        {
-            string move = $"{agent.Id}; ";
-
-            // Calculate Agent attack map - How much damage he can do at every position on the map
-            // based on current enemy positions
-            double[,] agentDamageMap = damageMapGenerator.CreateDamageMap(agent, opponentAgents, splashMap, coverMaps, cover);
-
-            // If the nearest enemy is more than two times the agent's optimal range away
-            // then we should move towards the nearest high damage spot
-            (_, var closestEnemyDistance) = GetClosestEnemyPosition(agent);
-
-            // If closestEnemyDistance > agent.OptimalRange * 2 we want to move to the best shoot point and then hunker down
-            // If closestEnemyDistance > agent.OptimalRange we want to move to the best shoot point and then see if we can attack
-            // else we want to move to the best cover point and then see if we can attack
-
-            var nextMove = new Point(-1, -1);
-
-            if (closestEnemyDistance > agent.OptimalRange)
-            {
-                (Point bestAttackPoint, _) = ClosestPeakFinder.FindClosestPeak(
-                    agent.Position,
-                    agentDamageMap);
-
-                move += $"MOVE {bestAttackPoint.X} {bestAttackPoint.Y}; ";
-                nextMove = bestAttackPoint;
-                Console.Error.WriteLine($"Agent {agent.Id} move source - Move to best attack position");
-            }
-
-            if (nextMove == new Point(-1, -1))
-            {
-                (var coverMove, nextMove) = GetClosestCoverMove(agent, coverHillMap);
-                move += coverMove;
-                Console.Error.WriteLine($"Agent {agent.Id} move source - Move to best cover");
-            }
-
-
-            var throwAction = "";
-
-            // Within range of a valid throw 
-            if (agent.SplashBombs > 0)
-            {
-                throwAction += GetThrowAction(agent, nextMove, splashMap);
-
-                if (throwAction != "")
-                {
-                    move += throwAction;
-                    Console.Error.WriteLine($"Agent {agent.Id} action source - throw a bomb");
-                }
-            }
-
-            var shootAction = "";
-            if (throwAction == "" && agent.ShootCooldown <= 0)
-            {
-                shootAction = GetShootAction(agent, nextMove);
-
-                if (shootAction != "")
-                {
-                    move += shootAction;
-                    Console.Error.WriteLine($"Agent {agent.Id} action source - shoot");
-                }
-            }
-
-            if (shootAction == "" && throwAction == "")
-            {
-                move += "HUNKER_DOWN;";
-                Console.Error.WriteLine($"Agent {agent.Id} action source - default to hunkering");
-            }
-            
-
-            moves.Add(move);
-
-            // To debug: Console.Error.WriteLine("Debug messages...");
-        }
-
-        return moves;
-    }
-
     private (string, Point) GetClosestCoverMove(Agent agent, int[,] coverHillMap)
     {
         // TODO: Check closer to current position first
@@ -185,7 +201,8 @@ class Game
 
         (var closestEnemyPosition, var closestEnemyDistance) = GetClosestEnemyPosition(agent);
 
-        double min = Double.MaxValue;
+        double min = double.MaxValue;
+        int minDistance = int.MaxValue;
 
         for (int x = minX; x <= maxX; x++)
         {
@@ -204,8 +221,9 @@ class Game
                     continue;
                 }
 
+                var distance = CalculationUtil.GetManhattanDistance(new Point(x, y), closestEnemyPosition);
                 // If this position would move agent further away from closest player than optimal range, skip it
-                if (CalculationUtil.GetManhattanDistance(new Point(x, y), closestEnemyPosition) > agent.OptimalRange)
+                if (distance > agent.OptimalRange)
                 {
                     continue;
                 }
@@ -214,12 +232,28 @@ class Game
 
                 possibleDamage += CalculateReceivingPlayerDamage(x, y);
                 
-
-                if (possibleDamage < min)
+                if (possibleDamage <= min)
                 {
-                    Console.Error.WriteLine($"Found better cover at {x}, {y} with damage {possibleDamage}");
-                    min = possibleDamage;
-                    move = new Point(x, y);
+                    if (possibleDamage <= min)
+                    {
+                        if (distance < minDistance)
+                        {
+                            Console.Error.WriteLine($"Found better and closer cover at {x}, {y} with damage {possibleDamage}");
+                            min = possibleDamage;
+                            minDistance = distance;
+
+                            move = new Point(x, y);
+                        }
+                    }
+                    else
+                    {
+
+                        Console.Error.WriteLine($"Found better cover at {x}, {y} with damage {possibleDamage}");
+                        min = possibleDamage;
+                        minDistance = distance;
+
+                        move = new Point(x, y);
+                    }
                 }
             }
         }
@@ -236,27 +270,6 @@ class Game
         return ("", move);
     }
 
-    private int[,] CreateSplashMap()
-    {
-        SplashMapGenerator splashMapGenerator = new SplashMapGenerator(Width, Height, playerAgents, opponentAgents);
-        return splashMapGenerator.CreateSplashMap();
-    }
-
-    private Dictionary<int, double[,]> CreateCoverMaps()
-    {
-        var coverMaps = new Dictionary<int, double[,]>();
-
-        foreach (var agent in playerAgents)
-        {
-            coverMaps[agent.Id] = coverMapGenerator.CreateCoverMap(agent.Position.X, agent.Position.Y);
-        }
-        foreach (var agent in opponentAgents)
-        {
-            coverMaps[agent.Id] = coverMapGenerator.CreateCoverMap(agent.Position.X, agent.Position.Y);
-        }
-
-        return coverMaps;
-    }
 
     private (Point, int) GetClosestEnemyPosition(Agent agent)
     {
@@ -279,10 +292,19 @@ class Game
 
     private string GetThrowAction(Agent agent, Point movePoint, int[,] splashDamageMap)
     {
+        // If the movePoint is more than one away from the agents position don't throw
+        if (CalculationUtil.GetManhattanDistance(agent.Position, movePoint) > 1)
+        {
+            return "";
+        }
+
         Display.Map(splashDamageMap);
         int bestX = -1;
         int bestY = -1;
         int bestValue = 0;
+
+        Point calculationPoint = new Point(-1, -1);
+
 
         // Get highest score from splashDamageMap within 4 
         // Manhattan distance from agent's position

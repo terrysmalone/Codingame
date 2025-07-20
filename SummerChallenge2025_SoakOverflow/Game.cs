@@ -41,8 +41,13 @@ class Game
             (var move, Point nextMove) = GetBestMove(agent, splashMap, coverMaps, coverHillMap);
             fullMove += move;
 
+            // Convert the move to the next adjacent move so we know exactly where we'll be on the next turn
+            AStar aStar = new AStar(cover);
+            List<Point> bestPath = aStar.GetShortestPath(agent.Position, nextMove);
+            Point bestPoint = bestPath[0];
+
             // Get the best action
-            fullMove += GetBestAction(agent, nextMove, splashMap);
+            fullMove += GetBestAction(agent, bestPoint, splashMap);
 
             moves.Add(fullMove);
         }
@@ -301,7 +306,6 @@ class Game
 
         Point calculationPoint = new Point(-1, -1);
 
-
         // Get highest score from splashDamageMap within 4 
         // Manhattan distance from agent's position
         int minX = Math.Max(0, movePoint.X - 4);
@@ -323,8 +327,6 @@ class Game
 
                 var manhattanDistance = CalculationUtil.GetManhattanDistance(
                     movePoint, new Point(x, y));
-
-
 
                 if (manhattanDistance <= 4 && splashDamageMap[x, y] > bestValue)
                 {

@@ -7,7 +7,7 @@ namespace SummerChallenge2025_SoakOverflow;
 // Based on current opponent positions
 internal class DamageMapGenerator
 {
-    const double SPLASH_CUTOFF = 60.0; // Minimum splash damage to consider
+    const double SPLASH_CUTOFF = 30.0; // Minimum splash damage to consider
     private int width;
     private int height;
 

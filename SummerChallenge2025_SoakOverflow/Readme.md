@@ -8,7 +8,7 @@ When looking for cover consider shortest path rather than manhattan distance
 
 --- 
 
-I'm missing too many bomb shots. Start considering if the enemy can move oout of range
+I'm missing too many bomb shots. Start considering if the enemy can move out of range
 	Example: 
 	Orange: amurushkain
 	Purple: me
@@ -20,3 +20,7 @@ I'm missing too many bomb shots. Start considering if the enemy can move oout of
 BUG: When calculating shot I use the movePoint, but when I move to attackPoint that move is often too far away, resulting in invalid shots. 
 
 I should fix this as part of adding path finding
+
+Seed: seed=7130003092528790000
+
+On move 4 I attempt a shot that isn't possible - 1; MOVE 6 5; SHOOT 4

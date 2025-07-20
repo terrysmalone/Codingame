@@ -52,6 +52,11 @@ public static class CalculationUtil
         return Math.Abs(point1.X - point2.X) + Math.Abs(point1.Y - point2.Y);
 
     }
+
+    internal static double GetEuclideanDistance(Point point1, Point point2)
+    {
+        return Math.Sqrt(Math.Pow(point1.X - point2.X, 2) + Math.Pow(point1.Y - point2.Y, 2));
+    }
 }
 
 
@@ -550,7 +555,7 @@ class Game
             agent.ShootCooldown = cooldown;
             agent.SplashBombs = splashBombs;
             agent.Wetness = wetness;
-            agent.InGame = true; // Mark it as still in game
+            agent.InGame = true;
         }
     }
 
@@ -585,24 +590,13 @@ class Game
 
             if (closestEnemyDistance > agent.OptimalRange)
             {
-                // TODO: Get the closest high position from agentDamageMap and head there
                 (Point bestAttackPoint, _) = ClosestPeakFinder.FindClosestPeak(
                     agent.Position,
                     agentDamageMap);
 
-                if (closestEnemyDistance > agent.OptimalRange * 2)
-                {
-                    // We just want to move and hunker down
-                    move += $"MOVE {bestAttackPoint.X} {bestAttackPoint.Y}; ";
-                    nextMove = bestAttackPoint;
-                    Console.Error.WriteLine($"Agent {agent.Id} move source - further than max distance");
-                }
-                else
-                {
                     move += $"MOVE {bestAttackPoint.X} {bestAttackPoint.Y}; ";
                     nextMove = bestAttackPoint;
                     Console.Error.WriteLine($"Agent {agent.Id} move source - further than optimal range");
-                }
             }
 
             if (nextMove == new Point(-1, -1))
@@ -655,13 +649,9 @@ class Game
 
     private (string, Point) GetClosestCoverMove(Agent agent, int[,] coverHillMap)
     {
-        Console.Error.WriteLine($"Agent {agent.Id} cover hill map");
-        Display.Map(coverHillMap);
-
         var move = new Point(-1, -1);
 
         (var closestEnemyPosition, var closestEnemyDistance) = GetClosestEnemyPosition(agent);
-        Console.Error.WriteLine($"Current cover score: {coverHillMap[agent.Position.X, agent.Position.Y]}");
 
         // Get range to check
         int minX = Math.Max(0, agent.Position.X - 1);

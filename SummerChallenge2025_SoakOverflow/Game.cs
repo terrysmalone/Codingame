@@ -117,15 +117,16 @@ class Game
                     agent.Position,
                     agentDamageMap);
 
-                    move += $"MOVE {bestAttackPoint.X} {bestAttackPoint.Y}; ";
-                    nextMove = bestAttackPoint;
-                    Console.Error.WriteLine($"Agent {agent.Id} move source - further than optimal range");
+                move += $"MOVE {bestAttackPoint.X} {bestAttackPoint.Y}; ";
+                nextMove = bestAttackPoint;
+                Console.Error.WriteLine($"Agent {agent.Id} move source - Move to best attack position");
             }
 
             if (nextMove == new Point(-1, -1))
             {
                 (var coverMove, nextMove) = GetClosestCoverMove(agent, coverHillMap);
                 move += coverMove;
+                Console.Error.WriteLine($"Agent {agent.Id} move source - Move to best generic cover");
             }
 
 
@@ -172,13 +173,9 @@ class Game
 
     private (string, Point) GetClosestCoverMove(Agent agent, int[,] coverHillMap)
     {
-        Console.Error.WriteLine($"Agent {agent.Id} cover hill map");
-        Display.Map(coverHillMap);
-
         var move = new Point(-1, -1);
 
         (var closestEnemyPosition, var closestEnemyDistance) = GetClosestEnemyPosition(agent);
-        Console.Error.WriteLine($"Current cover score: {coverHillMap[agent.Position.X, agent.Position.Y]}");
 
         // Get range to check
         int minX = Math.Max(0, agent.Position.X - 1);

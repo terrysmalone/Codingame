@@ -84,10 +84,11 @@ internal sealed class AStar
 
             Point[] pointsToCheck =
             [
-                new Point(currentNode.Position.X, Math.Min(_height-1, currentNode.Position.Y + 1)),
                 new Point(Math.Min(_width-1, currentNode.Position.X + 1), currentNode.Position.Y),
-                new Point(currentNode.Position.X, Math.Max(0, currentNode.Position.Y - 1)),
                 new Point(Math.Max(0, currentNode.Position.X - 1), currentNode.Position.Y),
+                new Point(currentNode.Position.X, Math.Min(_height-1, currentNode.Position.Y + 1)),
+                new Point(currentNode.Position.X, Math.Max(0, currentNode.Position.Y - 1)),
+                
             ];
 
             foreach (Point pointToCheck in pointsToCheck)

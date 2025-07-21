@@ -703,7 +703,8 @@ class Game
 
         if (closestEnemyDistance <= agent.OptimalRange && agent.OptimalRange > 2)
         {
-            (var coverMove, nextMove) = GetClosestCoverMove(agent, coverHillMap);
+            // (var coverMove, nextMove) = GetClosestCoverMove(agent, coverHillMap);
+            (var coverMove, nextMove) = GetBestAttackPoint(agent);
 
             if (nextMove != new Point(-1, -1))
             {
@@ -756,6 +757,81 @@ class Game
         }
 
         return (closestEnemyPosition, closestDistance);
+    }
+
+    private (string, Point) GetBestAttackPoint(Agent agent)
+    {
+        // Look around the agent by optimal range / 2
+        var move = new Point(-1, -1);
+
+        var distanceToCheck = agent.OptimalRange / 2;
+        int minX = Math.Max(0, agent.Position.X - distanceToCheck);
+        int maxX = Math.Min(Width - 1, agent.Position.X + distanceToCheck);
+        int minY = Math.Max(0, agent.Position.Y - distanceToCheck);
+        int maxY = Math.Min(Height - 1, agent.Position.Y + distanceToCheck);
+
+        double maxDamageScore = double.MinValue;
+        int minDistanceToAgent = int.MaxValue;
+
+        // For each point calculate Damage - Potential damage
+        for (int x = minX; x <= maxX; x++)
+        {
+            for (int y = minY; y <= maxY; y++)
+            { 
+                // Calculate possible damage
+                var attackDamage = CalculateHighestAttackingPlayerDamage(agent, x, y);
+
+                // Calculate possible damage taken
+                var receivingDamage = CalculateReceivingPlayerDamage(x, y);
+
+                // Calculate score
+                var score = attackDamage - receivingDamage;
+
+                Console.Error.WriteLine($"Checking point {x}, {y} ");
+                Console.Error.WriteLine($"Attack Damage: {attackDamage}, Receiving Damage: {receivingDamage}, Score: {score}");
+
+                if (score >= maxDamageScore)
+                {
+                    var distanceToAgent = CalculationUtil.GetManhattanDistance(agent.Position, new Point(x, y));
+
+                    if (score == maxDamageScore)
+                    {
+                        // If the score is the same, check if it's closer to the agent
+
+                        if (distanceToAgent < minDistanceToAgent)
+                        {
+                            Console.Error.WriteLine($"Found better attack point at {x}, {y} with score {score} and distance {distanceToAgent}");
+                            maxDamageScore = score;
+                            minDistanceToAgent = distanceToAgent;
+                            move = new Point(x, y);
+                        }
+                    }
+                    else
+                    {
+                        Console.Error.WriteLine($"Found better attack point at {x}, {y} with score {score}");
+                        maxDamageScore = score;
+                        minDistanceToAgent = distanceToAgent;
+                        move = new Point(x, y);
+                    }
+                }
+            }
+        }
+
+        if (move != new Point(-1, -1))
+        {
+            Point bestPoint = new Point(move.X, move.Y);
+
+            if (agent.Position != move)
+            {
+                List<Point> bestPath = _aStar.GetShortestPath(agent.Position, move);
+                bestPoint = bestPath[0];
+                Console.Error.WriteLine($"Found attack move at {bestPoint.X}, {bestPoint.Y} with damage score {maxDamageScore} and distance {minDistanceToAgent}");
+            }
+
+            return ($"MOVE {bestPoint.X} {bestPoint.Y}; ", bestPoint);
+        }
+
+        return ("", move);
     }
 
     private (string, Point) GetClosestCoverMove(Agent agent, int[,] coverHillMap)
@@ -844,6 +920,47 @@ class Game
         }
 
         return ("", move);
+    }
+
+    private double CalculateTotalAttackingPlayerDamage(Agent agent, int x, int y)
+    {
+        var damage = 0.0;
+        foreach (var enemy in opponentAgents)
+        {
+            damage += CalculateDamage(
+                x,
+                y,
+                agent.OptimalRange,
+                agent.SoakingPower,
+                enemy.Position.X,
+                enemy.Position.Y);
+
+        }
+
+        return damage;
+    }
+
+    private double CalculateHighestAttackingPlayerDamage(Agent agent, int x, int y)
+    {
+        var highestDamage = 0.0;
+        foreach (var enemy in opponentAgents)
+        {
+            var damage = CalculateDamage(
+                x,
+                y,
+                agent.OptimalRange,
+                agent.SoakingPower,
+                enemy.Position.X,
+                enemy.Position.Y);
+
+            if (damage > highestDamage)
+            {
+                highestDamage = damage;
+            }
+
+        }
+
+        return highestDamage;
     }
 
     private double CalculateReceivingPlayerDamage(int x, int y)

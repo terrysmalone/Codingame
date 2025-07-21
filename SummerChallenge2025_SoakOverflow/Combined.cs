@@ -701,7 +701,18 @@ class Game
         // then we should move towards the nearest high damage spot
         (_, var closestEnemyDistance) = GetClosestEnemyPosition(agent);
 
-        if (closestEnemyDistance > agent.OptimalRange)
+        if (closestEnemyDistance <= agent.OptimalRange)
+        {
+            (var coverMove, nextMove) = GetClosestCoverMove(agent, coverHillMap);
+
+            if (nextMove == new Point(-1, -1))
+            {
+                move += coverMove;
+                Console.Error.WriteLine($"Agent {agent.Id} move source - Move to best cover");
+            }
+        }
+
+        if (nextMove == new Point(-1, -1))
         {
             double[,] agentDamageMap = damageMapGenerator.CreateDamageMap(agent, opponentAgents, splashMap, coverMaps, cover);
 
@@ -722,14 +733,6 @@ class Game
             nextMove = bestPoint;
 
             Console.Error.WriteLine($"Agent {agent.Id} move source - Move to best attack position");
-        }
-
-        if (nextMove == new Point(-1, -1))
-        {
-            (var coverMove, nextMove) = GetClosestCoverMove(agent, coverHillMap);
-
-            move += coverMove;
-            Console.Error.WriteLine($"Agent {agent.Id} move source - Move to best cover");
         }
 
         return (move, nextMove);
@@ -801,7 +804,7 @@ class Game
 
                 if (possibleDamage <= min)
                 {
-                    if (possibleDamage <= min)
+                    if (possibleDamage == min)
                     {
                         if (distance < minDistance)
                         {
@@ -824,12 +827,8 @@ class Game
             }
         }
 
-        if (move != agent.Position)
+        if (move != new Point(-1, -1))
         {
-            Console.Error.WriteLine($"Target cover score: {coverHillMap[move.X, move.Y]}");
-
-            Console.Error.WriteLine($"Agent {agent.Id} move source - close - looking for cover");
-
             Point bestPoint = new Point(move.X, move.Y);
 
             if (agent.Position != move)

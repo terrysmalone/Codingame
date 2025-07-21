@@ -93,7 +93,23 @@ partial class Game
         // then we should move towards the nearest high damage spot
         (_, var closestEnemyDistance) = GetClosestEnemyPosition(agent);
 
-        if (closestEnemyDistance <= agent.OptimalRange && agent.OptimalRange > 2)
+        // Update Priority
+        if (agent.AgentPriority == Priority.MovingToEnemy)
+        {
+            if (closestEnemyDistance <= agent.OptimalRange)
+            {
+                agent.AgentPriority = Priority.FindingBestAttackPosition;
+            }
+        }
+        else if(agent.AgentPriority == Priority.FindingBestAttackPosition)
+        {
+            if (closestEnemyDistance > agent.OptimalRange * 2)
+            {
+                agent.AgentPriority = Priority.MovingToEnemy;
+            }
+        }
+
+        if (agent.AgentPriority == Priority.FindingBestAttackPosition && agent.OptimalRange > 2)
         {
             // (var coverMove, nextMove) = GetClosestCoverMove(agent, coverHillMap);
             (var coverMove, nextMove) = GetBestAttackPoint(agent);

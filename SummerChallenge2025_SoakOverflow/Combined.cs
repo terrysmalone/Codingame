@@ -82,23 +82,32 @@ internal sealed class AStar
                 return new List<Point>();
             }
 
-            Point[] pointsToCheck =
-            [
-                new Point(Math.Min(_width-1, currentNode.Position.X + 1), currentNode.Position.Y),
-                new Point(Math.Max(0, currentNode.Position.X - 1), currentNode.Position.Y),
-                new Point(currentNode.Position.X, Math.Min(_height-1, currentNode.Position.Y + 1)),
-                new Point(currentNode.Position.X, Math.Max(0, currentNode.Position.Y - 1)),
-                
-            ];
+            Point[] pointsToCheck = new Point[4];
+
+            // Prioritise heading towards the target as the first move
+            if (Math.Abs(startPoint.X - targetPoint.X) >  Math.Abs(startPoint.Y - targetPoint.Y))
+            {
+                pointsToCheck[0] = new Point(Math.Min(_width - 1, currentNode.Position.X + 1), currentNode.Position.Y);
+                pointsToCheck[1] = new Point(Math.Max(0, currentNode.Position.X - 1), currentNode.Position.Y);
+                pointsToCheck[2] = new Point(currentNode.Position.X, Math.Min(_height - 1, currentNode.Position.Y + 1));
+                pointsToCheck[3] = new Point(currentNode.Position.X, Math.Max(0, currentNode.Position.Y - 1));
+            }
+            else
+            {
+                pointsToCheck[0] = new Point(currentNode.Position.X, Math.Min(_height - 1, currentNode.Position.Y + 1));
+                pointsToCheck[1] = new Point(currentNode.Position.X, Math.Max(0, currentNode.Position.Y - 1));
+                pointsToCheck[2] = new Point(Math.Min(_width - 1, currentNode.Position.X + 1), currentNode.Position.Y);
+                pointsToCheck[3] = new Point(Math.Max(0, currentNode.Position.X - 1), currentNode.Position.Y);
+            }
 
             foreach (Point pointToCheck in pointsToCheck)
             {
                 Node? existingNode = _nodes.SingleOrDefault(n => n.Position == pointToCheck);
- 
+
                 if (existingNode == null)
                 {
                     if (pointToCheck == startPoint || pointToCheck == targetPoint || cover[pointToCheck.X, pointToCheck.Y] == 0)
-                    {                        
+                    {
                         Node node = new Node(pointToCheck);
 
                         node.Parent = currentNode.Position;

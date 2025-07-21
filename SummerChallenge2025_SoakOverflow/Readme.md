@@ -2,25 +2,54 @@
 
 Spread out more if we can. Don't be a bomb target
 
+
+# Tests
+
+seed=3665131989781587000
+
+Arena 1 - IDE 0
+
+Move 15 - 204:0
+
+
+IDE 0 - Arena 1
+
+Move 14 - 256:0
+
 ---
 
-When looking for cover consider shortest path rather than manhattan distance
+seed=2409305125464446000
 
---- 
+Arena 0 - IDE 1
 
-I'm missing too many bomb shots. Start considering if the enemy can move out of range
-	Example: 
-	Orange: amurushkain
-	Purple: me
-    seed: seed=-491234015931941300
-	Description: AI miss with bombs at 9 and 10
+Move 31 - 370:0
+
+
+IDE 0 - Arena 1
+
+Move 17 - 669:21
 
 ---
 
-BUG: When calculating shot I use the movePoint, but when I move to attackPoint that move is often too far away, resulting in invalid shots. 
+seed=-8859283512535219000
 
-I should fix this as part of adding path finding
+Arena 0 - IDE 1
 
-Seed: seed=7130003092528790000
+Move 19 - 765:83
 
-On move 4 I attempt a shot that isn't possible - 1; MOVE 6 5; SHOOT 4
+IDE 1 - Arena 0
+
+Move 18 - 734:81
+
+---
+
+seed=-1157081042072761300
+
+Arena 1 - IDE 0
+
+Move 28 - 639:0
+
+
+IDE 0 - Arena 1
+
+Move 16 - 612:0

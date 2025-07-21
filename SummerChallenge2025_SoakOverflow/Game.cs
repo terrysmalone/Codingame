@@ -5,7 +5,7 @@ using System.Runtime.CompilerServices;
 
 namespace SummerChallenge2025_SoakOverflow;
 
-class Game
+partial class Game
 {
     public int Width { get; private set; }
     public int Height { get; private set; }
@@ -35,12 +35,13 @@ class Game
         Dictionary<int, double[,]> coverMaps = CreateCoverMaps();
 
         List<string> moves = new List<string>();
+        List<Move> movePoints = new List<Move>();
         foreach (var agent in playerAgents)
         {
             string fullMove = $"{agent.Id}; ";
 
             // Get the best move
-            (var move, Point nextMove) = GetBestMove(agent, splashMap, coverMaps, coverHillMap);
+            (var move, Point nextMove) = GetBestMove(agent, splashMap, coverMaps, coverHillMap, movePoints);
             fullMove += move;
 
             if (CalculationUtil.GetManhattanDistance(nextMove, agent.Position) > 1)
@@ -79,7 +80,11 @@ class Game
         return coverMaps;
     }
 
-    private (string move, Point nextMove) GetBestMove(Agent agent, int[,] splashMap, Dictionary<int, double[,]> coverMaps, int[,] coverHillMap)
+    private (string move, Point nextMove) GetBestMove(Agent agent, 
+                                                      int[,] splashMap, 
+                                                      Dictionary<int, double[,]> coverMaps, 
+                                                      int[,] coverHillMap, 
+                                                      List<Move> movePoints)
     {
         var move = "";
         var nextMove = new Point(-1, -1);
@@ -117,12 +122,46 @@ class Game
                 List<Point> bestPath = _aStar.GetShortestPath(agent.Position, bestAttackPoint);
                 bestPoint = bestPath[0];
             }
-            
+
+            // If this point is already being moved to by another agent don't move
+            if (movePoints.Any(p => p.To.X == bestPoint.X && p.To.Y == bestPoint.Y))
+            {
+                // Simple first pass implementation. Just don't move, allowing the other one to move instead
+                bestPoint = agent.Position;
+            }
+
+            // If another agent is moving onto this agent
+            if (movePoints.Any(p => p.To.X == agent.Position.X && p.To.Y == agent.Position.Y))
+            {
+                Move relevantMove = movePoints.First(p => p.To.X == agent.Position.X && p.To.Y == agent.Position.Y);
+                //   If this agent is staying still or this agent is moving onto that agent's block
+                if (agent.Position == bestPoint || bestPoint == relevantMove.From)
+                {
+                    Point[] pointsToCheck = new Point[4];
+                    pointsToCheck[0] = new Point(Math.Min(Width - 1, agent.Position.X + 1), agent.Position.Y);
+                    pointsToCheck[1] = new Point(Math.Max(0, agent.Position.X - 1), agent.Position.Y);
+                    pointsToCheck[2] = new Point(agent.Position.X, Math.Min(Height - 1, agent.Position.Y + 1));
+                    pointsToCheck[3] = new Point(agent.Position.X, Math.Max(0, agent.Position.Y - 1));
+
+                    foreach (var pointToCheck in pointsToCheck)
+                    {
+                        if (cover[pointToCheck.X, pointToCheck.Y] == 0 
+                            && relevantMove.From != new Point(pointToCheck.X, pointToCheck.Y))
+                        {
+                            bestPoint = new Point(pointToCheck.X, pointToCheck.Y);
+                            break;
+                        }
+                    }
+                }
+            }
+
             move += $"MOVE {bestPoint.X} {bestPoint.Y}; ";
             nextMove = bestPoint;
 
             Console.Error.WriteLine($"Agent {agent.Id} move source - Move to best attack position");
         }
+
+        movePoints.Add(new Move(agent.Position, nextMove));
 
         return (move, nextMove);
     }

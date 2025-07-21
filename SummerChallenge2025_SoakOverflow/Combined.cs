@@ -701,11 +701,11 @@ class Game
         // then we should move towards the nearest high damage spot
         (_, var closestEnemyDistance) = GetClosestEnemyPosition(agent);
 
-        if (closestEnemyDistance <= agent.OptimalRange)
+        if (closestEnemyDistance <= agent.OptimalRange && agent.OptimalRange > 2)
         {
             (var coverMove, nextMove) = GetClosestCoverMove(agent, coverHillMap);
 
-            if (nextMove == new Point(-1, -1))
+            if (nextMove != new Point(-1, -1))
             {
                 move += coverMove;
                 Console.Error.WriteLine($"Agent {agent.Id} move source - Move to best cover");
@@ -714,6 +714,7 @@ class Game
 
         if (nextMove == new Point(-1, -1))
         {
+            Console.Error.WriteLine($"Agent {agent.Id} looking for best attack position");
             double[,] agentDamageMap = damageMapGenerator.CreateDamageMap(agent, opponentAgents, splashMap, coverMaps, cover);
 
             (Point bestAttackPoint, _) = ClosestPeakFinder.FindClosestPeak(
@@ -836,6 +837,7 @@ class Game
                 // Convert the move to the next adjacent move so we know exactly where we'll be on the next turn
                 List<Point> bestPath = _aStar.GetShortestPath(agent.Position, move);
                 bestPoint = bestPath[0];
+                Console.Error.WriteLine($"Found cover at {bestPoint.X}, {bestPoint.Y} with damage {min} and distance {minDistance}");
             }
 
             return ($"MOVE {bestPoint.X} {bestPoint.Y}; ", bestPoint);

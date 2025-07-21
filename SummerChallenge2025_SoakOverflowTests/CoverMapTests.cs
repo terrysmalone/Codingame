@@ -26,16 +26,51 @@ namespace SummerChallenge2025_SoakOverflow.Tests
 
             // expected
             // 0.25, 0.25, 0.25, 0.25, 0.25
-            // 1.0, 1.0, 1.0, 0.25, 0.25 
-            // 1.0, 1.0, 1.0, 1.0, 1.0
-            // 1.0, 1.0, 1.0, 1.0, 1.0
-            // 1.0, 1.0, 1.0, 1.0, 1.0
+            // 1.0,  1.0,  1.0,  0.25, 0.25 
+            // 1.0,  1.0,  1.0,  1.0,  1.0
+            // 1.0,  0.0,  1.0,  1.0,  1.0
+            // 1.0,  1.0,  1.0,  1.0,  1.0
 
             var cover = new int[5, 5];
             cover[1, 2] = 2; // High cover north
 
             var map = new CoverMapGenerator(cover);
             var result = map.CreateCoverMap(1, 3);
+
+            // North row should be filled with 0.5 except adjacent tiles
+            Assert.AreEqual(expected, result);
+        }
+
+        [Test]
+        public void CreateCoverMap_EastProtection()
+        {
+            double[,] expected = GetFilledArray(5, 5);
+
+            // Agent position
+            expected[1, 2] = 0.0;
+
+            // North protection
+            expected[4, 0] = 0.25;
+            expected[4, 1] = 0.25;
+            expected[4, 2] = 0.25;
+            expected[4, 3] = 0.25;
+            expected[4, 4] = 0.25;
+
+            expected[3, 0] = 0.25;
+            expected[3, 4] = 0.25;
+
+            // expected
+            // 1.0, 1.0, 1.0, 0.25, 0.25
+            // 1.0, 1.0, 1.0, 1.0,  0.25 
+            // 1.0, 0.0, 1.0, 1.0,  0.25
+            // 1.0, 1.0, 1.0, 1.0,  0.25
+            // 1.0, 1.0, 1.0, 0.25, 0.25
+
+            var cover = new int[5, 5];
+            cover[2, 2] = 2; // High cover east
+
+            var map = new CoverMapGenerator(cover);
+            var result = map.CreateCoverMap(1, 2);
 
             // North row should be filled with 0.5 except adjacent tiles
             Assert.AreEqual(expected, result);

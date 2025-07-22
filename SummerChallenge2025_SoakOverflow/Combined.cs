@@ -50,6 +50,7 @@ public enum Priority
 {
     MovingToEnemy,
     FindingBestAttackPosition,
+    SpreadingOut,
 }
 
 internal sealed class AStar
@@ -738,8 +739,30 @@ partial class Game
     private (string move, Point nextMove) GetBestMove(Agent agent,
                                                       List<Move> currentMovePoints)
     {
-        // If opponent still has any splashboms, spread out any agents that are close to each other
+        var move = "";
+        var nextMove = new Point(-1, -1);
+
+        // If the nearest enemy is more than two times the agent's optimal range away
+        // then we should move towards the nearest high damage spot
+        (_, var closestEnemyDistance) = GetClosestEnemyPosition(agent);
+
+        // Update Priority
         if (_moveCount > 2 && _opponentAgents.Any(a => a.SplashBombs > 0))
+        {
+            agent.AgentPriority = Priority.SpreadingOut;
+        }
+        else if (closestEnemyDistance <= agent.OptimalRange)
+        {
+            agent.AgentPriority = Priority.FindingBestAttackPosition;
+        }
+        else if (closestEnemyDistance > agent.OptimalRange * 2)
+        {
+            agent.AgentPriority = Priority.MovingToEnemy;
+        }
+        
+
+        // If opponent still has any splashboms, spread out any agents that are close to each other
+        if (agent.AgentPriority == Priority.SpreadingOut)
         {
             // If this agent is less than 2 euclidean distance from another agent
             if (_playerAgents.Any(a => a.Id != agent.Id &&
@@ -777,36 +800,13 @@ partial class Game
             }
         }
 
-        var move = "";
-        var nextMove = new Point(-1, -1);
-
-        // If the nearest enemy is more than two times the agent's optimal range away
-        // then we should move towards the nearest high damage spot
-        (_, var closestEnemyDistance) = GetClosestEnemyPosition(agent);
-
-        // Update Priority
-        if (agent.AgentPriority == Priority.MovingToEnemy)
-        {
-            if (closestEnemyDistance <= agent.OptimalRange)
-            {
-                agent.AgentPriority = Priority.FindingBestAttackPosition;
-            }
-        }
-        else if(agent.AgentPriority == Priority.FindingBestAttackPosition)
-        {
-            if (closestEnemyDistance > agent.OptimalRange * 2)
-            {
-                agent.AgentPriority = Priority.MovingToEnemy;
-            }
-        }
-
         if (agent.AgentPriority == Priority.FindingBestAttackPosition && agent.OptimalRange > 2)
         {
-            (var coverMove, nextMove) = GetBestAttackPoint(agent);
+            (var attackMove, nextMove) = GetBestAttackPosition(agent);
 
             if (nextMove != new Point(-1, -1))
             {
-                move = coverMove;
+                move = attackMove;
                 agent.MoveSource = "Moving to best defended attack position";
             }
         }
@@ -873,6 +873,11 @@ partial class Game
         return (move, nextMove);
     }
 
+    private void GetSpreadAction(Agent agent)
+    {
+        throw new NotImplementedException();
+    }
+
     private (Point, int) GetClosestEnemyPosition(Agent agent)
     {
         Point closestEnemyPosition = new Point(-1, -1);
@@ -892,7 +897,7 @@ partial class Game
         return (closestEnemyPosition, closestDistance);
     }
 
-    private (string, Point) GetBestAttackPoint(Agent agent)
+    private (string, Point) GetBestAttackPosition(Agent agent)
     {
         // Look around the agent by optimal range / 2
         var move = new Point(-1, -1);

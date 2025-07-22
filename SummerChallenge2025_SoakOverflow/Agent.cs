@@ -38,4 +38,5 @@ public enum Priority
 {
     MovingToEnemy,
     FindingBestAttackPosition,
+    SpreadingOut,
 }

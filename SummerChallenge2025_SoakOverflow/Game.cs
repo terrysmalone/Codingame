@@ -19,6 +19,7 @@ partial class Game
 
     private CoverMapGenerator _coverMapGenerator;
     private DamageMapGenerator _damageMapGenerator;
+    private DamageCalculator _damageCalculator;
 
     AStar _aStar;
 
@@ -34,6 +35,8 @@ partial class Game
     {
         int[,] splashMap = CreateSplashMap();
         Dictionary<int, double[,]> coverMaps = CreateCoverMaps();
+
+        _damageCalculator = new DamageCalculator(_coverMapGenerator);
 
         var moves = new List<string>();
         var currentMovePoints = new List<Move>();
@@ -258,10 +261,10 @@ partial class Game
             for (int y = minY; y <= maxY; y++)
             { 
                 // Calculate possible damage
-                var attackDamage = CalculateHighestAttackingPlayerDamage(agent, x, y);
+                var attackDamage = _damageCalculator.CalculateHighestAttackingPlayerDamage(agent, x, y, _opponentAgents);
 
                 // Calculate possible damage taken
-                var receivingDamage = CalculateReceivingPlayerDamage(x, y);
+                var receivingDamage = _damageCalculator.CalculateReceivingDamage(x, y, _opponentAgents);
 
                 // Calculate score
                 var score = attackDamage - receivingDamage;
@@ -303,70 +306,6 @@ partial class Game
         }
 
         return ("", move);
-    }
-
-    private double CalculateHighestAttackingPlayerDamage(Agent agent, int x, int y)
-    {
-        var highestDamage = 0.0;
-        foreach (var enemy in _opponentAgents)
-        {
-            var damage = CalculateDamage(
-                x,
-                y,
-                agent.OptimalRange,
-                agent.SoakingPower,
-                enemy.Position.X,
-                enemy.Position.Y);
-
-            if (damage > highestDamage)
-            {
-                highestDamage = damage;
-            }
-
-        }
-
-        return highestDamage;
-    }
-
-    private double CalculateReceivingPlayerDamage(int x, int y)
-    {
-        var stationaryReceivingDamage = 0.0;
-        foreach (var enemy in _opponentAgents)
-        {
-            stationaryReceivingDamage += CalculateDamage(
-                enemy.Position.X,
-                enemy.Position.Y,
-                enemy.OptimalRange,
-                enemy.SoakingPower,
-                x,
-                y);
-        }
-
-        return stationaryReceivingDamage;
-    }
-
-    private double CalculateDamage(int fromX, int fromY, int optimalRange, int soakingPower, int targetX, int targetY)
-    {
-        double[,] map = _coverMapGenerator.CreateCoverMap(targetX, targetY);
-
-        var damageMultiplier = map[fromX, fromY];
-        var baseDamage = soakingPower * damageMultiplier;
-
-        int manhattanDistance = CalculationUtil.GetManhattanDistance(
-            new Point(targetX, targetY), new Point(fromX, fromY));
-
-        if (manhattanDistance <= optimalRange)
-        {
-            return baseDamage;
-        }
-        else if (manhattanDistance <= optimalRange * 2)
-        {
-            return baseDamage / 2;
-        }
-        else
-        {
-            return 0;
-        }
     }
 
     private string GetBestAction(Agent agent, Point nextMove, int[,] splashMap)
@@ -473,13 +412,13 @@ partial class Game
                 continue;
             }
 
-            var damage = CalculateDamage(
-            movePoint.X,
-            movePoint.Y,
-            agent.OptimalRange,
-            agent.SoakingPower,
-            enemy.Position.X,
-            enemy.Position.Y);
+            var damage = _damageCalculator.CalculateDamage(
+                movePoint.X,
+                movePoint.Y,
+                agent.OptimalRange,
+                agent.SoakingPower,
+                enemy.Position.X,
+                enemy.Position.Y);
 
             if (damage > bestAttack)
             {

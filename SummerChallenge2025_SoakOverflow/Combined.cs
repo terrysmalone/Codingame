@@ -947,112 +947,6 @@ partial class Game
         return ("", move);
     }
 
-    private (string, Point) GetClosestCoverMove(Agent agent, int[,] coverHillMap)
-    {
-        // TODO: Check closer to current position first
-        Console.Error.WriteLine($"Agent {agent.Id} looking for cover");
-        var move = new Point(-1, -1);
-
-        var distanceToCheck = 3;
-        int minX = Math.Max(0, agent.Position.X - distanceToCheck);
-        int maxX = Math.Min(Width - 1, agent.Position.X + distanceToCheck);
-        int minY = Math.Max(0, agent.Position.Y - distanceToCheck);
-        int maxY = Math.Min(Height - 1, agent.Position.Y + distanceToCheck);
-
-        (var closestEnemyPosition, var closestEnemyDistance) = GetClosestEnemyPosition(agent);
-
-        double min = double.MaxValue;
-        int minDistance = int.MaxValue;
-
-        for (int x = minX; x <= maxX; x++)
-        {
-            for (int y = minY; y <= maxY; y++)
-            {
-                // If this position contains cover, skip it
-                if (cover[x, y] > 0)
-                {
-                    continue;
-                }
-
-                // If another agent is at x, y don't bother checking it
-                if (playerAgents.Any(a => a.Position.X == x && a.Position.Y == y && a.Id != agent.Id) ||
-                    opponentAgents.Any(a => a.Position.X == x && a.Position.Y == y))
-                {
-                    continue;
-                }
-
-                var distance = CalculationUtil.GetManhattanDistance(new Point(x, y), closestEnemyPosition);
-                // If this position would move agent further away from closest player than optimal range, skip it
-                if (distance > agent.OptimalRange)
-                {
-                    continue;
-                }
-
-                double possibleDamage = 0.0;
-
-                possibleDamage += CalculateReceivingPlayerDamage(x, y);
-
-                if (possibleDamage <= min)
-                {
-                    if (possibleDamage == min)
-                    {
-                        if (distance < minDistance)
-                        {
-                            Console.Error.WriteLine($"Found better and closer cover at {x}, {y} with damage {possibleDamage}");
-                            min = possibleDamage;
-                            minDistance = distance;
-
-                            move = new Point(x, y);
-                        }
-                    }
-                    else
-                    {
-                        Console.Error.WriteLine($"Found better cover at {x}, {y} with damage {possibleDamage}");
-                        min = possibleDamage;
-                        minDistance = distance;
-
-                        move = new Point(x, y);
-                    }
-                }
-            }
-        }
-
-        if (move != new Point(-1, -1))
-        {
-            Point bestPoint = new Point(move.X, move.Y);
-
-            if (agent.Position != move)
-            {
-                // Convert the move to the next adjacent move so we know exactly where we'll be on the next turn
-                List<Point> bestPath = _aStar.GetShortestPath(agent.Position, move);
-                bestPoint = bestPath[0];
-                Console.Error.WriteLine($"Found cover at {bestPoint.X}, {bestPoint.Y} with damage {min} and distance {minDistance}");
-            }
-
-            return ($"MOVE {bestPoint.X} {bestPoint.Y}; ", bestPoint);
-        }
-
-        return ("", move);
-    }
-
-    private double CalculateTotalAttackingPlayerDamage(Agent agent, int x, int y)
-    {
-        var damage = 0.0;
-        foreach (var enemy in opponentAgents)
-        {
-            damage += CalculateDamage(
-                x,
-                y,
-                agent.OptimalRange,
-                agent.SoakingPower,
-                enemy.Position.X,
-                enemy.Position.Y);
-
-        }
-
-        return damage;
-    }
-
     private double CalculateHighestAttackingPlayerDamage(Agent agent, int x, int y)
     {
         var highestDamage = 0.0;
@@ -1088,7 +982,6 @@ partial class Game
                 enemy.SoakingPower,
                 x,
                 y);
-
         }
 
         return stationaryReceivingDamage;
@@ -1300,23 +1193,6 @@ partial class Game
             agent.Wetness = wetness;
             agent.InGame = true;
         }
-    }
-
-    private int GetWettestOpponentId()
-    {
-        int wettestOpponentId = -1;
-        int maxWetness = -1;
-
-        foreach (var agent in opponentAgents)
-        {
-            if (agent.Wetness > maxWetness)
-            {
-                maxWetness = agent.Wetness;
-                wettestOpponentId = agent.Id;
-            }
-        }
-
-        return wettestOpponentId;
     }
 
     internal void SetCover(int x, int y, int tileType)

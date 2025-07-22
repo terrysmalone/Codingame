@@ -267,78 +267,6 @@ public static class ClosestPeakFinder
 }
 
 
-public static class CoverHillMapGenerator
-{
-    public static int[,] CreateMap(int[,] cover)
-    {
-        int width = cover.GetLength(0);
-        int height = cover.GetLength(1);
-        int[,] scoreGrid = new int[width, height];
-
-        Queue<(int x, int y, int score)> queue = new Queue<(int, int, int)>();
-
-        // Initialize queue with cover positions and assign base scores
-        for (int x = 0; x < width; x++)
-        {
-            for (int y = 0; y < height; y++)
-            {
-                if (cover[x, y] == 1) // medium cover
-                {
-                    scoreGrid[x, y] = 50;
-                    queue.Enqueue((x, y, 50));
-                }
-                else if (cover[x, y] == 2) // high cover
-                {
-                    scoreGrid[x, y] = 100;
-                    queue.Enqueue((x, y, 100));
-                }
-            }
-        }
-
-        // Directions: up, down, left, right
-        int[] xChange = { 0, 0, -1, 1 };
-        int[] yChange = { -1, 1, 0, 0 };
-
-        int decay = 1;
-
-        while (queue.Count > 0)
-        {
-            var (x, y, score) = queue.Dequeue();
-
-            for (int direction = 0; direction < 4; direction++)
-            {
-                int xPos = x + xChange[direction];
-                int yPos = y + yChange[direction];
-
-                if (xPos >= 0 && xPos < width && yPos >= 0 && yPos < height)
-                {
-                    int newScore = score - decay;
-                    if (newScore > scoreGrid[xPos, yPos])
-                    {
-                        scoreGrid[xPos, yPos] = newScore;
-                        queue.Enqueue((xPos, yPos, newScore));
-                    }
-                }
-            }
-        }
-
-        // We don't want to attempt to move onto the cover so set all actual cover to 0
-        for (int x = 0; x < width; x++)
-        {
-            for (int y = 0; y < height; y++)
-            {
-                if (cover[x, y] > 0)
-                {
-                    scoreGrid[x, y] = 0;
-                }
-            }
-        }
-
-        return scoreGrid;
-    }
-}
-
-
 public class CoverMapGenerator
 {
     private int _width, _height;
@@ -648,7 +576,6 @@ partial class Game
 
     private CoverMapGenerator coverMapGenerator;
     private DamageMapGenerator damageMapGenerator;
-    private int[,] coverHillMap;
 
     AStar _aStar;
 
@@ -672,7 +599,7 @@ partial class Game
             string fullMove = $"{agent.Id}; ";
 
             // Get the best move
-            (var move, Point nextMove) = GetBestMove(agent, splashMap, coverMaps, coverHillMap, movePoints);
+            (var move, Point nextMove) = GetBestMove(agent, splashMap, coverMaps, movePoints);
             fullMove += move;
 
             if (CalculationUtil.GetManhattanDistance(nextMove, agent.Position) > 1)
@@ -716,7 +643,6 @@ partial class Game
     private (string move, Point nextMove) GetBestMove(Agent agent, 
                                                       int[,] splashMap, 
                                                       Dictionary<int, double[,]> coverMaps, 
-                                                      int[,] coverHillMap, 
                                                       List<Move> movePoints)
     {
         // If opponent still has any splashboms, spread out any agents that are close to each other
@@ -849,7 +775,6 @@ partial class Game
             }
         }
 
-
         movePoints.Add(new Move(agent.Position, nextMove));
         move = $"MOVE {nextMove.X} {nextMove.Y}; ";
 
@@ -911,7 +836,6 @@ partial class Game
                     if (score == maxDamageScore)
                     {
                         // If the score is the same, check if it's closer to the agent
-
                         if (distanceToAgent < minDistanceToAgent)
                         {
                             maxDamageScore = score;
@@ -1208,8 +1132,6 @@ partial class Game
     internal void UpdateCoverRelatedMaps()
     {
         coverMapGenerator = new CoverMapGenerator(cover);
-        coverHillMap = CoverHillMapGenerator.CreateMap(cover);
-
         _aStar = new AStar(cover);
     }
 }

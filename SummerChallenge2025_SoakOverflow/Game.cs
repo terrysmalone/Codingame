@@ -19,7 +19,6 @@ partial class Game
 
     private CoverMapGenerator coverMapGenerator;
     private DamageMapGenerator damageMapGenerator;
-    private int[,] coverHillMap;
 
     AStar _aStar;
 
@@ -43,7 +42,7 @@ partial class Game
             string fullMove = $"{agent.Id}; ";
 
             // Get the best move
-            (var move, Point nextMove) = GetBestMove(agent, splashMap, coverMaps, coverHillMap, movePoints);
+            (var move, Point nextMove) = GetBestMove(agent, splashMap, coverMaps, movePoints);
             fullMove += move;
 
             if (CalculationUtil.GetManhattanDistance(nextMove, agent.Position) > 1)
@@ -87,7 +86,6 @@ partial class Game
     private (string move, Point nextMove) GetBestMove(Agent agent, 
                                                       int[,] splashMap, 
                                                       Dictionary<int, double[,]> coverMaps, 
-                                                      int[,] coverHillMap, 
                                                       List<Move> movePoints)
     {
         // If opponent still has any splashboms, spread out any agents that are close to each other
@@ -577,8 +575,6 @@ partial class Game
     internal void UpdateCoverRelatedMaps()
     {
         coverMapGenerator = new CoverMapGenerator(cover);
-        coverHillMap = CoverHillMapGenerator.CreateMap(cover);
-
         _aStar = new AStar(cover);
     }
 }

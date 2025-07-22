@@ -15,5 +15,18 @@ Spread out more if we can. Don't be a bomb target
 | seed=-1157081042072761300 | Arena    | IDE      | Arena  | IDE    |
 |                           | IDE      | Arena    | Arena  | Arena  |
 
+# Pre gold refactor sanity checks
 
+Test the Aren against the IDE in a number of specific tests. Results should not change
+
+| Seed                      | player 1 | player 2 | Pre refactor results |
+| ------------------------  | -------- | -------- | -------------------- |
+| seed=3665131989781587000  | Arena    | IDE      |                      |
+|                           | IDE      | Arena    |                      |
+| seed=2409305125464446000  | Arena    | IDE      |                      |
+|                           | IDE      | Arena    |                      |
+| seed=-8859283512535219000 | Arena    | IDE      |                      |
+|                           | IDE      | Arena    |                      |
+| seed=-1157081042072761300 | Arena    | IDE      |                      |
+|                           | IDE      | Arena    |                      |
 

@@ -13,8 +13,6 @@ namespace SummerChallenge2025_SoakOverflow;
  **/
 class Player
 {
- 
-
     static void Main(string[] args)
     {
         string[] inputs;

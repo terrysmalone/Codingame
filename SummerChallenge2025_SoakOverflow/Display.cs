@@ -26,4 +26,14 @@ internal static class Display
             Console.Error.WriteLine();
         }
     }
+
+    internal static void Sources(List<Agent> agents)
+    {
+        Console.Error.WriteLine("Move sources");
+
+        foreach (Agent agent in agents)
+        {
+            Console.Error.WriteLine($"Agent {agent.Id} - Move: {agent.MoveSource} - Action:{agent.ActionSource}");
+        }
+    }
 }

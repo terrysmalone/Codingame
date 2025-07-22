@@ -127,7 +127,6 @@ partial class Game
 
         if (nextMove == new Point(-1, -1))
         {
-            Console.Error.WriteLine($"Agent {agent.Id} looking for best attack position");
             double[,] agentDamageMap = damageMapGenerator.CreateDamageMap(agent, opponentAgents, splashMap, coverMaps, cover);
 
             (Point bestAttackPoint, _) = ClosestPeakFinder.FindClosestPeak(
@@ -156,11 +155,9 @@ partial class Game
             nextMove = agent.Position;
         }
 
-        Console.Error.WriteLine($"Agent {agent.Id} best attack position at {nextMove.X}, {nextMove.Y}");
         // If another agent is moving onto this agent
         if (movePoints.Any(p => p.To.X == agent.Position.X && p.To.Y == agent.Position.Y))
         {
-            Console.Error.WriteLine($"Agent {agent.Id} is moving onto another agent's block at {agent.Position.X}, {agent.Position.Y}");
             Move relevantMove = movePoints.First(p => p.To.X == agent.Position.X && p.To.Y == agent.Position.Y);
             //   If this agent is staying still or this agent is moving onto that agent's block
             if (agent.Position == nextMove || nextMove == relevantMove.From)
@@ -177,6 +174,7 @@ partial class Game
                         && relevantMove.From != new Point(pointToCheck.X, pointToCheck.Y))
                     {
                         nextMove = new Point(pointToCheck.X, pointToCheck.Y);
+                        Console.Error.WriteLine($"Agent {agent.Id} move source - collision detection");
                         break;
                     }
                 }

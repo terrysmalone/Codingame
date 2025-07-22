@@ -17,6 +17,10 @@ partial class Game
 
     int[,] cover;
 
+    private int[,] _splashMap;
+    Dictionary<int, double[,]> _coverMaps;
+
+
     private CoverMapGenerator _coverMapGenerator;
     private DamageMapGenerator _damageMapGenerator;
     private DamageCalculator _damageCalculator;
@@ -33,8 +37,8 @@ partial class Game
     // One line per agent: <agentId>;<action1;action2;...> actions are "MOVE x y | SHOOT id | THROW x y | HUNKER_DOWN | MESSAGE text"
     internal List<string> GetMoves()
     {
-        int[,] splashMap = CreateSplashMap();
-        Dictionary<int, double[,]> coverMaps = CreateCoverMaps();
+        _splashMap = CreateSplashMap();
+        _coverMaps = CreateCoverMaps();
 
         _damageCalculator = new DamageCalculator(_coverMapGenerator);
 
@@ -45,10 +49,10 @@ partial class Game
         {
             string fullMove = $"{agent.Id}; ";
 
-            (var move, Point nextMove) = GetBestMove(agent, splashMap, coverMaps, currentMovePoints);
+            (var move, Point nextMove) = GetBestMove(agent, currentMovePoints);
             fullMove += move;
 
-            fullMove += GetBestAction(agent, nextMove, splashMap);
+            fullMove += GetBestAction(agent, nextMove);
 
             moves.Add(fullMove);
         }
@@ -82,9 +86,7 @@ partial class Game
         return coverMaps;
     }
 
-    private (string move, Point nextMove) GetBestMove(Agent agent, 
-                                                      int[,] splashMap, 
-                                                      Dictionary<int, double[,]> coverMaps, 
+    private (string move, Point nextMove) GetBestMove(Agent agent,
                                                       List<Move> currentMovePoints)
     {
         // If opponent still has any splashboms, spread out any agents that are close to each other
@@ -162,7 +164,7 @@ partial class Game
 
         if (nextMove == new Point(-1, -1))
         {
-            double[,] agentDamageMap = _damageMapGenerator.CreateDamageMap(agent, _opponentAgents, splashMap, coverMaps, cover);
+            double[,] agentDamageMap = _damageMapGenerator.CreateDamageMap(agent, _opponentAgents, _splashMap, _coverMaps, cover);
 
             (Point bestAttackPoint, _) = ClosestPeakFinder.FindClosestPeak(
                 agent.Position,
@@ -308,7 +310,7 @@ partial class Game
         return ("", move);
     }
 
-    private string GetBestAction(Agent agent, Point nextMove, int[,] splashMap)
+    private string GetBestAction(Agent agent, Point nextMove)
     {
         var move = "";
         var throwAction = "";
@@ -316,7 +318,7 @@ partial class Game
         // Within range of a valid throw 
         if (agent.SplashBombs > 0)
         {
-            throwAction += GetThrowAction(agent, nextMove, splashMap);
+            throwAction += GetThrowAction(agent, nextMove);
 
             if (throwAction != "")
             {
@@ -346,7 +348,7 @@ partial class Game
         return move;
     }
 
-    private string GetThrowAction(Agent agent, Point movePoint, int[,] splashDamageMap)
+    private string GetThrowAction(Agent agent, Point movePoint)
     {
         // If the movePoint is more than one away from the agents position don't throw
         if (CalculationUtil.GetManhattanDistance(agent.Position, movePoint) > 1)
@@ -381,9 +383,9 @@ partial class Game
                 var manhattanDistance = CalculationUtil.GetManhattanDistance(
                     movePoint, new Point(x, y));
 
-                if (manhattanDistance <= 4 && splashDamageMap[x, y] > bestValue)
+                if (manhattanDistance <= 4 && _splashMap[x, y] > bestValue)
                 {
-                    bestValue = splashDamageMap[x, y];
+                    bestValue = _splashMap[x, y];
                     bestX = x;
                     bestY = y;
                 }

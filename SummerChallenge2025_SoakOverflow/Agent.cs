@@ -11,10 +11,10 @@ class Agent
     public int SoakingPower { get; private set; }
     public int SplashBombs { get; set; }
     public int Wetness { get; set; }
-
-    public Priority AgentPriority { get; set; } = Priority.MovingToEnemy;
-
     public Point Position { get; private set; } = new Point(-1, -1);
+    public Priority AgentPriority { get; set; } = Priority.MovingToEnemy;
+    public string MoveSource { get; set; } 
+    public string ActionSource { get; set; }
 
     public bool InGame { get; set; } = false;
 

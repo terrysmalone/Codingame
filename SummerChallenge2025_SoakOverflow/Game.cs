@@ -50,6 +50,8 @@ partial class Game
             moves.Add(fullMove);
         }
 
+        Display.Sources(_playerAgents);
+
         _moveCount++;
 
         return moves;
@@ -97,7 +99,7 @@ partial class Game
 
                 if (closestAgent != null)
                 {
-                    Console.Error.WriteLine($"Agent {agent.Id} move source - spreading");
+                    agent.MoveSource = "Spreading";
                     if (closestAgent.Position.X < agent.Position.X && agent.Position.X + 1 <= Width - 1)
                     {
                         return ($"MOVE {agent.Position.X + 1} {agent.Position.Y}; ", new Point(agent.Position.X + 1, agent.Position.Y));
@@ -146,13 +148,12 @@ partial class Game
 
         if (agent.AgentPriority == Priority.FindingBestAttackPosition && agent.OptimalRange > 2)
         {
-            // (var coverMove, nextMove) = GetClosestCoverMove(agent, coverHillMap);
             (var coverMove, nextMove) = GetBestAttackPoint(agent);
 
             if (nextMove != new Point(-1, -1))
             {
                 move = coverMove;
-                Console.Error.WriteLine($"Agent {agent.Id} move source - Move to best cover");
+                agent.MoveSource = "Moving to best defended attack position";
             }
         }
 
@@ -176,7 +177,7 @@ partial class Game
             move = $"MOVE {bestPoint.X} {bestPoint.Y}; ";
             nextMove = bestPoint;
 
-            Console.Error.WriteLine($"Agent {agent.Id} move source - Move to best attack position");
+            agent.MoveSource = "Moving to best attack position";
         }
 
         // If this point is already being moved to by another agent don't move
@@ -205,7 +206,7 @@ partial class Game
                         && relevantMove.From != new Point(pointToCheck.X, pointToCheck.Y))
                     {
                         nextMove = new Point(pointToCheck.X, pointToCheck.Y);
-                        Console.Error.WriteLine($"Agent {agent.Id} move source - collision detection");
+                        agent.MoveSource = "Avoiding a collision";
                         break;
                     }
                 }
@@ -256,7 +257,6 @@ partial class Game
         {
             for (int y = minY; y <= maxY; y++)
             { 
-                Console.Error.WriteLine($"Checking point {x}, {y} for agent {agent.Id} with optimal range {agent.OptimalRange} and soaking power {agent.SoakingPower}");
                 // Calculate possible damage
                 var attackDamage = CalculateHighestAttackingPlayerDamage(agent, x, y);
 
@@ -265,7 +265,6 @@ partial class Game
 
                 // Calculate score
                 var score = attackDamage - receivingDamage;
-                Console.Error.WriteLine($"Score {score} (attack: {attackDamage}, receiving: {receivingDamage})");
                 if (score >= maxDamageScore)
                 {
                     var distanceToAgent = CalculationUtil.GetManhattanDistance(agent.Position, new Point(x, y));
@@ -296,10 +295,8 @@ partial class Game
 
             if (agent.Position != move)
             {
-                Console.Error.WriteLine($"Found attack move at {move.X}, {move.Y} with damage score {maxDamageScore} and distance {minDistanceToAgent}");
                 List<Point> bestPath = _aStar.GetShortestPath(agent.Position, move);
                 bestPoint = bestPath[0];
-                Console.Error.WriteLine($"Found attack move at {bestPoint.X}, {bestPoint.Y} with damage score {maxDamageScore} and distance {minDistanceToAgent}");
             }
 
             return ($"MOVE {bestPoint.X} {bestPoint.Y}; ", bestPoint);
@@ -385,7 +382,7 @@ partial class Game
             if (throwAction != "")
             {
                 move += throwAction;
-                Console.Error.WriteLine($"Agent {agent.Id} action source - throw a bomb");
+                agent.ActionSource = "Throwing a bomb";
             }
         }
 
@@ -397,14 +394,14 @@ partial class Game
             if (shootAction != "")
             {
                 move += shootAction;
-                Console.Error.WriteLine($"Agent {agent.Id} action source - shoot");
+                agent.ActionSource = "Shooting";
             }
         }
 
         if (shootAction == "" && throwAction == "")
         {
             move += "HUNKER_DOWN;";
-            Console.Error.WriteLine($"Agent {agent.Id} action source - default to hunkering");
+            agent.ActionSource = "Hunkering down";
         }
 
         return move;

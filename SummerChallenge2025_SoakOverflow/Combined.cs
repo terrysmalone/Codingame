@@ -652,6 +652,8 @@ partial class Game
 
     AStar _aStar;
 
+    private int _moveCount;
+
     public Game(int myId)
     {
         MyId = myId;
@@ -683,6 +685,8 @@ partial class Game
 
             moves.Add(fullMove);
         }
+
+        _moveCount++;
 
         return moves;
     }
@@ -745,7 +749,7 @@ partial class Game
 
             if (nextMove != new Point(-1, -1))
             {
-                move += coverMove;
+                move = coverMove;
                 Console.Error.WriteLine($"Agent {agent.Id} move source - Move to best cover");
             }
         }
@@ -768,45 +772,49 @@ partial class Game
                 bestPoint = bestPath[0];
             }
 
-            // If this point is already being moved to by another agent don't move
-            if (movePoints.Any(p => p.To.X == bestPoint.X && p.To.Y == bestPoint.Y))
-            {
-                // Simple first pass implementation. Just don't move, allowing the other one to move instead
-                bestPoint = agent.Position;
-            }
-
-            // If another agent is moving onto this agent
-            if (movePoints.Any(p => p.To.X == agent.Position.X && p.To.Y == agent.Position.Y))
-            {
-                Move relevantMove = movePoints.First(p => p.To.X == agent.Position.X && p.To.Y == agent.Position.Y);
-                //   If this agent is staying still or this agent is moving onto that agent's block
-                if (agent.Position == bestPoint || bestPoint == relevantMove.From)
-                {
-                    Point[] pointsToCheck = new Point[4];
-                    pointsToCheck[0] = new Point(Math.Min(Width - 1, agent.Position.X + 1), agent.Position.Y);
-                    pointsToCheck[1] = new Point(Math.Max(0, agent.Position.X - 1), agent.Position.Y);
-                    pointsToCheck[2] = new Point(agent.Position.X, Math.Min(Height - 1, agent.Position.Y + 1));
-                    pointsToCheck[3] = new Point(agent.Position.X, Math.Max(0, agent.Position.Y - 1));
-
-                    foreach (var pointToCheck in pointsToCheck)
-                    {
-                        if (cover[pointToCheck.X, pointToCheck.Y] == 0 
-                            && relevantMove.From != new Point(pointToCheck.X, pointToCheck.Y))
-                        {
-                            bestPoint = new Point(pointToCheck.X, pointToCheck.Y);
-                            break;
-                        }
-                    }
-                }
-            }
-
-            move += $"MOVE {bestPoint.X} {bestPoint.Y}; ";
+            move = $"MOVE {bestPoint.X} {bestPoint.Y}; ";
             nextMove = bestPoint;
 
             Console.Error.WriteLine($"Agent {agent.Id} move source - Move to best attack position");
         }
 
+        // If this point is already being moved to by another agent don't move
+        if (movePoints.Any(p => p.To.X == nextMove.X && p.To.Y == nextMove.Y))
+        {
+            // Simple first pass implementation. Just don't move, allowing the other one to move instead
+            nextMove = agent.Position;
+        }
+
+        Console.Error.WriteLine($"Agent {agent.Id} best attack position at {nextMove.X}, {nextMove.Y}");
+        // If another agent is moving onto this agent
+        if (movePoints.Any(p => p.To.X == agent.Position.X && p.To.Y == agent.Position.Y))
+        {
+            Console.Error.WriteLine($"Agent {agent.Id} is moving onto another agent's block at {agent.Position.X}, {agent.Position.Y}");
+            Move relevantMove = movePoints.First(p => p.To.X == agent.Position.X && p.To.Y == agent.Position.Y);
+            //   If this agent is staying still or this agent is moving onto that agent's block
+            if (agent.Position == nextMove || nextMove == relevantMove.From)
+            {
+                Point[] pointsToCheck = new Point[4];
+                pointsToCheck[0] = new Point(Math.Min(Width - 1, agent.Position.X + 1), agent.Position.Y);
+                pointsToCheck[1] = new Point(Math.Max(0, agent.Position.X - 1), agent.Position.Y);
+                pointsToCheck[2] = new Point(agent.Position.X, Math.Min(Height - 1, agent.Position.Y + 1));
+                pointsToCheck[3] = new Point(agent.Position.X, Math.Max(0, agent.Position.Y - 1));
+
+                foreach (var pointToCheck in pointsToCheck)
+                {
+                    if (cover[pointToCheck.X, pointToCheck.Y] == 0
+                        && relevantMove.From != new Point(pointToCheck.X, pointToCheck.Y))
+                    {
+                        nextMove = new Point(pointToCheck.X, pointToCheck.Y);
+                        break;
+                    }
+                }
+            }
+        }
+
+
         movePoints.Add(new Move(agent.Position, nextMove));
+        move = $"MOVE {nextMove.X} {nextMove.Y}; ";
 
         return (move, nextMove);
     }
@@ -858,9 +866,6 @@ partial class Game
                 // Calculate score
                 var score = attackDamage - receivingDamage;
 
-                Console.Error.WriteLine($"Checking point {x}, {y} ");
-                Console.Error.WriteLine($"Attack Damage: {attackDamage}, Receiving Damage: {receivingDamage}, Score: {score}");
-
                 if (score >= maxDamageScore)
                 {
                     var distanceToAgent = CalculationUtil.GetManhattanDistance(agent.Position, new Point(x, y));
@@ -871,7 +876,6 @@ partial class Game
 
                         if (distanceToAgent < minDistanceToAgent)
                         {
-                            Console.Error.WriteLine($"Found better attack point at {x}, {y} with score {score} and distance {distanceToAgent}");
                             maxDamageScore = score;
                             minDistanceToAgent = distanceToAgent;
                             move = new Point(x, y);
@@ -879,7 +883,6 @@ partial class Game
                     }
                     else
                     {
-                        Console.Error.WriteLine($"Found better attack point at {x}, {y} with score {score}");
                         maxDamageScore = score;
                         minDistanceToAgent = distanceToAgent;
                         move = new Point(x, y);

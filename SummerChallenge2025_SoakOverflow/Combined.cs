@@ -569,13 +569,13 @@ partial class Game
 
     public int MyId { get; private set; }
 
-    List<Agent> playerAgents = new List<Agent>();
-    List<Agent> opponentAgents = new List<Agent>();
+    List<Agent> _playerAgents = new List<Agent>();
+    List<Agent> _opponentAgents = new List<Agent>();
 
     int[,] cover;
 
-    private CoverMapGenerator coverMapGenerator;
-    private DamageMapGenerator damageMapGenerator;
+    private CoverMapGenerator _coverMapGenerator;
+    private DamageMapGenerator _damageMapGenerator;
 
     AStar _aStar;
 
@@ -592,22 +592,16 @@ partial class Game
         int[,] splashMap = CreateSplashMap();
         Dictionary<int, double[,]> coverMaps = CreateCoverMaps();
 
-        List<string> moves = new List<string>();
-        List<Move> movePoints = new List<Move>();
-        foreach (var agent in playerAgents)
+        var moves = new List<string>();
+        var currentMovePoints = new List<Move>();
+
+        foreach (Agent agent in _playerAgents)
         {
             string fullMove = $"{agent.Id}; ";
 
-            // Get the best move
-            (var move, Point nextMove) = GetBestMove(agent, splashMap, coverMaps, movePoints);
+            (var move, Point nextMove) = GetBestMove(agent, splashMap, coverMaps, currentMovePoints);
             fullMove += move;
 
-            if (CalculationUtil.GetManhattanDistance(nextMove, agent.Position) > 1)
-            {
-                Console.Error.WriteLine($"ERROR: Agent {agent.Id}: Next Move ({nextMove.X},{nextMove.Y} is too far away from agent at ({agent.Position.X},{agent.Position.Y}))");
-            }
-
-            // Get the best action
             fullMove += GetBestAction(agent, nextMove, splashMap);
 
             moves.Add(fullMove);
@@ -620,7 +614,7 @@ partial class Game
 
     private int[,] CreateSplashMap()
     {
-        SplashMapGenerator splashMapGenerator = new SplashMapGenerator(Width, Height, playerAgents, opponentAgents);
+        SplashMapGenerator splashMapGenerator = new SplashMapGenerator(Width, Height, _playerAgents, _opponentAgents);
         return splashMapGenerator.CreateSplashMap();
     }
 
@@ -628,13 +622,13 @@ partial class Game
     {
         var coverMaps = new Dictionary<int, double[,]>();
 
-        foreach (var agent in playerAgents)
+        foreach (var agent in _playerAgents)
         {
-            coverMaps[agent.Id] = coverMapGenerator.CreateCoverMap(agent.Position.X, agent.Position.Y);
+            coverMaps[agent.Id] = _coverMapGenerator.CreateCoverMap(agent.Position.X, agent.Position.Y);
         }
-        foreach (var agent in opponentAgents)
+        foreach (var agent in _opponentAgents)
         {
-            coverMaps[agent.Id] = coverMapGenerator.CreateCoverMap(agent.Position.X, agent.Position.Y);
+            coverMaps[agent.Id] = _coverMapGenerator.CreateCoverMap(agent.Position.X, agent.Position.Y);
         }
 
         return coverMaps;
@@ -643,17 +637,17 @@ partial class Game
     private (string move, Point nextMove) GetBestMove(Agent agent, 
                                                       int[,] splashMap, 
                                                       Dictionary<int, double[,]> coverMaps, 
-                                                      List<Move> movePoints)
+                                                      List<Move> currentMovePoints)
     {
         // If opponent still has any splashboms, spread out any agents that are close to each other
-        if (_moveCount > 2 && opponentAgents.Any(a => a.SplashBombs > 0))
+        if (_moveCount > 2 && _opponentAgents.Any(a => a.SplashBombs > 0))
         {
             // If this agent is less than 2 euclidean distance from another agent
-            if (playerAgents.Any(a => a.Id != agent.Id &&
+            if (_playerAgents.Any(a => a.Id != agent.Id &&
                                       CalculationUtil.GetEuclideanDistance(a.Position, agent.Position) < 3))
             {
                 // Get the closest agent to this agent
-                var closestAgent = playerAgents
+                var closestAgent = _playerAgents
                     .Where(a => a.Id != agent.Id)
                     .OrderBy(a => CalculationUtil.GetEuclideanDistance(a.Position, agent.Position))
                     .FirstOrDefault();
@@ -721,7 +715,7 @@ partial class Game
 
         if (nextMove == new Point(-1, -1))
         {
-            double[,] agentDamageMap = damageMapGenerator.CreateDamageMap(agent, opponentAgents, splashMap, coverMaps, cover);
+            double[,] agentDamageMap = _damageMapGenerator.CreateDamageMap(agent, _opponentAgents, splashMap, coverMaps, cover);
 
             (Point bestAttackPoint, _) = ClosestPeakFinder.FindClosestPeak(
                 agent.Position,
@@ -743,16 +737,16 @@ partial class Game
         }
 
         // If this point is already being moved to by another agent don't move
-        if (movePoints.Any(p => p.To.X == nextMove.X && p.To.Y == nextMove.Y))
+        if (currentMovePoints.Any(p => p.To.X == nextMove.X && p.To.Y == nextMove.Y))
         {
             // Simple first pass implementation. Just don't move, allowing the other one to move instead
             nextMove = agent.Position;
         }
 
         // If another agent is moving onto this agent
-        if (movePoints.Any(p => p.To.X == agent.Position.X && p.To.Y == agent.Position.Y))
+        if (currentMovePoints.Any(p => p.To.X == agent.Position.X && p.To.Y == agent.Position.Y))
         {
-            Move relevantMove = movePoints.First(p => p.To.X == agent.Position.X && p.To.Y == agent.Position.Y);
+            Move relevantMove = currentMovePoints.First(p => p.To.X == agent.Position.X && p.To.Y == agent.Position.Y);
             //   If this agent is staying still or this agent is moving onto that agent's block
             if (agent.Position == nextMove || nextMove == relevantMove.From)
             {
@@ -775,7 +769,7 @@ partial class Game
             }
         }
 
-        movePoints.Add(new Move(agent.Position, nextMove));
+        currentMovePoints.Add(new Move(agent.Position, nextMove));
         move = $"MOVE {nextMove.X} {nextMove.Y}; ";
 
         return (move, nextMove);
@@ -786,7 +780,7 @@ partial class Game
         Point closestEnemyPosition = new Point(-1, -1);
         int closestDistance = int.MaxValue;
 
-        foreach (var enemy in opponentAgents)
+        foreach (var enemy in _opponentAgents)
         {
             int distance = CalculationUtil.GetManhattanDistance(agent.Position, enemy.Position);
 
@@ -874,7 +868,7 @@ partial class Game
     private double CalculateHighestAttackingPlayerDamage(Agent agent, int x, int y)
     {
         var highestDamage = 0.0;
-        foreach (var enemy in opponentAgents)
+        foreach (var enemy in _opponentAgents)
         {
             var damage = CalculateDamage(
                 x,
@@ -897,7 +891,7 @@ partial class Game
     private double CalculateReceivingPlayerDamage(int x, int y)
     {
         var stationaryReceivingDamage = 0.0;
-        foreach (var enemy in opponentAgents)
+        foreach (var enemy in _opponentAgents)
         {
             stationaryReceivingDamage += CalculateDamage(
                 enemy.Position.X,
@@ -913,7 +907,7 @@ partial class Game
 
     private double CalculateDamage(int fromX, int fromY, int optimalRange, int soakingPower, int targetX, int targetY)
     {
-        double[,] map = coverMapGenerator.CreateCoverMap(targetX, targetY);
+        double[,] map = _coverMapGenerator.CreateCoverMap(targetX, targetY);
 
         var damageMultiplier = map[fromX, fromY];
         var baseDamage = soakingPower * damageMultiplier;
@@ -1031,7 +1025,7 @@ partial class Game
         var bestAttack = 0.0;
         var bestAttackId = -1;
 
-        foreach (var enemy in opponentAgents)
+        foreach (var enemy in _opponentAgents)
         {
             // If enemy is not in range of agent, skip it
             if (CalculationUtil.GetManhattanDistance(enemy.Position, agent.Position) - 1 > agent.OptimalRange * 2)
@@ -1070,29 +1064,29 @@ partial class Game
 
         cover = new int[Width, Height];
         
-        damageMapGenerator = new DamageMapGenerator(width, height);
+        _damageMapGenerator = new DamageMapGenerator(width, height);
     }
 
     internal void AddAgent(int id, int player, int shootCooldown, int optimalRange, int soakingPower, int splashBombs)
     {
         if (player == MyId)
         {
-            playerAgents.Add(new Agent(id, player, shootCooldown, optimalRange, soakingPower, splashBombs));
+            _playerAgents.Add(new Agent(id, player, shootCooldown, optimalRange, soakingPower, splashBombs));
         }
         else
         {
-            opponentAgents.Add(new Agent(id, player, shootCooldown, optimalRange, soakingPower, splashBombs));
+            _opponentAgents.Add(new Agent(id, player, shootCooldown, optimalRange, soakingPower, splashBombs));
         }
     }
 
     internal void MarkAllAgentsForCulling()
     {
-        foreach (var agent in playerAgents)
+        foreach (var agent in _playerAgents)
         {
             agent.InGame = false;
         }
 
-        foreach (var agent in opponentAgents)
+        foreach (var agent in _opponentAgents)
         {
             agent.InGame = false;
         }
@@ -1100,14 +1094,14 @@ partial class Game
 
     internal void DestroyMarkedAgents()
     {
-        playerAgents.RemoveAll(agent => !agent.InGame);
-        opponentAgents.RemoveAll(agent => !agent.InGame);
+        _playerAgents.RemoveAll(agent => !agent.InGame);
+        _opponentAgents.RemoveAll(agent => !agent.InGame);
     }
 
     internal void UpdateAgent(int agentId, int x, int y, int cooldown, int splashBombs, int wetness)
     {
-        Agent agent = playerAgents.FirstOrDefault(a => a.Id == agentId) 
-            ?? opponentAgents.FirstOrDefault(a => a.Id == agentId);
+        Agent agent = _playerAgents.FirstOrDefault(a => a.Id == agentId) 
+            ?? _opponentAgents.FirstOrDefault(a => a.Id == agentId);
 
         if (agent != null)
         {
@@ -1131,7 +1125,7 @@ partial class Game
 
     internal void UpdateCoverRelatedMaps()
     {
-        coverMapGenerator = new CoverMapGenerator(cover);
+        _coverMapGenerator = new CoverMapGenerator(cover);
         _aStar = new AStar(cover);
     }
 }

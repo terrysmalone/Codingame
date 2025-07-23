@@ -14,6 +14,13 @@ using System.Net.WebSockets;
 using System.IO;
 using System.Collections;
 
+public class ActionIntention
+{
+    public string Command { get; set; } = "";
+    public string Source { get; set; } = "";
+}
+
+
 class Agent
 {
     public int Id { get; private set; }
@@ -25,9 +32,8 @@ class Agent
     public int Wetness { get; set; }
     public Point Position { get; private set; } = new Point(-1, -1);
     public Priority AgentPriority { get; set; } = Priority.MovingToEnemy;
-    public string MoveSource { get; set; } 
-    public string ActionSource { get; set; }
-
+    public MoveIntention MoveIntention { get; set; } = new MoveIntention();
+    public ActionIntention ActionIntention { get; set; } = new ActionIntention();
     public bool InGame { get; set; } = false;
 
     public Agent(int id, int player, int shootCooldown, int optimalRange, int soakingPower, int splashBombs)
@@ -44,13 +50,12 @@ class Agent
     {
         Position = new Point(x, y);
     }
-}
 
-public enum Priority
-{
-    MovingToEnemy,
-    FindingBestAttackPosition,
-    SpreadingOut,
+    internal void ResetIntentions()
+    {
+        MoveIntention = new MoveIntention();
+        ActionIntention = new ActionIntention();
+    }
 }
 
 internal sealed class AStar
@@ -650,7 +655,7 @@ internal static class Display
 
         foreach (Agent agent in agents)
         {
-            Console.Error.WriteLine($"Agent {agent.Id} - Move: {agent.MoveSource} - Action:{agent.ActionSource}");
+            Console.Error.WriteLine($"Agent {agent.Id} - Move: {agent.MoveIntention.Source} - Action:{agent.ActionIntention.Source}");
         }
     }
 }
@@ -685,33 +690,53 @@ partial class Game
     }
 
     // One line per agent: <agentId>;<action1;action2;...> actions are "MOVE x y | SHOOT id | THROW x y | HUNKER_DOWN | MESSAGE text"
-    internal List<string> GetMoves()
+    internal List<string> GetCommands()
     {
         _splashMap = CreateSplashMap();
         _coverMaps = CreateCoverMaps();
 
         _damageCalculator = new DamageCalculator(_coverMapGenerator);
 
-        var moves = new List<string>();
         var currentMovePoints = new List<Move>();
+
+        UpdatePriorities();
 
         foreach (Agent agent in _playerAgents)
         {
-            string fullMove = $"{agent.Id}; ";
+            GetMoveCommand(agent, currentMovePoints);
 
-            (var move, Point nextMove) = GetBestMove(agent, currentMovePoints);
-            fullMove += move;
-
-            fullMove += GetBestAction(agent, nextMove);
-
-            moves.Add(fullMove);
+            GetActionCommand(agent);
         }
 
         Display.Sources(_playerAgents);
 
+        List<string> commands = GetCommandStrings();
+        ResetIntentions();
+
         _moveCount++;
 
-        return moves;
+        return commands;
+    }
+
+    private void ResetIntentions()
+    {
+        foreach (var agent in _playerAgents)
+        {
+            agent.ResetIntentions();
+        }
+    }
+
+    private List<string> GetCommandStrings()
+    {
+        List<string> commands = new List<string>();
+
+        foreach (var agent in _playerAgents)
+        {
+            string command = $"{agent.Id}; MOVE {agent.MoveIntention.Move.X} {agent.MoveIntention.Move.Y}; {agent.ActionIntention.Command} MESSAGE {agent.AgentPriority}";
+            commands.Add(command);
+        }
+
+        return commands;
     }
 
     private int[,] CreateSplashMap()
@@ -736,82 +761,48 @@ partial class Game
         return coverMaps;
     }
 
-    private (string move, Point nextMove) GetBestMove(Agent agent,
-                                                      List<Move> currentMovePoints)
+    private void UpdatePriorities()
     {
-        var move = "";
-        var nextMove = new Point(-1, -1);
-
-        // If the nearest enemy is more than two times the agent's optimal range away
-        // then we should move towards the nearest high damage spot
-        (_, var closestEnemyDistance) = GetClosestEnemyPosition(agent);
-
-        // Update Priority
-        if (_moveCount > 2 && _opponentAgents.Any(a => a.SplashBombs > 0))
+        foreach (var agent in _playerAgents)
         {
-            agent.AgentPriority = Priority.SpreadingOut;
-        }
-        else if (closestEnemyDistance <= agent.OptimalRange)
-        {
-            agent.AgentPriority = Priority.FindingBestAttackPosition;
-        }
-        else if (closestEnemyDistance > agent.OptimalRange * 2)
-        {
-            agent.AgentPriority = Priority.MovingToEnemy;
-        }
-        
+            // If the nearest enemy is more than two times the agent's optimal range away
+            // then we should move towards the nearest high damage spot
+            (_, var closestEnemyDistance) = GetClosestEnemyPosition(agent);
 
-        // If opponent still has any splashboms, spread out any agents that are close to each other
+            // Update Priority
+            if (_moveCount > 2 && _opponentAgents.Any(a => a.SplashBombs > 0))
+            {
+                agent.AgentPriority = Priority.SpreadingOut;
+            }
+            else if (closestEnemyDistance <= agent.OptimalRange)
+            {
+                agent.AgentPriority = Priority.FindingBestAttackPosition;
+            }
+            else if (closestEnemyDistance > agent.OptimalRange * 2)
+            {
+                agent.AgentPriority = Priority.MovingToEnemy;
+            }
+        }
+    }
+
+    private void GetMoveCommand(Agent agent, List<Move> currentMovePoints)
+    {
+        // If opponent still has any splashbombs, spread out any agents that are close to each other
         if (agent.AgentPriority == Priority.SpreadingOut)
         {
-            // If this agent is less than 2 euclidean distance from another agent
-            if (_playerAgents.Any(a => a.Id != agent.Id &&
-                                      CalculationUtil.GetEuclideanDistance(a.Position, agent.Position) < 3))
+            GetSpreadMove(agent);
+            if (agent.MoveIntention.Move != new Point(-1, -1))
             {
-                // Get the closest agent to this agent
-                var closestAgent = _playerAgents
-                    .Where(a => a.Id != agent.Id)
-                    .OrderBy(a => CalculationUtil.GetEuclideanDistance(a.Position, agent.Position))
-                    .FirstOrDefault();
-
-                if (closestAgent != null)
-                {
-                    agent.MoveSource = "Spreading";
-                    if (closestAgent.Position.X < agent.Position.X && agent.Position.X + 1 <= Width - 1)
-                    {
-                        return ($"MOVE {agent.Position.X + 1} {agent.Position.Y}; ", new Point(agent.Position.X + 1, agent.Position.Y));
-                    }
-                    else if (closestAgent.Position.X > agent.Position.X && agent.Position.X - 1 >= 0)
-                    {
-                        return ($"MOVE {agent.Position.X - 1} {agent.Position.Y}; ", new Point(agent.Position.X - 1, agent.Position.Y));
-                    }
-                    else if (closestAgent.Position.Y > agent.Position.Y && agent.Position.Y - 1 >= 0)
-                    {
-                        return ($"MOVE {agent.Position.X} {agent.Position.Y - 1}; ", new Point(agent.Position.X, agent.Position.Y - 1));
-                    }
-                    else if (closestAgent.Position.Y < agent.Position.Y && agent.Position.Y + 1 <= Height - 1)
-                    {
-                        return ($"MOVE {agent.Position.X} {agent.Position.Y + 1}; ", new Point(agent.Position.X, agent.Position.Y + 1));
-                    }
-
-                    return ($"MOVE {agent.Position.X} {agent.Position.Y}; ", agent.Position);
-
-                }
+                return;
             }
         }
 
         if (agent.AgentPriority == Priority.FindingBestAttackPosition && agent.OptimalRange > 2)
         {
-            (var attackMove, nextMove) = GetBestAttackPosition(agent);
-
-            if (nextMove != new Point(-1, -1))
-            {
-                move = attackMove;
-                agent.MoveSource = "Moving to best defended attack position";
-            }
+            GetBestAttackPosition(agent);
         }
 
-        if (nextMove == new Point(-1, -1))
+        if (agent.MoveIntention.Move == new Point(-1, -1))
         {
             double[,] agentDamageMap = _damageMapGenerator.CreateDamageMap(agent, _opponentAgents, _splashMap, _coverMaps, cover);
 
@@ -828,17 +819,15 @@ partial class Game
                 bestPoint = bestPath[0];
             }
 
-            move = $"MOVE {bestPoint.X} {bestPoint.Y}; ";
-            nextMove = bestPoint;
-
-            agent.MoveSource = "Moving to best attack position";
+            agent.MoveIntention.Move = bestPoint;
+            agent.MoveIntention.Source = "Moving to best attack position";
         }
 
         // If this point is already being moved to by another agent don't move
-        if (currentMovePoints.Any(p => p.To.X == nextMove.X && p.To.Y == nextMove.Y))
+        if (currentMovePoints.Any(p => p.To.X == agent.MoveIntention.Move.X && p.To.Y == agent.MoveIntention.Move.Y))
         {
             // Simple first pass implementation. Just don't move, allowing the other one to move instead
-            nextMove = agent.Position;
+            agent.MoveIntention.Move = agent.Position;
         }
 
         // If another agent is moving onto this agent
@@ -846,7 +835,7 @@ partial class Game
         {
             Move relevantMove = currentMovePoints.First(p => p.To.X == agent.Position.X && p.To.Y == agent.Position.Y);
             //   If this agent is staying still or this agent is moving onto that agent's block
-            if (agent.Position == nextMove || nextMove == relevantMove.From)
+            if (agent.Position == agent.MoveIntention.Move || agent.MoveIntention.Move == relevantMove.From)
             {
                 Point[] pointsToCheck = new Point[4];
                 pointsToCheck[0] = new Point(Math.Min(Width - 1, agent.Position.X + 1), agent.Position.Y);
@@ -859,18 +848,55 @@ partial class Game
                     if (cover[pointToCheck.X, pointToCheck.Y] == 0
                         && relevantMove.From != new Point(pointToCheck.X, pointToCheck.Y))
                     {
-                        nextMove = new Point(pointToCheck.X, pointToCheck.Y);
-                        agent.MoveSource = "Avoiding a collision";
+                        agent.MoveIntention.Move = new Point(pointToCheck.X, pointToCheck.Y);
+                        agent.MoveIntention.Source = "Avoiding a collision";
                         break;
                     }
                 }
             }
         }
 
-        currentMovePoints.Add(new Move(agent.Position, nextMove));
-        move = $"MOVE {nextMove.X} {nextMove.Y}; ";
+        currentMovePoints.Add(new Move(agent.Position, agent.MoveIntention.Move));
+    }
 
-        return (move, nextMove);
+    private void GetSpreadMove(Agent agent)
+    {
+        // If this agent is less than 2 euclidean distance from another agent
+        if (_playerAgents.Any(a => a.Id != agent.Id &&
+                                  CalculationUtil.GetEuclideanDistance(a.Position, agent.Position) < 3))
+        {
+            // Get the closest agent to this agent
+            var closestAgent = _playerAgents
+                .Where(a => a.Id != agent.Id)
+                .OrderBy(a => CalculationUtil.GetEuclideanDistance(a.Position, agent.Position))
+                .FirstOrDefault();
+
+            if (closestAgent != null)
+            {
+                agent.MoveIntention.Source = "Spreading";
+                if (closestAgent.Position.X < agent.Position.X && agent.Position.X + 1 <= Width - 1)
+                {
+                    agent.MoveIntention.Move = new Point(agent.Position.X + 1, agent.Position.Y);
+                }
+                else if (closestAgent.Position.X > agent.Position.X && agent.Position.X - 1 >= 0)
+                {
+                    agent.MoveIntention.Move = new Point(agent.Position.X - 1, agent.Position.Y);    
+                }
+                else if (closestAgent.Position.Y > agent.Position.Y && agent.Position.Y - 1 >= 0)
+                {
+                    agent.MoveIntention.Move = new Point(agent.Position.X, agent.Position.Y - 1);
+                }
+                else if (closestAgent.Position.Y < agent.Position.Y && agent.Position.Y + 1 <= Height - 1)
+                {
+                    agent.MoveIntention.Move = new Point(agent.Position.X, agent.Position.Y + 1);
+                }
+                else
+                {
+                    // If we can't move in any direction, just stay still
+                    agent.MoveIntention.Move = agent.Position;
+                }
+            }
+        }
     }
 
     private void GetSpreadAction(Agent agent)
@@ -897,7 +923,7 @@ partial class Game
         return (closestEnemyPosition, closestDistance);
     }
 
-    private (string, Point) GetBestAttackPosition(Agent agent)
+    private void GetBestAttackPosition(Agent agent)
     {
         // Look around the agent by optimal range / 2
         var move = new Point(-1, -1);
@@ -958,57 +984,39 @@ partial class Game
                 bestPoint = bestPath[0];
             }
 
-            return ($"MOVE {bestPoint.X} {bestPoint.Y}; ", bestPoint);
+            agent.MoveIntention.Move = bestPoint;
+            agent.MoveIntention.Source = "Moving to best defended attack position";
         }
-
-        return ("", move);
     }
 
-    private string GetBestAction(Agent agent, Point nextMove)
+    private void GetActionCommand(Agent agent)
     {
-        var move = "";
-        var throwAction = "";
-
         // Within range of a valid throw 
         if (agent.SplashBombs > 0)
         {
-            throwAction += GetThrowAction(agent, nextMove);
-
-            if (throwAction != "")
-            {
-                move += throwAction;
-                agent.ActionSource = "Throwing a bomb";
-            }
+            GetThrowAction(agent);
         }
 
-        var shootAction = "";
-        if (throwAction == "" && agent.ShootCooldown <= 0)
+        if (agent.ActionIntention.Command == "" && agent.ShootCooldown <= 0)
         {
-            shootAction = GetShootAction(agent, nextMove);
-
-            if (shootAction != "")
-            {
-                move += shootAction;
-                agent.ActionSource = "Shooting";
-            }
+            GetShootAction(agent);
         }
 
-        if (shootAction == "" && throwAction == "")
+        if (agent.ActionIntention.Command == "")
         {
-            move += "HUNKER_DOWN;";
-            agent.ActionSource = "Hunkering down";
+            agent.ActionIntention.Command = "HUNKER_DOWN;";
+            agent.ActionIntention.Source = "Hunkering down";
         }
-
-        return move;
     }
 
-    private string GetThrowAction(Agent agent, Point movePoint)
+    private void GetThrowAction(Agent agent)
     {
+        Point movePoint = agent.MoveIntention.Move;
         // If the movePoint is more than one away from the agents position don't throw
         if (CalculationUtil.GetManhattanDistance(agent.Position, movePoint) > 1)
         {
             Console.Error.WriteLine($"ERROR: WE SHOULD NEVER BE HITTING THIS BECAUSE OF THE A* PATH FINDING");
-            return "";
+            return;
         }
 
         int bestX = -1;
@@ -1048,14 +1056,15 @@ partial class Game
 
         if (bestValue > 0)
         {
-            return $"THROW {bestX} {bestY}";
+            agent.ActionIntention.Source = "Throwing a bomb";
+            agent.ActionIntention.Command = $"THROW {bestX} {bestY};";
         }
-
-        return "";
     }
 
-    private string GetShootAction(Agent agent, Point movePoint)
+    private void GetShootAction(Agent agent)
     {
+        Point movePoint = agent.MoveIntention.Move;
+
         // Get target
         var bestAttack = 0.0;
         var bestAttackId = -1;
@@ -1086,10 +1095,11 @@ partial class Game
 
         if (bestAttack <= 0.0)
         {
-            return "";
+            return;
         }
 
-        return $"SHOOT {bestAttackId}";
+        agent.ActionIntention.Command = $"SHOOT {bestAttackId};";
+        agent.ActionIntention.Source = "Shooting";
     }
 
     public void SetGameSize(int width, int height)
@@ -1179,6 +1189,13 @@ public class Move
 }
     
 
+
+
+public class MoveIntention
+{
+    public Point Move { get; set; } = new Point(-1, -1);
+    public string Source { get; set; } = "";
+}
 
 
 internal sealed class Node
@@ -1278,7 +1295,7 @@ class Player
 
             game.DestroyMarkedAgents();
 
-            List<string> moves = game.GetMoves();
+            List<string> moves = game.GetCommands();
             foreach (var move in moves)
             {
                 Console.WriteLine(move);
@@ -1289,6 +1306,13 @@ class Player
     }
 }
 
+
+public enum Priority
+{
+    MovingToEnemy,
+    FindingBestAttackPosition,
+    SpreadingOut,
+}
 
 internal class SplashMapGenerator
 {

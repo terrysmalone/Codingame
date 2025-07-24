@@ -13,6 +13,7 @@ using System.Runtime.CompilerServices;
 using System.Net.WebSockets;
 using System.IO;
 using System.Collections;
+using System.ComponentModel;
 
 public class ActionIntention
 {
@@ -685,6 +686,7 @@ partial class Game
     private CoverMapGenerator _coverMapGenerator;
     private DamageMapGenerator _damageMapGenerator;
     private DamageCalculator _damageCalculator;
+    private ScoreCalculator _scoreCalculator;
 
     AStar _aStar;
 
@@ -726,26 +728,8 @@ partial class Game
 
     private void UpdateScores()
     {
-        var player = 0;
-        var opponent = 0;
 
-        for (var y=0; y < Height; y++)
-        {
-            for (var x=0; x < Width; x++)
-            {
-                int closestPlayerDistance = GetClosestAgentDistance(_playerAgents, x, y);
-                int closestOpponentDistance = GetClosestAgentDistance(_opponentAgents, x, y);
-
-                if (closestPlayerDistance < closestOpponentDistance)
-                {
-                    player++;
-                }
-                else if (closestPlayerDistance > closestOpponentDistance)
-                {
-                    opponent++;
-                }
-            }
-        }
+        (int player, int opponent) = _scoreCalculator.CalculateScores(_playerAgents, _opponentAgents);
 
         if (player > opponent)
         {
@@ -755,27 +739,6 @@ partial class Game
         {
             _opponentScore += (opponent - player);
         }
-    }
-
-    private int GetClosestAgentDistance(List<Agent> agents, int x, int y)
-    {
-        var closest = int.MaxValue;
-        foreach (var agent in agents)
-        {
-            var distance = CalculationUtil.GetManhattanDistance(agent.Position, new Point(x, y));
-
-            if (agent.Wetness >= 50)
-            {
-                distance *= 2;
-            }
-
-            if (distance < closest)
-            {
-                closest = distance;
-            }
-        }
-
-        return closest;
     }
 
     private void ResetIntentions()
@@ -887,6 +850,7 @@ partial class Game
                 GetBestAttackPosition(agent);
             }
 
+            // Default to moving to Enemy
             if (agent.MoveIntention.Move == new Point(-1, -1))
             {
                 double[,] agentDamageMap = _damageMapGenerator.CreateDamageMap(agent, _opponentAgents, _splashMap, _coverMaps, cover);
@@ -1288,6 +1252,7 @@ partial class Game
         cover = new int[Width, Height];
         
         _damageMapGenerator = new DamageMapGenerator(width, height);
+        _scoreCalculator = new ScoreCalculator(width, height);
     }
 
     internal void AddAgent(int id, int player, int shootCooldown, int optimalRange, int soakingPower, int splashBombs)
@@ -1490,6 +1455,65 @@ public enum Priority
     MovingToEnemy,
     FindingBestAttackPosition,
     SpreadingOut,
+}
+
+internal class ScoreCalculator
+{
+    private int _width;
+    private int _height;
+
+    public ScoreCalculator(int width, int height)
+    {
+        _width = width;
+        _height = height;
+    }
+
+    internal (int player, int opponent) CalculateScores(List<Agent> playerAgents, List<Agent> opponentAgents)
+    {
+        var player = 0;
+        var opponent = 0;
+
+        for (var y = 0; y < _height; y++)
+        {
+            for (var x = 0; x < _width; x++)
+            {
+                int closestPlayerDistance = GetClosestAgentDistance(playerAgents, x, y);
+                int closestOpponentDistance = GetClosestAgentDistance(opponentAgents, x, y);
+
+                if (closestPlayerDistance < closestOpponentDistance)
+                {
+                    player++;
+                }
+                else if (closestPlayerDistance > closestOpponentDistance)
+                {
+                    opponent++;
+                }
+            }
+        }
+
+        return (player, opponent);
+    }
+
+    private int GetClosestAgentDistance(List<Agent> agents, int x, int y)
+    {
+        var closest = int.MaxValue;
+        foreach (var agent in agents)
+        {
+            var distance = CalculationUtil.GetManhattanDistance(agent.Position, new Point(x, y));
+
+            if (agent.Wetness >= 50)
+            {
+                distance *= 2;
+            }
+
+            if (distance < closest)
+            {
+                closest = distance;
+            }
+        }
+
+        return closest;
+    }
 }
 
 internal class SplashMapGenerator

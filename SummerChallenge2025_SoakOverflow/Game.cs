@@ -24,6 +24,7 @@ partial class Game
     private CoverMapGenerator _coverMapGenerator;
     private DamageMapGenerator _damageMapGenerator;
     private DamageCalculator _damageCalculator;
+    private ScoreCalculator _scoreCalculator;
 
     AStar _aStar;
 
@@ -65,26 +66,8 @@ partial class Game
 
     private void UpdateScores()
     {
-        var player = 0;
-        var opponent = 0;
 
-        for (var y=0; y < Height; y++)
-        {
-            for (var x=0; x < Width; x++)
-            {
-                int closestPlayerDistance = GetClosestAgentDistance(_playerAgents, x, y);
-                int closestOpponentDistance = GetClosestAgentDistance(_opponentAgents, x, y);
-
-                if (closestPlayerDistance < closestOpponentDistance)
-                {
-                    player++;
-                }
-                else if (closestPlayerDistance > closestOpponentDistance)
-                {
-                    opponent++;
-                }
-            }
-        }
+        (int player, int opponent) = _scoreCalculator.CalculateScores(_playerAgents, _opponentAgents);
 
         if (player > opponent)
         {
@@ -94,27 +77,6 @@ partial class Game
         {
             _opponentScore += (opponent - player);
         }
-    }
-
-    private int GetClosestAgentDistance(List<Agent> agents, int x, int y)
-    {
-        var closest = int.MaxValue;
-        foreach (var agent in agents)
-        {
-            var distance = CalculationUtil.GetManhattanDistance(agent.Position, new Point(x, y));
-
-            if (agent.Wetness >= 50)
-            {
-                distance *= 2;
-            }
-
-            if (distance < closest)
-            {
-                closest = distance;
-            }
-        }
-
-        return closest;
     }
 
     private void ResetIntentions()
@@ -226,6 +188,7 @@ partial class Game
                 GetBestAttackPosition(agent);
             }
 
+            // Default to moving to Enemy
             if (agent.MoveIntention.Move == new Point(-1, -1))
             {
                 double[,] agentDamageMap = _damageMapGenerator.CreateDamageMap(agent, _opponentAgents, _splashMap, _coverMaps, cover);
@@ -627,6 +590,7 @@ partial class Game
         cover = new int[Width, Height];
         
         _damageMapGenerator = new DamageMapGenerator(width, height);
+        _scoreCalculator = new ScoreCalculator(width, height);
     }
 
     internal void AddAgent(int id, int player, int shootCooldown, int optimalRange, int soakingPower, int splashBombs)

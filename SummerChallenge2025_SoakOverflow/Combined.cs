@@ -34,6 +34,9 @@ class Agent
     public Priority AgentPriority { get; set; } = Priority.MovingToEnemy;
     public MoveIntention MoveIntention { get; set; } = new MoveIntention();
     public ActionIntention ActionIntention { get; set; } = new ActionIntention();
+
+    public int ShootToKillId { get; set; } = -1; // Id of the agent to shoot to kill, -1 if no target
+    public int ShootToSoakId { get; set; } = -1; // Id of the agent to shoot to soak, -1 if no target
     public bool InGame { get; set; } = false;
 
     public Agent(int id, int player, int shootCooldown, int optimalRange, int soakingPower, int splashBombs)
@@ -55,6 +58,9 @@ class Agent
     {
         MoveIntention = new MoveIntention();
         ActionIntention = new ActionIntention();
+
+        ShootToKillId = -1;
+        ShootToSoakId = -1;
     }
 }
 
@@ -878,7 +884,6 @@ partial class Game
             if ((agent.AgentPriority == Priority.FindingBestAttackPosition && agent.OptimalRange > 2)
                 || (agent.AgentPriority == Priority.SpreadingOut && agent.MoveIntention.Move == new Point(-1, -1)))
             {
-                Console.Error.WriteLine(agent.Id + " is finding best attack position");
                 GetBestAttackPosition(agent);
             }
 
@@ -994,6 +999,25 @@ partial class Game
         return (closestEnemyPosition, closestDistance);
     }
 
+    private (Point, int) GetClosestEnemyPosition(Point position)
+    {
+        Point closestEnemyPosition = new Point(-1, -1);
+        int closestDistance = int.MaxValue;
+
+        foreach (var enemy in _opponentAgents)
+        {
+            int distance = CalculationUtil.GetManhattanDistance(position, enemy.Position);
+
+            if (distance < closestDistance)
+            {
+                closestDistance = distance;
+                closestEnemyPosition = enemy.Position;
+            }
+        }
+
+        return (closestEnemyPosition, closestDistance);
+    }
+
     private void GetBestAttackPosition(Agent agent)
     {
         // Look around the agent by optimal range / 2
@@ -1097,6 +1121,7 @@ partial class Game
         int bestX = -1;
         int bestY = -1;
         int bestValue = 0;
+        int bestValueDistance = int.MaxValue;
 
         Point calculationPoint = new Point(-1, -1);
 
@@ -1129,11 +1154,27 @@ partial class Game
                 var manhattanDistance = CalculationUtil.GetManhattanDistance(
                     movePoint, new Point(x, y));
 
-                if (manhattanDistance <= 4 && _splashMap[x, y] > bestValue)
+                if (manhattanDistance <= 4 && _splashMap[x, y] >= bestValue)
                 {
-                    bestValue = _splashMap[x, y];
-                    bestX = x;
-                    bestY = y;
+                    (_, var closestEnemyDistance) =  GetClosestEnemyPosition(new Point(x, y));
+                    if (_splashMap[x, y] == bestValue)
+                    {
+                        if (closestEnemyDistance < bestValueDistance)
+                        {
+                            bestValue = _splashMap[x, y];
+                            bestX = x;
+                            bestY = y;
+                            bestValueDistance = closestEnemyDistance;
+                        }
+                    }
+                    else
+                    {
+
+                        bestValue = _splashMap[x, y];
+                        bestX = x;
+                        bestY = y;
+                        bestValueDistance = closestEnemyDistance;
+                    }
                 }
             }
         }
@@ -1150,8 +1191,11 @@ partial class Game
         Point movePoint = agent.MoveIntention.Move;
 
         // Get target
-        var bestAttack = 0.0;
-        var bestAttackId = -1;
+        var mostDamage = 0.0;
+        var mostDamageId = -1;
+
+        var killId = -1;
+        var soakId = -1;
 
         foreach (var enemy in _opponentAgents)
         {
@@ -1169,21 +1213,71 @@ partial class Game
                 enemy.Position.X,
                 enemy.Position.Y);
 
-            if (damage > bestAttack)
+            if (enemy.Wetness + damage >= 100 && !isAnyOneKilling())
             {
-                bestAttack = damage;
-                bestAttackId = enemy.Id;
+                killId = enemy.Id;
+            }
+            else if (enemy.Wetness < 50 && enemy.Wetness + damage >= 50 && !isAnyOneSoaking())
+            {
+                soakId = enemy.Id;
+            }
+
+            if (damage > mostDamage && !isAnyOneKilling())
+            {
+                mostDamage = damage;
+                mostDamageId = enemy.Id;
             }
         }
 
+        if (killId != -1)
+        {
+            agent.ActionIntention.Command = $"SHOOT {killId};";
+            agent.ActionIntention.Source = "Shooting to kill";
+            agent.ShootToKillId = killId;
+            return;
+        }
+        else if (soakId != -1)
+        {
+            agent.ActionIntention.Command = $"SHOOT {soakId};";
+            agent.ActionIntention.Source = "Shooting to soak";
+            agent.ShootToSoakId = soakId;
+            return;
+        }
 
-        if (bestAttack <= 0.0)
+
+        if (mostDamage <= 0.0)
         {
             return;
         }
 
-        agent.ActionIntention.Command = $"SHOOT {bestAttackId};";
-        agent.ActionIntention.Source = "Shooting";
+        agent.ActionIntention.Command = $"SHOOT {mostDamageId};";
+        agent.ActionIntention.Source = "Shooting to damage";
+    }
+
+    private bool isAnyOneKilling()
+    {
+        foreach (var agent in _playerAgents)
+        {
+            if (agent.ShootToKillId != -1)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private bool isAnyOneSoaking()
+    {
+        foreach (var agent in _playerAgents)
+        {
+            if (agent.ShootToSoakId != -1)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public void SetGameSize(int width, int height)

@@ -684,6 +684,8 @@ partial class Game
 
     private int _moveCount;
 
+    private int _playerScore, _opponentScore = 0;
+
     public Game(int myId)
     {
         MyId = myId;
@@ -692,6 +694,9 @@ partial class Game
     // One line per agent: <agentId>;<action1;action2;...> actions are "MOVE x y | SHOOT id | THROW x y | HUNKER_DOWN | MESSAGE text"
     internal List<string> GetCommands()
     {
+        UpdateScores();
+        Console.Error.WriteLine($"Player score: {_playerScore}, Opponent score: {_opponentScore}");
+
         _splashMap = CreateSplashMap();
         _coverMaps = CreateCoverMaps();
 
@@ -711,6 +716,60 @@ partial class Game
         _moveCount++;
 
         return commands;
+    }
+
+    private void UpdateScores()
+    {
+        var player = 0;
+        var opponent = 0;
+
+        for (var y=0; y < Height; y++)
+        {
+            for (var x=0; x < Width; x++)
+            {
+                int closestPlayerDistance = GetClosestAgentDistance(_playerAgents, x, y);
+                int closestOpponentDistance = GetClosestAgentDistance(_opponentAgents, x, y);
+
+                if (closestPlayerDistance < closestOpponentDistance)
+                {
+                    player++;
+                }
+                else if (closestPlayerDistance > closestOpponentDistance)
+                {
+                    opponent++;
+                }
+            }
+        }
+
+        if (player > opponent)
+        {
+            _playerScore += (player - opponent);
+        }
+        else if (player < opponent)
+        {
+            _opponentScore += (opponent - player);
+        }
+    }
+
+    private int GetClosestAgentDistance(List<Agent> agents, int x, int y)
+    {
+        var closest = int.MaxValue;
+        foreach (var agent in agents)
+        {
+            var distance = CalculationUtil.GetManhattanDistance(agent.Position, new Point(x, y));
+
+            if (agent.Wetness >= 50)
+            {
+                distance *= 2;
+            }
+
+            if (distance < closest)
+            {
+                closest = distance;
+            }
+        }
+
+        return closest;
     }
 
     private void ResetIntentions()

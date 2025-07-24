@@ -1000,7 +1000,19 @@ partial class Game
         for (int x = minX; x <= maxX; x++)
         {
             for (int y = minY; y <= maxY; y++)
-            { 
+            {
+                // If an enemy agent is already at to this point, skip it
+                if (_opponentAgents.Any(enemyAgent => enemyAgent.Position.X == x && enemyAgent.Position.Y == y))
+                {
+                    continue;
+                }
+
+                // If there is cover at this point , skip it
+                if (cover[x, y] > 0)
+                {
+                    continue;
+                }
+
                 // Calculate possible damage
                 var attackDamage = _damageCalculator.CalculateHighestAttackingPlayerDamage(agent, x, y, _opponentAgents);
 
@@ -1015,6 +1027,7 @@ partial class Game
 
                     if (score == maxDamageScore)
                     {
+                        Console.Error.WriteLine($"Agent {agent.Id} found equal score at {x}, {y} with score {score} and distance {distanceToAgent} from agent at {agent.Position.X}, {agent.Position.Y}");
                         // If the score is the same, check if it's closer to the agent
                         if (distanceToAgent < minDistanceToAgent)
                         {
@@ -1037,6 +1050,8 @@ partial class Game
         {
             Point bestPoint = new Point(move.X, move.Y);
 
+            Console.Error.WriteLine($"Agent {agent.Id} found best attack position: {bestPoint.X}, {bestPoint.Y} with score {maxDamageScore} and distance {minDistanceToAgent}");
+
             if (agent.Position != move)
             {
                 List<Point> bestPath = _aStar.GetShortestPath(agent.Position, move);
@@ -1045,6 +1060,8 @@ partial class Game
 
             agent.MoveIntention.Move = bestPoint;
             agent.MoveIntention.Source = "Moving to best defended attack position";
+
+            Console.Error.WriteLine($"Agent {agent.Id} moving to best attack position: {bestPoint.X}, {bestPoint.Y} with score {maxDamageScore} and distance {minDistanceToAgent}");
         }
     }
 

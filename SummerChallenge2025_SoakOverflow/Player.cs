@@ -89,7 +89,7 @@ class Player
 
             game.DestroyMarkedAgents();
 
-            List<string> moves = game.GetMoves();
+            List<string> moves = game.GetCommands();
             foreach (var move in moves)
             {
                 Console.WriteLine(move);

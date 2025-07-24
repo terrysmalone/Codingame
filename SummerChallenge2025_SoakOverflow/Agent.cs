@@ -13,9 +13,8 @@ class Agent
     public int Wetness { get; set; }
     public Point Position { get; private set; } = new Point(-1, -1);
     public Priority AgentPriority { get; set; } = Priority.MovingToEnemy;
-    public string MoveSource { get; set; } 
-    public string ActionSource { get; set; }
-
+    public MoveIntention MoveIntention { get; set; } = new MoveIntention();
+    public ActionIntention ActionIntention { get; set; } = new ActionIntention();
     public bool InGame { get; set; } = false;
 
     public Agent(int id, int player, int shootCooldown, int optimalRange, int soakingPower, int splashBombs)
@@ -32,11 +31,10 @@ class Agent
     {
         Position = new Point(x, y);
     }
-}
 
-public enum Priority
-{
-    MovingToEnemy,
-    FindingBestAttackPosition,
-    SpreadingOut,
+    internal void ResetIntentions()
+    {
+        MoveIntention = new MoveIntention();
+        ActionIntention = new ActionIntention();
+    }
 }

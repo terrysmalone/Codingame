@@ -1,6 +1,23 @@
 # TODO
 
-Spread out more if we can. Don't be a bomb target
+
+## General 
+
+* Remove currentMovePoints and use agent.MoveIntention.Nove
+* pull move and action out of th same foreach
+* Split move and action stuff into functions
+* 
+## Spreading
+
+* Only spread out if we're actually close to another agent
+
+## Bombing
+
+* Can I dodge bombs actively?
+* I should aim for the centre and not an edge
+* Is it viable to bomb exactly where an enemy is standing?
+
+## Shooting
 
 # Tests
 

@@ -33,7 +33,7 @@ internal static class Display
 
         foreach (Agent agent in agents)
         {
-            Console.Error.WriteLine($"Agent {agent.Id} - Move: {agent.MoveSource} - Action:{agent.ActionSource}");
+            Console.Error.WriteLine($"Agent {agent.Id} - Move: {agent.MoveIntention.Source} - Action:{agent.ActionIntention.Source}");
         }
     }
 }

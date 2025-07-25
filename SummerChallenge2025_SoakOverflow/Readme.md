@@ -48,9 +48,9 @@ Test the Aren against the IDE in a number of specific tests. Results should not 
 |                           | IDE      | Arena    |                      |
 
 
-seed=965395185724116000
+seed=-5987309072221063000
 
-Move 20: I lose 7 - 640
+Move 23: I lose 603 - 2
 
 
 

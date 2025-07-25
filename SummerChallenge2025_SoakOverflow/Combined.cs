@@ -471,7 +471,7 @@ internal class DamageCalculator
 
     // Calculates the total damage the position (x,y) can receive from opponentAgents
     // Note: The total is theoretical and not based on whether they can currently shoot or not
-    internal double CalculateReceivingDamage(int x, int y, List<Agent> opponentAgents)
+    internal double CalculateTotalReceivingDamage(int x, int y, List<Agent> opponentAgents)
     {
         var stationaryReceivingDamage = 0.0;
         foreach (var opponentAgent in opponentAgents)
@@ -486,6 +486,28 @@ internal class DamageCalculator
         }
 
         return stationaryReceivingDamage;
+    }
+
+    internal double CalculateHighestReceivingDamage(int x, int y, List<Agent> opponentAgents)
+    {
+        var highestDamage = 0.0;
+        foreach (var opponentAgent in opponentAgents)
+        {
+            var damage = CalculateDamage(
+                opponentAgent.Position.X,
+                opponentAgent.Position.Y,
+                opponentAgent.OptimalRange,
+                opponentAgent.SoakingPower,
+                x,
+                y);
+
+            if (damage > highestDamage)
+            {
+                highestDamage = damage;
+            }
+        }
+
+        return highestDamage;
     }
 
     internal double CalculateDamage(int fromX, int fromY, int optimalRange, int soakingPower, int targetX, int targetY)
@@ -696,6 +718,7 @@ partial class Game
     private int _playerScore, _opponentScore = 0;
 
     private bool _inOpening = true;
+    private bool _inEndGame = false;
 
     public Game(int myId)
     {
@@ -768,8 +791,13 @@ partial class Game
                         .DefaultIfEmpty(int.MaxValue)
                         .Min();
 
+                    // Get the distance to the closet Edge of the 4 edges of the map
+                    int closestEdge = Math.Min(Math.Min(x, Width - 1 - x), Math.Min(y, Height - 1 - y));
+
+
                     var closest = Math.Min(closestEnemyPosition, closestPlayerAgent);
                     closest = Math.Min(closest, closestLandGrabPosition);
+                    closest = Math.Min(closest, closestEdge);
 
                     if (closest > highestDistance)
                     {
@@ -885,6 +913,23 @@ partial class Game
                     // agent.AgentPriority = Priority.LandGrab;
                     // continue;
                 }
+            }
+
+            if (!_inEndGame)
+            {
+                // If there are no more splashbombs 
+                if (_opponentAgents.All(a => a.SplashBombs == 0) 
+                    && _playerAgents.All(a => a.SplashBombs == 0))
+                {
+                    _inEndGame = true;
+                }
+            }
+            
+            if (_inEndGame)
+            {
+                // Currently don't do anything
+                //agent.AgentPriority = Priority.LandGrab;
+                //continue;
             }
 
             (_, var closestEnemyDistance) = GetClosestEnemyPosition(agent);
@@ -1045,7 +1090,7 @@ partial class Game
                 var attackDamage = _damageCalculator.CalculateHighestAttackingPlayerDamage(agent, x, y, _opponentAgents);
 
                 // Calculate possible damage taken
-                var receivingDamage = _damageCalculator.CalculateReceivingDamage(x, y, _opponentAgents);
+                var receivingDamage = _damageCalculator.CalculateTotalReceivingDamage(x, y, _opponentAgents);
 
                 // Calculate score
                 var score = attackDamage - receivingDamage;
@@ -1101,7 +1146,7 @@ partial class Game
             agentDamageMap);
 
         Point bestPoint = new Point(bestAttackPoint.X, bestAttackPoint.Y);
-
+        
         if (agent.Position != bestAttackPoint)
         {
             Console.Error.WriteLine($"Agent {agent.Id} found best advancing position: {bestPoint.X}, {bestPoint.Y}");
@@ -1161,6 +1206,25 @@ partial class Game
         foreach (var enemy in _opponentAgents)
         {
             int distance = CalculationUtil.GetManhattanDistance(agent.Position, enemy.Position);
+
+            if (distance < closestDistance)
+            {
+                closestDistance = distance;
+                closestEnemyPosition = enemy.Position;
+            }
+        }
+
+        return (closestEnemyPosition, closestDistance);
+    }
+
+    private (Point, double) GetClosestEuclideanEnemyPosition(Agent agent)
+    {
+        Point closestEnemyPosition = new Point(-1, -1);
+        double closestDistance = double.MaxValue;
+
+        foreach (var enemy in _opponentAgents)
+        {
+            double distance = CalculationUtil.GetEuclideanDistance(agent.Position, enemy.Position);
 
             if (distance < closestDistance)
             {

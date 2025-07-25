@@ -41,7 +41,7 @@ internal class DamageCalculator
 
     // Calculates the total damage the position (x,y) can receive from opponentAgents
     // Note: The total is theoretical and not based on whether they can currently shoot or not
-    internal double CalculateReceivingDamage(int x, int y, List<Agent> opponentAgents)
+    internal double CalculateTotalReceivingDamage(int x, int y, List<Agent> opponentAgents)
     {
         var stationaryReceivingDamage = 0.0;
         foreach (var opponentAgent in opponentAgents)
@@ -56,6 +56,28 @@ internal class DamageCalculator
         }
 
         return stationaryReceivingDamage;
+    }
+
+    internal double CalculateHighestReceivingDamage(int x, int y, List<Agent> opponentAgents)
+    {
+        var highestDamage = 0.0;
+        foreach (var opponentAgent in opponentAgents)
+        {
+            var damage = CalculateDamage(
+                opponentAgent.Position.X,
+                opponentAgent.Position.Y,
+                opponentAgent.OptimalRange,
+                opponentAgent.SoakingPower,
+                x,
+                y);
+
+            if (damage > highestDamage)
+            {
+                highestDamage = damage;
+            }
+        }
+
+        return highestDamage;
     }
 
     internal double CalculateDamage(int fromX, int fromY, int optimalRange, int soakingPower, int targetX, int targetY)

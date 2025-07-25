@@ -47,3 +47,10 @@ Test the Aren against the IDE in a number of specific tests. Results should not 
 | seed=-1157081042072761300 | Arena    | IDE      |                      |
 |                           | IDE      | Arena    |                      |
 
+
+seed=965395185724116000
+
+Move 20: I lose 7 - 640
+
+
+

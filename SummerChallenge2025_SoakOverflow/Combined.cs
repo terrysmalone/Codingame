@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Reflection.Metadata.Ecma335;
 using System.Runtime.CompilerServices;
 using System.Net.WebSockets;
 using System.IO;
@@ -694,6 +695,8 @@ partial class Game
 
     private int _playerScore, _opponentScore = 0;
 
+    private bool _inOpening = true;
+
     public Game(int myId)
     {
         MyId = myId;
@@ -712,7 +715,9 @@ partial class Game
 
         UpdatePriorities();
 
-        GetMoveCommands();
+        Dictionary<int, Point> landGrabAssignments = GetBestLandGrabPositions();
+
+        GetMoveCommands(landGrabAssignments);
 
         GetActionCommands();
         
@@ -726,9 +731,88 @@ partial class Game
         return commands;
     }
 
+    private Dictionary<int, Point> GetBestLandGrabPositions()
+    {
+        // count of agents who have InitialLandGrab as their priority
+        int initialLandGrabCount = _playerAgents.Count(a => a.AgentPriority == Priority.LandGrab);
+
+        List <Point> landGrabPositions = new List<Point>();
+
+        for (int i = 0; i < initialLandGrabCount; i++)
+        {
+            var bestPoint = new Point(-1, -1);
+            var highestDistance = int.MinValue;
+
+            // for each point on the map
+            for (int x = 0; x < Width; x++)
+            {
+                for (int y = 0; y < Height; y++)
+                {
+                    if (landGrabPositions.Contains(new Point(x, y)))
+                    {
+                        continue; // Skip if this point is already in landGrabPositions
+                    }
+
+                    (_, var closestEnemyPosition) = GetClosestEnemyPosition(new Point(x, y));
+
+                    // Get the closest player agent distance, excluding any that have priority as InitialLandGrab
+                    var closestPlayerAgent = _playerAgents
+                        .Where(a => a.AgentPriority != Priority.LandGrab)
+                        .Select(a => CalculationUtil.GetManhattanDistance(a.Position, new Point(x, y)))
+                        .DefaultIfEmpty(int.MaxValue)
+                        .Min();
+
+                    // Get the distance to the closest point in landGrabPositions
+                    var closestLandGrabPosition = landGrabPositions
+                        .Select(p => CalculationUtil.GetManhattanDistance(p, new Point(x, y)))
+                        .DefaultIfEmpty(int.MaxValue)
+                        .Min();
+
+                    var closest = Math.Min(closestEnemyPosition, closestPlayerAgent);
+                    closest = Math.Min(closest, closestLandGrabPosition);
+
+                    if (closest > highestDistance)
+                    {
+                        highestDistance = closest;
+                        bestPoint = new Point(x, y);
+                    }
+                }
+            }
+
+            if (bestPoint != new Point(-1, -1))
+            {
+                landGrabPositions.Add(bestPoint);
+                Console.Error.WriteLine($"Land grab position {i + 1}: {bestPoint.X}, {bestPoint.Y} with distance {highestDistance}");
+            }
+        }
+
+        Dictionary<int, Point> landGrabAssignments = new Dictionary<int, Point>();
+        List<int> assignedAgents = new List<int>();
+        for (int i = 0; i < landGrabPositions.Count; i++)
+        {
+            // get the closest agent that isn't already assigned
+            var closestAgent = _playerAgents
+                .Where(a => !assignedAgents.Contains(a.Id) && a.AgentPriority == Priority.LandGrab)
+                .OrderBy(a => CalculationUtil.GetManhattanDistance(a.Position, landGrabPositions[i]))
+                .FirstOrDefault();
+
+            if (closestAgent == null)
+            {
+                Console.Error.WriteLine($"ERROR: Couldn't find agent for land grab position {landGrabPositions[i].X},{landGrabPositions[i].Y}");
+            }
+            else
+            {
+                landGrabAssignments.Add(closestAgent.Id, landGrabPositions[i]);
+                assignedAgents.Add(closestAgent.Id);
+            }
+        }
+
+
+        return landGrabAssignments;
+    }
+
     private void UpdateScores()
     {
-
         (int player, int opponent) = _scoreCalculator.CalculateScores(_playerAgents, _opponentAgents);
 
         if (player > opponent)
@@ -788,6 +872,21 @@ partial class Game
     {
         foreach (var agent in _playerAgents)
         {
+            // Once any player comes out of the opening all players are out of it
+            if (_inOpening)
+            {
+                if (isOpponentSplashBombInRange(6, agent.Position))
+                {
+                    _inOpening = false;
+                }
+                else
+                {
+                    // Currently don't do anything
+                    // agent.AgentPriority = Priority.LandGrab;
+                    // continue;
+                }
+            }
+
             (_, var closestEnemyDistance) = GetClosestEnemyPosition(agent);
 
             if (isOpponentSplashBombInRange(6, agent.Position)
@@ -796,11 +895,6 @@ partial class Game
             {
                 Console.Error.WriteLine($"Agent {agent.Id} closest enemy distance: {closestEnemyDistance}");
                 
-                foreach (var a in _playerAgents)
-                {
-                    Console.Error.WriteLine($"Agent distance {CalculationUtil.GetEuclideanDistance(a.Position, agent.Position)}");
-                }
-
                 agent.AgentPriority = Priority.SpreadingOut;
             }
             else if (closestEnemyDistance <= agent.OptimalRange)
@@ -828,12 +922,31 @@ partial class Game
         return false;
     }
 
-    private void GetMoveCommands()
+    private void GetMoveCommands(Dictionary<int, Point> landGrabAssignments)
     {
         List<Move> currentMovePoints = new List<Move>();
 
         foreach (var agent in _playerAgents)
         {
+            if (agent.AgentPriority == Priority.LandGrab)
+            {
+                var landGrabMove = new Point(-1, -1);
+                landGrabAssignments.TryGetValue(agent.Id, out landGrabMove);
+
+                if (landGrabMove != new Point(-1, -1))
+                {
+                    if (agent.Position != landGrabMove)
+                    {
+                        // Convert the move to the next adjacent move so we know exactly where we'll be on the next turn
+                        List<Point> bestPath = _aStar.GetShortestPath(agent.Position, landGrabMove);
+                        landGrabMove = bestPath[0];
+                    }
+
+                    agent.MoveIntention.Move = landGrabMove;
+                    agent.MoveIntention.Source = "Moving to best land grab position";
+                }
+            }
+
             // If opponent still has any splashbombs, spread out any agents that are close to each other
             if (agent.AgentPriority == Priority.SpreadingOut)
             {
@@ -942,7 +1055,6 @@ partial class Game
 
                     if (score == maxDamageScore)
                     {
-                        Console.Error.WriteLine($"Agent {agent.Id} found equal score at {x}, {y} with score {score} and distance {distanceToAgent} from agent at {agent.Position.X}, {agent.Position.Y}");
                         // If the score is the same, check if it's closer to the agent
                         if (distanceToAgent < minDistanceToAgent)
                         {
@@ -974,10 +1086,35 @@ partial class Game
             }
 
             agent.MoveIntention.Move = bestPoint;
-            agent.MoveIntention.Source = "Moving to best defended attack position";
+            agent.MoveIntention.Source = "Moving to best attack position";
 
             Console.Error.WriteLine($"Agent {agent.Id} moving to best attack position: {bestPoint.X}, {bestPoint.Y} with score {maxDamageScore} and distance {minDistanceToAgent}");
         }
+    }
+
+    private void GetBestAdvancingMove(Agent agent)
+    {
+        double[,] agentDamageMap = _damageMapGenerator.CreateDamageMap(agent, _opponentAgents, _splashMap, _coverMaps, cover);
+
+        (Point bestAttackPoint, _) = ClosestPeakFinder.FindClosestPeak(
+            agent.Position,
+            agentDamageMap);
+
+        Point bestPoint = new Point(bestAttackPoint.X, bestAttackPoint.Y);
+
+        if (agent.Position != bestAttackPoint)
+        {
+            Console.Error.WriteLine($"Agent {agent.Id} found best advancing position: {bestPoint.X}, {bestPoint.Y}");
+            // Convert the move to the next adjacent move so we know exactly where we'll be on the next turn
+            List<Point> bestPath = _aStar.GetShortestPath(agent.Position, bestAttackPoint);
+
+            Console.Error.WriteLine($"Agent {agent.Id} best path: {string.Join(" -> ", bestPath.Select(p => $"({p.X}, {p.Y})"))}");
+
+            bestPoint = bestPath[0];
+        }
+
+        agent.MoveIntention.Move = bestPoint;
+        agent.MoveIntention.Source = "Moving to best advancing position";
     }
 
     private void UpdateForCollisions(Agent agent, List<Move> currentMovePoints)
@@ -1014,27 +1151,6 @@ partial class Game
                 }
             }
         }
-    }
-
-    private void GetBestAdvancingMove(Agent agent)
-    {
-        double[,] agentDamageMap = _damageMapGenerator.CreateDamageMap(agent, _opponentAgents, _splashMap, _coverMaps, cover);
-
-        (Point bestAttackPoint, _) = ClosestPeakFinder.FindClosestPeak(
-            agent.Position,
-            agentDamageMap);
-
-        Point bestPoint = new Point(bestAttackPoint.X, bestAttackPoint.Y);
-
-        if (agent.Position != bestAttackPoint)
-        {
-            // Convert the move to the next adjacent move so we know exactly where we'll be on the next turn
-            List<Point> bestPath = _aStar.GetShortestPath(agent.Position, bestAttackPoint);
-            bestPoint = bestPath[0];
-        }
-
-        agent.MoveIntention.Move = bestPoint;
-        agent.MoveIntention.Source = "Moving to best attack position";
     }
 
     private (Point, int) GetClosestEnemyPosition(Agent agent)
@@ -1482,6 +1598,7 @@ public enum Priority
     Advancing,
     FindingBestAttackPosition,
     SpreadingOut,
+    LandGrab,
 }
 
 internal class ScoreCalculator

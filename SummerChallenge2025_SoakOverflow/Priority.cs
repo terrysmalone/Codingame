@@ -5,4 +5,5 @@ public enum Priority
     Advancing,
     FindingBestAttackPosition,
     SpreadingOut,
+    LandGrab,
 }

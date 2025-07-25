@@ -15,7 +15,41 @@ internal class ScoreCalculator
         _height = height;
     }
 
+    internal int CalculateScoreDiff(List<Agent> playerAgents, List<Agent> opponentAgents)
+    {
+        (var player, var opponent) = CalculateScores(playerAgents, opponentAgents);
+        return player - opponent;
+    }
+
     internal (int player, int opponent) CalculateScores(List<Agent> playerAgents, List<Agent> opponentAgents)
+    {
+        List<(Point, int)> players = playerAgents.Select(a => (a.Position, a.Wetness)).ToList();
+        List<(Point, int)> opponents = opponentAgents.Select(a => (a.Position, a.Wetness)).ToList();
+
+        return CalculateScores(players, opponents);
+    }
+
+    internal (int player, int opponent) CalculateScores(List<Agent> playerAgents, Dictionary<int, Point> playerChanges, List<Agent> opponentAgents)
+    {
+        List<(Point, int)> players = new List<(Point, int)>();
+        foreach (var agent in playerAgents)
+        {
+            if (playerChanges.TryGetValue(agent.Id, out var newPosition))
+            {
+                players.Add((newPosition, agent.Wetness));
+            }
+            else
+            {
+                players.Add((agent.Position, agent.Wetness));
+            }
+        }
+
+        List<(Point, int)> opponents = opponentAgents.Select(a => (a.Position, a.Wetness)).ToList();
+
+        return CalculateScores(players, opponents);
+    }
+
+    internal (int player, int opponent) CalculateScores(List<(Point, int)> playerAgents, List<(Point, int)> opponentAgents)
     {
         var player = 0;
         var opponent = 0;
@@ -41,14 +75,14 @@ internal class ScoreCalculator
         return (player, opponent);
     }
 
-    private int GetClosestAgentDistance(List<Agent> agents, int x, int y)
+    private int GetClosestAgentDistance(List<(Point, int)> agents, int x, int y)
     {
         var closest = int.MaxValue;
         foreach (var agent in agents)
         {
-            var distance = CalculationUtil.GetManhattanDistance(agent.Position, new Point(x, y));
+            var distance = CalculationUtil.GetManhattanDistance(agent.Item1, new Point(x, y));
 
-            if (agent.Wetness >= 50)
+            if (agent.Item2 >= 50)
             {
                 distance *= 2;
             }

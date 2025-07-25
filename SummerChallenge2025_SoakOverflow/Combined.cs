@@ -700,7 +700,7 @@ partial class Game
     List<Agent> _playerAgents = new List<Agent>();
     List<Agent> _opponentAgents = new List<Agent>();
 
-    int[,] cover;
+    int[,] _cover;
 
     private int[,] _splashMap;
     Dictionary<int, double[,]> _coverMaps;
@@ -928,20 +928,25 @@ partial class Game
             if (_inEndGame)
             {
                 // Currently don't do anything
-                //agent.AgentPriority = Priority.LandGrab;
+                //agent.AgentPriority = Priority.MaximiseScore;
                 //continue;
             }
 
             (_, var closestEnemyDistance) = GetClosestEnemyPosition(agent);
+            (_, var closestBomberDistance) = GetClosestEnemyWithSplashBombsPosition(agent);
 
-            if (isOpponentSplashBombInRange(6, agent.Position)
-                && _playerAgents.Any(a => a.Id != agent.Id 
-                                     && CalculationUtil.GetEuclideanDistance(a.Position, agent.Position) < 3))
+            if (closestBomberDistance <= 8)
             {
-                Console.Error.WriteLine($"Agent {agent.Id} closest enemy distance: {closestEnemyDistance}");
-                
-                agent.AgentPriority = Priority.SpreadingOut;
+                agent.AgentPriority = Priority.DodgingBombs;
             }
+            //if (isOpponentSplashBombInRange(6, agent.Position)
+            //    && _playerAgents.Any(a => a.Id != agent.Id 
+            //                         && CalculationUtil.GetEuclideanDistance(a.Position, agent.Position) < 3))
+            //{
+            //    Console.Error.WriteLine($"Agent {agent.Id} closest enemy distance: {closestEnemyDistance}");
+                
+            //    agent.AgentPriority = Priority.SpreadingOut;
+            //}
             else if (closestEnemyDistance <= agent.OptimalRange)
             {
                 agent.AgentPriority = Priority.FindingBestAttackPosition;
@@ -973,55 +978,159 @@ partial class Game
 
         foreach (var agent in _playerAgents)
         {
-            if (agent.AgentPriority == Priority.LandGrab)
+            // If enemy has a higher score this round maximise score
+            (var player, var opponent) = _scoreCalculator.CalculateScores(_playerAgents, _opponentAgents);
+
+            if (player - opponent < -40)
             {
-                var landGrabMove = new Point(-1, -1);
-                landGrabAssignments.TryGetValue(agent.Id, out landGrabMove);
-
-                if (landGrabMove != new Point(-1, -1))
-                {
-                    if (agent.Position != landGrabMove)
-                    {
-                        // Convert the move to the next adjacent move so we know exactly where we'll be on the next turn
-                        List<Point> bestPath = _aStar.GetShortestPath(agent.Position, landGrabMove);
-                        landGrabMove = bestPath[0];
-                    }
-
-                    agent.MoveIntention.Move = landGrabMove;
-                    agent.MoveIntention.Source = "Moving to best land grab position";
-                }
+                Console.Error.WriteLine($"Agent {agent.Id} prioritising score maximisation due to negative score difference: {player - opponent}");
+                GetScoreMaximisingMove(agent);
             }
 
             // If opponent still has any splashbombs, spread out any agents that are close to each other
             if (agent.AgentPriority == Priority.SpreadingOut)
             {
                 GetSpreadMove(agent);
-                if (agent.MoveIntention.Move != new Point(-1, -1))
-                {
-                    continue;
-                }
+            }
+
+            if (agent.AgentPriority == Priority.DodgingBombs)
+            {
+                GetBombDodgeMove(agent);
+            }
+
+            if (player - opponent < -20)
+            {
+                Console.Error.WriteLine($"Agent {agent.Id} prioritising score maximisation due to negative score difference: {player - opponent}");
+                GetScoreMaximisingMove(agent);
             }
 
             if ((agent.AgentPriority == Priority.FindingBestAttackPosition && agent.OptimalRange > 2)
-                || (agent.AgentPriority == Priority.SpreadingOut && agent.MoveIntention.Move == new Point(-1, -1)))
-            {
+                || (agent.AgentPriority == Priority.SpreadingOut))
+            {               
                 GetBestAttackPosition(agent);
             }
 
             // Default to advancing to Enemy
-            if (agent.MoveIntention.Move == new Point(-1, -1))
-            {
-                GetBestAdvancingMove(agent);
-            }
 
+            // If we still don't have a move, look for a score maximising move
+            GetScoreMaximisingMove(agent);
+                
+            // If we still don't have a move, get the best advancing move
+            GetBestAdvancingMove(agent);
+                
             UpdateForCollisions(agent, currentMovePoints);
 
             currentMovePoints.Add(new Move(agent.Position, agent.MoveIntention.Move));
         }
     }
 
+    private void GetScoreMaximisingMove(Agent agent)
+    {
+        if (agent.MoveIntention.Move != new Point(-1, -1))
+        {
+            // If we already have a move, return
+            return;
+        }
+
+        int maxScoreDiff = _scoreCalculator.CalculateScoreDiff(_playerAgents, _opponentAgents);
+
+        Point[] pointsToCheck = new Point[4];
+        pointsToCheck[0] = new Point(Math.Min(Width - 1, agent.Position.X + 1), agent.Position.Y);
+        pointsToCheck[1] = new Point(Math.Max(0, agent.Position.X - 1), agent.Position.Y);
+        pointsToCheck[2] = new Point(agent.Position.X, Math.Min(Height - 1, agent.Position.Y + 1));
+        pointsToCheck[3] = new Point(agent.Position.X, Math.Max(0, agent.Position.Y - 1));
+
+        foreach (Point point in pointsToCheck)
+        {
+            // If there is cover at this point , skip it
+            if (_cover[point.X, point.Y] > 0)
+            {
+                continue;
+            }
+
+            (var player, var opponent) = _scoreCalculator.CalculateScores(_playerAgents, new Dictionary<int, Point> { { agent.Id, point } }, _opponentAgents);
+
+            int scoreDiff = player - opponent;
+
+            if (scoreDiff > maxScoreDiff)
+            {
+                maxScoreDiff = scoreDiff;
+                agent.MoveIntention.Move = point;
+                agent.MoveIntention.Source = "Maximising score";
+            }
+        }
+    }
+
+    private void GetBombDodgeMove(Agent agent)
+    {
+        if (agent.MoveIntention.Move != new Point(-1, -1))
+        {
+            // If we already have a move, return
+            return;
+        }
+
+        (var enemyPosition, var enemyDistance) = GetClosestEnemyWithSplashBombsPosition(agent);
+
+        if (enemyPosition == new Point(-1, -1))
+        {
+            // No enemies with splash bombs in range
+            return;
+        }
+
+        // For now, just assume x-axis is more important than y-axis
+        // If it turns out it's not we can worry about it later
+        if (agent.Position.Y == enemyPosition.Y)
+        {
+             if (enemyDistance <= 6)
+             {
+                // move back
+                if (agent.Position.X < enemyPosition.X)
+                {
+                    agent.MoveIntention.Move = new Point(agent.Position.X - 1, agent.Position.Y);
+                }
+                else
+                {
+                    agent.MoveIntention.Move = new Point(agent.Position.X + 1, agent.Position.Y);
+                }
+            }
+            else if (enemyDistance <= 7)
+            {
+                // stay still
+                // agent.MoveIntention.Move = new Point(agent.Position.X, agent.Position.Y);
+            }
+        }
+        else if (Math.Abs(agent.Position.Y - enemyPosition.Y) == 1 || Math.Abs(agent.Position.Y - enemyPosition.Y) == 2)
+        {
+            if (enemyDistance <= 7)
+            {
+                // move back
+                if (agent.Position.X < enemyPosition.X)
+                {
+                    agent.MoveIntention.Move = new Point(agent.Position.X - 1, agent.Position.Y);
+                }
+                else
+                {
+                    agent.MoveIntention.Move = new Point(agent.Position.X + 1, agent.Position.Y);
+                }
+            }
+            else if (enemyDistance <= 8)
+            {
+                // stay still
+                agent.MoveIntention.Move = new Point(agent.Position.X, agent.Position.Y);
+            }
+        }
+
+        agent.MoveIntention.Source = "Dodging a bomb";
+    }
+
     private void GetSpreadMove(Agent agent)
     {
+        if (agent.MoveIntention.Move != new Point(-1, -1))
+        {
+            // If we already have a move, return
+            return;
+        }
+
         // Get the closest agent to this agent
         var closestAgent = _playerAgents
             .Where(a => a.Id != agent.Id)
@@ -1057,6 +1166,12 @@ partial class Game
 
     private void GetBestAttackPosition(Agent agent)
     {
+        if (agent.MoveIntention.Move != new Point(-1, -1))
+        {
+            // If we already have a move, return
+            return;
+        }
+
         // Look around the agent by optimal range / 2
         var move = new Point(-1, -1);
 
@@ -1069,11 +1184,20 @@ partial class Game
         double maxDamageScore = double.MinValue;
         int minDistanceToAgent = int.MaxValue;
 
+        (_, var distanceToEnemy) = GetClosestEnemyPosition(agent);
+
         // For each point calculate Damage - Potential damage
         for (int x = minX; x <= maxX; x++)
         {
             for (int y = minY; y <= maxY; y++)
             {
+                (_, var closestEnemyToPoint) = GetClosestEnemyPosition(new Point(x, y));
+                if (closestEnemyToPoint > distanceToEnemy)
+                {
+                    continue;
+                }
+                
+
                 // If an enemy agent is already at to this point, skip it
                 if (_opponentAgents.Any(enemyAgent => enemyAgent.Position.X == x && enemyAgent.Position.Y == y))
                 {
@@ -1081,7 +1205,7 @@ partial class Game
                 }
 
                 // If there is cover at this point , skip it
-                if (cover[x, y] > 0)
+                if (_cover[x, y] > 0)
                 {
                     continue;
                 }
@@ -1139,7 +1263,13 @@ partial class Game
 
     private void GetBestAdvancingMove(Agent agent)
     {
-        double[,] agentDamageMap = _damageMapGenerator.CreateDamageMap(agent, _opponentAgents, _splashMap, _coverMaps, cover);
+        if (agent.MoveIntention.Move != new Point(-1, -1))
+        {
+            // If we already have a move, return
+            return;
+        }
+
+        double[,] agentDamageMap = _damageMapGenerator.CreateDamageMap(agent, _opponentAgents, _splashMap, _coverMaps, _cover);
 
         (Point bestAttackPoint, _) = ClosestPeakFinder.FindClosestPeak(
             agent.Position,
@@ -1149,11 +1279,8 @@ partial class Game
         
         if (agent.Position != bestAttackPoint)
         {
-            Console.Error.WriteLine($"Agent {agent.Id} found best advancing position: {bestPoint.X}, {bestPoint.Y}");
             // Convert the move to the next adjacent move so we know exactly where we'll be on the next turn
             List<Point> bestPath = _aStar.GetShortestPath(agent.Position, bestAttackPoint);
-
-            Console.Error.WriteLine($"Agent {agent.Id} best path: {string.Join(" -> ", bestPath.Select(p => $"({p.X}, {p.Y})"))}");
 
             bestPoint = bestPath[0];
         }
@@ -1186,7 +1313,7 @@ partial class Game
 
                 foreach (var pointToCheck in pointsToCheck)
                 {
-                    if (cover[pointToCheck.X, pointToCheck.Y] == 0
+                    if (_cover[pointToCheck.X, pointToCheck.Y] == 0
                         && relevantMove.From != new Point(pointToCheck.X, pointToCheck.Y))
                     {
                         agent.MoveIntention.Move = new Point(pointToCheck.X, pointToCheck.Y);
@@ -1205,6 +1332,30 @@ partial class Game
 
         foreach (var enemy in _opponentAgents)
         {
+            int distance = CalculationUtil.GetManhattanDistance(agent.Position, enemy.Position);
+
+            if (distance < closestDistance)
+            {
+                closestDistance = distance;
+                closestEnemyPosition = enemy.Position;
+            }
+        }
+
+        return (closestEnemyPosition, closestDistance);
+    }
+
+    private (Point, int) GetClosestEnemyWithSplashBombsPosition(Agent agent)
+    {
+        Point closestEnemyPosition = new Point(-1, -1);
+        int closestDistance = int.MaxValue;
+
+        foreach (var enemy in _opponentAgents)
+        {
+            if (enemy.SplashBombs <= 0)
+            {
+                continue; // Skip enemies without splash bombs
+            }
+
             int distance = CalculationUtil.GetManhattanDistance(agent.Position, enemy.Position);
 
             if (distance < closestDistance)
@@ -1298,15 +1449,22 @@ partial class Game
 
         // Get highest score from splashDamageMap within 4 
         // Manhattan distance from agent's position
-        int minX = Math.Max(0, movePoint.X - 4);
-        int maxX = Math.Min(Width - 1, movePoint.X + 4);
-        int minY = Math.Max(0, movePoint.Y - 4);
-        int maxY = Math.Min(Height - 1, movePoint.Y + 4);
+
+        int distance = 3;
+        int minX = Math.Max(0, movePoint.X - distance);
+        int maxX = Math.Min(Width - 1, movePoint.X + distance);
+        int minY = Math.Max(0, movePoint.Y - distance);
+        int maxY = Math.Min(Height - 1, movePoint.Y + distance);
 
         for (int x = minX; x <= maxX; x++)
         {
             for (int y = minY; y <= maxY; y++)
             {
+                if (CalculationUtil.GetManhattanDistance(movePoint, new Point(x, y)) > 3)
+                {
+                    continue; // Skip points that are more than 4 away
+                }
+
                 bool friendlyFire = false;
                 // We don't want to throw a bomb if it would damage a point any of our agents are moving to
                 foreach (var playerAgent in _playerAgents)
@@ -1456,7 +1614,7 @@ partial class Game
         Width = width;
         Height = height;
 
-        cover = new int[Width, Height];
+        _cover = new int[Width, Height];
         
         _damageMapGenerator = new DamageMapGenerator(width, height);
         _scoreCalculator = new ScoreCalculator(width, height);
@@ -1515,13 +1673,13 @@ partial class Game
             Console.Error.WriteLine($"Cover position {x}, {y} out of bounds");
             return;
         }
-        cover[x, y] = tileType;
+        _cover[x, y] = tileType;
     }
 
     internal void UpdateCoverRelatedMaps()
     {
-        _coverMapGenerator = new CoverMapGenerator(cover);
-        _aStar = new AStar(cover);
+        _coverMapGenerator = new CoverMapGenerator(_cover);
+        _aStar = new AStar(_cover);
     }
 }
 
@@ -1663,6 +1821,8 @@ public enum Priority
     FindingBestAttackPosition,
     SpreadingOut,
     LandGrab,
+    MaximiseScore,
+    DodgingBombs,
 }
 
 internal class ScoreCalculator
@@ -1676,7 +1836,41 @@ internal class ScoreCalculator
         _height = height;
     }
 
+    internal int CalculateScoreDiff(List<Agent> playerAgents, List<Agent> opponentAgents)
+    {
+        (var player, var opponent) = CalculateScores(playerAgents, opponentAgents);
+        return player - opponent;
+    }
+
     internal (int player, int opponent) CalculateScores(List<Agent> playerAgents, List<Agent> opponentAgents)
+    {
+        List<(Point, int)> players = playerAgents.Select(a => (a.Position, a.Wetness)).ToList();
+        List<(Point, int)> opponents = opponentAgents.Select(a => (a.Position, a.Wetness)).ToList();
+
+        return CalculateScores(players, opponents);
+    }
+
+    internal (int player, int opponent) CalculateScores(List<Agent> playerAgents, Dictionary<int, Point> playerChanges, List<Agent> opponentAgents)
+    {
+        List<(Point, int)> players = new List<(Point, int)>();
+        foreach (var agent in playerAgents)
+        {
+            if (playerChanges.TryGetValue(agent.Id, out var newPosition))
+            {
+                players.Add((newPosition, agent.Wetness));
+            }
+            else
+            {
+                players.Add((agent.Position, agent.Wetness));
+            }
+        }
+
+        List<(Point, int)> opponents = opponentAgents.Select(a => (a.Position, a.Wetness)).ToList();
+
+        return CalculateScores(players, opponents);
+    }
+
+    internal (int player, int opponent) CalculateScores(List<(Point, int)> playerAgents, List<(Point, int)> opponentAgents)
     {
         var player = 0;
         var opponent = 0;
@@ -1702,14 +1896,14 @@ internal class ScoreCalculator
         return (player, opponent);
     }
 
-    private int GetClosestAgentDistance(List<Agent> agents, int x, int y)
+    private int GetClosestAgentDistance(List<(Point, int)> agents, int x, int y)
     {
         var closest = int.MaxValue;
         foreach (var agent in agents)
         {
-            var distance = CalculationUtil.GetManhattanDistance(agent.Position, new Point(x, y));
+            var distance = CalculationUtil.GetManhattanDistance(agent.Item1, new Point(x, y));
 
-            if (agent.Wetness >= 50)
+            if (agent.Item2 >= 50)
             {
                 distance *= 2;
             }

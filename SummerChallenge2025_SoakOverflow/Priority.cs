@@ -6,4 +6,6 @@ public enum Priority
     FindingBestAttackPosition,
     SpreadingOut,
     LandGrab,
+    MaximiseScore,
+    DodgingBombs,
 }

@@ -32,25 +32,13 @@
 | seed=-1157081042072761300 | Arena    | IDE      | Arena  | IDE    |
 |                           | IDE      | Arena    | Arena  | Arena  |
 
-# Pre gold refactor sanity checks
+# League boss analysis
 
-Test the Aren against the IDE in a number of specific tests. Results should not change
+seed=-3712306056014127000
 
-| Seed                      | player 1 | player 2 | Pre refactor results |
-| ------------------------  | -------- | -------- | -------------------- |
-| seed=3665131989781587000  | Arena    | IDE      |                      |
-|                           | IDE      | Arena    |                      |
-| seed=2409305125464446000  | Arena    | IDE      |                      |
-|                           | IDE      | Arena    |                      |
-| seed=-8859283512535219000 | Arena    | IDE      |                      |
-|                           | IDE      | Arena    |                      |
-| seed=-1157081042072761300 | Arena    | IDE      |                      |
-|                           | IDE      | Arena    |                      |
+On move 18 I lose 1, 629
 
+# Changes since last Test in Arena
 
-seed=-5987309072221063000
-
-Move 23: I lose 603 - 2
-
-
-
+* swapped spreading out with dodging bomb
+* Add maximise score check before advancing

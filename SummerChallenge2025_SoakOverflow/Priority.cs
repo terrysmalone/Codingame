@@ -2,7 +2,7 @@
 
 public enum Priority
 {
-    MovingToEnemy,
+    Advancing,
     FindingBestAttackPosition,
     SpreadingOut,
 }

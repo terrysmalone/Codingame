@@ -12,7 +12,7 @@ class Agent
     public int SplashBombs { get; set; }
     public int Wetness { get; set; }
     public Point Position { get; private set; } = new Point(-1, -1);
-    public Priority AgentPriority { get; set; } = Priority.MovingToEnemy;
+    public Priority AgentPriority { get; set; } = Priority.Advancing;
     public MoveIntention MoveIntention { get; set; } = new MoveIntention();
     public ActionIntention ActionIntention { get; set; } = new ActionIntention();
 

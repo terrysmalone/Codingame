@@ -19,12 +19,25 @@ internal sealed class AStar
         _height = cover.GetLength(1);
     }
 
+
     internal List<Point> GetShortestPath(Point startPoint, Point targetPoint)
     {
-        return GetShortestPath(startPoint, targetPoint, int.MaxValue);
+        return GetPath(startPoint, targetPoint, new List<List<Point>>());
     }
 
-    internal List<Point> GetShortestPath(Point startPoint, Point targetPoint, int maxDistance)
+    internal List<Point> GetShortestPath(Point startPoint, Point targetPoint, List<List<Point>> excludePaths)
+    {
+        var shortestPath = GetPath(startPoint, targetPoint, excludePaths);
+
+        if (shortestPath.Count == 0)
+        {
+            shortestPath = GetPath(startPoint, targetPoint, new List<List<Point>>());
+        }
+
+        return shortestPath;
+    }
+
+    private List<Point> GetPath(Point startPoint, Point targetPoint, List<List<Point>> excludePaths)
     {
         _nodes = new List<Node>();
 
@@ -66,16 +79,16 @@ internal sealed class AStar
 
                 if (existingNode == null)
                 {
-                    if (pointToCheck == startPoint || pointToCheck == targetPoint || cover[pointToCheck.X, pointToCheck.Y] == 0)
+                    if (pointToCheck == startPoint 
+                        || pointToCheck == targetPoint 
+                        || (cover[pointToCheck.X, pointToCheck.Y] == 0 
+                            && !IsExcluded(pointToCheck, excludePaths)))
                     {
                         Node node = new Node(pointToCheck);
 
                         node.Parent = currentNode.Position;
 
                         node.G = currentNode.G + 1;
-
-                        if (node.G > maxDistance)
-                            continue;
 
                         node.H = CalculationUtil.GetManhattanDistance(pointToCheck, targetPoint);
                         node.F = node.G + node.H;
@@ -92,9 +105,6 @@ internal sealed class AStar
                         if (g < existingNode.G)
                         {
                             existingNode.G = g;
-
-                            if (existingNode.G > maxDistance)
-                                continue;
 
                             existingNode.F = existingNode.G + existingNode.H;
 
@@ -146,5 +156,22 @@ internal sealed class AStar
         }
 
         return shortestPath;
+    }
+
+    private bool IsExcluded(Point pointToCheck, List<List<Point>> excludePaths)
+    {
+        for (var i=0; i < excludePaths.Count; i++)
+        {
+            for (var j = 0; j < excludePaths[i].Count; j++)
+            {
+                if (excludePaths[i][j] == pointToCheck)
+                {
+                    Console.Error.WriteLine($"Excluding point {pointToCheck} from path {i} at index {j}");
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 }

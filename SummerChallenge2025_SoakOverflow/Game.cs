@@ -47,6 +47,8 @@ partial class Game
         UpdateScores();
         Console.Error.WriteLine($"Player score: {_playerScore}, Opponent score: {_opponentScore}");
 
+        UpdateMoveLists();
+
         _splashMap = CreateSplashMap();
         _coverMaps = CreateCoverMaps();
 
@@ -68,6 +70,16 @@ partial class Game
         _moveCount++;
 
         return commands;
+    }
+
+    // We want to include agents current squares as part of their path so that other agents won't
+    // want to walk over them
+    private void UpdateMoveLists()
+    {
+        foreach (var agent in _playerAgents)
+        {
+            agent.MoveList.Add(agent.Position);
+        }
     }
 
     private Dictionary<int, Point> GetBestLandGrabPositions()
@@ -376,6 +388,7 @@ partial class Game
                 Console.Error.WriteLine($"Agent {agent.Id} found a better score diff: {scoreDiff} at point {point.X}, {point.Y}");
                 maxScoreDiff = scoreDiff;
                 agent.MoveIntention.Move = point;
+                agent.TargetPath = new List<Point>() { point };
                 agent.MoveIntention.Source = "Maximising score";
             }
         }
@@ -386,6 +399,13 @@ partial class Game
         if (agent.MoveIntention.Move != new Point(-1, -1))
         {
             // If we already have a move, return
+            return;
+        }
+
+        if (agent.OptimalRange == 2 && agent.SplashBombs >= 3)
+        {
+            // He's a fucking hero. He doesn't run away
+            agent.MoveIntention.Source = "LEROY JENKINS!!!!!!!!!!!!";
             return;
         }
 
@@ -404,7 +424,9 @@ partial class Game
             // Move towards the enemy position
             List<Point> bestPath = _aStar.GetShortestPath(agent.Position, enemyPosition);
             var bestPoint = bestPath[0];
+            agent.TargetPath = bestPath;
             agent.MoveIntention.Move = bestPoint;
+            agent.TargetPath = new List<Point>() { bestPoint };
 
             agent.MoveIntention.Source = "Hug him!";
             return;
@@ -423,10 +445,12 @@ partial class Game
                 {
                     Console.Error.WriteLine(agent.Id + " is to the left of the enemy with splash bombs, moving left");
                     agent.MoveIntention.Move = new Point(agent.Position.X - 1, agent.Position.Y);
+                    agent.TargetPath = new List<Point>() { new Point(agent.Position.X - 1, agent.Position.Y) };
                 }
                 else if (agent.Position.X < Width - 1)
                 {
                     agent.MoveIntention.Move = new Point(agent.Position.X + 1, agent.Position.Y);
+                    agent.TargetPath = new List<Point>() { new Point(agent.Position.X + 1, agent.Position.Y) };
                 }
             }
             else if (enemyDistance == 7)
@@ -439,14 +463,19 @@ partial class Game
         {
             if (enemyDistance <= 7)
             {
+                Console.Error.WriteLine(agent.Id + " is 7 away from the enemy with splash bombs, moving back");
                 // move back
                 if (agent.Position.X < enemyPosition.X && agent.Position.X > 0)
                 {
+                    Console.Error.WriteLine(agent.Id + " is to the left of the enemy with splash bombs, moving left");
                     agent.MoveIntention.Move = new Point(agent.Position.X - 1, agent.Position.Y);
+                    agent.TargetPath = new List<Point>() { new Point(agent.Position.X - 1, agent.Position.Y) };
                 }
                 else if (agent.Position.X < Width - 1)
                 {
+                    Console.Error.WriteLine(agent.Id + " is to the right of the enemy with splash bombs, moving right");
                     agent.MoveIntention.Move = new Point(agent.Position.X + 1, agent.Position.Y);
+                    agent.TargetPath = new List<Point>() { new Point(agent.Position.X + 1, agent.Position.Y) };
                 }
             }
             else if (enemyDistance <= 8)
@@ -479,18 +508,22 @@ partial class Game
             if (closestAgent.Position.X < agent.Position.X && agent.Position.X + 1 <= Width - 1)
             {
                 agent.MoveIntention.Move = new Point(agent.Position.X + 1, agent.Position.Y);
+                agent.TargetPath = new List<Point>() { new Point(agent.Position.X + 1, agent.Position.Y) };
             }
             else if (closestAgent.Position.X > agent.Position.X && agent.Position.X - 1 >= 0)
             {
                 agent.MoveIntention.Move = new Point(agent.Position.X - 1, agent.Position.Y);
+                agent.TargetPath = new List<Point>() { new Point(agent.Position.X - 1, agent.Position.Y) };
             }
             else if (closestAgent.Position.Y > agent.Position.Y && agent.Position.Y - 1 >= 0)
             {
                 agent.MoveIntention.Move = new Point(agent.Position.X, agent.Position.Y - 1);
+                agent.TargetPath = new List<Point>() { new Point(agent.Position.X, agent.Position.Y - 1) };
             }
             else if (closestAgent.Position.Y < agent.Position.Y && agent.Position.Y + 1 <= Height - 1)
             {
                 agent.MoveIntention.Move = new Point(agent.Position.X, agent.Position.Y + 1);
+                agent.TargetPath = new List<Point>() { new Point(agent.Position.X, agent.Position.Y + 1) };
             }
             else
             {
@@ -586,10 +619,12 @@ partial class Game
 
             if (agent.Position != move)
             {
-                List<Point> bestPath = _aStar.GetShortestPath(agent.Position, move);
+                List<Point> bestPath = _aStar.GetShortestPath(agent.Position, move, GetFullPaths());
                 bestPoint = bestPath[0];
+                agent.TargetPath = bestPath;
             }
 
+            
             agent.MoveIntention.Move = bestPoint;
             agent.MoveIntention.Source = "Moving to best attack position";
 
@@ -617,13 +652,35 @@ partial class Game
         {
             Console.Error.WriteLine($"Agent {agent.Id} found best advancing position: {bestPoint.X}, {bestPoint.Y} with score {agentDamageMap[bestPoint.X, bestPoint.Y]}");
             // Convert the move to the next adjacent move so we know exactly where we'll be on the next turn
-            List<Point> bestPath = _aStar.GetShortestPath(agent.Position, bestAttackPoint);
+            List<Point> bestPath = _aStar.GetShortestPath(agent.Position, bestAttackPoint, GetFullPaths());
 
             bestPoint = bestPath[0];
+            agent.TargetPath = bestPath;
         }
 
         agent.MoveIntention.Move = bestPoint;
         agent.MoveIntention.Source = "Moving to best advancing position";
+    }
+
+    private List<List<Point>> GetFullPaths()
+    {
+        List<List<Point>> fullPaths = new List<List<Point>>();
+
+        // Don't return any paths if we've moved more than 4 times
+        if (_moveCount > 4)
+        {
+            return fullPaths;
+        }
+
+        foreach (var agent in _playerAgents)
+        {
+            var fullPath = new List<Point>();
+            fullPath.AddRange(agent.MoveList);
+            fullPath.AddRange(agent.TargetPath);
+
+            fullPaths.Add(fullPath);
+        }
+        return fullPaths;
     }
 
     private void UpdateForCollisions(Agent agent, List<Move> currentMovePoints)
@@ -632,6 +689,7 @@ partial class Game
         if (currentMovePoints.Any(p => p.To.X == agent.MoveIntention.Move.X && p.To.Y == agent.MoveIntention.Move.Y))
         {
             // Simple first pass implementation. Just don't move, allowing the other one to move instead
+            agent.TargetPath = new List<Point>();
             agent.MoveIntention.Move = agent.Position;
         }
 
@@ -654,6 +712,7 @@ partial class Game
                         && relevantMove.From != new Point(pointToCheck.X, pointToCheck.Y))
                     {
                         agent.MoveIntention.Move = new Point(pointToCheck.X, pointToCheck.Y);
+                        agent.TargetPath = new List<Point>() {pointToCheck };
                         agent.MoveIntention.Source = "Avoiding a collision";
                         break;
                     }

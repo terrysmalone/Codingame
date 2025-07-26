@@ -1046,9 +1046,12 @@ partial class Game
 
             if (agent.AgentPriority == Priority.DodgingBombs)
             {
-                GetBombDodgeMove(agent);
+                if (!(agent.OptimalRange == 2 && agent.SplashBombs >= 3))
+                {
+                    GetBombDodgeMove(agent);
 
-                GetSpreadMove(agent);
+                    GetSpreadMove(agent);
+                }
             }
 
             if (player - opponent < -20)
@@ -1088,7 +1091,15 @@ partial class Game
 
         var lastFourMoves = agent.MoveList.Skip(Math.Max(0, agent.MoveList.Count - 4)).ToList();
         // Check if there are two pairs of repeated moves
-        return lastFourMoves[0] == lastFourMoves[2] && lastFourMoves[1] == lastFourMoves[3];
+        if (lastFourMoves[0] == lastFourMoves[2] 
+            && lastFourMoves[1] == lastFourMoves[3]
+            && lastFourMoves[0] != lastFourMoves[1]
+            && lastFourMoves[2] != lastFourMoves[3])
+        {
+            return true;
+        }
+
+        return false;
     }
 
     private void GetScoreMaximisingMove(Agent agent)
@@ -1134,13 +1145,6 @@ partial class Game
         if (agent.MoveIntention.Move != new Point(-1, -1))
         {
             // If we already have a move, return
-            return;
-        }
-
-        if (agent.OptimalRange == 2 && agent.SplashBombs >= 3)
-        {
-            // He's a fucking hero. He doesn't run away
-            agent.MoveIntention.Source = "LEROY JENKINS!!!!!!!!!!!!";
             return;
         }
 

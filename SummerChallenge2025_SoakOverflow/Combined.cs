@@ -106,7 +106,7 @@ internal sealed class AStar
             Point[] pointsToCheck = new Point[4];
 
             // Prioritise heading towards the target as the first move
-            if (Math.Abs(startPoint.X - targetPoint.X) >  Math.Abs(startPoint.Y - targetPoint.Y))
+            if (Math.Abs(startPoint.X - targetPoint.X) >=  Math.Abs(startPoint.Y - targetPoint.Y))
             {
                 pointsToCheck[0] = new Point(Math.Min(_width - 1, currentNode.Position.X + 1), currentNode.Position.Y);
                 pointsToCheck[1] = new Point(Math.Max(0, currentNode.Position.X - 1), currentNode.Position.Y);
@@ -1012,8 +1012,11 @@ partial class Game
 
             // Default to advancing to Enemy
 
-            // If we still don't have a move, look for a score maximising move
-            GetScoreMaximisingMove(agent);
+            if (player - opponent < 0)
+            {
+                // If we still don't have a move, look for a score maximising move
+                GetScoreMaximisingMove(agent);
+            }
                 
             // If we still don't have a move, get the best advancing move
             GetBestAdvancingMove(agent);
@@ -1033,7 +1036,7 @@ partial class Game
         }
 
         int maxScoreDiff = _scoreCalculator.CalculateScoreDiff(_playerAgents, _opponentAgents);
-
+        Console.Error.WriteLine($"Agent {agent.Id} starting with max score diff: {maxScoreDiff}");
         Point[] pointsToCheck = new Point[4];
         pointsToCheck[0] = new Point(Math.Min(Width - 1, agent.Position.X + 1), agent.Position.Y);
         pointsToCheck[1] = new Point(Math.Max(0, agent.Position.X - 1), agent.Position.Y);
@@ -1054,6 +1057,7 @@ partial class Game
 
             if (scoreDiff > maxScoreDiff)
             {
+                Console.Error.WriteLine($"Agent {agent.Id} found a better score diff: {scoreDiff} at point {point.X}, {point.Y}");
                 maxScoreDiff = scoreDiff;
                 agent.MoveIntention.Move = point;
                 agent.MoveIntention.Source = "Maximising score";
@@ -1077,23 +1081,39 @@ partial class Game
             return;
         }
 
+        // If we're too close to dodge, can we just hug close enough that 
+        // he won't want to throw a bomb at us?
+        if (enemyDistance <= 3 && enemyDistance > 1)
+        {
+            // Move towards the enemy position
+            List<Point> bestPath = _aStar.GetShortestPath(agent.Position, enemyPosition);
+            var bestPoint = bestPath[0];
+            agent.MoveIntention.Move = bestPoint;
+
+            agent.MoveIntention.Source = "Hug him!";
+            return;
+        }
+
         // For now, just assume x-axis is more important than y-axis
         // If it turns out it's not we can worry about it later
         if (agent.Position.Y == enemyPosition.Y)
         {
-             if (enemyDistance <= 6)
+            Console.Error.WriteLine(agent.Id + " is on the same Y axis as the enemy with splash bombs");
+            if (enemyDistance == 6)
              {
+                Console.Error.WriteLine(agent.Id + " is 6 away from the enemy with splash bombs, moving back");
                 // move back
-                if (agent.Position.X < enemyPosition.X)
+                if (agent.Position.X < enemyPosition.X && agent.Position.X > 0)
                 {
+                    Console.Error.WriteLine(agent.Id + " is to the left of the enemy with splash bombs, moving left");
                     agent.MoveIntention.Move = new Point(agent.Position.X - 1, agent.Position.Y);
                 }
-                else
+                else if (agent.Position.X < Width - 1)
                 {
                     agent.MoveIntention.Move = new Point(agent.Position.X + 1, agent.Position.Y);
                 }
             }
-            else if (enemyDistance <= 7)
+            else if (enemyDistance == 7)
             {
                 // stay still
                 // agent.MoveIntention.Move = new Point(agent.Position.X, agent.Position.Y);
@@ -1104,11 +1124,11 @@ partial class Game
             if (enemyDistance <= 7)
             {
                 // move back
-                if (agent.Position.X < enemyPosition.X)
+                if (agent.Position.X < enemyPosition.X && agent.Position.X > 0)
                 {
                     agent.MoveIntention.Move = new Point(agent.Position.X - 1, agent.Position.Y);
                 }
-                else
+                else if (agent.Position.X < Width - 1)
                 {
                     agent.MoveIntention.Move = new Point(agent.Position.X + 1, agent.Position.Y);
                 }
@@ -1279,6 +1299,7 @@ partial class Game
         
         if (agent.Position != bestAttackPoint)
         {
+            Console.Error.WriteLine($"Agent {agent.Id} found best advancing position: {bestPoint.X}, {bestPoint.Y} with score {agentDamageMap[bestPoint.X, bestPoint.Y]}");
             // Convert the move to the next adjacent move so we know exactly where we'll be on the next turn
             List<Point> bestPath = _aStar.GetShortestPath(agent.Position, bestAttackPoint);
 

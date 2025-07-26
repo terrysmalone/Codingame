@@ -38,7 +38,14 @@ seed=-3712306056014127000
 
 On move 18 I lose 1, 629
 
-# Changes since last Test in Arena
+# Legend boss fight analysis
 
-* swapped spreading out with dodging bomb
-* Add maximise score check before advancing
+&#x2611;
+
+&#x2612;
+
+| Seed                      | player | Early control | Bombs    | Shooting | Late control | Win      | Score      | Notes |
+| ------------------------- | ------ | ------------- | -------- | -------- | ------------ | -------- | ---------- | ----- |
+| seed=4030046837536737300  | 1      | &#x2612;      | N/A      | &#x2612; | N/A          | &#x2612; | 26 - 648   | My two range agent stayed the back and didn't bomb or shoot all game. So did his |
+|                           | 2      | &#x2612;      | N/A      | &#x2612; | N/A          | &#x2612; | 648 - 26   | My two range agent stayed the back and didn't bomb or shoot all game. So did his |
+| seed=-5938950415254304000 | 1      | -             | &#x2612; | &#x2612; | &#x2611;     | &#x2612; | 519 - 1135 | My two range agent stayed the back and didn't bomb or shoot all game             |

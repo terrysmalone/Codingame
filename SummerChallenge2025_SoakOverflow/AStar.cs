@@ -45,7 +45,7 @@ internal sealed class AStar
             Point[] pointsToCheck = new Point[4];
 
             // Prioritise heading towards the target as the first move
-            if (Math.Abs(startPoint.X - targetPoint.X) >  Math.Abs(startPoint.Y - targetPoint.Y))
+            if (Math.Abs(startPoint.X - targetPoint.X) >=  Math.Abs(startPoint.Y - targetPoint.Y))
             {
                 pointsToCheck[0] = new Point(Math.Min(_width - 1, currentNode.Position.X + 1), currentNode.Position.Y);
                 pointsToCheck[1] = new Point(Math.Max(0, currentNode.Position.X - 1), currentNode.Position.Y);

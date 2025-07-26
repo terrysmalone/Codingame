@@ -86,7 +86,7 @@ internal class DamageCalculator
 
         var damageMultiplier = map[fromX, fromY];
         var baseDamage = soakingPower * damageMultiplier;
-
+        
         int manhattanDistance = CalculationUtil.GetManhattanDistance(
             new Point(targetX, targetY), new Point(fromX, fromY));
 

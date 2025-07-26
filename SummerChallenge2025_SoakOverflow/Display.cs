@@ -1,8 +1,18 @@
 ﻿
+
 namespace SummerChallenge2025_SoakOverflow;
 
 internal static class Display
 {
+    internal static void AgentHistories(List<Agent> playerAgents)
+    {
+        foreach (Agent agent in playerAgents)
+        {
+            Console.Error.WriteLine($"Agent {agent.Id}  MoveList: [{string.Join(", ", agent.MoveList)}]");
+
+        }
+    }
+
     internal static void Map(double[,] map)
     {
         for (int y = 0; y < map.GetLength(1); y++)

@@ -63,6 +63,7 @@ partial class Game
         GetActionCommands();
         
         Display.Sources(_playerAgents);
+        //Display.AgentHistories(_playerAgents);
 
         List<string> commands = GetCommandStrings();
         ResetIntentions();
@@ -306,12 +307,16 @@ partial class Game
 
         foreach (var agent in _playerAgents)
         {
+            if (MoveRepetitionDetected(agent))
+            {
+                GetSpreadMove(agent);
+            }
+
             // If enemy has a higher score this round maximise score
             (var player, var opponent) = _scoreCalculator.CalculateScores(_playerAgents, _opponentAgents);
 
             if (player - opponent < -40)
             {
-                Console.Error.WriteLine($"Agent {agent.Id} prioritising score maximisation due to negative score difference: {player - opponent}");
                 GetScoreMaximisingMove(agent);
             }
 
@@ -328,7 +333,6 @@ partial class Game
 
             if (player - opponent < -20)
             {
-                Console.Error.WriteLine($"Agent {agent.Id} prioritising score maximisation due to negative score difference: {player - opponent}");
                 GetScoreMaximisingMove(agent);
             }
 
@@ -355,6 +359,19 @@ partial class Game
         }
     }
 
+    private bool MoveRepetitionDetected(Agent agent)
+    {
+        // if the last 4 moves contain two lots of two repeated moves, we're repeating ourselves
+        if (agent.MoveList.Count < 4)
+        {
+            return false; // Not enough moves to check for repetition
+        }
+
+        var lastFourMoves = agent.MoveList.Skip(Math.Max(0, agent.MoveList.Count - 4)).ToList();
+        // Check if there are two pairs of repeated moves
+        return lastFourMoves[0] == lastFourMoves[2] && lastFourMoves[1] == lastFourMoves[3];
+    }
+
     private void GetScoreMaximisingMove(Agent agent)
     {
         if (agent.MoveIntention.Move != new Point(-1, -1))
@@ -364,7 +381,7 @@ partial class Game
         }
 
         int maxScoreDiff = _scoreCalculator.CalculateScoreDiff(_playerAgents, _opponentAgents);
-        Console.Error.WriteLine($"Agent {agent.Id} starting with max score diff: {maxScoreDiff}");
+
         Point[] pointsToCheck = new Point[4];
         pointsToCheck[0] = new Point(Math.Min(Width - 1, agent.Position.X + 1), agent.Position.Y);
         pointsToCheck[1] = new Point(Math.Max(0, agent.Position.X - 1), agent.Position.Y);
@@ -385,7 +402,6 @@ partial class Game
 
             if (scoreDiff > maxScoreDiff)
             {
-                Console.Error.WriteLine($"Agent {agent.Id} found a better score diff: {scoreDiff} at point {point.X}, {point.Y}");
                 maxScoreDiff = scoreDiff;
                 agent.MoveIntention.Move = point;
                 agent.TargetPath = new List<Point>() { point };
@@ -423,13 +439,12 @@ partial class Game
         {
             // Move towards the enemy position
             List<Point> bestPath = _aStar.GetShortestPath(agent.Position, enemyPosition);
-            Console.Error.WriteLine($"{agent.Id} is too close to the enemy with splash bombs, hugging them at {enemyPosition.X}, {enemyPosition.Y}");
+            
             var bestPoint = bestPath[0];
             agent.TargetPath = bestPath;
             agent.MoveIntention.Move = bestPoint;
             agent.TargetPath = new List<Point>() { bestPoint };
 
-            Console.Error.WriteLine($"{agent.Id} is too close to the enemy with splash bombs, hugging them at {bestPoint.X}, {bestPoint.Y}");
             agent.MoveIntention.Source = "Hug him!";
             return;
         }
@@ -438,14 +453,11 @@ partial class Game
         // If it turns out it's not we can worry about it later
         if (agent.Position.Y == enemyPosition.Y)
         {
-            Console.Error.WriteLine(agent.Id + " is on the same Y axis as the enemy with splash bombs");
             if (enemyDistance == 6)
              {
-                Console.Error.WriteLine(agent.Id + " is 6 away from the enemy with splash bombs, moving back");
                 // move back
                 if (agent.Position.X < enemyPosition.X && agent.Position.X > 0)
                 {
-                    Console.Error.WriteLine(agent.Id + " is to the left of the enemy with splash bombs, moving left");
                     agent.MoveIntention.Move = new Point(agent.Position.X - 1, agent.Position.Y);
                     agent.TargetPath = new List<Point>() { new Point(agent.Position.X - 1, agent.Position.Y) };
                 }
@@ -467,17 +479,14 @@ partial class Game
         {
             if (enemyDistance <= 7)
             {
-                Console.Error.WriteLine(agent.Id + " is 7 away from the enemy with splash bombs, moving back");
                 // move back
                 if (agent.Position.X < enemyPosition.X && agent.Position.X > 0)
                 {
-                    Console.Error.WriteLine(agent.Id + " is to the left of the enemy with splash bombs, moving left");
                     agent.MoveIntention.Move = new Point(agent.Position.X - 1, agent.Position.Y);
                     agent.TargetPath = new List<Point>() { new Point(agent.Position.X - 1, agent.Position.Y) };
                 }
                 else if (agent.Position.X < Width - 1)
                 {
-                    Console.Error.WriteLine(agent.Id + " is to the right of the enemy with splash bombs, moving right");
                     agent.MoveIntention.Move = new Point(agent.Position.X + 1, agent.Position.Y);
                     agent.TargetPath = new List<Point>() { new Point(agent.Position.X + 1, agent.Position.Y) };
                 }
@@ -619,8 +628,6 @@ partial class Game
         {
             Point bestPoint = new Point(move.X, move.Y);
 
-            Console.Error.WriteLine($"Agent {agent.Id} found best attack position: {bestPoint.X}, {bestPoint.Y} with score {maxDamageScore} and distance {minDistanceToAgent}");
-
             if (agent.Position != move)
             {
                 List<Point> bestPath = _aStar.GetShortestPath(agent.Position, move, GetFullPaths());
@@ -632,7 +639,6 @@ partial class Game
             agent.MoveIntention.Move = bestPoint;
             agent.MoveIntention.Source = "Moving to best attack position";
 
-            Console.Error.WriteLine($"Agent {agent.Id} moving to best attack position: {bestPoint.X}, {bestPoint.Y} with score {maxDamageScore} and distance {minDistanceToAgent}");
         }
     }
 
@@ -654,7 +660,6 @@ partial class Game
         
         if (agent.Position != bestAttackPoint)
         {
-            Console.Error.WriteLine($"Agent {agent.Id} found best advancing position: {bestPoint.X}, {bestPoint.Y} with score {agentDamageMap[bestPoint.X, bestPoint.Y]}");
             // Convert the move to the next adjacent move so we know exactly where we'll be on the next turn
             List<Point> bestPath = _aStar.GetShortestPath(agent.Position, bestAttackPoint, GetFullPaths());
 
@@ -817,10 +822,8 @@ partial class Game
                 GetThrowAction(agent);
             }
 
-            Console.Error.WriteLine($"Agent {agent.Id} ShootCooldown: {agent.ShootCooldown}, ActionIntention.Command: {agent.ActionIntention.Command}");
             if (agent.ActionIntention.Command == "" && agent.ShootCooldown <= 0)
             {
-                Console.Error.WriteLine($"Agent {agent.Id} is ready to shoot");
                 GetShootAction(agent);
             }
 
@@ -849,7 +852,7 @@ partial class Game
 
         Point calculationPoint = new Point(-1, -1);
 
-        // Get highest score from splashDamageMap within 4 
+        // Get highest score from splashDamageMap within 
         // Manhattan distance from agent's position
 
         int distance = 3;
@@ -862,7 +865,7 @@ partial class Game
         {
             for (int y = minY; y <= maxY; y++)
             {
-                if (CalculationUtil.GetManhattanDistance(movePoint, new Point(x, y)) > 4)
+                if (CalculationUtil.GetManhattanDistance(movePoint, new Point(x, y)) > 3)
                 {
                     continue; // Skip points that are more than 3 away
                 }
@@ -887,11 +890,9 @@ partial class Game
 
                 if (manhattanDistance <= 4 && _splashMap[x, y] >= bestValue)
                 {
-                    Console.Error.WriteLine($"Agent {agent.Id} tryin to throw at {x},{y}");
                     (_, var closestEnemyDistance) =  GetClosestEnemyPosition(new Point(x, y));
                     if (_splashMap[x, y] == bestValue)
                     {
-                        Console.Error.WriteLine("_splashMap[x, y] == bestValue of " + bestValue);
                         if (closestEnemyDistance < bestValueDistance)
                         {
                             bestValue = _splashMap[x, y];
@@ -902,9 +903,6 @@ partial class Game
                     }
                     else
                     {
-                        Console.Error.WriteLine($"_splashMap[x, y] of {_splashMap[x, y]} > bestValue of {bestValue}");
-                        Console.Error.WriteLine($"closestEnemyDistance: { closestEnemyDistance}"); 
-
                         bestValue = _splashMap[x, y];
                         bestX = x;
                         bestY = y;
@@ -937,7 +935,6 @@ partial class Game
             // If enemy is not in range of agent, skip it
             if (CalculationUtil.GetManhattanDistance(enemy.Position, agent.Position) - 1 > agent.OptimalRange * 2)
             {
-                Console.Error.WriteLine($"Enemy {enemy.Id} is out of range for agent {agent.Id}, skipping");
                 continue;
             }
 
@@ -966,22 +963,17 @@ partial class Game
                     enemy.Position.Y);
             }
 
-            Console.Error.WriteLine($"Agent {agent.Id} calculated damage {damage} to enemy {enemy.Id} at position {enemy.Position.X}, {enemy.Position.Y}");
-
             if (enemy.Wetness + damage >= 100 && !isAnyOneKilling())
             {
-                Console.Error.WriteLine($"Agent {agent.Id} is trying to kill enemy {enemy.Id} with damage {damage}");
                 killId = enemy.Id;
             }
             else if (enemy.Wetness < 50 && enemy.Wetness + damage >= 50 && !isAnyOneSoaking())
             {
-                Console.Error.WriteLine($"Agent {agent.Id} is trying to soak enemy {enemy.Id} with damage {damage}");
                 soakId = enemy.Id;
             }
 
             if (damage > mostDamage && !isAnyOneKilling())
             {
-                Console.Error.WriteLine($"Agent {agent.Id} found enemy {enemy.Id} with damage {damage}");
                 mostDamage = damage;
                 mostDamageId = enemy.Id;
             }

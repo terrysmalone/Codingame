@@ -166,7 +166,6 @@ internal sealed class AStar
             {
                 if (excludePaths[i][j] == pointToCheck)
                 {
-                    Console.Error.WriteLine($"Excluding point {pointToCheck} from path {i} at index {j}");
                     return true;
                 }
             }

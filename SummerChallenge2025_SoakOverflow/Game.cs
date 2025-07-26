@@ -941,13 +941,30 @@ partial class Game
                 continue;
             }
 
-            var damage = _damageCalculator.CalculateDamage(
-                movePoint.X,
-                movePoint.Y,
-                agent.OptimalRange,
-                agent.SoakingPower,
-                enemy.Position.X,
-                enemy.Position.Y);
+            var damage = 0.0;
+
+            // We're trying to move to a square they're already in. We can't calculate a proper amount of damage in this case. 
+            // Instead, calculate it as if we don't move. It's a close enough approximation
+            if (movePoint == enemy.Position)
+            {
+                damage = _damageCalculator.CalculateDamage(
+                    agent.Position.X,
+                    agent.Position.Y,
+                    agent.OptimalRange,
+                    agent.SoakingPower,
+                    enemy.Position.X,
+                    enemy.Position.Y);
+            }
+            else
+            {
+                damage = _damageCalculator.CalculateDamage(
+                    movePoint.X,
+                    movePoint.Y,
+                    agent.OptimalRange,
+                    agent.SoakingPower,
+                    enemy.Position.X,
+                    enemy.Position.Y);
+            }
 
             Console.Error.WriteLine($"Agent {agent.Id} calculated damage {damage} to enemy {enemy.Id} at position {enemy.Position.X}, {enemy.Position.Y}");
 

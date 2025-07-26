@@ -863,21 +863,37 @@ partial class Game
         var playerBombCount = _playerAgents.Sum(a => a.SplashBombs);
         var opponentBombCount = _opponentAgents.Sum(a => a.SplashBombs);
 
+        var bombMoreAggresively = false;
+
         var onlyPlayerHasBombs = playerBombCount > 0 && opponentBombCount == 0;
+
+        if (onlyPlayerHasBombs)
+        {
+            bombMoreAggresively = true;
+        }
+
+        var closestBomber = _opponentAgents
+            .Where(a => a.SplashBombs > 0)
+            .OrderBy(a => CalculationUtil.GetManhattanDistance(a.Position, movePoint))
+            .FirstOrDefault();
+
+        if (closestBomber != null && CalculationUtil.GetManhattanDistance(closestBomber.Position, movePoint) > 7)
+        {
+            Console.Error.WriteLine($"Agent {agent.Id} throwing more aggressively because closest bomber is {closestBomber.Position.X},{closestBomber.Position.Y} and distance is {CalculationUtil.GetManhattanDistance(closestBomber.Position, movePoint)}");
+            bombMoreAggresively = true;
+        }
 
         for (int x = minX; x <= maxX; x++)
         {
             for (int y = minY; y <= maxY; y++)
             {
                 if (CalculationUtil.GetManhattanDistance(movePoint, new Point(x, y)) > 3 
-                    && !onlyPlayerHasBombs)
+                    && !bombMoreAggresively)
                 {
-                    Console.Error.WriteLine($"Agent {agent.Id} skipping because disstance is more than 3");
                     continue; // Skip points that are more than 3 away
                 }
                 else if (CalculationUtil.GetManhattanDistance(movePoint, new Point(x, y)) > 4)
                 {
-                    Console.Error.WriteLine($"Agent {agent.Id} skipping because disstance is more than 4");
                     continue; // Skip points that are more than 4 away
                 }
 
@@ -902,9 +918,8 @@ partial class Game
                 if (manhattanDistance <= 4 && _splashMap[x, y] >= bestValue)
                 {
                     (var closestEnemyPosition, var closestEnemyDistance) =  GetClosestEnemyPosition(new Point(x, y));
-                    Console.Error.WriteLine($"Closest enemy position is {closestEnemyPosition.X},{closestEnemyPosition.Y}");
-                    Console.Error.WriteLine($"onlyPlayerHasBombs: {onlyPlayerHasBombs}");
-                    if (onlyPlayerHasBombs)
+                    
+                    if (bombMoreAggresively)
                     {
                         if (new Point(x,y) != closestEnemyPosition)
                         {

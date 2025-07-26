@@ -1578,19 +1578,31 @@ partial class Game
         // Get highest score from splashDamageMap within 
         // Manhattan distance from agent's position
 
-        int distance = 3;
+        int distance = 4;
         int minX = Math.Max(0, movePoint.X - distance);
         int maxX = Math.Min(Width - 1, movePoint.X + distance);
         int minY = Math.Max(0, movePoint.Y - distance);
         int maxY = Math.Min(Height - 1, movePoint.Y + distance);
 
+        var playerBombCount = _playerAgents.Sum(a => a.SplashBombs);
+        var opponentBombCount = _opponentAgents.Sum(a => a.SplashBombs);
+
+        var onlyPlayerHasBombs = playerBombCount > 0 && opponentBombCount == 0;
+
         for (int x = minX; x <= maxX; x++)
         {
             for (int y = minY; y <= maxY; y++)
             {
-                if (CalculationUtil.GetManhattanDistance(movePoint, new Point(x, y)) > 3)
+                if (CalculationUtil.GetManhattanDistance(movePoint, new Point(x, y)) > 3 
+                    && !onlyPlayerHasBombs)
                 {
+                    Console.Error.WriteLine($"Agent {agent.Id} skipping because disstance is more than 3");
                     continue; // Skip points that are more than 3 away
+                }
+                else if (CalculationUtil.GetManhattanDistance(movePoint, new Point(x, y)) > 4)
+                {
+                    Console.Error.WriteLine($"Agent {agent.Id} skipping because disstance is more than 4");
+                    continue; // Skip points that are more than 4 away
                 }
 
                 bool friendlyFire = false;
@@ -1613,7 +1625,17 @@ partial class Game
 
                 if (manhattanDistance <= 4 && _splashMap[x, y] >= bestValue)
                 {
-                    (_, var closestEnemyDistance) =  GetClosestEnemyPosition(new Point(x, y));
+                    (var closestEnemyPosition, var closestEnemyDistance) =  GetClosestEnemyPosition(new Point(x, y));
+                    Console.Error.WriteLine($"Closest enemy position is {closestEnemyPosition.X},{closestEnemyPosition.Y}");
+                    Console.Error.WriteLine($"onlyPlayerHasBombs: {onlyPlayerHasBombs}");
+                    if (onlyPlayerHasBombs)
+                    {
+                        if (new Point(x,y) != closestEnemyPosition)
+                        {
+                            continue;
+                        }
+                    }
+
                     if (_splashMap[x, y] == bestValue)
                     {
                         if (closestEnemyDistance < bestValueDistance)

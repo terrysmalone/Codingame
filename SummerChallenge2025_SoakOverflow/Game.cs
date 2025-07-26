@@ -320,15 +320,11 @@ partial class Game
                 GetScoreMaximisingMove(agent);
             }
 
-            // If opponent still has any splashbombs, spread out any agents that are close to each other
-            if (agent.AgentPriority == Priority.SpreadingOut)
-            {
-                GetSpreadMove(agent);
-            }
-
             if (agent.AgentPriority == Priority.DodgingBombs)
             {
                 GetBombDodgeMove(agent);
+
+                GetSpreadMove(agent);
             }
 
             if (player - opponent < -20)
@@ -336,8 +332,7 @@ partial class Game
                 GetScoreMaximisingMove(agent);
             }
 
-            if ((agent.AgentPriority == Priority.FindingBestAttackPosition && agent.OptimalRange > 2)
-                || (agent.AgentPriority == Priority.SpreadingOut))
+            if (agent.AgentPriority == Priority.FindingBestAttackPosition && agent.OptimalRange > 2)  
             {               
                 GetBestAttackPosition(agent);
             }

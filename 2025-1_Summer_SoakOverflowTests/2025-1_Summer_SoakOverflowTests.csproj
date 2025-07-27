@@ -18,7 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\SummerChallenge2025_SoakOverflow\SummerChallenge2025_SoakOverflow.csproj" />
+    <ProjectReference Include="..\2025-1_Summer_SoakOverflow\2025-1_Summer_SoakOverflow.csproj" />
   </ItemGroup>
 
   <ItemGroup>

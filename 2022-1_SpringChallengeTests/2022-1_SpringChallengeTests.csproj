@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <TargetFramework>net6.0</TargetFramework>
@@ -15,7 +15,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\SpringChallenge2022\SpringChallenge2022.csproj" />
+      <ProjectReference Include="..\2022-1_SpringChallengeTests\2022-1_SpringChallengeTests.csproj" />
     </ItemGroup>
 
 </Project>

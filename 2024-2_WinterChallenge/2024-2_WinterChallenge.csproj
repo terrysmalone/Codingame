@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="WinterChallenge2024Tests" />
+    <InternalsVisibleTo Include="2024-2_WinterChallenge" />
   </ItemGroup>
 
   <ItemGroup>

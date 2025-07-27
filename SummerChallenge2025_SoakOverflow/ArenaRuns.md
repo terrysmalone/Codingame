@@ -8,4 +8,10 @@
 | 21:26 | 184	 | 77   |                                           | Just remove comments                              |
 | 21:34 | 164    | 57   |                                           | Move spread move after dodge fail                 |
 | 23:38 | 165    | 56   | 8a7096e170c842ce662ed4c732ac3eea7542392a  | Stop hero from spreading. Fix bug in move repetition detection.                                |
-| 00:07 | 137    | 25   | f9679afd1e554a2c089c2077c4cfd98336bd45d6  | Be more deliberate with bombs if enemy has none left |
+| 00:07 | 121    | 7    | f9679afd1e554a2c089c2077c4cfd98336bd45d6  | Be more deliberate with bombs if enemy has none left |
+| 03:15 | 122    | 122  |
+Main
+
+MOve distance up to 5 - current 1.51am
+
+Only throw exactly on bombs - in IDE / Visual Studio

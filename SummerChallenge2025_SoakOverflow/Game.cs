@@ -887,7 +887,7 @@ partial class Game
         {
             for (int y = minY; y <= maxY; y++)
             {
-                if (CalculationUtil.GetManhattanDistance(movePoint, new Point(x, y)) > 3 
+                if (CalculationUtil.GetManhattanDistance(movePoint, new Point(x, y)) > 4 
                     && !bombMoreAggresively)
                 {
                     continue; // Skip points that are more than 3 away

@@ -9,7 +9,9 @@
 | 21:34 | 164    | 57   |                                           | Move spread move after dodge fail                 |
 | 23:38 | 165    | 56   | 8a7096e170c842ce662ed4c732ac3eea7542392a  | Stop hero from spreading. Fix bug in move repetition detection.                                |
 | 00:07 | 121    | 7    | f9679afd1e554a2c089c2077c4cfd98336bd45d6  | Be more deliberate with bombs if enemy has none left |
-| 03:15 | 122    | 122  |
+| 03:15 | 122    | 122  | f0a67341701ef833c3d1e1709419a0bade70cfe5  | Make bombs more deliberate |
+
+
 Main
 
 MOve distance up to 5 - current 1.51am

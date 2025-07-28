@@ -31,10 +31,7 @@ partial class Game
 
     private int _moveCount;
 
-    private int _playerScore, _opponentScore = 0;
-
-    private bool _inOpening = true;
-    private bool _inEndGame = false;
+    private int _playerScore, _opponentScore;
 
     public Game(int myId)
     {
@@ -44,9 +41,7 @@ partial class Game
     // One line per agent: <agentId>;<action1;action2;...> actions are "MOVE x y | SHOOT id | THROW x y | HUNKER_DOWN | MESSAGE text"
     internal List<string> GetCommands()
     {
-        UpdateScores();
-        Console.Error.WriteLine($"Player score: {_playerScore}, Opponent score: {_opponentScore}");
-
+        UpdateScores();        
         UpdateMoveLists();
 
         _splashMap = CreateSplashMap();
@@ -56,14 +51,12 @@ partial class Game
 
         UpdatePriorities();
 
-        Dictionary<int, Point> landGrabAssignments = GetBestLandGrabPositions();
-
-        GetMoveCommands(landGrabAssignments);
+        GetMoveCommands();
 
         GetActionCommands();
         
-        Display.Sources(_playerAgents);
-        //Display.AgentHistories(_playerAgents);
+        // Display.Sources(_playerAgents);
+        // Display.AgentHistories(_playerAgents);
 
         List<string> commands = GetCommandStrings();
         ResetIntentions();
@@ -81,91 +74,6 @@ partial class Game
         {
             agent.MoveList.Add(agent.Position);
         }
-    }
-
-    private Dictionary<int, Point> GetBestLandGrabPositions()
-    {
-        // count of agents who have InitialLandGrab as their priority
-        int initialLandGrabCount = _playerAgents.Count(a => a.AgentPriority == Priority.LandGrab);
-
-        List <Point> landGrabPositions = new List<Point>();
-
-        for (int i = 0; i < initialLandGrabCount; i++)
-        {
-            var bestPoint = new Point(-1, -1);
-            var highestDistance = int.MinValue;
-
-            // for each point on the map
-            for (int x = 0; x < Width; x++)
-            {
-                for (int y = 0; y < Height; y++)
-                {
-                    if (landGrabPositions.Contains(new Point(x, y)))
-                    {
-                        continue; // Skip if this point is already in landGrabPositions
-                    }
-
-                    (_, var closestEnemyPosition) = GetClosestEnemyPosition(new Point(x, y));
-
-                    // Get the closest player agent distance, excluding any that have priority as InitialLandGrab
-                    var closestPlayerAgent = _playerAgents
-                        .Where(a => a.AgentPriority != Priority.LandGrab)
-                        .Select(a => CalculationUtil.GetManhattanDistance(a.Position, new Point(x, y)))
-                        .DefaultIfEmpty(int.MaxValue)
-                        .Min();
-
-                    // Get the distance to the closest point in landGrabPositions
-                    var closestLandGrabPosition = landGrabPositions
-                        .Select(p => CalculationUtil.GetManhattanDistance(p, new Point(x, y)))
-                        .DefaultIfEmpty(int.MaxValue)
-                        .Min();
-
-                    // Get the distance to the closet Edge of the 4 edges of the map
-                    int closestEdge = Math.Min(Math.Min(x, Width - 1 - x), Math.Min(y, Height - 1 - y));
-
-
-                    var closest = Math.Min(closestEnemyPosition, closestPlayerAgent);
-                    closest = Math.Min(closest, closestLandGrabPosition);
-                    closest = Math.Min(closest, closestEdge);
-
-                    if (closest > highestDistance)
-                    {
-                        highestDistance = closest;
-                        bestPoint = new Point(x, y);
-                    }
-                }
-            }
-
-            if (bestPoint != new Point(-1, -1))
-            {
-                landGrabPositions.Add(bestPoint);
-                Console.Error.WriteLine($"Land grab position {i + 1}: {bestPoint.X}, {bestPoint.Y} with distance {highestDistance}");
-            }
-        }
-
-        Dictionary<int, Point> landGrabAssignments = new Dictionary<int, Point>();
-        List<int> assignedAgents = new List<int>();
-        for (int i = 0; i < landGrabPositions.Count; i++)
-        {
-            // get the closest agent that isn't already assigned
-            var closestAgent = _playerAgents
-                .Where(a => !assignedAgents.Contains(a.Id) && a.AgentPriority == Priority.LandGrab)
-                .OrderBy(a => CalculationUtil.GetManhattanDistance(a.Position, landGrabPositions[i]))
-                .FirstOrDefault();
-
-            if (closestAgent == null)
-            {
-                Console.Error.WriteLine($"ERROR: Couldn't find agent for land grab position {landGrabPositions[i].X},{landGrabPositions[i].Y}");
-            }
-            else
-            {
-                landGrabAssignments.Add(closestAgent.Id, landGrabPositions[i]);
-                assignedAgents.Add(closestAgent.Id);
-            }
-        }
-
-
-        return landGrabAssignments;
     }
 
     private void UpdateScores()
@@ -229,53 +137,13 @@ partial class Game
     {
         foreach (var agent in _playerAgents)
         {
-            // Once any player comes out of the opening all players are out of it
-            if (_inOpening)
-            {
-                if (isOpponentSplashBombInRange(6, agent.Position))
-                {
-                    _inOpening = false;
-                }
-                else
-                {
-                    // Currently don't do anything
-                    // agent.AgentPriority = Priority.LandGrab;
-                    // continue;
-                }
-            }
-
-            if (!_inEndGame)
-            {
-                // If there are no more splashbombs 
-                if (_opponentAgents.All(a => a.SplashBombs == 0) 
-                    && _playerAgents.All(a => a.SplashBombs == 0))
-                {
-                    _inEndGame = true;
-                }
-            }
-            
-            if (_inEndGame)
-            {
-                // Currently don't do anything
-                //agent.AgentPriority = Priority.MaximiseScore;
-                //continue;
-            }
-
             (_, var closestEnemyDistance) = GetClosestEnemyPosition(agent);
             (_, var closestBomberDistance) = GetClosestEnemyWithSplashBombsPosition(agent);
 
             if (closestBomberDistance <= 8)
             {
                 agent.AgentPriority = Priority.DodgingBombs;
-            }
-            //if (isOpponentSplashBombInRange(6, agent.Position)
-            //    && _playerAgents.Any(a => a.Id != agent.Id 
-            //                         && CalculationUtil.GetEuclideanDistance(a.Position, agent.Position) < 3))
-            //{
-            //    Console.Error.WriteLine($"Agent {agent.Id} closest enemy distance: {closestEnemyDistance}");
-                
-            //    agent.AgentPriority = Priority.SpreadingOut;
-            //}
+            }            
             else if (closestEnemyDistance <= agent.OptimalRange)
             {
                 agent.AgentPriority = Priority.FindingBestAttackPosition;
@@ -301,7 +169,7 @@ partial class Game
         return false;
     }
 
-    private void GetMoveCommands(Dictionary<int, Point> landGrabAssignments)
+    private void GetMoveCommands()
     {
         List<Move> currentMovePoints = new List<Move>();
 
@@ -853,7 +721,6 @@ partial class Game
 
         // Get highest score from splashDamageMap within 
         // Manhattan distance from agent's position
-
         int distance = 4;
         int minX = Math.Max(0, movePoint.X - distance);
         int maxX = Math.Min(Width - 1, movePoint.X + distance);
@@ -867,19 +734,8 @@ partial class Game
 
         var onlyPlayerHasBombs = playerBombCount > 0 && opponentBombCount == 0;
 
-        if (onlyPlayerHasBombs)
+        if (onlyPlayerHasBombs && !isOpponentSplashBombInRange(8, movePoint))
         {
-            bombMoreAggresively = true;
-        }
-
-        var closestBomber = _opponentAgents
-            .Where(a => a.SplashBombs > 0)
-            .OrderBy(a => CalculationUtil.GetManhattanDistance(a.Position, movePoint))
-            .FirstOrDefault();
-
-        if (closestBomber != null && CalculationUtil.GetManhattanDistance(closestBomber.Position, movePoint) > 7)
-        {
-            Console.Error.WriteLine($"Agent {agent.Id} throwing more aggressively because closest bomber is {closestBomber.Position.X},{closestBomber.Position.Y} and distance is {CalculationUtil.GetManhattanDistance(closestBomber.Position, movePoint)}");
             bombMoreAggresively = true;
         }
 
@@ -887,14 +743,9 @@ partial class Game
         {
             for (int y = minY; y <= maxY; y++)
             {
-                if (CalculationUtil.GetManhattanDistance(movePoint, new Point(x, y)) > 4 
-                    && !bombMoreAggresively)
+                if (CalculationUtil.GetManhattanDistance(movePoint, new Point(x, y)) > 4)
                 {
-                    continue; // Skip points that are more than 3 away
-                }
-                else if (CalculationUtil.GetManhattanDistance(movePoint, new Point(x, y)) > 4)
-                {
-                    continue; // Skip points that are more than 4 away
+                    continue; 
                 }
 
                 bool friendlyFire = false;

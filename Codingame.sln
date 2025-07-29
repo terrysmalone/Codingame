@@ -74,6 +74,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		README.md = README.md
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "2023-1_SpringChallenge-Ants", "2023-1_SpringChallenge-Ants\2023-1_SpringChallenge-Ants.csproj", "{E5D80425-7390-4291-9801-E9872F6E7D5D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -290,6 +292,14 @@ Global
 		{07684291-7F84-4ED9-9A9F-877DE9223789}.Release|Any CPU.Build.0 = Release|Any CPU
 		{07684291-7F84-4ED9-9A9F-877DE9223789}.Release|x86.ActiveCfg = Release|Any CPU
 		{07684291-7F84-4ED9-9A9F-877DE9223789}.Release|x86.Build.0 = Release|Any CPU
+		{E5D80425-7390-4291-9801-E9872F6E7D5D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E5D80425-7390-4291-9801-E9872F6E7D5D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E5D80425-7390-4291-9801-E9872F6E7D5D}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{E5D80425-7390-4291-9801-E9872F6E7D5D}.Debug|x86.Build.0 = Debug|Any CPU
+		{E5D80425-7390-4291-9801-E9872F6E7D5D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E5D80425-7390-4291-9801-E9872F6E7D5D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E5D80425-7390-4291-9801-E9872F6E7D5D}.Release|x86.ActiveCfg = Release|Any CPU
+		{E5D80425-7390-4291-9801-E9872F6E7D5D}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -323,6 +333,7 @@ Global
 		{E058EFC0-365D-4FA6-B69B-F2B8BA80E13E} = {07334EED-5C63-4299-895B-8D1E0312691D}
 		{857E8D71-050C-4846-BC98-E53074A42E17} = {07334EED-5C63-4299-895B-8D1E0312691D}
 		{E7D93050-938A-4EFC-BDF0-F54BDC7C2693} = {07334EED-5C63-4299-895B-8D1E0312691D}
+		{E5D80425-7390-4291-9801-E9872F6E7D5D} = {648E4F96-B7AD-47A1-AA96-41BDE2AF8CFC}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {71909636-254E-4F2E-8EE1-60DCF3AFEA19}

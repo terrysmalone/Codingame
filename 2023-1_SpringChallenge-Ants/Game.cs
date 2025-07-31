@@ -12,13 +12,18 @@ internal class Game
 
     private Dictionary<int, Cell> _cells = new Dictionary<int, Cell>();
 
+    private PathFinder _pathFinder;
+
     // Keep track of cell counts at the start of every loop for fast search
     private Dictionary<int, int> _eggCells = new Dictionary<int, int>();
     private Dictionary<int, int> _crystalCells = new Dictionary<int, int>();
 
-    private PathFinder _pathFinder;
 
+    private int _totalEggCount = 0;
+    private int _totalCrystalCount = 0;
 
+    private int _playerAntCount = 0;
+    private int _opponentAntCount = 0;
 
     public Game(int numberOfCells)
     {
@@ -53,6 +58,7 @@ internal class Game
                 if (resources > 0)
                 {
                     _eggCells.Add(i, resources);
+                    _totalEggCount += resources;
                 }
             }
             else if (cell.CellType == CellType.Crystal)
@@ -61,6 +67,7 @@ internal class Game
                 if (resources > 0)
                 {
                     _crystalCells.Add(i, resources);
+                    _totalCrystalCount += resources;
                 }
             }
 
@@ -77,43 +84,172 @@ internal class Game
     {
         _eggCells.Clear();
         _crystalCells.Clear();
+
+        _playerAntCount = 0;
+        _opponentAntCount = 0;
+        _totalEggCount = 0;
+        _totalCrystalCount = 0;
     }
 
     internal List<string> GetActions()
     {
-        var actions = new List<string>();
-        Console.Error.WriteLine($"EggCells: {_eggCells.Count}, CrystalCells: {_crystalCells.Count}");
+        var eggPathLimit = 5;
+        var crystalPathLimit = 5;
+        // TODO: Do counts of beacons for both eggs and crystals together.
+        //       Currently we do them separate 
 
-        // First pass solution
+        var actions = new List<string>();
+
         // For each base reserve half for collecting crystals and half ants for collecting eggs
+        var currentEggSeekingAnts = _playerAntCount / 2;
+        var currentCrystalSeekingAnts = _playerAntCount - currentEggSeekingAnts;
+
+        var antsPerBase = _playerAntCount / _playerBases.Count;
+
+        var currentEggPaths = new List<List<int>>();
+        var currentCrystalPaths = new List<List<int>>();
+
+        foreach (int playerBase in _playerBases)
+        {
+            var eggPathCount = 0;
+            var crystalPathCount = 0;
+
+            var startPoints = new List<int> { playerBase };
+            
+            var availableAnts = antsPerBase;
+
+            var availableEggAnts = availableAnts / 2;
+
+            HashSet<int> targetedEggCells = new HashSet<int>();
+
+            // Get egg paths
+            var targetedEggs = new List<int>();
+            while (availableEggAnts > targetedEggCells.Count && eggPathCount <= eggPathLimit)
+            {
+                List<List<int>> pathsToEggs = _pathFinder.GetShortestPaths(startPoints, _eggCells, targetedEggs);
+
+                List<int> shortestEggPath = GetShortestPath(pathsToEggs);
+
+                if (shortestEggPath.Count == 0)
+                {
+                    break; // No path found, stop looking
+                }
+
+                currentEggPaths.Add(shortestEggPath);                
+
+                startPoints.Add(shortestEggPath[shortestEggPath.Count - 1]);
+                targetedEggs.Add(shortestEggPath[shortestEggPath.Count - 1]);
+
+                foreach (var cell in shortestEggPath)
+                {
+                    targetedEggCells.Add(cell);
+                }
+
+                eggPathCount++;
+            }
+
+            // Display.Paths($"Egg paths from base {playerBase}", currentEggPaths);
+
+            // Get crystal paths
+            var targetedCrystals = new List<int>();
+            var availableCrystalAnts = availableAnts - targetedEggCells.Count;
+
+            HashSet<int> targetedCrystalCells = new HashSet<int>();
+          
+            while (availableCrystalAnts > targetedCrystalCells.Count && crystalPathCount <= crystalPathLimit)
+            {
+                List<List<int>> pathsToCrystals = _pathFinder.GetShortestPaths(startPoints, _crystalCells, targetedCrystals);
+
+                List<int> shortestCrystalPath = GetShortestPath(pathsToCrystals);
+
+                if (shortestCrystalPath.Count == 0)
+                {
+                    break; // No path found, stop looking
+                }
+
+                currentCrystalPaths.Add(shortestCrystalPath);
+
+                startPoints.Add(shortestCrystalPath[shortestCrystalPath.Count - 1]);
+                targetedCrystals.Add(shortestCrystalPath[shortestCrystalPath.Count - 1]);
+
+                foreach (var cell in shortestCrystalPath)
+                {
+                    targetedCrystalCells.Add(cell);
+                }
+
+                crystalPathCount++;
+            }
+
+            // Display.Paths($"Crystal paths from base {playerBase}", currentCrystalPaths);
+        }
+
+        actions = PathsToActions(currentEggPaths);
+        actions.AddRange(PathsToActions(currentCrystalPaths));
+
+
+
+
+
+
+
+
+
+
+
         for (int i = 0; i < _playerBases.Count; i++)
         {
-            List<List<int>> pathsToEggs = _pathFinder.GetShortestPaths(_playerBases[i], _eggCells);
-            Display.Paths($"All egg paths from base {_playerBases[i]}", pathsToEggs);
+            //List<List<int>> pathsToEggs = _pathFinder.GetShortestPaths(_playerBases[i], _eggCells);
+            //Display.Paths($"All egg paths from base {_playerBases[i]}", pathsToEggs);
 
-            List<List<int>> pathsToCrystals = _pathFinder.GetShortestPaths(_playerBases[i], _crystalCells);
-            Display.Paths($"All crystal paths from base {_playerBases[i]}", pathsToCrystals);
+            //List<List<int>> pathsToCrystals = _pathFinder.GetShortestPaths(_playerBases[i], _crystalCells);
+            //Display.Paths($"All crystal paths from base {_playerBases[i]}", pathsToCrystals);
 
-            List<int> shortestEggPath = GetShortestPath(pathsToEggs);
-            Display.Path("Shortest egg path", shortestEggPath);
+            //List<int> shortestEggPath = GetShortestPath(pathsToEggs);
+            //Display.Path("Shortest egg path", shortestEggPath);
 
-            List<int> shortestCrystalPath = GetShortestPath(pathsToCrystals);
-            Display.Path("Shortest crystal path", shortestCrystalPath);
+            //List<int> shortestCrystalPath = GetShortestPath(pathsToCrystals);
+            //Display.Path("Shortest crystal path", shortestCrystalPath);
 
-            foreach (var cell in shortestEggPath)
-            {
-                actions.Add($"BEACON {cell} 1");
-            }
+            //foreach (var cell in shortestEggPath)
+            //{
+            //    actions.Add($"BEACON {cell} 1");
+            //}
 
-            foreach (var cell in shortestCrystalPath)
-            {
-                actions.Add($"BEACON {cell} 2");
-            }
+            //foreach (var cell in shortestCrystalPath)
+            //{
+            //    actions.Add($"BEACON {cell} 2");
+            //}
         }
 
         return actions;
     }
-    
+
+    private List<string> PathsToActions(List<List<int>> currentEggPaths)
+    {
+        HashSet<int> beaconedCells = new HashSet<int>();
+
+        var actions = new List<string>();
+        foreach (var path in currentEggPaths)
+        {
+            if (path.Count == 0)
+            {
+                continue;
+            }
+
+            for (int i = 0; i < path.Count; i++)
+            {
+                Console.Error.WriteLine($"Beaconing cell {path[i]}");
+                int cell = path[i];
+                if (!beaconedCells.Contains(cell))
+                {
+                    actions.Add($"BEACON {cell} 1");
+                    beaconedCells.Add(cell);
+                }           
+            }
+        }
+        return actions;
+    }
+
     private List<int> GetShortestPath(List<List<int>> paths)
     {
         if (paths.Count == 0)
@@ -131,74 +267,17 @@ internal class Game
         }
         return shortestPath;
     }
-}
 
-internal class PathFinder
-{
-    private readonly Dictionary<int, Cell> _cells;
-
-    public PathFinder(Dictionary<int, Cell> cells)
+    internal void IncreasePlayerAntCount(int count)
     {
-        _cells = cells;
-    }
-    internal List<List<int>> GetShortestPaths(int start, Dictionary<int, int> targetCells)
-    {
-        var paths = new List<List<int>>();
-
-        foreach (var targetCell in targetCells)
-        {
-            List<int> path = FindShortestPath(start, targetCell.Key);
-            if (path.Count > 0)
-            {
-                paths.Add(path);
-            }
-        }
-
-        return paths;
+        _playerAntCount += count;
     }
 
-    internal List<int> FindShortestPath(int start, int target)
+    internal void IncreaseOpponentAntCount(int count)
     {
-        var path = new List<int>();
-        var visited = new HashSet<int>();
-        var parent = new Dictionary<int, int>();
-
-        var queue = new Queue<int>();
-        queue.Enqueue(start);
-        visited.Add(start);
-        
-        while (queue.Count > 0)
-        {
-            var current = queue.Dequeue();
-            if (current == target)
-            {
-                while (current != start)
-                {
-                    path.Add(current);
-                    current = parent[current];
-                }
-
-                path.Add(start);
-                path.Reverse();
-
-                return path;
-            }
-            if (_cells.ContainsKey(current))
-            {
-                foreach (var neighbourId in _cells[current].NeighbourIds)
-                {
-                    if (!visited.Contains(neighbourId))
-                    {
-                        visited.Add(neighbourId);
-                        queue.Enqueue(neighbourId);
-                        parent[neighbourId] = current;
-                    }
-                }
-            }
-        }
-
-        Console.Error.WriteLine($"ERROR: No path found from {start} to {target}");
-        return new List<int>();
+        _opponentAntCount += count;
     }
 }
+
+
 

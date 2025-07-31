@@ -13,7 +13,7 @@ class Player
     {
         string[] inputs;
         int numberOfCells = int.Parse(Console.ReadLine()); // amount of hexagonal cells in this map
-
+                
         Game game = new Game(numberOfCells);
 
         for (int i = 0; i < numberOfCells; i++)
@@ -67,6 +67,8 @@ class Player
         // game loop
         while (true)
         {
+            Console.Error.WriteLine(Console.ReadLine());
+
             game.ResetCounts();
 
             for (int i = 0; i < numberOfCells; i++)
@@ -77,6 +79,8 @@ class Player
                 int oppAnts = int.Parse(inputs[2]); // the amount of opponent ants on this cell
 
                 game.UpdateCell(i, resources, myAnts, oppAnts);
+                game.IncreasePlayerAntCount(myAnts);
+                game.IncreaseOpponentAntCount(oppAnts);
             }
 
             List<string> actions = game.GetActions();

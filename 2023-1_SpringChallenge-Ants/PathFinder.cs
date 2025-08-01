@@ -5,6 +5,7 @@ namespace _2023_1_SpringChallenge_Ants;
 
 internal class PathFinder
 {
+    private int idCounter = 0;
     private readonly Dictionary<int, Cell> _cells;    
 
     public PathFinder(Dictionary<int, Cell> cells)
@@ -12,20 +13,20 @@ internal class PathFinder
         _cells = cells;
     }
 
-    internal List<List<int>> GetShortestPaths(List<int> startCells, Dictionary<int, int> targetCells)
+    internal List<ResourcePath> GetShortestPaths(List<StartReference> startCells, Dictionary<int, int> targetCells, CellType targetType)
     {
-        return GetShortestPaths(startCells, targetCells, new List<int>());
+        return GetShortestPaths(startCells, targetCells, new List<int>(), targetType);
     }
 
-    internal List<List<int>> GetShortestPaths(List<int> startCells, Dictionary<int, int> targetCells, List<int> targetCellsToExclude)
+    internal List<ResourcePath> GetShortestPaths(List<StartReference> startReferences, Dictionary<int, int> targetCells, List<int> targetCellsToExclude, CellType targetType)
     {
-        var paths = new List<List<int>>();
+        var paths = new List<ResourcePath>();
 
-        foreach (int startCell in startCells)
+        foreach (StartReference startReference in startReferences)
         {
             foreach (var targetCell in targetCells)
             {
-                if (startCell == targetCell.Key)
+                if (startReference.CellId == targetCell.Key)
                 {
                     continue; // Skip if start and target are the same
                 }
@@ -35,10 +36,16 @@ internal class PathFinder
                     continue; // Skip excluded target cells
                 }
 
-                List<int> path = FindShortestPath(startCell, targetCell.Key);
+                List<int> path = FindShortestPath(startReference.CellId, targetCell.Key);
                 if (path.Count > 0)
                 {
-                    paths.Add(path);
+                    bool isBase = startReference.ParentId == -1;
+                    bool isEggType = targetType == CellType.Egg;
+                    bool isCrystalType = targetType == CellType.Crystal;
+
+
+                    paths.Add(new ResourcePath(idCounter, startReference.ParentId, path, 1, isBase, isEggType, isCrystalType));
+                    idCounter++;
                 }
             }
         }

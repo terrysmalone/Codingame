@@ -109,15 +109,15 @@ internal class Game
 
         foreach (int playerBase in _playerBases)
         {
-            var startPoints = new List<int> { playerBase };
+            var startPoints = new List<StartReference> { new StartReference(playerBase, -1) }; // startCellIndex, parentId
 
             var availableAnts = antsPerBase;
 
             var availableEggAnts = availableAnts / 2;            
-            Dictionary<int, int> targetedEggCells = CalculateCellTargets(startPoints, _eggCells, availableEggAnts, eggPathLimit);
+            Dictionary<int, int> targetedEggCells = CalculateCellTargets(startPoints, _eggCells, availableEggAnts, eggPathLimit, CellType.Egg);
 
             var availableCrystalAnts = availableAnts - targetedEggCells.Count; // TODO: We need to count actual amounts here
-            Dictionary<int, int> targetedCrystalCells = CalculateCellTargets(startPoints, _crystalCells, availableCrystalAnts, crystalPathLimit);
+            Dictionary<int, int> targetedCrystalCells = CalculateCellTargets(startPoints, _crystalCells, availableCrystalAnts, crystalPathLimit, CellType.Crystal);
 
             AddToTargetedCells(targetedCells, targetedEggCells);
             AddToTargetedCells(targetedCells, targetedCrystalCells);
@@ -128,7 +128,11 @@ internal class Game
         return actions;
     }
 
-    private Dictionary<int, int> CalculateCellTargets(List<int> startPoints, Dictionary<int, int> resourceCells, int availableResourceAnts, int resourcePathLimit)
+    private Dictionary<int, int> CalculateCellTargets(List<StartReference> startPoints, 
+                                                      Dictionary<int, int> resourceCells, 
+                                                      int availableResourceAnts, 
+                                                      int resourcePathLimit,
+                                                      CellType targetType)
     {
         var resourcePathCount = 0;
 
@@ -141,19 +145,21 @@ internal class Game
         {
             var targetAmount = 1;
 
-            List<List<int>> pathsToResources = _pathFinder.GetShortestPaths(startPoints, resourceCells, targetedResource);
+            List<ResourcePath> pathsToResources = _pathFinder.GetShortestPaths(startPoints, resourceCells, targetedResource, targetType);
 
-            List<int> shortestResourcePath = GetShortestPath(pathsToResources);
+            ResourcePath shortestResourcePath = GetShortestPath(pathsToResources);
 
-            if (shortestResourcePath.Count == 0)
+            if (shortestResourcePath == null || shortestResourcePath.Path.Count == 0)
             {
                 break; // No path found, stop looking
             }
 
-            startPoints.Add(shortestResourcePath[shortestResourcePath.Count - 1]);
-            targetedResource.Add(shortestResourcePath[shortestResourcePath.Count - 1]);
+            int targetId = shortestResourcePath.Path[shortestResourcePath.Path.Count - 1];
 
-            foreach (var cell in shortestResourcePath)
+            startPoints.Add(new StartReference(targetId, shortestResourcePath.ParentId));
+            targetedResource.Add(targetId);
+
+            foreach (var cell in shortestResourcePath.Path)
             {
                 if (targetedResourceCells.ContainsKey(cell))
                 {
@@ -178,17 +184,18 @@ internal class Game
         return targetedResourceCells;
     }
 
-    private static List<int> GetShortestPath(List<List<int>> paths)
+    private static ResourcePath GetShortestPath(List<ResourcePath> paths)
     {
         if (paths.Count == 0)
         {
-            return new List<int>();
+            return null;
         }
+
         // Find the shortest path
-        List<int> shortestPath = paths[0];
-        foreach (var path in paths)
+        ResourcePath shortestPath = paths[0];
+        foreach (ResourcePath path in paths)
         {
-            if (path.Count < shortestPath.Count)
+            if (path.Path.Count < shortestPath.Path.Count)
             {
                 shortestPath = path;
             }
@@ -237,6 +244,3 @@ internal class Game
         _opponentAntCount += count;
     }
 }
-
-
-

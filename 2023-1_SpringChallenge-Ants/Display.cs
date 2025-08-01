@@ -30,6 +30,19 @@ internal static class Display
             Console.Error.WriteLine($"Path to {path[path.Count-1]}: {string.Join("->", path)}");
         }
     }
+
+    internal static void ResourcePaths(string message, List<ResourcePath> resourcePaths)
+    {
+        Console.Error.WriteLine(message);
+
+        foreach (var resourcePath in resourcePaths)
+        {
+            string pathType = resourcePath.IsBasePath ? "Base" : resourcePath.IsEggPath ? "Egg" : "Crystal";
+            Console.Error.WriteLine($"Path ({pathType}) - Id:{resourcePath.Id} ParentId:{resourcePath.ParentId} - {string.Join("->", resourcePath.Path)}");
+        }
+
+
+    }
 }
 
 

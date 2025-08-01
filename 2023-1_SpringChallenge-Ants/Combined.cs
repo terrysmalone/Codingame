@@ -6,6 +6,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 internal class Cell
 {
@@ -174,23 +175,28 @@ internal class Game
         var currentEggPaths = new List<List<int>>();
         var currentCrystalPaths = new List<List<int>>();
 
+        var targetedCells = new Dictionary<int, int>();
+
         foreach (int playerBase in _playerBases)
         {
             var eggPathCount = 0;
             var crystalPathCount = 0;
 
             var startPoints = new List<int> { playerBase };
-            
+
             var availableAnts = antsPerBase;
 
             var availableEggAnts = availableAnts / 2;
 
-            HashSet<int> targetedEggCells = new HashSet<int>();
+            var targetedEggCells = new Dictionary<int, int>();
 
             // Get egg paths
             var targetedEggs = new List<int>();
-            while (availableEggAnts > targetedEggCells.Count && eggPathCount <= eggPathLimit)
+            var targetedEggCount = 0;
+            while (availableEggAnts > targetedEggCount && eggPathCount <= eggPathLimit)
             {
+                var targetAmount = 1;
+
                 List<List<int>> pathsToEggs = _pathFinder.GetShortestPaths(startPoints, _eggCells, targetedEggs);
 
                 List<int> shortestEggPath = GetShortestPath(pathsToEggs);
@@ -200,14 +206,28 @@ internal class Game
                     break; // No path found, stop looking
                 }
 
-                currentEggPaths.Add(shortestEggPath);                
+                currentEggPaths.Add(shortestEggPath);
 
                 startPoints.Add(shortestEggPath[shortestEggPath.Count - 1]);
                 targetedEggs.Add(shortestEggPath[shortestEggPath.Count - 1]);
 
                 foreach (var cell in shortestEggPath)
                 {
-                    targetedEggCells.Add(cell);
+                    if (targetedEggCells.ContainsKey(cell))
+                    {
+                        // If the cell is already targeted check if we're now targeting it for more
+                        if (targetedEggCells[cell] < targetAmount)
+                        {
+                            var increaseAmount = targetAmount - targetedEggCells[cell];
+                            targetedEggCells[cell] = targetAmount;
+                            targetedEggCount += increaseAmount;
+                        }
+                    }
+                    else
+                    {
+                        targetedEggCells.Add(cell, targetAmount);
+                        targetedEggCount += targetAmount;
+                    }
                 }
 
                 eggPathCount++;
@@ -219,10 +239,11 @@ internal class Game
             var targetedCrystals = new List<int>();
             var availableCrystalAnts = availableAnts - targetedEggCells.Count;
 
-            HashSet<int> targetedCrystalCells = new HashSet<int>();
-          
-            while (availableCrystalAnts > targetedCrystalCells.Count && crystalPathCount <= crystalPathLimit)
+            var targetedCrystalCells = new Dictionary<int, int>();
+            var targetedCrystalCount = 0;
+            while (availableCrystalAnts > targetedCrystalCount && crystalPathCount <= crystalPathLimit)
             {
+                var targetAmount = 1;
                 List<List<int>> pathsToCrystals = _pathFinder.GetShortestPaths(startPoints, _crystalCells, targetedCrystals);
 
                 List<int> shortestCrystalPath = GetShortestPath(pathsToCrystals);
@@ -239,51 +260,75 @@ internal class Game
 
                 foreach (var cell in shortestCrystalPath)
                 {
-                    targetedCrystalCells.Add(cell);
+                    if (targetedCrystalCells.ContainsKey(cell))
+                    {
+                        // If the cell is already targeted check if we're now targeting it for more
+                        if (targetedCrystalCells[cell] < targetAmount)
+                        {
+                            var increaseAmount = targetAmount - targetedCrystalCells[cell];
+                            targetedCrystalCells[cell] = targetAmount;
+                            targetedCrystalCount += increaseAmount;
+                        }
+                    }
+                    else
+                    {
+                        targetedCrystalCells.Add(cell, targetAmount);
+                        targetedCrystalCount += targetAmount;
+                    }
                 }
 
                 crystalPathCount++;
             }
 
+            // Add targetedEggCells to targetedCells
+            foreach (var cell in targetedEggCells)
+            {
+                if (targetedCells.ContainsKey(cell.Key))
+                {
+                    // If the cell is already targeted check if we're now targeting it for more
+                    if (targetedCells[cell.Key] < cell.Value)
+                    {
+                        targetedCells[cell.Key] = cell.Value;
+                    }
+                }
+                else
+                {
+                    targetedCells.Add(cell.Key, cell.Value);
+                }
+            }
+
+            // Add targetedCrystalCells to targetedCells
+            foreach (var cell in targetedCrystalCells)
+            {
+                if (targetedCells.ContainsKey(cell.Key))
+                {
+                    // If the cell is already targeted check if we're now targeting it for more
+                    if (targetedCells[cell.Key] < cell.Value)
+                    {
+                        targetedCells[cell.Key] = cell.Value;
+                    }
+                }
+                else
+                {
+                    targetedCells.Add(cell.Key, cell.Value);
+                }
+            }
+
             // Display.Paths($"Crystal paths from base {playerBase}", currentCrystalPaths);
         }
 
-        actions = PathsToActions(currentEggPaths);
-        actions.AddRange(PathsToActions(currentCrystalPaths));
+        actions = GetBeaconActions(targetedCells);
 
+        return actions;
+    }
 
+    private List<string> GetBeaconActions(Dictionary<int, int> targetedCells)
+    {
+        var actions = new List<string>();
 
-
-
-
-
-
-
-
-
-        for (int i = 0; i < _playerBases.Count; i++)
+        foreach (KeyValuePair<int, int> targetedCell in targetedCells)
         {
-            //List<List<int>> pathsToEggs = _pathFinder.GetShortestPaths(_playerBases[i], _eggCells);
-            //Display.Paths($"All egg paths from base {_playerBases[i]}", pathsToEggs);
-
-            //List<List<int>> pathsToCrystals = _pathFinder.GetShortestPaths(_playerBases[i], _crystalCells);
-            //Display.Paths($"All crystal paths from base {_playerBases[i]}", pathsToCrystals);
-
-            //List<int> shortestEggPath = GetShortestPath(pathsToEggs);
-            //Display.Path("Shortest egg path", shortestEggPath);
-
-            //List<int> shortestCrystalPath = GetShortestPath(pathsToCrystals);
-            //Display.Path("Shortest crystal path", shortestCrystalPath);
-
-            //foreach (var cell in shortestEggPath)
-            //{
-            //    actions.Add($"BEACON {cell} 1");
-            //}
-
-            //foreach (var cell in shortestCrystalPath)
-            //{
-            //    actions.Add($"BEACON {cell} 2");
-            //}
+            actions.Add($"BEACON {targetedCell.Key} {targetedCell.Value}");
         }
 
         return actions;
@@ -303,7 +348,6 @@ internal class Game
 
             for (int i = 0; i < path.Count; i++)
             {
-                Console.Error.WriteLine($"Beaconing cell {path[i]}");
                 int cell = path[i];
                 if (!beaconedCells.Contains(cell))
                 {

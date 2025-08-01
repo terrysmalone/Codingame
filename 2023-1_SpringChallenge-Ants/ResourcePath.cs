@@ -4,23 +4,21 @@ namespace _2023_1_SpringChallenge_Ants;
 
 internal class ResourcePath
 {
-    internal int Id { get; set; }
-    internal int ParentId { get; set; }
+    internal int PathId { get; set; }
+    internal int ParentPathId { get; set; } = -1;
     internal List<int> Path { get; set; } = new List<int>();
     public int BeaconStrength { get; }
     internal bool IsBasePath { get; set; } = false; // If the path is from a base to a resource
-    internal bool IsEggPath { get; set; } = false; // If the path is to an egg
-    internal bool IsCrystalPath { get; set; } = false; // If the path is to a crystal
+    internal CellType CellType { get; set; } = CellType.Empty; // Type of the resource at the end of the path
 
-    internal ResourcePath(int id, int parentId, List<int> path, int beaconStrength, bool isBasePath, bool isEggPath, bool isCrystalPath)
+    internal ResourcePath(int pathId, int parentPathId, List<int> path, int beaconStrength, bool isBasePath, CellType cellType)
     {
-        Id = id;
-        ParentId = parentId;
+        PathId = pathId;
+        ParentPathId = parentPathId;
         Path = path;
         BeaconStrength = beaconStrength;
         IsBasePath = isBasePath;
-        IsEggPath = isEggPath;
-        IsCrystalPath = isCrystalPath;
+        CellType = cellType;
     }
 }
 

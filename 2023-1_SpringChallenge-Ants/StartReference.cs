@@ -3,12 +3,14 @@
 internal struct StartReference
 {
     public int CellId;
-    public int ParentId;
+    public int PathId;
+    public int ParentPathId;
 
-    public StartReference(int cellId, int parentId)
+    public StartReference(int cellId, int pathId, int parentPathId)
     {
         CellId = cellId;
-        ParentId = ParentId;
+        ParentPathId = parentPathId;
+        PathId = pathId;
     }
 }
 

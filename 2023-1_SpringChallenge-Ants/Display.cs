@@ -37,8 +37,7 @@ internal static class Display
 
         foreach (var resourcePath in resourcePaths)
         {
-            string pathType = resourcePath.IsBasePath ? "Base" : resourcePath.IsEggPath ? "Egg" : "Crystal";
-            Console.Error.WriteLine($"Path ({pathType}) - Id:{resourcePath.Id} ParentId:{resourcePath.ParentId} - {string.Join("->", resourcePath.Path)}");
+            Console.Error.WriteLine($"Path ({resourcePath.CellType}) - Id:{resourcePath.PathId} ParentId:{resourcePath.ParentPathId} - {string.Join("->", resourcePath.Path)}");
         }
 
 

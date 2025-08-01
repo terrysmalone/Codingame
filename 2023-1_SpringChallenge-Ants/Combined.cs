@@ -71,8 +71,7 @@ internal static class Display
 
         foreach (var resourcePath in resourcePaths)
         {
-            string pathType = resourcePath.IsBasePath ? "Base" : resourcePath.IsEggPath ? "Egg" : "Crystal";
-            Console.Error.WriteLine($"Path ({pathType}) - Id:{resourcePath.Id} ParentId:{resourcePath.ParentId} - {string.Join("->", resourcePath.Path)}");
+            Console.Error.WriteLine($"Path ({resourcePath.CellType}) - Id:{resourcePath.PathId} ParentId:{resourcePath.ParentPathId} - {string.Join("->", resourcePath.Path)}");
         }
 
 
@@ -94,9 +93,7 @@ internal class Game
     private PathFinder _pathFinder;
 
     // Keep track of cell counts at the start of every loop for fast search
-    private Dictionary<int, int> _eggCells = new Dictionary<int, int>();
-    private Dictionary<int, int> _crystalCells = new Dictionary<int, int>();
-
+    private List<SimpleCell> _resourceCells = new List<SimpleCell>();
 
     private int _totalEggCount = 0;
     private int _totalCrystalCount = 0;
@@ -136,7 +133,7 @@ internal class Game
                 cell.EggCount = resources;
                 if (resources > 0)
                 {
-                    _eggCells.Add(i, resources);
+                    _resourceCells.Add(new SimpleCell(i, cell.CellType, resources));
                     _totalEggCount += resources;
                 }
             }
@@ -145,7 +142,7 @@ internal class Game
                 cell.CrystalCount = resources;
                 if (resources > 0)
                 {
-                    _crystalCells.Add(i, resources);
+                    _resourceCells.Add(new SimpleCell(i, cell.CellType, resources));
                     _totalCrystalCount += resources;
                 }
             }
@@ -161,8 +158,7 @@ internal class Game
 
     internal void ResetCounts()
     {
-        _eggCells.Clear();
-        _crystalCells.Clear();
+        _resourceCells.Clear();
 
         _playerAntCount = 0;
         _opponentAntCount = 0;
@@ -172,8 +168,7 @@ internal class Game
 
     internal List<string> GetActions()
     {
-        var eggPathLimit = 5;
-        var crystalPathLimit = 5;
+        var pathLimit = 10;
 
         var actions = new List<string>();
 
@@ -187,14 +182,58 @@ internal class Game
 
         foreach (int playerBase in _playerBases)
         {
-            var startPoints = new List<StartReference> { new StartReference(playerBase, -1) }; // startCellIndex, parentId
+            var startPoints = new List<StartReference> { new StartReference(playerBase, -1, -1) };
            
-            List<ResourcePath> eggResourcePaths = CalculateBestResourcePaths(startPoints, _eggCells, eggPathLimit, CellType.Egg);
+            List<ResourcePath> resourcePaths = CalculateBestResourcePaths(startPoints, _resourceCells, pathLimit);
 
-            List<ResourcePath> crystalResourcePaths = CalculateBestResourcePaths(startPoints, _crystalCells, crystalPathLimit, CellType.Crystal);
+            resourcePaths.Sort((a, b) => a.Path.Count.CompareTo(b.Path.Count));
+            Display.ResourcePaths("Resource Paths", resourcePaths);
 
-            Display.ResourcePaths("Egg Resource Paths", eggResourcePaths);
-            Display.ResourcePaths("Crystal Resource Paths", crystalResourcePaths);
+            // We want to minimise number of ants while maximising resources
+            var availableAnts = antsPerBase;
+            var eggCellCount = 0;
+            var crystalCellCount = 0;
+            
+            Console.Error.WriteLine($"Available Ants:{availableAnts}-eggCellCount:{eggCellCount}-crystalCellCount:{crystalCellCount}");
+
+            // Get closest base to resource
+            var closestResourcePath = GetClosestBaseToResourcePath(resourcePaths);
+
+            Display.ResourcePaths("Closest Resource Path", new List<ResourcePath> { closestResourcePath });
+            if (closestResourcePath == null)
+            {
+                Console.Error.WriteLine($"No closest resource path found for base {playerBase}");
+                continue; // No resource paths available
+            }
+
+            // TODO: If enemy ants are on the target cell try to increase amount
+
+            // Get the resource type and count
+            if (closestResourcePath.CellType == CellType.Egg)
+            {
+                eggCellCount++;
+            }
+            else if (closestResourcePath.CellType == CellType.Crystal)
+            {
+                crystalCellCount++;
+            }
+
+            availableAnts -= closestResourcePath.Path.Count;
+
+            Console.Error.WriteLine($"Available Ants:{availableAnts}-eggCellCount:{eggCellCount}-crystalCellCount:{crystalCellCount}");
+
+
+            //while (availableAnts >= .Min())
+            //{
+
+            //}
+
+
+            // while availableAnts >= smallest path in list
+            //    Get closest base/resource to resource
+            //    Increment that resource type
+            //    Decrement availableAnts
+
 
             // AddToTargetedCells(targetedCells, eggResourcePaths);
             // AddToTargetedCells(targetedCells, crystalResourcePaths);
@@ -205,10 +244,21 @@ internal class Game
         return actions;
     }
 
+    private ResourcePath GetClosestBaseToResourcePath(List<ResourcePath> resourcePaths)
+    {
+        var possiblePaths = resourcePaths.Where(rp => rp.IsBasePath).ToList();
+
+        possiblePaths.Sort((a, b) => a.Path.Count.CompareTo(b.Path.Count));
+
+        var closestPath = possiblePaths.First();
+
+        resourcePaths.Remove(closestPath);
+        return closestPath;
+    }
+
     private List<ResourcePath> CalculateBestResourcePaths(List<StartReference> startPoints, 
-                                                          Dictionary<int, int> resourceCells,                                                    
-                                                          int resourcePathLimit,
-                                                          CellType targetType)
+                                                          List<SimpleCell> resourceCells,                                                    
+                                                          int resourcePathLimit)
     {
         var resourcePathCount = 0;
 
@@ -218,7 +268,7 @@ internal class Game
         var targetedResource = new List<int>();
         while (resourcePathCount <= resourcePathLimit)
         {
-            List<ResourcePath> pathsToResources = _pathFinder.GetShortestPaths(startPoints, resourceCells, targetedResource, targetType);
+            List<ResourcePath> pathsToResources = _pathFinder.GetShortestPaths(startPoints, resourceCells, targetedResource);
 
             ResourcePath shortestResourcePath = GetShortestPath(pathsToResources);
 
@@ -229,7 +279,7 @@ internal class Game
 
             int targetId = shortestResourcePath.Path[shortestResourcePath.Path.Count - 1];
 
-            startPoints.Add(new StartReference(targetId, shortestResourcePath.ParentId));
+            startPoints.Add(new StartReference(targetId, shortestResourcePath.PathId, shortestResourcePath.ParentPathId));
             targetedResource.Add(targetId);
 
             resourcePaths.Add(shortestResourcePath);
@@ -302,6 +352,20 @@ internal class Game
     }
 }
 
+internal struct SimpleCell
+{
+    public int Id { get; set; }
+    public CellType CellType { get; set; }
+   internal int Resources { get; set; }
+
+    public SimpleCell(int id, CellType cellType, int resources)
+    {
+        Id = id;
+        CellType = cellType;
+        Resources = resources;
+    }
+}
+
 internal class PathFinder
 {
     private int idCounter = 0;
@@ -312,12 +376,12 @@ internal class PathFinder
         _cells = cells;
     }
 
-    internal List<ResourcePath> GetShortestPaths(List<StartReference> startCells, Dictionary<int, int> targetCells, CellType targetType)
+    internal List<ResourcePath> GetShortestPaths(List<StartReference> startReferences, List<SimpleCell> targetCells)
     {
-        return GetShortestPaths(startCells, targetCells, new List<int>(), targetType);
+        return GetShortestPaths(startReferences, targetCells, new List<int>());
     }
 
-    internal List<ResourcePath> GetShortestPaths(List<StartReference> startReferences, Dictionary<int, int> targetCells, List<int> targetCellsToExclude, CellType targetType)
+    internal List<ResourcePath> GetShortestPaths(List<StartReference> startReferences, List<SimpleCell> targetCells, List<int> targetCellsToExclude)
     {
         var paths = new List<ResourcePath>();
 
@@ -325,25 +389,21 @@ internal class PathFinder
         {
             foreach (var targetCell in targetCells)
             {
-                if (startReference.CellId == targetCell.Key)
+                if (startReference.CellId == targetCell.Id)
                 {
                     continue; // Skip if start and target are the same
                 }
 
-                if (targetCellsToExclude.Contains(targetCell.Key))
+                if (targetCellsToExclude.Contains(targetCell.Id))
                 {
                     continue; // Skip excluded target cells
                 }
 
-                List<int> path = FindShortestPath(startReference.CellId, targetCell.Key);
+                List<int> path = FindShortestPath(startReference.CellId, targetCell.Id);
                 if (path.Count > 0)
                 {
-                    bool isBase = startReference.ParentId == -1;
-                    bool isEggType = targetType == CellType.Egg;
-                    bool isCrystalType = targetType == CellType.Crystal;
-
-
-                    paths.Add(new ResourcePath(idCounter, startReference.ParentId, path, 1, isBase, isEggType, isCrystalType));
+                    bool isBase = startReference.PathId == -1;
+                    paths.Add(new ResourcePath(idCounter, startReference.PathId, path, 1, isBase, targetCell.CellType));
                     idCounter++;
                 }
             }
@@ -492,23 +552,21 @@ class Player
 
 internal class ResourcePath
 {
-    internal int Id { get; set; }
-    internal int ParentId { get; set; }
+    internal int PathId { get; set; }
+    internal int ParentPathId { get; set; } = -1;
     internal List<int> Path { get; set; } = new List<int>();
     public int BeaconStrength { get; }
     internal bool IsBasePath { get; set; } = false; // If the path is from a base to a resource
-    internal bool IsEggPath { get; set; } = false; // If the path is to an egg
-    internal bool IsCrystalPath { get; set; } = false; // If the path is to a crystal
+    internal CellType CellType { get; set; } = CellType.Empty; // Type of the resource at the end of the path
 
-    internal ResourcePath(int id, int parentId, List<int> path, int beaconStrength, bool isBasePath, bool isEggPath, bool isCrystalPath)
+    internal ResourcePath(int pathId, int parentPathId, List<int> path, int beaconStrength, bool isBasePath, CellType cellType)
     {
-        Id = id;
-        ParentId = parentId;
+        PathId = pathId;
+        ParentPathId = parentPathId;
         Path = path;
         BeaconStrength = beaconStrength;
         IsBasePath = isBasePath;
-        IsEggPath = isEggPath;
-        IsCrystalPath = isCrystalPath;
+        CellType = cellType;
     }
 }
 
@@ -519,12 +577,14 @@ internal class ResourcePath
 internal struct StartReference
 {
     public int CellId;
-    public int ParentId;
+    public int PathId;
+    public int ParentPathId;
 
-    public StartReference(int cellId, int parentId)
+    public StartReference(int cellId, int pathId, int parentPathId)
     {
         CellId = cellId;
-        ParentId = ParentId;
+        ParentPathId = parentPathId;
+        PathId = pathId;
     }
 }
 

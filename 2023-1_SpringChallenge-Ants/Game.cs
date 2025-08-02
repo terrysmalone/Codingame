@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 
 namespace _2023_1_SpringChallenge_Ants;
@@ -106,52 +107,125 @@ internal class Game
         foreach (int playerBase in _playerBases)
         {
             var startPoints = new List<StartReference> { new StartReference(playerBase, -1, -1) };
-           
             List<ResourcePath> resourcePaths = CalculateBestResourcePaths(startPoints, _resourceCells, pathLimit);
-
-            resourcePaths.Sort((a, b) => a.Path.Count.CompareTo(b.Path.Count));
-            Display.ResourcePaths("Resource Paths", resourcePaths);
+            // Display.ResourcePaths("Resource Paths", resourcePaths);
 
             // We want to minimise number of ants while maximising resources
             var availableAnts = antsPerBase;
             var eggCellCount = 0;
             var crystalCellCount = 0;
             
-            Console.Error.WriteLine($"Available Ants:{availableAnts}-eggCellCount:{eggCellCount}-crystalCellCount:{crystalCellCount}");
+            Console.Error.WriteLine($"Available Ants:{availableAnts}");
 
-            // Get closest base to resource
-            var closestResourcePath = GetClosestBaseToResourcePath(resourcePaths);
+            List<int> parentPaths = new List<int>();
 
-            Display.ResourcePaths("Closest Resource Path", new List<ResourcePath> { closestResourcePath });
-            if (closestResourcePath == null)
+            while (resourcePaths.Count > 0 && availableAnts >= resourcePaths.First().Path.Count)
             {
-                Console.Error.WriteLine($"No closest resource path found for base {playerBase}");
-                continue; // No resource paths available
+                // Get closest base to resource
+                var closestResourcePath = GetClosestBaseToResourcePath(resourcePaths, parentPaths);
+
+                // Display.ResourcePaths("Closest Resource Path", new List<ResourcePath> { closestResourcePath });
+                if (closestResourcePath == null)
+                {
+                    Console.Error.WriteLine($"No closest resource path found for base {playerBase}");
+                    break; // No resource paths available
+                }
+
+                // Calculate the attack chain from a resource to the nearest enemy base
+                // TODO: We don't need to get the shortest path here. We need the shortest path that the opponent has ants on. It won't
+                // always be the actual shortest path. THe same goes for the player base. 
+                List<int> shortestOpponentPathToBase = _pathFinder.FindShortestPath(closestResourcePath.Path[closestResourcePath.Path.Count - 1],
+                                                                                    _opponentBases);
+
+                Console.Error.WriteLine($"Shortest path to opponent base from {closestResourcePath.Path[closestResourcePath.Path.Count - 1]}: {string.Join("->", shortestOpponentPathToBase)}");
+                int chainStrength = GetChainStrength(shortestOpponentPathToBase, forPlayer:false);
+
+                Console.Error.WriteLine($"Chain strength to opponent base: {chainStrength} for path {closestResourcePath.Path[closestResourcePath.Path.Count - 1]}");
+
+                if (chainStrength == 0)
+                { 
+                    Console.Error.WriteLine($"Creating chain to {closestResourcePath.Path[closestResourcePath.Path.Count - 1]}");
+                    foreach (int cellId in closestResourcePath.Path)
+                    {
+                        if (!targetedCells.ContainsKey(cellId))
+                        {
+                            targetedCells.Add(cellId, 1);
+                            availableAnts--;
+                        }
+                    }
+
+                    if (closestResourcePath.CellType == CellType.Egg)
+                    {
+                        eggCellCount++;
+                    }
+                    else if (closestResourcePath.CellType == CellType.Crystal)
+                    {
+                        crystalCellCount++;
+                    }
+
+                    parentPaths.Add(closestResourcePath.PathId);
+                }
+                else
+                {
+                    Console.Error.WriteLine($"We need to increase chain strength to {chainStrength+1} for chain to {closestResourcePath.Path[closestResourcePath.Path.Count-1]}");
+
+                    // Get the entire chain for the player resource path
+                    List<int> shortestPlayerPathToBase = _pathFinder.FindShortestPath(closestResourcePath.Path[closestResourcePath.Path.Count - 1],
+                                                                                      _playerBases);
+
+                    // Calculate the cost to increate the whole thing to chainStrength + 1
+                    int neededAnts = 0;
+                    foreach (int cell in shortestPlayerPathToBase)
+                    {
+                        if (_cells.ContainsKey(cell) && _cells[cell].playerAntsCount < chainStrength + 1)
+                        {
+                            neededAnts += (chainStrength + 1) - _cells[cell].playerAntsCount;
+                        }
+                    }
+
+                    // If we have enough, do it, otherwise skip this path
+                    if (neededAnts <= availableAnts)
+                    {
+                        Console.Error.WriteLine($"Increasing chain strength to {chainStrength + 1} for chain to {closestResourcePath.Path[closestResourcePath.Path.Count - 1]} - needed:{neededAnts} available:{availableAnts}");
+                        foreach (int cellId in closestResourcePath.Path)
+                        {
+                            if (!targetedCells.ContainsKey(cellId))
+                            {
+                                targetedCells.Add(cellId, chainStrength + 1);
+                                availableAnts -= (chainStrength + 1);
+                            }
+                            else
+                            {
+                                // If the cell is already targeted, increase the strength
+                                var currentStrength = targetedCells[cellId];
+                                targetedCells[cellId] = chainStrength + 1;
+
+                                availableAnts -= (chainStrength + 1) - currentStrength;
+                            }
+                        }
+
+                        if (closestResourcePath.CellType == CellType.Egg)
+                        {
+                            eggCellCount++;
+                        }
+                        else if (closestResourcePath.CellType == CellType.Crystal)
+                        {
+                            crystalCellCount++;
+                        }
+
+                        parentPaths.Add(closestResourcePath.PathId);
+
+                    }
+                    else
+                    {
+                        Console.Error.WriteLine($"Not enough ants to increase chain strength to {chainStrength + 1} for chain to {closestResourcePath.Path[closestResourcePath.Path.Count - 1]} - needed:{neededAnts} available:{availableAnts}");
+                    }
+                }
+
+                // Console.Error.WriteLine($"Available Ants:{availableAnts}-eggCellCount:{eggCellCount}-crystalCellCount:{crystalCellCount}");
             }
 
-            // TODO: If enemy ants are on the target cell try to increase amount
-
-            // Get the resource type and count
-            if (closestResourcePath.CellType == CellType.Egg)
-            {
-                eggCellCount++;
-            }
-            else if (closestResourcePath.CellType == CellType.Crystal)
-            {
-                crystalCellCount++;
-            }
-
-            availableAnts -= closestResourcePath.Path.Count;
-
-            Console.Error.WriteLine($"Available Ants:{availableAnts}-eggCellCount:{eggCellCount}-crystalCellCount:{crystalCellCount}");
-
-
-            while (availableAnts >= resourcePaths.First().Path.Count)
-            {
-                //    Get closest base/resource to resource
-                //    Increment that resource type
-                //    Decrement availableAnts
-            }
+            Console.Error.WriteLine($"Spare ants: {availableAnts}");
 
             // AddToTargetedCells(targetedCells, eggResourcePaths);
             // AddToTargetedCells(targetedCells, crystalResourcePaths);
@@ -162,9 +236,45 @@ internal class Game
         return actions;
     }
 
-    private ResourcePath GetClosestBaseToResourcePath(List<ResourcePath> resourcePaths)
+    private int GetChainStrength(List<int> path, bool forPlayer)
     {
-        var possiblePaths = resourcePaths.Where(rp => rp.IsBasePath).ToList();
+        var strength = int.MaxValue;
+
+        foreach (var cell in path)
+        {
+            if (_cells.ContainsKey(cell))
+            {
+                if (forPlayer)
+                {
+                    if (_cells[cell].playerAntsCount < strength)
+                    {
+                        strength = _cells[cell].playerAntsCount;
+                    }
+                }
+                else
+                {
+                    if (_cells[cell].opponentAntsCount < strength)
+                    {
+                        strength = _cells[cell].opponentAntsCount;
+
+                    }
+                }
+            }
+        }
+
+        return strength;
+    }
+
+    private ResourcePath GetClosestBaseToResourcePath(List<ResourcePath> resourcePaths, List<int> parentPathsToInclude)
+    {
+        Console.Error.WriteLine($"Finding closest base to resource path - remaining paths: {resourcePaths.Count}");
+        var possiblePaths = resourcePaths.Where(rp => rp.IsBasePath || parentPathsToInclude.Contains(rp.ParentPathId)).ToList();
+
+        if (possiblePaths.Count == 0)
+        {
+            Console.Error.WriteLine("No possible paths found");
+            return null; // No paths available
+        }
 
         var closestPath = possiblePaths.First();
 
@@ -203,6 +313,8 @@ internal class Game
 
             resourcePathCount++;
         }
+
+        resourcePaths.Sort((a, b) => a.Path.Count.CompareTo(b.Path.Count));
 
         return resourcePaths;
     }

@@ -49,6 +49,29 @@ internal class PathFinder
         return paths;
     }
 
+    internal List<int> FindShortestPath(int start, List<int> targets)
+    {
+        var shortestPath = new List<int>();
+        var shortestLength = int.MaxValue;
+
+        foreach (var target in targets)
+        {
+            var path = FindShortestPath(start, target);
+            if (path.Count > 0 && path.Count < shortestLength)
+            {
+                shortestPath = path;
+                shortestLength = path.Count;
+            }
+        }
+
+        if (shortestPath.Count == 0)
+        {
+            Console.Error.WriteLine($"ERROR: No path found from {start} to any of the targets: {string.Join(", ", targets)}");
+        }
+
+        return shortestPath;
+    }
+
     internal List<int> FindShortestPath(int start, int target)
     {
         var path = new List<int>();

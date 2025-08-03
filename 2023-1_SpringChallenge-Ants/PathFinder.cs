@@ -36,7 +36,7 @@ internal class PathFinder
                     continue; // Skip excluded target cells
                 }
 
-                List<int> path = FindShortestPath(startReference.CellId, targetCell.Id);
+                List<int> path = FindShortestPath(startReference.CellId, targetCell.Id, int.MaxValue);
                 if (path.Count > 0)
                 {
                     bool isBase = startReference.PathId == -1;
@@ -56,7 +56,7 @@ internal class PathFinder
 
         foreach (var target in targets)
         {
-            var path = FindShortestPath(start, target);
+            var path = FindShortestPath(start, target, shortestLength);
             if (path.Count > 0 && path.Count < shortestLength)
             {
                 shortestPath = path;
@@ -72,7 +72,7 @@ internal class PathFinder
         return shortestPath;
     }
 
-    internal List<int> FindShortestPath(int start, int target)
+    internal List<int> FindShortestPath(int start, int target, int cutoff)
     {
         var path = new List<int>();
         var visited = new HashSet<int>();
@@ -90,6 +90,13 @@ internal class PathFinder
                 while (current != start)
                 {
                     path.Add(current);
+
+                    if (path.Count > cutoff)
+                    {
+                        Console.Error.WriteLine($"Path from {start} to {target} exceeds cutoff of {cutoff}");
+                        return new List<int>();
+                    }
+
                     current = parent[current];
                 }
 

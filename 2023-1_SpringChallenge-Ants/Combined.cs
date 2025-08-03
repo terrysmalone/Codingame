@@ -209,6 +209,8 @@ internal class Game
                 }
 
                 // Calculate the attack chain from a resource to the nearest enemy base
+                // TODO: We don't need to get the shortest path here. We need the shortest path that the opponent has ants on. It won't
+                // always be the actual shortest path. THe same goes for the player base. 
                 List<int> shortestOpponentPathToBase = _pathFinder.FindShortestPath(closestResourcePath.Path[closestResourcePath.Path.Count - 1],
                                                                                     _opponentBases);
 
@@ -502,7 +504,7 @@ internal class PathFinder
                     continue; // Skip excluded target cells
                 }
 
-                List<int> path = FindShortestPath(startReference.CellId, targetCell.Id);
+                List<int> path = FindShortestPath(startReference.CellId, targetCell.Id, int.MaxValue);
                 if (path.Count > 0)
                 {
                     bool isBase = startReference.PathId == -1;
@@ -522,7 +524,7 @@ internal class PathFinder
 
         foreach (var target in targets)
         {
-            var path = FindShortestPath(start, target);
+            var path = FindShortestPath(start, target, shortestLength);
             if (path.Count > 0 && path.Count < shortestLength)
             {
                 shortestPath = path;
@@ -538,7 +540,7 @@ internal class PathFinder
         return shortestPath;
     }
 
-    internal List<int> FindShortestPath(int start, int target)
+    internal List<int> FindShortestPath(int start, int target, int cutoff)
     {
         var path = new List<int>();
         var visited = new HashSet<int>();
@@ -556,6 +558,13 @@ internal class PathFinder
                 while (current != start)
                 {
                     path.Add(current);
+
+                    if (path.Count > cutoff)
+                    {
+                        Console.Error.WriteLine($"Path from {start} to {target} exceeds cutoff of {cutoff}");
+                        return new List<int>();
+                    }
+
                     current = parent[current];
                 }
 

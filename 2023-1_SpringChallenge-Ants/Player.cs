@@ -64,6 +64,8 @@ class Player
             game.AddOpponentBase(oppBaseIndex);
         }
 
+        game.CountResourcesToBases();
+
         // game loop
         while (true)
         {

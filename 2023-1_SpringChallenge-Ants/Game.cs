@@ -28,6 +28,8 @@ internal class Game
     private int _playerAntCount = 0;
     private int _opponentAntCount = 0;
 
+    private Dictionary<int, int> _resourcesToClosestBase = new Dictionary<int, int>();
+
     public Game(int numberOfCells)
     {
         this._numberOfCells = numberOfCells;
@@ -121,6 +123,10 @@ internal class Game
         var targetedCells = new Dictionary<int, int>();
         var targetedResources = new List<int>();
 
+        // TODO: I need to start assigning resource first rather than base first. 
+        // I currently target resources closer to other bases
+
+
         foreach (int playerBase in _playerBases)
         {
             Console.Error.WriteLine($"Processing base {playerBase}");
@@ -128,7 +134,24 @@ internal class Game
             Console.Error.WriteLine($"Targeted Resources for base {playerBase}: {string.Join(", ", targetedResources)}");
 
             var startPoints = new List<StartReference> { new StartReference(playerBase, -1, -1) };
-            List<ResourcePath> resourcePaths = CalculateBestResourcePaths(startPoints, _resourceCells, pathLimit, targetedResources);
+
+            // exclude targetedResources and resources that are closeer to other bases
+            List<int> excludeResources = new List<int>();
+            foreach (var targetedResource in targetedResources)
+            {
+                excludeResources.Add(targetedResource);
+            }
+            foreach(var resourceToClosestBase in _resourcesToClosestBase)
+            {
+                if (resourceToClosestBase.Value != playerBase)
+                {
+                    Console.Error.WriteLine($"Excluding resource {resourceToClosestBase.Key} as it is closer to base {playerBase}");
+                    excludeResources.Add(resourceToClosestBase.Key);
+                }
+            }
+
+
+            List<ResourcePath> resourcePaths = CalculateBestResourcePaths(startPoints, _resourceCells, pathLimit, excludeResources);
             Display.ResourcePaths("Resource Paths", resourcePaths);
 
             // We want to minimise number of ants while maximising resources
@@ -251,7 +274,7 @@ internal class Game
 
             // As a first pass just redistribute the remaining ants to the targeted cells
             var counter = 0;
-            while (availableAnts > 0)
+            while (availableAnts > 0 && targetedCells.Count > 0)
             {
                 var index = targetedCells.ElementAt(counter).Key;
                 targetedCells[index] = targetedCells[index] + 1;
@@ -459,18 +482,36 @@ internal class Game
     {
         _opponentAntCount += count;
     }
-}
 
-internal struct SimpleCell
-{
-    public int Id { get; set; }
-    public CellType CellType { get; set; }
-   internal int Resources { get; set; }
-
-    public SimpleCell(int id, CellType cellType, int resources)
+    internal void CountResourcesToBases()
     {
-        Id = id;
-        CellType = cellType;
-        Resources = resources;
+        foreach (var cell in _cells)
+        {
+            if (cell.Value.CellType == CellType.Egg || cell.Value.CellType == CellType.Crystal)
+            {
+                // Check which base is closest to this cell
+                int closestBase = -1;
+                int shortestDistance = int.MaxValue;
+
+                foreach (var playerBase in _playerBases)
+                {
+                    List<int> path = _pathFinder.FindShortestPath(cell.Key, playerBase, shortestDistance);
+                    if (path.Count > 0 && path.Count < shortestDistance)
+                    {
+                        closestBase = playerBase;
+                        shortestDistance = path.Count;
+                    }
+                }
+
+                if (closestBase != -1)
+                {
+                    if (!_resourcesToClosestBase.ContainsKey(cell.Key) || _resourcesToClosestBase[cell.Key] != closestBase)
+                    {
+                        _resourcesToClosestBase[cell.Key] = closestBase;
+                    }
+                }
+            }
+
+        }
     }
 }

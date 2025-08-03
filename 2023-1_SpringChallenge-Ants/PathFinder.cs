@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 
 namespace _2023_1_SpringChallenge_Ants;
@@ -64,11 +65,6 @@ internal class PathFinder
             }
         }
 
-        if (shortestPath.Count == 0)
-        {
-            Console.Error.WriteLine($"ERROR: No path found from {start} to any of the targets: {string.Join(", ", targets)}");
-        }
-
         return shortestPath;
     }
 
@@ -120,6 +116,154 @@ internal class PathFinder
         }
 
         Console.Error.WriteLine($"ERROR: No path found from {start} to {target}");
+        return new List<int>();
+    }
+
+    internal List<int> FindShortestTargetedPathToBase(int start, List<int> playerBases, Dictionary<int, int> targetedCells)
+    {
+        var shortestPath = new List<int>();
+        var shortestLength = int.MaxValue;
+
+        foreach (var playerBase in playerBases)
+        {
+            var path = FindShortestTargetedPath(start, playerBase, targetedCells, shortestLength);
+            if (path.Count > 0 && path.Count < shortestLength)
+            {
+                shortestPath = path;
+                shortestLength = path.Count;
+            }
+        }
+
+        if (shortestPath.Count == 0)
+        {
+            Console.Error.WriteLine($"ERROR: No path found from {start} to any of the targets: {string.Join(", ", playerBases)}");
+        }
+
+        return shortestPath;
+    }
+
+    // Finds the shortest path in targetedCells
+    private List<int> FindShortestTargetedPath(int start, int target, Dictionary<int, int> targetedCells, int cutoff)
+    {
+        var path = new List<int>();
+        var visited = new HashSet<int>();
+        var parent = new Dictionary<int, int>();
+
+        var queue = new Queue<int>();
+        queue.Enqueue(start);
+        visited.Add(start);
+
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+            if (current == target)
+            {
+                while (current != start)
+                {
+                    path.Add(current);
+
+                    if (path.Count > cutoff)
+                    {
+                        Console.Error.WriteLine($"Path from {start} to {target} exceeds cutoff of {cutoff}");
+                        return new List<int>();
+                    }
+
+                    current = parent[current];
+                }
+
+                path.Add(start);
+                path.Reverse();
+
+                return path;
+            }
+            if (targetedCells.ContainsKey(current))
+            {
+                foreach (var neighbourId in _cells[current].NeighbourIds)
+                {
+                    if (!visited.Contains(neighbourId))
+                    {
+                        visited.Add(neighbourId);
+                        queue.Enqueue(neighbourId);
+                        parent[neighbourId] = current;
+                    }
+                }
+            }
+        }
+
+        Console.Error.WriteLine($"ERROR: No path found from {start} to {target}");
+        return new List<int>();
+    }
+
+    internal List<int> FindShortestOpponentPathToBase(int start, List<int> targets)
+    {
+        var shortestPath = new List<int>();
+        var shortestLength = int.MaxValue;
+
+        foreach (var target in targets)
+        {
+            var path = FindShortestOpponentPath(start, target, shortestLength);
+            if (path.Count > 0 && path.Count < shortestLength)
+            {
+                shortestPath = path;
+                shortestLength = path.Count;
+            }
+        }
+
+        if (shortestPath.Count == 0)
+        {
+            Console.Error.WriteLine($"No path found from {start} to any of the targets: {string.Join(", ", targets)}");
+        }
+
+        return shortestPath;
+    }
+
+    private List<int> FindShortestOpponentPath(int start, int target, int cutoff)
+    {
+        var path = new List<int>();
+        var visited = new HashSet<int>();
+        var parent = new Dictionary<int, int>();
+
+        var queue = new Queue<int>();
+        queue.Enqueue(start);
+        visited.Add(start);
+
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+            if (current == target)
+            {
+                while (current != start)
+                {
+                    path.Add(current);
+
+                    if (path.Count > cutoff)
+                    {
+                        Console.Error.WriteLine($"Path from {start} to {target} exceeds cutoff of {cutoff}");
+                        return new List<int>();
+                    }
+
+                    current = parent[current];
+                }
+
+                path.Add(start);
+                path.Reverse();
+
+                return path;
+            }
+            if (_cells.ContainsKey(current) && _cells[current].opponentAntsCount > 0)
+            {
+                foreach (var neighbourId in _cells[current].NeighbourIds)
+                {
+                    if (!visited.Contains(neighbourId))
+                    {
+                        visited.Add(neighbourId);
+                        queue.Enqueue(neighbourId);
+                        parent[neighbourId] = current;
+                    }
+                }
+            }
+        }
+
         return new List<int>();
     }
 }

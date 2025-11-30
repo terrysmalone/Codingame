@@ -51,8 +51,13 @@ Gold - 96/911
 
 #### 2025-1_Summer_SoakOverflow
 
-TBD
+Event Progress (https://www.codingame.com/challengereport/73464192d8f121e473029898e395ddcc6af90872)
 
+Global 154/3,827
+
+Current progress (https://www.codingame.com/multiplayer/bot-programming/soak-overflow)
+
+Legend - 180/211
 
 ### Bot Programming
 

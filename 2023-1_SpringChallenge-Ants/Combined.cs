@@ -561,6 +561,7 @@ internal class Game
         _opponentAntCount += count;
     }
 
+    // For each resource find the closest base and store it in _resourcesToClosestBase
     internal void CountResourcesToBases()
     {
         foreach (var cell in _cells)

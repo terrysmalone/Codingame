@@ -13,23 +13,27 @@ internal class Game
     private List<Drone> myDrones = [];
     private List<Drone> enemyDrones = [];
 
-    private HashSet<int> myScannedCreatureIds = [];
-    private HashSet<int> enemyScannedCreatureIds = [];
+    private DistanceCalculator distanceCalculator;
 
-    internal void InitialiseCreatures(List<Creature> creatures)
+    internal void InitialiseCreatures(List<Creature> allCreatures)
     {
-        this.creatures = creatures;
+        creatures = allCreatures;
+        distanceCalculator = new DistanceCalculator(creatures);
     }
 
     internal void AddScannedCreature(int creatureId, bool isMyDrone)
     {
-        if (isMyDrone)
+        Creature creature = creatures.Find(c => c.Id == creatureId);
+        if (creature != null)
         {
-            myScannedCreatureIds.Add(creatureId);
-        }
-        else
-        {
-            enemyScannedCreatureIds.Add(creatureId);
+            if (isMyDrone)
+            {
+                creature.IsScannedByMe = true;
+            }
+            else
+            {
+                creature.IsScannedByEnemy = true;
+            }
         }
     }
 
@@ -55,13 +59,19 @@ internal class Game
 
     internal List<string> CalculateActions()
     {
+        // First simple pass solution
+        // For each drone, move towards the nearest unscanned creature
+
         var actions = new List<string>();
 
         for (var i=0; i<myDrones.Count; i++)
         {
-            actions.Add("WAIT 1"); // MOVE <x> <y> <light (1|0)> | WAIT <light (1|0)>
+            Point pos = distanceCalculator.GetClosestCreaturePosition(myDrones[i], true, true);
+            actions.Add($"MOVE {pos.X} {pos.Y} 1 Battery level:{myDrones[i].BatteryLevel}"); // MOVE <x> <y> <light (1|0)> | WAIT <light (1|0)>
         }
 
         return actions;
     }
 }
+
+

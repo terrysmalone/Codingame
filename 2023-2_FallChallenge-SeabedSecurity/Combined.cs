@@ -21,6 +21,8 @@ internal class Creature
     internal Point Position { get; set; }
     internal Point Velocity { get; set; }
 
+    internal bool IsScannedByMe { get; set; }
+    internal bool IsScannedByEnemy { get; set; }
 
     internal Creature(int id, int color, int type)
     {
@@ -30,6 +32,53 @@ internal class Creature
     }
 }
 
+
+internal class DistanceCalculator
+{
+    private List<Creature> creatures;
+    public DistanceCalculator(List<Creature> allCreatures)
+    {
+        creatures = allCreatures;
+    }
+
+    internal Point GetClosestCreaturePosition(Drone drone, bool unscannedByMe, bool unscannedByEnemy)
+    {
+        var closest = int.MaxValue;
+        var closestId = -1;
+        Point closestPosition = new Point(0, 0);
+
+        foreach (var creature in creatures)
+        {
+            var dist = GetDistance(drone.Position, creature.Position);
+
+            if(unscannedByMe && creature.IsScannedByMe)
+            {
+                continue;
+            }
+
+            if(unscannedByEnemy && creature.IsScannedByEnemy)
+            {
+                continue;
+            }
+
+            if (dist < closest)
+            {
+                closest = dist;
+                closestId = creature.Id;
+                closestPosition = creature.Position;
+            }
+        }
+
+        return closestPosition;
+    }
+
+    private static int GetDistance(Point position1, Point position2)
+    {
+        var dx = position1.X - position2.X;
+        var dy = position1.Y - position2.Y;
+        return (int)Math.Sqrt(dx * dx + dy * dy);
+    }
+}
 
 internal sealed class Drone
 {
@@ -55,23 +104,27 @@ internal class Game
     private List<Drone> myDrones = [];
     private List<Drone> enemyDrones = [];
 
-    private HashSet<int> myScannedCreatureIds = [];
-    private HashSet<int> enemyScannedCreatureIds = [];
+    private DistanceCalculator distanceCalculator;
 
-    internal void InitialiseCreatures(List<Creature> creatures)
+    internal void InitialiseCreatures(List<Creature> allCreatures)
     {
-        this.creatures = creatures;
+        creatures = allCreatures;
+        distanceCalculator = new DistanceCalculator(creatures);
     }
 
     internal void AddScannedCreature(int creatureId, bool isMyDrone)
     {
-        if (isMyDrone)
+        Creature creature = creatures.Find(c => c.Id == creatureId);
+        if (creature != null)
         {
-            myScannedCreatureIds.Add(creatureId);
-        }
-        else
-        {
-            enemyScannedCreatureIds.Add(creatureId);
+            if (isMyDrone)
+            {
+                creature.IsScannedByMe = true;
+            }
+            else
+            {
+                creature.IsScannedByEnemy = true;
+            }
         }
     }
 
@@ -97,16 +150,22 @@ internal class Game
 
     internal List<string> CalculateActions()
     {
+        // First simple pass solution
+        // For each drone, move towards the nearest unscanned creature
+
         var actions = new List<string>();
 
         for (var i=0; i<myDrones.Count; i++)
         {
-            actions.Add("WAIT 1"); // MOVE <x> <y> <light (1|0)> | WAIT <light (1|0)>
+            Point pos = distanceCalculator.GetClosestCreaturePosition(myDrones[i], true, true);
+            actions.Add($"MOVE {pos.X} {pos.Y} 1 Battery level:{myDrones[i].BatteryLevel}"); // MOVE <x> <y> <light (1|0)> | WAIT <light (1|0)>
         }
 
         return actions;
     }
 }
+
+
 
 
 class Player

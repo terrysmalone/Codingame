@@ -11,6 +11,8 @@ internal class Creature
     internal Point Position { get; set; }
     internal Point Velocity { get; set; }
 
+    internal bool IsScannedByMe { get; set; }
+    internal bool IsScannedByEnemy { get; set; }
 
     internal Creature(int id, int color, int type)
     {

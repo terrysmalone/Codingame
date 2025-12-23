@@ -22,6 +22,8 @@ class Player
         // game loop
         while (true)
         {
+            game.VisibleMonsterIds.Clear();
+
             int myScore = int.Parse(Console.ReadLine());
             game.MyScore = myScore;
             int foeScore = int.Parse(Console.ReadLine());

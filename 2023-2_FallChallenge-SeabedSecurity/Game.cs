@@ -17,10 +17,11 @@ internal class Game
     internal HashSet<int> MyScannedCreatureIds { get; private set; } = new();
     internal HashSet<int> EnemyScannedCreatureIds { get; private set; } = new();
 
-    private DistanceCalculator distanceCalculator;
     private DirectionCalculator directionCalculator;
 
     internal int visibleCreatureCount;
+    internal HashSet<int> VisibleMonsterIds { get; set; } = new();
+
     internal int round = 0;
 
     internal bool earlyGame = true;
@@ -30,7 +31,6 @@ internal class Game
     internal void InitialiseCreatures(List<Creature> allCreatures)
     {
         creatures = allCreatures;
-        distanceCalculator = new DistanceCalculator(creatures);
         directionCalculator = new DirectionCalculator(this);
     }
 
@@ -65,7 +65,14 @@ internal class Game
             creature.Velocity = new Point(creatureVx, creatureVy);
             creature.IsVisible = true;
 
-            visibleCreatureCount++;
+            if (creature.Type != -1)
+            {
+                visibleCreatureCount++;
+            }
+            else
+            {
+                VisibleMonsterIds.Add(creatureId);
+            }
         }
     }
 
@@ -87,35 +94,70 @@ internal class Game
 
         var actions = new List<string>();
 
-        if (earlyGame)
+        foreach (var drone in myDrones)
         {
-            // in the early game drop as far as possible, picking up fish thenrise to the top
-            for (var i = 0; i < myDrones.Count; i++)
+            var action = string.Empty;
+
+            var lightLevel = CalculateLightLevel(drone);
+
+            Console.Error.WriteLine($"Drone {drone.Id}");
+
+            // If the drone is within 2000 of a creature of type -1 set early game to false and evade the creature
+            if (VisibleMonsterIds.Count > 0)
             {
-                var drone = myDrones[i];
+                Console.Error.WriteLine($"Checking for monsters to evade...");
+                foreach (var monsterId in VisibleMonsterIds)
+                {
+                    var monster = creatures.Find(c => c.Id == monsterId);
+                    var distanceToMonster = DistanceCalculator.GetDistance(drone.Position, monster.Position);
+                    Console.Error.WriteLine($"Distance to monster {monster.Id}: {distanceToMonster}");
+                    if (distanceToMonster <= 2000)
+                    {
+                        Console.Error.WriteLine($"Evading monster {monster.Id}");
+                        earlyGame = false;
+                        // Move away from the monster
+                        var directionX = drone.Position.X - monster.Position.X;
+                        var directionY = drone.Position.Y - monster.Position.Y;
 
-                var lightLevel = CalculateLightLevel(drone);
+                        Console.Error.WriteLine($"Direction before normalization: ({directionX}, {directionY})");
 
+                        //var length = (int)Math.Sqrt(directionX * directionX + directionY * directionY);
+                        //directionX /= length;
+                        //directionY /= length;
+
+                        Console.Error.WriteLine($"Direction after normalization: ({directionX}, {directionY})");
+
+                        var targetX = drone.Position.X + directionX;
+                        var targetY = drone.Position.Y + directionY;
+                        Console.Error.WriteLine($"Evade target position: ({targetX}, {targetY})");
+
+                        action = $"MOVE {targetX} {targetY} {lightLevel}";
+                        break;
+                    }
+                }
+            }
+
+            if (action != string.Empty)
+            {
+                actions.Add(action);
+                continue;
+            }
+
+            if (earlyGame)
+            {
                 // Drop to 8,000+ then rise to the top
                 if (drone.Position.Y >= 9000)
                 {
                     earlyGame = false;
-                    
+
                 }
 
                 actions.Add($"MOVE {drone.Position.X} 9500 {lightLevel}");
             }
-        }
-        else
-        {
-            // in the mid game be more deliberate about where to go
-            for (var i = 0; i < myDrones.Count; i++)
+            else
             {
-                var drone = myDrones[i];
-                var lightLevel = CalculateLightLevel(drone);
-
                 // If stored scans >= 4 head to surface
-                if (drone.ScannedCreaturesIds.Count >= 4 || MyScannedCreatureIds.Count + drone.ScannedCreaturesIds.Count >= 12)
+                if (drone.ScannedCreaturesIds.Count >= 3 || MyScannedCreatureIds.Count + drone.ScannedCreaturesIds.Count >= 12)
                 {
                     actions.Add($"MOVE {drone.Position.X} 500 {lightLevel}");
                 }

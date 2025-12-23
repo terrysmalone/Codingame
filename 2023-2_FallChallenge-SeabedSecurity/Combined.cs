@@ -232,15 +232,13 @@ internal class Game
                 var lightLevel = CalculateLightLevel(drone);
 
                 // Drop to 8,000+ then rise to the top
-                if (drone.Position.Y < 8000)
+                if (drone.Position.Y >= 9000)
                 {
-                    actions.Add($"MOVE {drone.Position.X} 9000 {lightLevel}");
-                }
-                else
-                {
-                    actions.Add($"MOVE {drone.Position.X} 500 {lightLevel}");
                     earlyGame = false;
+                    
                 }
+
+                actions.Add($"MOVE {drone.Position.X} 9500 {lightLevel}");
             }
         }
         else

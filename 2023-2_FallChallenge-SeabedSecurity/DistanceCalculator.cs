@@ -14,33 +14,7 @@ internal class DistanceCalculator
 
     internal Point GetClosestCreaturePosition(Drone drone, bool unscannedByMe, bool unscannedByEnemy)
     {
-        var closest = int.MaxValue;
-        var closestId = -1;
-        Point closestPosition = new Point(0, 0);
-
-        foreach (var creature in creatures)
-        {
-            var dist = GetDistance(drone.Position, creature.Position);
-
-            if(unscannedByMe && creature.IsScannedByMe)
-            {
-                continue;
-            }
-
-            if(unscannedByEnemy && creature.IsScannedByEnemy)
-            {
-                continue;
-            }
-
-            if (dist < closest)
-            {
-                closest = dist;
-                closestId = creature.Id;
-                closestPosition = creature.Position;
-            }
-        }
-
-        return closestPosition;
+        return new Point(0, 0);
     }
 
     private static int GetDistance(Point position1, Point position2)

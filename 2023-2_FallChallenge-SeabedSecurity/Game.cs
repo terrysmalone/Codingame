@@ -13,27 +13,30 @@ internal class Game
     private List<Drone> myDrones = [];
     private List<Drone> enemyDrones = [];
 
+    internal HashSet<int> MyScannedCreatureIds { get; private set; } = new();
+    internal HashSet<int> EnemyScannedCreatureIds { get; private set; } = new();
+
     private DistanceCalculator distanceCalculator;
+    private DirectionCalculator directionCalculator;
+
+    internal int visibleCreatureCount;
 
     internal void InitialiseCreatures(List<Creature> allCreatures)
     {
         creatures = allCreatures;
         distanceCalculator = new DistanceCalculator(creatures);
+        directionCalculator = new DirectionCalculator(this);
     }
 
     internal void AddScannedCreature(int creatureId, bool isMyDrone)
-    {
-        Creature creature = creatures.Find(c => c.Id == creatureId);
-        if (creature != null)
+    {      
+        if (isMyDrone)
         {
-            if (isMyDrone)
-            {
-                creature.IsScannedByMe = true;
-            }
-            else
-            {
-                creature.IsScannedByEnemy = true;
-            }
+            MyScannedCreatureIds.Add(creatureId);
+        }
+        else
+        {
+            EnemyScannedCreatureIds.Add(creatureId);
         }
     }
 
@@ -54,20 +57,69 @@ internal class Game
         {
             creature.Position = new Point(creatureX, creatureY);
             creature.Velocity = new Point(creatureVx, creatureVy);
+            creature.IsVisible = true;
+
+            visibleCreatureCount++;
+        }
+    }
+
+    internal void SetAllCreaturesAsNotVisible()
+    {
+        visibleCreatureCount = 0;
+
+        foreach (var creature in creatures)
+        {
+            creature.IsVisible = false;
         }
     }
 
     internal List<string> CalculateActions()
     {
-        // First simple pass solution
-        // For each drone, move towards the nearest unscanned creature
-
         var actions = new List<string>();
 
-        for (var i=0; i<myDrones.Count; i++)
+        for (var i = 0; i < myDrones.Count; i++)
         {
-            Point pos = distanceCalculator.GetClosestCreaturePosition(myDrones[i], true, true);
-            actions.Add($"MOVE {pos.X} {pos.Y} 1 Battery level:{myDrones[i].BatteryLevel}"); // MOVE <x> <y> <light (1|0)> | WAIT <light (1|0)>
+            var drone = myDrones[i];
+            Logger.Drone(drone);
+
+            // If stored scans >= 4 head to surface
+            if (drone.ScannedCreaturesIds.Count >= 4 || MyScannedCreatureIds.Count + drone.ScannedCreaturesIds.Count >= 12)
+            {
+                actions.Add($"MOVE {drone.Position.X} 500 0");
+            }
+            else
+            {
+                var lightLevel = 0;
+
+                if(visibleCreatureCount > 0)
+                {
+                    lightLevel = 1;
+                }
+
+
+                // Move in the direction of the most unscanned fish
+                CreatureDirection direction = directionCalculator.GetBestDirectionFromRadarBlips(drone);
+
+                var targetPosition = new Point(0, 0);
+
+                switch (direction)
+                {
+                    case CreatureDirection.TL:
+                        targetPosition = new Point(drone.Position.X - 1000, drone.Position.Y - 1000);
+                        break;
+                    case CreatureDirection.TR:
+                        targetPosition = new Point(drone.Position.X + 1000, drone.Position.Y - 1000);
+                        break;
+                    case CreatureDirection.BL:
+                        targetPosition = new Point(drone.Position.X - 1000, drone.Position.Y + 1000);
+                        break;
+                    case CreatureDirection.BR:
+                        targetPosition = new Point(drone.Position.X + 1000, drone.Position.Y + 1000);
+                        break;
+                }
+
+                actions.Add($"MOVE {targetPosition.X} {targetPosition.Y} {lightLevel} {drone.BatteryLevel}");
+            }
         }
 
         return actions;

@@ -8,11 +8,9 @@ internal class Creature
     internal int Color { get; private set; }
     internal int Type { get; private set; }
 
+    internal bool IsVisible { get; set; }
     internal Point Position { get; set; }
     internal Point Velocity { get; set; }
-
-    internal bool IsScannedByMe { get; set; }
-    internal bool IsScannedByEnemy { get; set; }
 
     internal Creature(int id, int color, int type)
     {

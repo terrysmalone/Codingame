@@ -18,11 +18,9 @@ internal class Creature
     internal int Color { get; private set; }
     internal int Type { get; private set; }
 
+    internal bool IsVisible { get; set; }
     internal Point Position { get; set; }
     internal Point Velocity { get; set; }
-
-    internal bool IsScannedByMe { get; set; }
-    internal bool IsScannedByEnemy { get; set; }
 
     internal Creature(int id, int color, int type)
     {
@@ -32,6 +30,65 @@ internal class Creature
     }
 }
 
+
+internal enum CreatureDirection
+{
+    TL,
+    TR,
+    BL,
+    BR
+}
+
+internal class DirectionCalculator
+{
+    private Game game;
+
+    public DirectionCalculator(Game game)
+    {
+        this.game = game;
+    }
+
+    internal CreatureDirection GetBestDirectionFromRadarBlips(Drone drone)
+    {
+        // First pass
+        // Just go in the direction with the most creatures
+        Dictionary<CreatureDirection, int> directionCounts = new Dictionary<CreatureDirection, int>();
+
+        foreach (var direction in drone.CreatureDirections)
+        {
+            var incrementAmount = 0;
+
+            // If a creature has been scanned/stored by me don't count it
+            if (game.MyScannedCreatureIds.Contains(direction.Key) || drone.ScannedCreaturesIds.Contains(direction.Key))
+            {
+                incrementAmount = 0;
+            }
+            // If it's been saved but not scanned/stored by me count it as one
+            else if (game.EnemyScannedCreatureIds.Contains(direction.Key) && !game.MyScannedCreatureIds.Contains(direction.Key) && !drone.ScannedCreaturesIds.Contains(direction.Key))
+            {
+                incrementAmount = 1;
+            }
+            // If it's not been save by anyone and not stored by me count it as 3
+            else if (!game.EnemyScannedCreatureIds.Contains(direction.Key) && !game.MyScannedCreatureIds.Contains(direction.Key) && !drone.ScannedCreaturesIds.Contains(direction.Key))
+            {
+                incrementAmount = 3;
+            }
+
+            if (directionCounts.ContainsKey(direction.Value))
+            {
+                directionCounts[direction.Value] += incrementAmount;
+            }
+            else
+            {
+                directionCounts[direction.Value] = incrementAmount;
+            }
+        }
+
+        // return the key with the highest value
+        return directionCounts.MaxBy(dc => dc.Value).Key;
+         
+    }
+}
 
 internal class DistanceCalculator
 {
@@ -43,33 +100,7 @@ internal class DistanceCalculator
 
     internal Point GetClosestCreaturePosition(Drone drone, bool unscannedByMe, bool unscannedByEnemy)
     {
-        var closest = int.MaxValue;
-        var closestId = -1;
-        Point closestPosition = new Point(0, 0);
-
-        foreach (var creature in creatures)
-        {
-            var dist = GetDistance(drone.Position, creature.Position);
-
-            if(unscannedByMe && creature.IsScannedByMe)
-            {
-                continue;
-            }
-
-            if(unscannedByEnemy && creature.IsScannedByEnemy)
-            {
-                continue;
-            }
-
-            if (dist < closest)
-            {
-                closest = dist;
-                closestId = creature.Id;
-                closestPosition = creature.Position;
-            }
-        }
-
-        return closestPosition;
+        return new Point(0, 0);
     }
 
     private static int GetDistance(Point position1, Point position2)
@@ -86,12 +117,26 @@ internal sealed class Drone
 
     internal Point Position { get; set; }
     internal int BatteryLevel { get; set; }
-    
+
+    internal HashSet<int> ScannedCreaturesIds { get; private set; } = new();
+
+    internal Dictionary<int, CreatureDirection> CreatureDirections = new Dictionary<int, CreatureDirection>();
+
     internal Drone(int id, int xPos, int yPos, int batteryLevel)
     {
         Id = id;
         Position = new Point(xPos, yPos);
         BatteryLevel = batteryLevel;
+    }
+
+    internal void AddScannedCreatures(int id)
+    {
+        ScannedCreaturesIds.Add(id);
+    }
+
+    internal void AddCreatureDirection(int creatureId, CreatureDirection direction)
+    {
+        CreatureDirections[creatureId] = direction;
     }
 }
 
@@ -104,27 +149,30 @@ internal class Game
     private List<Drone> myDrones = [];
     private List<Drone> enemyDrones = [];
 
+    internal HashSet<int> MyScannedCreatureIds { get; private set; } = new();
+    internal HashSet<int> EnemyScannedCreatureIds { get; private set; } = new();
+
     private DistanceCalculator distanceCalculator;
+    private DirectionCalculator directionCalculator;
+
+    internal int visibleCreatureCount;
 
     internal void InitialiseCreatures(List<Creature> allCreatures)
     {
         creatures = allCreatures;
         distanceCalculator = new DistanceCalculator(creatures);
+        directionCalculator = new DirectionCalculator(this);
     }
 
     internal void AddScannedCreature(int creatureId, bool isMyDrone)
-    {
-        Creature creature = creatures.Find(c => c.Id == creatureId);
-        if (creature != null)
+    {      
+        if (isMyDrone)
         {
-            if (isMyDrone)
-            {
-                creature.IsScannedByMe = true;
-            }
-            else
-            {
-                creature.IsScannedByEnemy = true;
-            }
+            MyScannedCreatureIds.Add(creatureId);
+        }
+        else
+        {
+            EnemyScannedCreatureIds.Add(creatureId);
         }
     }
 
@@ -145,20 +193,69 @@ internal class Game
         {
             creature.Position = new Point(creatureX, creatureY);
             creature.Velocity = new Point(creatureVx, creatureVy);
+            creature.IsVisible = true;
+
+            visibleCreatureCount++;
+        }
+    }
+
+    internal void SetAllCreaturesAsNotVisible()
+    {
+        visibleCreatureCount = 0;
+
+        foreach (var creature in creatures)
+        {
+            creature.IsVisible = false;
         }
     }
 
     internal List<string> CalculateActions()
     {
-        // First simple pass solution
-        // For each drone, move towards the nearest unscanned creature
-
         var actions = new List<string>();
 
-        for (var i=0; i<myDrones.Count; i++)
+        for (var i = 0; i < myDrones.Count; i++)
         {
-            Point pos = distanceCalculator.GetClosestCreaturePosition(myDrones[i], true, true);
-            actions.Add($"MOVE {pos.X} {pos.Y} 1 Battery level:{myDrones[i].BatteryLevel}"); // MOVE <x> <y> <light (1|0)> | WAIT <light (1|0)>
+            var drone = myDrones[i];
+            Logger.Drone(drone);
+
+            // If stored scans >= 4 head to surface
+            if (drone.ScannedCreaturesIds.Count >= 4 || MyScannedCreatureIds.Count + drone.ScannedCreaturesIds.Count >= 12)
+            {
+                actions.Add($"MOVE {drone.Position.X} 500 0");
+            }
+            else
+            {
+                var lightLevel = 0;
+
+                if(visibleCreatureCount > 0)
+                {
+                    lightLevel = 1;
+                }
+
+
+                // Move in the direction of the most unscanned fish
+                CreatureDirection direction = directionCalculator.GetBestDirectionFromRadarBlips(drone);
+
+                var targetPosition = new Point(0, 0);
+
+                switch (direction)
+                {
+                    case CreatureDirection.TL:
+                        targetPosition = new Point(drone.Position.X - 1000, drone.Position.Y - 1000);
+                        break;
+                    case CreatureDirection.TR:
+                        targetPosition = new Point(drone.Position.X + 1000, drone.Position.Y - 1000);
+                        break;
+                    case CreatureDirection.BL:
+                        targetPosition = new Point(drone.Position.X - 1000, drone.Position.Y + 1000);
+                        break;
+                    case CreatureDirection.BR:
+                        targetPosition = new Point(drone.Position.X + 1000, drone.Position.Y + 1000);
+                        break;
+                }
+
+                actions.Add($"MOVE {targetPosition.X} {targetPosition.Y} {lightLevel} {drone.BatteryLevel}");
+            }
         }
 
         return actions;
@@ -167,6 +264,35 @@ internal class Game
 
 
 
+
+internal static class Logger
+{
+    internal static void AllDrones(string? message, List<Drone> drones)
+    {
+        if (message != null)
+        {
+            Console.Error.WriteLine(message);
+            Console.Error.WriteLine("==================================");
+        }
+
+        foreach (Drone drone in drones)
+        {
+            Drone(drone);
+            Console.Error.WriteLine("------------------------");
+        }
+    }
+
+    internal static void Drone(Drone drone)
+    {
+        Console.Error.WriteLine($"Drone {drone.Id}");
+        Console.Error.WriteLine($"Position: {drone.Position.X},{drone.Position.Y}");
+        Console.Error.WriteLine($"Battery:  {drone.BatteryLevel}");
+
+        Console.Error.WriteLine($"Stored scans: {string.Join(" ", drone.ScannedCreaturesIds)}");
+
+        Console.Error.WriteLine($"Creature directions: {string.Join(" ", drone.CreatureDirections.Select(kv => $"{kv.Key}:{kv.Value}"))}");
+    }
+}
 
 class Player
 {
@@ -184,31 +310,19 @@ class Player
             int foeScore = int.Parse(Console.ReadLine());
             game.EnemyScore = foeScore;
 
-            AddScans(game);
+            AddSavedScans(game);
 
-            game.SetMyDrones(GetMyDrones());
-            game.SetEnemyDrones(GetEnemyDrones());
+            List<Drone> myDrones = GetMyDrones();
+            List<Drone> enemyDrones = GetEnemyDrones();
 
-            // Used in later leagues
-            int droneScanCount = int.Parse(Console.ReadLine());
-            for (int i = 0; i < droneScanCount; i++)
-            {
-                string[] inputs = Console.ReadLine().Split(' ');
-                int droneId = int.Parse(inputs[0]);
-                int creatureId = int.Parse(inputs[1]);
-            }
+            AddStoredScans(myDrones, enemyDrones);
 
             UpdateCreatures(game);
-            
-            // Used in later leagues
-            int radarBlipCount = int.Parse(Console.ReadLine());
-            for (int i = 0; i < radarBlipCount; i++)
-            {
-                string[] inputs = Console.ReadLine().Split(' ');
-                int droneId = int.Parse(inputs[0]);
-                int creatureId = int.Parse(inputs[1]);
-                string radar = inputs[2];
-            }
+
+            AddRadarBlips(game, myDrones, enemyDrones);
+
+            game.SetMyDrones(myDrones);
+            game.SetEnemyDrones(enemyDrones);
 
             List<string> actions = game.CalculateActions();
 
@@ -216,8 +330,11 @@ class Player
             {
                 Console.WriteLine(action);
             }
+
+            //Logger.AllDrones("My drones", myDrones);
+            //Logger.AllDrones("Enemy drones", enemyDrones);
         }
-    }
+    }    
 
     private static List<Creature> GetCreatures()
     {
@@ -238,7 +355,7 @@ class Player
         return creatures;
     }
 
-    private static void AddScans(Game game)
+    private static void AddSavedScans(Game game)
     {
         int myScanCount = int.Parse(Console.ReadLine());
         for (int i = 0; i < myScanCount; i++)
@@ -296,7 +413,11 @@ class Player
 
     private static void UpdateCreatures(Game game)
     {
+        game.SetAllCreaturesAsNotVisible();
+
         int visibleCreatureCount = int.Parse(Console.ReadLine());
+
+        Console.Error.WriteLine($"Visible creature count: {visibleCreatureCount}");
         for (int i = 0; i < visibleCreatureCount; i++)
         {
             string[] inputs = Console.ReadLine().Split(' ');
@@ -307,6 +428,51 @@ class Player
             int creatureVy = int.Parse(inputs[4]);
 
             game.UpdateCreaturePosition(creatureId, creatureX, creatureY, creatureVx, creatureVy);
+        }
+    }
+
+    private static void AddStoredScans(List<Drone> myDrones, List<Drone> enemyDrones)
+    {
+        int droneScanCount = int.Parse(Console.ReadLine());
+        for (int i = 0; i < droneScanCount; i++)
+        {
+            string[] inputs = Console.ReadLine().Split(' ');
+            int droneId = int.Parse(inputs[0]);
+            int creatureId = int.Parse(inputs[1]);
+
+            Drone drone = myDrones.FirstOrDefault(d => d.Id == droneId);
+            if (drone == null)
+            {
+                drone = enemyDrones.FirstOrDefault(d => d.Id == droneId);
+            }
+
+            if (drone != null)
+            {
+                drone.ScannedCreaturesIds.Add(creatureId);
+            }
+        }
+    }
+    
+    private static void AddRadarBlips(Game game, List<Drone> myDrones, List<Drone> enemyDrones)
+    {
+        int radarBlipCount = int.Parse(Console.ReadLine());
+        for (int i = 0; i < radarBlipCount; i++)
+        {
+            string[] inputs = Console.ReadLine().Split(' ');
+            int droneId = int.Parse(inputs[0]);
+            int creatureId = int.Parse(inputs[1]);
+            string radar = inputs[2];
+
+            Drone drone = myDrones.FirstOrDefault(d => d.Id == droneId);
+            if (drone == null)
+            {
+                drone = enemyDrones.FirstOrDefault(d => d.Id == droneId);
+            }
+
+            if (drone != null)
+            {
+                drone.AddCreatureDirection(creatureId, (CreatureDirection)Enum.Parse(typeof(CreatureDirection), radar));
+            }
         }
     }
 }

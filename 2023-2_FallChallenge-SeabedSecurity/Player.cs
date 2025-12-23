@@ -27,31 +27,19 @@ class Player
             int foeScore = int.Parse(Console.ReadLine());
             game.EnemyScore = foeScore;
 
-            AddScans(game);
+            AddSavedScans(game);
 
-            game.SetMyDrones(GetMyDrones());
-            game.SetEnemyDrones(GetEnemyDrones());
+            List<Drone> myDrones = GetMyDrones();
+            List<Drone> enemyDrones = GetEnemyDrones();
 
-            // Used in later leagues
-            int droneScanCount = int.Parse(Console.ReadLine());
-            for (int i = 0; i < droneScanCount; i++)
-            {
-                string[] inputs = Console.ReadLine().Split(' ');
-                int droneId = int.Parse(inputs[0]);
-                int creatureId = int.Parse(inputs[1]);
-            }
+            AddStoredScans(myDrones, enemyDrones);
 
             UpdateCreatures(game);
-            
-            // Used in later leagues
-            int radarBlipCount = int.Parse(Console.ReadLine());
-            for (int i = 0; i < radarBlipCount; i++)
-            {
-                string[] inputs = Console.ReadLine().Split(' ');
-                int droneId = int.Parse(inputs[0]);
-                int creatureId = int.Parse(inputs[1]);
-                string radar = inputs[2];
-            }
+
+            AddRadarBlips(game, myDrones, enemyDrones);
+
+            game.SetMyDrones(myDrones);
+            game.SetEnemyDrones(enemyDrones);
 
             List<string> actions = game.CalculateActions();
 
@@ -59,8 +47,11 @@ class Player
             {
                 Console.WriteLine(action);
             }
+
+            //Logger.AllDrones("My drones", myDrones);
+            //Logger.AllDrones("Enemy drones", enemyDrones);
         }
-    }
+    }    
 
     private static List<Creature> GetCreatures()
     {
@@ -81,7 +72,7 @@ class Player
         return creatures;
     }
 
-    private static void AddScans(Game game)
+    private static void AddSavedScans(Game game)
     {
         int myScanCount = int.Parse(Console.ReadLine());
         for (int i = 0; i < myScanCount; i++)
@@ -139,7 +130,11 @@ class Player
 
     private static void UpdateCreatures(Game game)
     {
+        game.SetAllCreaturesAsNotVisible();
+
         int visibleCreatureCount = int.Parse(Console.ReadLine());
+
+        Console.Error.WriteLine($"Visible creature count: {visibleCreatureCount}");
         for (int i = 0; i < visibleCreatureCount; i++)
         {
             string[] inputs = Console.ReadLine().Split(' ');
@@ -150,6 +145,51 @@ class Player
             int creatureVy = int.Parse(inputs[4]);
 
             game.UpdateCreaturePosition(creatureId, creatureX, creatureY, creatureVx, creatureVy);
+        }
+    }
+
+    private static void AddStoredScans(List<Drone> myDrones, List<Drone> enemyDrones)
+    {
+        int droneScanCount = int.Parse(Console.ReadLine());
+        for (int i = 0; i < droneScanCount; i++)
+        {
+            string[] inputs = Console.ReadLine().Split(' ');
+            int droneId = int.Parse(inputs[0]);
+            int creatureId = int.Parse(inputs[1]);
+
+            Drone drone = myDrones.FirstOrDefault(d => d.Id == droneId);
+            if (drone == null)
+            {
+                drone = enemyDrones.FirstOrDefault(d => d.Id == droneId);
+            }
+
+            if (drone != null)
+            {
+                drone.ScannedCreaturesIds.Add(creatureId);
+            }
+        }
+    }
+    
+    private static void AddRadarBlips(Game game, List<Drone> myDrones, List<Drone> enemyDrones)
+    {
+        int radarBlipCount = int.Parse(Console.ReadLine());
+        for (int i = 0; i < radarBlipCount; i++)
+        {
+            string[] inputs = Console.ReadLine().Split(' ');
+            int droneId = int.Parse(inputs[0]);
+            int creatureId = int.Parse(inputs[1]);
+            string radar = inputs[2];
+
+            Drone drone = myDrones.FirstOrDefault(d => d.Id == droneId);
+            if (drone == null)
+            {
+                drone = enemyDrones.FirstOrDefault(d => d.Id == droneId);
+            }
+
+            if (drone != null)
+            {
+                drone.AddCreatureDirection(creatureId, (CreatureDirection)Enum.Parse(typeof(CreatureDirection), radar));
+            }
         }
     }
 }

@@ -7,7 +7,7 @@ internal sealed class ConnectFour
 {
     private List<int>[] _board;
     
-    private const int _boardMax = 6;
+    private const int _columnHeight = 7;
     
     internal ConnectFour()
     {
@@ -30,7 +30,7 @@ internal sealed class ConnectFour
 
         for (int i = 0; i < _board.Length; i++)
         {
-            if(_board[i].Count <= _boardMax)
+            if(_board[i].Count < _columnHeight)
             {
                 validMoves.Add(i);
             }

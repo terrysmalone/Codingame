@@ -50,7 +50,7 @@ internal sealed class MoveCalculator
 
             _connectFour.AddMove(validAction, player);
 
-            int score = -Calculate(int.MinValue+1, int.MaxValue, depth-1, !is0, SwapPieces(player));
+            int score = -Calculate(int.MinValue+1, int.MaxValue, depth-1, SwapPieces(player));
 
             moveScores.Add(new Tuple<int, int>(validAction, score));
 
@@ -60,11 +60,11 @@ internal sealed class MoveCalculator
         return moveScores;
     }
 
-    private int Calculate(int alpha, int beta, int depth, bool is0, int piece)
+    private int Calculate(int alpha, int beta, int depth, int player)
     {
         if (depth == 0)
         {                                      
-            return _connectFour.Evaluate(is0 ? 0 : 1, depth);
+            return _connectFour.Evaluate(player, depth);
         }
 
         List<int> validMoves = _connectFour.CalculateValidMoves();
@@ -72,7 +72,7 @@ internal sealed class MoveCalculator
         if(validMoves.Count == 0
            || _connectFour.IsGameOver())
         {
-            return _connectFour.Evaluate(is0 ? 0 : 1, depth);
+            return _connectFour.Evaluate(player, depth);
         }
 
         int score = int.MinValue;
@@ -80,9 +80,9 @@ internal sealed class MoveCalculator
         foreach (int move in validMoves)
         {
             //var board = _connectFour.DisplayBoard();
-            _connectFour.AddMove(move, piece);
+            _connectFour.AddMove(move, player);
             
-            score = Math.Max(score, -Calculate(-beta, -alpha,depth-1, !is0, SwapPieces(piece)));
+            score = Math.Max(score, -Calculate(-beta, -alpha,depth-1, SwapPieces(player)));
 
             _connectFour.UndoMove(move);
 

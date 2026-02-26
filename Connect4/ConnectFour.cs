@@ -68,35 +68,30 @@ internal sealed class ConnectFour
         AddMove(column, playerId);
     }
     
-    public int Evaluate(bool is0, int depth = 0)
+    public int Evaluate(int playerToMove, int depth = 0)
     {
         const int winWeighting = 1000;
         const int potentialWinsWeighting = 100;
-        const int threeWeighting = 15;
 
+        var win = FindWin();
 
-        //var score = CountSequences(4) * (depth + 1) * winWeighting;     // Can we just cut off here? A win is probably trumps any other score
-
-        int score = FindWin() * (depth + 1) * winWeighting;
-        
-        if(score == 0)
+        if (win != 0)
         {
-            score += CountPotentialWins() * (depth + 1) * potentialWinsWeighting;
-        }
-       
-        if(!is0)
-        {
-            score = -score;
+            var perspective = playerToMove == 0 ? 1 : -1;
+
+            return win * perspective * (depth + 1) * winWeighting;
         }
 
-        return score;
+        var score = CountPotentialWins() * (depth + 1) * potentialWinsWeighting;
+
+        return playerToMove == 0 ? score : -score;
     }
-    
+
     // Returns as soon as there's a win
+    // Returns 1 if player 0 wins, -1 if player 1 wins, 0 otherwise
     private int FindWin()
     {
         int sequenceLength = 4;
-        int numberOfSequences = 0;
         
         for (int column = 0; column < _board.Length; column++)
         {

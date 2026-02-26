@@ -64,7 +64,7 @@ internal sealed class MoveCalculator
     {
         if (depth == 0)
         {                                      
-            return _connectFour.Evaluate(is0, depth);
+            return _connectFour.Evaluate(is0 ? 0 : 1, depth);
         }
 
         List<int> validMoves = _connectFour.CalculateValidMoves();
@@ -72,7 +72,7 @@ internal sealed class MoveCalculator
         if(validMoves.Count == 0
            || _connectFour.IsGameOver())
         {
-            return _connectFour.Evaluate(is0, depth);
+            return _connectFour.Evaluate(is0 ? 0 : 1, depth);
         }
 
         int score = int.MinValue;

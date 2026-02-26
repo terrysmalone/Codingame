@@ -8,7 +8,9 @@ internal sealed class ConnectFour
     private List<int>[] _board;
     
     private const int _columnHeight = 7;
-    
+
+    public int WinWeighting { get; private set; } = 1000;
+
     internal ConnectFour()
     {
         ClearBoard();
@@ -70,7 +72,6 @@ internal sealed class ConnectFour
     
     public int Evaluate(int playerToMove, int depth = 0)
     {
-        const int winWeighting = 1000;
         const int potentialWinsWeighting = 100;
 
         var win = FindWin();
@@ -79,7 +80,7 @@ internal sealed class ConnectFour
         {
             var perspective = playerToMove == 0 ? 1 : -1;
 
-            return win * perspective * (depth + 1) * winWeighting;
+            return win * perspective * (depth + 1) * WinWeighting;
         }
 
         var score = CountPotentialWins() * (depth + 1) * potentialWinsWeighting;

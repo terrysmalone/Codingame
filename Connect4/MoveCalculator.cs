@@ -50,7 +50,7 @@ internal sealed class MoveCalculator
 
             _connectFour.AddMove(validAction, player);
 
-            int score = -Calculate(int.MinValue+1, int.MaxValue, depth-1, SwapPieces(player));
+            int score = -Calculate(int.MinValue+1, int.MaxValue, depth-1, GetSwappedPlayer(player));
 
             moveScores.Add(new Tuple<int, int>(validAction, score));
 
@@ -82,7 +82,7 @@ internal sealed class MoveCalculator
             //var board = _connectFour.DisplayBoard();
             _connectFour.AddMove(move, player);
             
-            score = Math.Max(score, -Calculate(-beta, -alpha,depth-1, SwapPieces(player)));
+            score = Math.Max(score, -Calculate(-beta, -alpha,depth-1, GetSwappedPlayer(player)));
 
             _connectFour.UndoMove(move);
 
@@ -97,8 +97,8 @@ internal sealed class MoveCalculator
         return score;
     }
     
-    private static int SwapPieces(int piece)
+    private static int GetSwappedPlayer(int player)
     {
-        return piece == 0 ? 1 : 0;
+        return player == 0 ? 1 : 0;
     }
 }

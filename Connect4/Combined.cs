@@ -12,7 +12,9 @@ internal sealed class ConnectFour
     private List<int>[] _board;
     
     private const int _columnHeight = 7;
-    
+
+    public int WinWeighting { get; private set; } = 1000;
+
     internal ConnectFour()
     {
         ClearBoard();
@@ -74,7 +76,6 @@ internal sealed class ConnectFour
     
     public int Evaluate(int playerToMove, int depth = 0)
     {
-        const int winWeighting = 1000;
         const int potentialWinsWeighting = 100;
 
         var win = FindWin();
@@ -83,7 +84,7 @@ internal sealed class ConnectFour
         {
             var perspective = playerToMove == 0 ? 1 : -1;
 
-            return win * perspective * (depth + 1) * winWeighting;
+            return win * perspective * (depth + 1) * WinWeighting;
         }
 
         var score = CountPotentialWins() * (depth + 1) * potentialWinsWeighting;
@@ -622,7 +623,7 @@ internal sealed class MoveCalculator
 
             _connectFour.AddMove(validAction, player);
 
-            int score = -Calculate(int.MinValue+1, int.MaxValue, depth-1, SwapPieces(player));
+            int score = -Calculate(int.MinValue+1, int.MaxValue, depth-1, GetSwappedPlayer(player));
 
             moveScores.Add(new Tuple<int, int>(validAction, score));
 
@@ -654,7 +655,7 @@ internal sealed class MoveCalculator
             //var board = _connectFour.DisplayBoard();
             _connectFour.AddMove(move, player);
             
-            score = Math.Max(score, -Calculate(-beta, -alpha,depth-1, SwapPieces(player)));
+            score = Math.Max(score, -Calculate(-beta, -alpha,depth-1, GetSwappedPlayer(player)));
 
             _connectFour.UndoMove(move);
 
@@ -669,9 +670,9 @@ internal sealed class MoveCalculator
         return score;
     }
     
-    private static int SwapPieces(int piece)
+    private static int GetSwappedPlayer(int player)
     {
-        return piece == 0 ? 1 : 0;
+        return player == 0 ? 1 : 0;
     }
 }
 

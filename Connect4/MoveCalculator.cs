@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 
 internal sealed class MoveCalculator
 {
@@ -50,7 +51,8 @@ internal sealed class MoveCalculator
 
             _connectFour.AddMove(validAction, player);
 
-            int score = -Calculate(int.MinValue+1, int.MaxValue, depth-1, GetSwappedPlayer(player));
+            // Ply should be one because we made one move at the root
+            int score = -Calculate(int.MinValue+1, int.MaxValue, depth-1, ply: 1, GetSwappedPlayer(player));
 
             moveScores.Add(new Tuple<int, int>(validAction, score));
 
@@ -60,11 +62,11 @@ internal sealed class MoveCalculator
         return moveScores;
     }
 
-    private int Calculate(int alpha, int beta, int depth, int player)
+    private int Calculate(int alpha, int beta, int depth, int ply, int player)
     {
         if (depth == 0)
         {                                      
-            return _connectFour.Evaluate(player, depth);
+            return _connectFour.Evaluate(player, ply);
         }
 
         List<int> validMoves = _connectFour.CalculateValidMoves();
@@ -72,7 +74,7 @@ internal sealed class MoveCalculator
         if(validMoves.Count == 0
            || _connectFour.IsGameOver())
         {
-            return _connectFour.Evaluate(player, depth);
+            return _connectFour.Evaluate(player, ply);
         }
 
         int score = int.MinValue;
@@ -82,7 +84,7 @@ internal sealed class MoveCalculator
             //var board = _connectFour.DisplayBoard();
             _connectFour.AddMove(move, player);
             
-            score = Math.Max(score, -Calculate(-beta, -alpha,depth-1, GetSwappedPlayer(player)));
+            score = Math.Max(score, -Calculate(-beta, -alpha, depth-1, ply+1, GetSwappedPlayer(player)));
 
             _connectFour.UndoMove(move);
 

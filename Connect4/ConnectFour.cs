@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Numerics;
 
 internal sealed class ConnectFour
 {
@@ -70,20 +71,20 @@ internal sealed class ConnectFour
         AddMove(column, playerId);
     }
     
-    public int Evaluate(int playerToMove, int depth = 0)
+    public int Evaluate(int playerToMove, int ply)
     {
         const int potentialWinsWeighting = 100;
 
-        var win = FindWin();
+        int win = FindWin();
 
         if (win != 0)
         {
-            var perspective = playerToMove == 0 ? 1 : -1;
+            int perspective = playerToMove == 0 ? 1 : -1;
 
-            return win * perspective * (depth + 1) * WinWeighting;
+            return win * perspective * (WinWeighting - ply);
         }
 
-        var score = CountPotentialWins() * (depth + 1) * potentialWinsWeighting;
+        int score = CountPotentialWins() * potentialWinsWeighting;
 
         return playerToMove == 0 ? score : -score;
     }

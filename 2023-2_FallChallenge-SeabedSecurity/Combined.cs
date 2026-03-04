@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Diagnostics;
 using System.Text;
+using System.Threading;
 using System.IO;
 using System.Collections;
 using System.Runtime.CompilerServices;
@@ -230,40 +231,26 @@ internal class Game
 
             Console.Error.WriteLine($"Drone {drone.Id}");
 
-            // If the drone is within 2000 of a creature of type -1 set early game to false and evade the creature
+            HashSet<int> monstersToAvoid = new HashSet<int>();
+
+            // First add visible monsters to the avoid list
             if (VisibleMonsterIds.Count > 0)
             {
-                Console.Error.WriteLine($"Checking for monsters to evade...");
                 foreach (var monsterId in VisibleMonsterIds)
                 {
                     var monster = creatures.Find(c => c.Id == monsterId);
+
                     var distanceToMonster = DistanceCalculator.GetDistance(drone.Position, monster.Position);
-                    Console.Error.WriteLine($"Distance to monster {monster.Id}: {distanceToMonster}");
+
                     if (distanceToMonster <= 2000)
                     {
-                        Console.Error.WriteLine($"Evading monster {monster.Id}");
-                        earlyGame = false;
-                        // Move away from the monster
-                        var directionX = drone.Position.X - monster.Position.X;
-                        var directionY = drone.Position.Y - monster.Position.Y;
-
-                        var targetX = drone.Position.X + directionX;
-                        var targetY = drone.Position.Y + directionY;
-                        Console.Error.WriteLine($"Evade target position: ({targetX}, {targetY})");
-
-                        action = $"MOVE {targetX} {targetY} {lightLevel} RUNNING AWAY";
-                        break;
+                        Console.Error.WriteLine($"Adding visible monsters to avoid: {monsterId}");
+                        monstersToAvoid.Add(monsterId);
                     }
                 }
             }
 
-            if (action != string.Empty)
-            {
-                actions.Add(action);
-                continue;
-            }
-
-            // If they were within range of a monster last round still run away
+            // Now add close monsters seen last round to the avoid list
             foreach (var creature in creatures)
             {
                 if (creature.Type != -1)
@@ -271,24 +258,52 @@ internal class Game
                     continue;
                 }
 
-                Console.Error.WriteLine($"Checking for monsters seen last round to evade...");
                 var distanceToMonster = DistanceCalculator.GetDistance(drone.Position, creature.Position);
-                Console.Error.WriteLine($"Distance to monster {creature.Id} last round: {distanceToMonster}");
-                if (distanceToMonster <= 2000 && round - creature.LastSeenRound == 1)
+
+                Console.Error.WriteLine($"Checking non visible monster {creature.Id} at distance {distanceToMonster} last seen round {creature.LastSeenRound}");
+
+                if (distanceToMonster <= 2500 && round - creature.LastSeenRound <= 2)
                 {
-                    Console.Error.WriteLine($"Continuing to evade monster {creature.Id}");
-                    earlyGame = false;
-                    // Move away from the monster
-                    var directionX = drone.Position.X - creature.Position.X;
-                    var directionY = drone.Position.Y - creature.Position.Y;
-                    var targetX = drone.Position.X + directionX;
-                    var targetY = drone.Position.Y + directionY;
-                    Console.Error.WriteLine($"Evade target position: ({targetX}, {targetY})");
-                    action = $"MOVE {targetX} {targetY} {lightLevel} MOVING AWAY";
-                    break;
+                    Console.Error.WriteLine($"Adding non visible monster to avoid: {creature.Id}");
+                    monstersToAvoid.Add(creature.Id);
                 }
             }
 
+            Console.Error.WriteLine($"Monsters to avoid: {string.Join(", ", monstersToAvoid)}");
+
+            // Get the closest monster to avoid
+            //Creature closestMonster = null;
+            //var closestDistance = int.MaxValue;
+            //foreach (var monsterId in monstersToAvoid)
+            //{
+            //    var monster = creatures.Find(c => c.Id == monsterId);
+            //    var distanceToMonster = DistanceCalculator.GetDistance(drone.Position, monster.Position);
+            //    if (distanceToMonster < closestDistance)
+            //    {
+            //        closestDistance = distanceToMonster;
+            //        closestMonster = monster;
+            //    }
+            //}
+
+            //Console.Error.WriteLine($"Closest monster: {(closestMonster != null ? closestMonster.Id.ToString() : "None")} at distance {closestDistance}");
+
+            //if (closestMonster != null)
+            //{
+            //    // Move away from the monster
+            //    var directionX = drone.Position.X - closestMonster.Position.X;
+            //    var directionY = drone.Position.Y - closestMonster.Position.Y;
+
+            //    var targetX = drone.Position.X + directionX;
+            //    var targetY = drone.Position.Y + directionY;
+
+            //    action = $"MOVE {targetX} {targetY} {lightLevel} RUNNING AWAY";
+            //}  
+
+            if (monstersToAvoid.Count > 0)
+            {
+                Point avoidAncePosition = CalculateAvoidanceVector(drone.Position, monstersToAvoid);
+                action = $"MOVE {avoidAncePosition.X} {avoidAncePosition.Y} {lightLevel} RUNNING AWAY";
+            }
 
             if (action != string.Empty)
             {
@@ -302,7 +317,6 @@ internal class Game
                 if (drone.Position.Y >= 8000)
                 {
                     earlyGame = false;
-
                 }
 
                 // Move to the centre of it's side
@@ -358,6 +372,56 @@ internal class Game
         round++;
 
         return actions;
+    }
+
+    private Point CalculateAvoidanceVector(Point dronePosition, HashSet<int> monstersToAvoid)
+    {
+        double totalForceX = 0;
+        double totalForceY = 0;
+
+        foreach (var monsterId in monstersToAvoid)
+        {
+            var monster = creatures.Find(c => c.Id == monsterId);
+            var dx = dronePosition.X - monster.Position.X;
+            var dy = dronePosition.Y - monster.Position.Y;
+            var distance = Math.Sqrt(dx * dx + dy * dy);
+
+            // Inverse square law - closer monsters have exponentially more influence
+            var forceMagnitude = 2000000.0 / (distance * distance);
+
+            // Normalize direction and apply force
+            totalForceX += (dx / distance) * forceMagnitude;
+            totalForceY += (dy / distance) * forceMagnitude;
+        }
+
+        // Normalize and scale to movement speed (600 units typical)
+        var magnitude = Math.Sqrt(totalForceX * totalForceX + totalForceY * totalForceY);
+        if (magnitude > 0)
+        {
+            totalForceX = (totalForceX / magnitude) * 600;
+            totalForceY = (totalForceY / magnitude) * 600;
+        }
+
+        var targetX = dronePosition.X + (int)totalForceX;
+        var targetY = dronePosition.Y + (int)totalForceY;
+
+        // If near edge of map, redirect force upward
+        const int edgeBuffer = 1000;
+        if (targetX < edgeBuffer || targetX > 10000 - edgeBuffer)
+        {
+            // Redirect horizontal force to vertical (move up)
+            totalForceY -= Math.Abs(totalForceX);
+            totalForceX = 0;
+
+            targetX = Math.Clamp(dronePosition.X, edgeBuffer, 10000 - edgeBuffer);
+            targetY = dronePosition.Y + (int)totalForceY;
+        }
+
+        // Clamp to map boundaries
+        targetX = Math.Clamp(targetX, 0, 10000);
+        targetY = Math.Clamp(targetY, 0, 10000);
+
+        return new Point(targetX, targetY);
     }
 
     private int CalculateLightLevel(Drone drone)
@@ -570,7 +634,6 @@ class Player
 
         int visibleCreatureCount = int.Parse(Console.ReadLine());
 
-        Console.Error.WriteLine($"Visible creature count: {visibleCreatureCount}");
         for (int i = 0; i < visibleCreatureCount; i++)
         {
             string[] inputs = Console.ReadLine().Split(' ');
@@ -580,7 +643,6 @@ class Player
             int creatureVx = int.Parse(inputs[3]);
             int creatureVy = int.Parse(inputs[4]);
 
-            Console.Error.WriteLine($"Visible creature: {creatureId} at ({creatureX}, {creatureY}) with velocity ({creatureVx}, {creatureVy})");
             game.UpdateCreaturePosition(creatureId, creatureX, creatureY, creatureVx, creatureVy);
         }
     }

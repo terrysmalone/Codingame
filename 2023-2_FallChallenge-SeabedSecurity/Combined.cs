@@ -63,17 +63,17 @@ internal class DirectionCalculator
             var incrementAmount = 0;
 
             // If a creature has been scanned/stored by me don't count it
-            if (game.MyScannedCreatureIds.Contains(direction.Key) || drone.ScannedCreaturesIds.Contains(direction.Key))
+            if (game.MyStoredCreatureIds.Contains(direction.Key) || drone.ScannedCreaturesIds.Contains(direction.Key))
             {
                 incrementAmount = 0;
             }
             // If it's been saved but not scanned/stored by me count it as one
-            else if (game.EnemyScannedCreatureIds.Contains(direction.Key) && !game.MyScannedCreatureIds.Contains(direction.Key) && !drone.ScannedCreaturesIds.Contains(direction.Key))
+            else if (game.EnemyStoredCreatureIds.Contains(direction.Key) && !game.MyStoredCreatureIds.Contains(direction.Key) && !drone.ScannedCreaturesIds.Contains(direction.Key))
             {
                 incrementAmount = 1;
             }
             // If it's not been save by anyone and not stored by me count it as 3
-            else if (!game.EnemyScannedCreatureIds.Contains(direction.Key) && !game.MyScannedCreatureIds.Contains(direction.Key) && !drone.ScannedCreaturesIds.Contains(direction.Key))
+            else if (!game.EnemyStoredCreatureIds.Contains(direction.Key) && !game.MyStoredCreatureIds.Contains(direction.Key) && !drone.ScannedCreaturesIds.Contains(direction.Key))
             {
                 incrementAmount = 3;
             }
@@ -135,6 +135,10 @@ internal sealed class Drone
 
 internal class Game
 {
+    private const int _droneSpeed = 600;
+    private const int _monsterDashSpeed = 540;
+    private const int _captureSize = 500;
+
     internal int MyScore { get; set; }
     internal int EnemyScore { get; set; }
 
@@ -142,8 +146,8 @@ internal class Game
     private List<Drone> myDrones = [];
     private List<Drone> enemyDrones = [];
 
-    internal HashSet<int> MyScannedCreatureIds { get; private set; } = new();
-    internal HashSet<int> EnemyScannedCreatureIds { get; private set; } = new();
+    internal HashSet<int> MyStoredCreatureIds { get; private set; } = new();
+    internal HashSet<int> EnemyStoredCreatureIds { get; private set; } = new();
 
     private DirectionCalculator directionCalculator;
 
@@ -162,15 +166,15 @@ internal class Game
         directionCalculator = new DirectionCalculator(this);
     }
 
-    internal void AddScannedCreature(int creatureId, bool isMyDrone)
+    internal void AddStoredCreature(int creatureId, bool isMyDrone)
     {      
         if (isMyDrone)
         {
-            MyScannedCreatureIds.Add(creatureId);
+            MyStoredCreatureIds.Add(creatureId);
         }
         else
         {
-            EnemyScannedCreatureIds.Add(creatureId);
+            EnemyStoredCreatureIds.Add(creatureId);
         }
     }
 
@@ -223,6 +227,16 @@ internal class Game
 
         var actions = new List<string>();
 
+        // If a union of stored creatures and currently scanned creatures by both drones is equal to 12, we know all the creatures and can just head to the surface with all of them
+        var allKnownCreatures = new HashSet<int>(MyStoredCreatureIds);
+        allKnownCreatures.UnionWith(myDrones[0].ScannedCreaturesIds);
+        allKnownCreatures.UnionWith(myDrones[1].ScannedCreaturesIds);
+
+        if (allKnownCreatures.Count >= 12)
+        {
+            earlyGame = false;
+        }
+
         foreach (var drone in myDrones)
         {
             var action = string.Empty;
@@ -242,7 +256,7 @@ internal class Game
 
                     var distanceToMonster = DistanceCalculator.GetDistance(drone.Position, monster.Position);
 
-                    if (distanceToMonster <= 2000)
+                    if (distanceToMonster <= _droneSpeed + _monsterDashSpeed + _captureSize)
                     {
                         Console.Error.WriteLine($"Adding visible monsters to avoid: {monsterId}");
                         monstersToAvoid.Add(monsterId);
@@ -253,16 +267,27 @@ internal class Game
             // Now add close monsters seen last round to the avoid list
             foreach (var creature in creatures)
             {
-                if (creature.Type != -1)
+                if (creature.Type != -1 || creature.IsVisible)
                 {
                     continue;
                 }
 
                 var distanceToMonster = DistanceCalculator.GetDistance(drone.Position, creature.Position);
 
-                Console.Error.WriteLine($"Checking non visible monster {creature.Id} at distance {distanceToMonster} last seen round {creature.LastSeenRound}");
+                Console.Error.WriteLine($"Checking non visible monster {creature.Id} at distance {distanceToMonster} last seen {round - creature.LastSeenRound} rounds ago");
 
-                if (distanceToMonster <= 2500 && round - creature.LastSeenRound <= 2)
+                if (round - creature.LastSeenRound == 1)
+                {
+                    Console.Error.WriteLine($"Monster {creature.Id} was seen last round, distance to monster: {distanceToMonster}: distance cutoff: {_droneSpeed + (2 * _monsterDashSpeed) + _captureSize}");
+                }
+                if (round - creature.LastSeenRound == 2)
+                {
+                    Console.Error.WriteLine($"Monster {creature.Id} was seen 2 rounds ago, distance to monster: {distanceToMonster}: distance cutoff: {_droneSpeed + (3 * _monsterDashSpeed) + _captureSize}");
+                }
+
+                // TODO: Increase all by _monsterDashSpeed
+                if ((round - creature.LastSeenRound == 1 && distanceToMonster <= _droneSpeed + (2 *_monsterDashSpeed) + _captureSize) ||
+                    (round - creature.LastSeenRound == 2 && distanceToMonster <= _droneSpeed + (3 * _monsterDashSpeed) + _captureSize))
                 {
                     Console.Error.WriteLine($"Adding non visible monster to avoid: {creature.Id}");
                     monstersToAvoid.Add(creature.Id);
@@ -271,38 +296,10 @@ internal class Game
 
             Console.Error.WriteLine($"Monsters to avoid: {string.Join(", ", monstersToAvoid)}");
 
-            // Get the closest monster to avoid
-            //Creature closestMonster = null;
-            //var closestDistance = int.MaxValue;
-            //foreach (var monsterId in monstersToAvoid)
-            //{
-            //    var monster = creatures.Find(c => c.Id == monsterId);
-            //    var distanceToMonster = DistanceCalculator.GetDistance(drone.Position, monster.Position);
-            //    if (distanceToMonster < closestDistance)
-            //    {
-            //        closestDistance = distanceToMonster;
-            //        closestMonster = monster;
-            //    }
-            //}
-
-            //Console.Error.WriteLine($"Closest monster: {(closestMonster != null ? closestMonster.Id.ToString() : "None")} at distance {closestDistance}");
-
-            //if (closestMonster != null)
-            //{
-            //    // Move away from the monster
-            //    var directionX = drone.Position.X - closestMonster.Position.X;
-            //    var directionY = drone.Position.Y - closestMonster.Position.Y;
-
-            //    var targetX = drone.Position.X + directionX;
-            //    var targetY = drone.Position.Y + directionY;
-
-            //    action = $"MOVE {targetX} {targetY} {lightLevel} RUNNING AWAY";
-            //}  
-
             if (monstersToAvoid.Count > 0)
             {
-                Point avoidAncePosition = CalculateAvoidanceVector(drone.Position, monstersToAvoid);
-                action = $"MOVE {avoidAncePosition.X} {avoidAncePosition.Y} {lightLevel} RUNNING AWAY";
+                Point avoidancePosition = CalculateAvoidanceVector(drone.Position, monstersToAvoid);
+                action = $"MOVE {avoidancePosition.X} {avoidancePosition.Y} {lightLevel} RUNNING AWAY";
             }
 
             if (action != string.Empty)
@@ -335,8 +332,7 @@ internal class Game
             }
             else
             {
-                // If stored scans >= 4 head to surface
-                if (drone.ScannedCreaturesIds.Count >= 3 || MyScannedCreatureIds.Count + drone.ScannedCreaturesIds.Count >= 12)
+                if (drone.ScannedCreaturesIds.Count >= 3 || allKnownCreatures.Count >= 12)
                 {
                     actions.Add($"MOVE {drone.Position.X} 500 {lightLevel} HEADING TO SURFACE");
                 }
@@ -386,15 +382,15 @@ internal class Game
             var dy = dronePosition.Y - monster.Position.Y;
             var distance = Math.Sqrt(dx * dx + dy * dy);
 
-            // Inverse square law - closer monsters have exponentially more influence
-            var forceMagnitude = 2000000.0 / (distance * distance);
-
-            // Normalize direction and apply force
-            totalForceX += (dx / distance) * forceMagnitude;
-            totalForceY += (dy / distance) * forceMagnitude;
+            if (distance > 0)
+            {
+                // Normalize direction - each monster contributes equally
+                totalForceX += dx / distance;
+                totalForceY += dy / distance;
+            }
         }
 
-        // Normalize and scale to movement speed (600 units typical)
+        // Normalize the combined vector and scale to movement speed
         var magnitude = Math.Sqrt(totalForceX * totalForceX + totalForceY * totalForceY);
         if (magnitude > 0)
         {
@@ -405,21 +401,30 @@ internal class Game
         var targetX = dronePosition.X + (int)totalForceX;
         var targetY = dronePosition.Y + (int)totalForceY;
 
-        // If near edge of map, redirect force upward
-        const int edgeBuffer = 1000;
-        if (targetX < edgeBuffer || targetX > 10000 - edgeBuffer)
+        // If near edge of map, redirect force vertically to avoid getting stuck on the wall
+        if (targetX < 0 || targetX > 10000)
         {
             // Redirect horizontal force to vertical (move up)
-            totalForceY -= Math.Abs(totalForceX);
             totalForceX = 0;
 
-            targetX = Math.Clamp(dronePosition.X, edgeBuffer, 10000 - edgeBuffer);
-            targetY = dronePosition.Y + (int)totalForceY;
+            targetX = Math.Clamp(dronePosition.X, 0, 9999);
+
+            if (targetY < dronePosition.Y)
+            {
+                Console.Error.WriteLine($"Redirecting force up, targetY: {targetY}, droneY: {dronePosition.Y}");
+                targetY = dronePosition.Y - 600;
+            }
+            else
+            {
+                Console.Error.WriteLine($"Before Redirecting force down, targetY: {targetY}, droneY: {dronePosition.Y}");
+                targetY = dronePosition.Y + 600;
+                Console.Error.WriteLine($"After Redirecting force down, targetY: {targetY}, droneY: {dronePosition.Y}");
+            }
         }
 
         // Clamp to map boundaries
-        targetX = Math.Clamp(targetX, 0, 10000);
-        targetY = Math.Clamp(targetY, 0, 10000);
+        targetX = Math.Clamp(targetX, 0, 9999);
+        targetY = Math.Clamp(targetY, 0, 9999);
 
         return new Point(targetX, targetY);
     }
@@ -527,7 +532,7 @@ class Player
             int foeScore = int.Parse(Console.ReadLine());
             game.EnemyScore = foeScore;
 
-            AddSavedScans(game);
+            AddStoredScans(game);
 
             List<Drone> myDrones = GetMyDrones();
             List<Drone> enemyDrones = GetEnemyDrones();
@@ -572,19 +577,19 @@ class Player
         return creatures;
     }
 
-    private static void AddSavedScans(Game game)
+    private static void AddStoredScans(Game game)
     {
         int myScanCount = int.Parse(Console.ReadLine());
         for (int i = 0; i < myScanCount; i++)
         {
             int creatureId = int.Parse(Console.ReadLine());
-            game.AddScannedCreature(creatureId, true);
+            game.AddStoredCreature(creatureId, true);
         }
         int foeScanCount = int.Parse(Console.ReadLine());
         for (int i = 0; i < foeScanCount; i++)
         {
             int creatureId = int.Parse(Console.ReadLine());
-            game.AddScannedCreature(creatureId, false);
+            game.AddStoredCreature(creatureId, false);
         }
     }
 

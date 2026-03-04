@@ -29,7 +29,7 @@ class Player
             int foeScore = int.Parse(Console.ReadLine());
             game.EnemyScore = foeScore;
 
-            AddSavedScans(game);
+            AddStoredScans(game);
 
             List<Drone> myDrones = GetMyDrones();
             List<Drone> enemyDrones = GetEnemyDrones();
@@ -74,19 +74,19 @@ class Player
         return creatures;
     }
 
-    private static void AddSavedScans(Game game)
+    private static void AddStoredScans(Game game)
     {
         int myScanCount = int.Parse(Console.ReadLine());
         for (int i = 0; i < myScanCount; i++)
         {
             int creatureId = int.Parse(Console.ReadLine());
-            game.AddScannedCreature(creatureId, true);
+            game.AddStoredCreature(creatureId, true);
         }
         int foeScanCount = int.Parse(Console.ReadLine());
         for (int i = 0; i < foeScanCount; i++)
         {
             int creatureId = int.Parse(Console.ReadLine());
-            game.AddScannedCreature(creatureId, false);
+            game.AddStoredCreature(creatureId, false);
         }
     }
 

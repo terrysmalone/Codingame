@@ -23,17 +23,17 @@ internal class DirectionCalculator
             var incrementAmount = 0;
 
             // If a creature has been scanned/stored by me don't count it
-            if (game.MyScannedCreatureIds.Contains(direction.Key) || drone.ScannedCreaturesIds.Contains(direction.Key))
+            if (game.MyStoredCreatureIds.Contains(direction.Key) || drone.ScannedCreaturesIds.Contains(direction.Key))
             {
                 incrementAmount = 0;
             }
             // If it's been saved but not scanned/stored by me count it as one
-            else if (game.EnemyScannedCreatureIds.Contains(direction.Key) && !game.MyScannedCreatureIds.Contains(direction.Key) && !drone.ScannedCreaturesIds.Contains(direction.Key))
+            else if (game.EnemyStoredCreatureIds.Contains(direction.Key) && !game.MyStoredCreatureIds.Contains(direction.Key) && !drone.ScannedCreaturesIds.Contains(direction.Key))
             {
                 incrementAmount = 1;
             }
             // If it's not been save by anyone and not stored by me count it as 3
-            else if (!game.EnemyScannedCreatureIds.Contains(direction.Key) && !game.MyScannedCreatureIds.Contains(direction.Key) && !drone.ScannedCreaturesIds.Contains(direction.Key))
+            else if (!game.EnemyStoredCreatureIds.Contains(direction.Key) && !game.MyStoredCreatureIds.Contains(direction.Key) && !drone.ScannedCreaturesIds.Contains(direction.Key))
             {
                 incrementAmount = 3;
             }

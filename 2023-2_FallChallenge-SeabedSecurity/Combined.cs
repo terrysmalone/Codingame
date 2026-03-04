@@ -255,7 +255,7 @@ internal class Game
                         var targetY = drone.Position.Y + directionY;
                         Console.Error.WriteLine($"Evade target position: ({targetX}, {targetY})");
 
-                        action = $"MOVE {targetX} {targetY} {lightLevel}";
+                        action = $"MOVE {targetX} {targetY} {lightLevel} RUNNING AWAY";
                         break;
                     }
                 }
@@ -270,20 +270,32 @@ internal class Game
             if (earlyGame)
             {
                 // Drop to 8,000+ then rise to the top
-                if (drone.Position.Y >= 9000)
+                if (drone.Position.Y >= 8000)
                 {
                     earlyGame = false;
 
                 }
 
-                actions.Add($"MOVE {drone.Position.X} 9500 {lightLevel}");
+                // Move to the centre of it's side
+                int xPos = 0;
+
+                if(drone.Position.X < 5000)
+                {
+                    xPos = 2500;
+                }
+                else
+                {
+                    xPos = 7500;
+                }
+                
+                actions.Add($"MOVE {xPos} 9500 {lightLevel} EARLY GAME DIVING");
             }
             else
             {
                 // If stored scans >= 4 head to surface
                 if (drone.ScannedCreaturesIds.Count >= 3 || MyScannedCreatureIds.Count + drone.ScannedCreaturesIds.Count >= 12)
                 {
-                    actions.Add($"MOVE {drone.Position.X} 500 {lightLevel}");
+                    actions.Add($"MOVE {drone.Position.X} 500 {lightLevel} HEADING TO SURFACE");
                 }
                 else
                 {
@@ -308,7 +320,7 @@ internal class Game
                             break;
                     }
 
-                    actions.Add($"MOVE {targetPosition.X} {targetPosition.Y} {lightLevel} {drone.BatteryLevel}");
+                    actions.Add($"MOVE {targetPosition.X} {targetPosition.Y} {lightLevel}  HEADING TO UNSCANNED FISH");
                 }
             }
         }
@@ -318,13 +330,17 @@ internal class Game
 
     private int CalculateLightLevel(Drone drone)
     {
+        Console.Error.WriteLine("Calculating light level");
+
         var lightLevel = 0;
 
         if (lastRoundTorchUsed.ContainsKey(drone.Id))
         {
             var lastUsed = lastRoundTorchUsed[drone.Id];
 
-            if (round - lastUsed >= 5)
+            Console.Error.WriteLine($"Light last used on round {lastUsed}");
+
+            if (round - lastUsed >= 3)
             {
                 lightLevel = 1;
                 lastRoundTorchUsed[drone.Id] = round;
@@ -335,6 +351,7 @@ internal class Game
             lastRoundTorchUsed[drone.Id] = 0;
         }
 
+        Console.Error.WriteLine($"Light level {lightLevel}");
         return lightLevel;
     }
 }

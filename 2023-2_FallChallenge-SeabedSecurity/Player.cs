@@ -146,6 +146,7 @@ class Player
             int creatureVx = int.Parse(inputs[3]);
             int creatureVy = int.Parse(inputs[4]);
 
+            Console.Error.WriteLine($"Visible creature: {creatureId} at ({creatureX}, {creatureY}) with velocity ({creatureVx}, {creatureVy})");
             game.UpdateCreaturePosition(creatureId, creatureX, creatureY, creatureVx, creatureVy);
         }
     }

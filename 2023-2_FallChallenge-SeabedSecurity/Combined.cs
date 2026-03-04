@@ -7,6 +7,7 @@ using System.Drawing;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Diagnostics;
 using System.Text;
 using System.IO;
 using System.Collections;
@@ -21,6 +22,8 @@ internal class Creature
     internal bool IsVisible { get; set; }
     internal Point Position { get; set; }
     internal Point Velocity { get; set; }
+
+    internal int LastSeenRound { get; set; }
 
     internal Creature(int id, int color, int type)
     {
@@ -188,6 +191,7 @@ internal class Game
             creature.Position = new Point(creatureX, creatureY);
             creature.Velocity = new Point(creatureVx, creatureVy);
             creature.IsVisible = true;
+            creature.LastSeenRound = round;
 
             if (creature.Type != -1)
             {
@@ -212,9 +216,9 @@ internal class Game
 
     internal List<string> CalculateActions()
     {
-        Console.Error.WriteLine($"Visible creatures this turn: {visibleCreatureCount}");
+        Console.Error.WriteLine($"Round {round} calculate actions");
 
-        round++;
+        Logger.AllMonsters(creatures);
 
         var actions = new List<string>();
 
@@ -243,14 +247,6 @@ internal class Game
                         var directionX = drone.Position.X - monster.Position.X;
                         var directionY = drone.Position.Y - monster.Position.Y;
 
-                        Console.Error.WriteLine($"Direction before normalization: ({directionX}, {directionY})");
-
-                        //var length = (int)Math.Sqrt(directionX * directionX + directionY * directionY);
-                        //directionX /= length;
-                        //directionY /= length;
-
-                        Console.Error.WriteLine($"Direction after normalization: ({directionX}, {directionY})");
-
                         var targetX = drone.Position.X + directionX;
                         var targetY = drone.Position.Y + directionY;
                         Console.Error.WriteLine($"Evade target position: ({targetX}, {targetY})");
@@ -260,6 +256,39 @@ internal class Game
                     }
                 }
             }
+
+            if (action != string.Empty)
+            {
+                actions.Add(action);
+                continue;
+            }
+
+            // If they were within range of a monster last round still run away
+            foreach (var creature in creatures)
+            {
+                if (creature.Type != -1)
+                {
+                    continue;
+                }
+
+                Console.Error.WriteLine($"Checking for monsters seen last round to evade...");
+                var distanceToMonster = DistanceCalculator.GetDistance(drone.Position, creature.Position);
+                Console.Error.WriteLine($"Distance to monster {creature.Id} last round: {distanceToMonster}");
+                if (distanceToMonster <= 2000 && round - creature.LastSeenRound == 1)
+                {
+                    Console.Error.WriteLine($"Continuing to evade monster {creature.Id}");
+                    earlyGame = false;
+                    // Move away from the monster
+                    var directionX = drone.Position.X - creature.Position.X;
+                    var directionY = drone.Position.Y - creature.Position.Y;
+                    var targetX = drone.Position.X + directionX;
+                    var targetY = drone.Position.Y + directionY;
+                    Console.Error.WriteLine($"Evade target position: ({targetX}, {targetY})");
+                    action = $"MOVE {targetX} {targetY} {lightLevel} MOVING AWAY";
+                    break;
+                }
+            }
+
 
             if (action != string.Empty)
             {
@@ -325,20 +354,19 @@ internal class Game
             }
         }
 
+
+        round++;
+
         return actions;
     }
 
     private int CalculateLightLevel(Drone drone)
     {
-        Console.Error.WriteLine("Calculating light level");
-
         var lightLevel = 0;
 
         if (lastRoundTorchUsed.ContainsKey(drone.Id))
         {
             var lastUsed = lastRoundTorchUsed[drone.Id];
-
-            Console.Error.WriteLine($"Light last used on round {lastUsed}");
 
             if (round - lastUsed >= 3)
             {
@@ -351,7 +379,6 @@ internal class Game
             lastRoundTorchUsed[drone.Id] = 0;
         }
 
-        Console.Error.WriteLine($"Light level {lightLevel}");
         return lightLevel;
     }
 }
@@ -385,6 +412,36 @@ internal static class Logger
         Console.Error.WriteLine($"Stored scans: {string.Join(" ", drone.ScannedCreaturesIds)}");
 
         Console.Error.WriteLine($"Creature directions: {string.Join(" ", drone.CreatureDirections.Select(kv => $"{kv.Key}:{kv.Value}"))}");
+    }
+
+    internal static void AllMonsters(List<Creature> creatures)
+    {
+        Console.Error.WriteLine("==================================");
+        Console.Error.WriteLine("All Monsters");
+        Console.Error.WriteLine("----------------------------------");
+
+        foreach (Creature creature in creatures)
+        {
+            if (creature.Type != -1)
+            {
+                continue;
+            }
+            
+            Creature(creature);
+            Console.Error.WriteLine("------------------------");
+        }
+    }
+
+
+    internal static void Creature(Creature creature)
+    {
+        Console.Error.WriteLine($"Creature {creature.Id}");
+        Console.Error.WriteLine($"Visible: {creature.IsVisible}");
+        Console.Error.WriteLine($"Last seen round: {creature.LastSeenRound}");
+        Console.Error.WriteLine($"Type: {creature.Type}");
+        Console.Error.WriteLine($"Color: {creature.Color}");
+        Console.Error.WriteLine($"Position: {creature.Position.X},{creature.Position.Y}");
+        Console.Error.WriteLine($"Velocity: {creature.Velocity.X},{creature.Velocity.Y}");
     }
 }
 
@@ -523,6 +580,7 @@ class Player
             int creatureVx = int.Parse(inputs[3]);
             int creatureVy = int.Parse(inputs[4]);
 
+            Console.Error.WriteLine($"Visible creature: {creatureId} at ({creatureX}, {creatureY}) with velocity ({creatureVx}, {creatureVy})");
             game.UpdateCreaturePosition(creatureId, creatureX, creatureY, creatureVx, creatureVy);
         }
     }

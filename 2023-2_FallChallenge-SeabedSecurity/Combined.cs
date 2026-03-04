@@ -407,8 +407,6 @@ internal class Game
             // Redirect horizontal force to vertical (move up)
             totalForceX = 0;
 
-            targetX = Math.Clamp(dronePosition.X, 0, 9999);
-
             if (targetY < dronePosition.Y)
             {
                 Console.Error.WriteLine($"Redirecting force up, targetY: {targetY}, droneY: {dronePosition.Y}");
@@ -421,6 +419,24 @@ internal class Game
                 Console.Error.WriteLine($"After Redirecting force down, targetY: {targetY}, droneY: {dronePosition.Y}");
             }
         }
+
+        // If near bottom of map, redirect force horizontally to avoid getting stuck at the bottom
+        if (targetY > 10000)
+        {
+            totalForceY = 0;
+
+            if (targetX < dronePosition.X)
+            {
+                Console.Error.WriteLine($"Redirecting force left, targetX: {targetX}, droneX: {dronePosition.X}");
+                targetX = dronePosition.X - 600;
+            }
+            else
+            {
+                Console.Error.WriteLine($"Redirecting force right, targetX: {targetX}, droneX: {dronePosition.X}");
+                targetX = dronePosition.X + 600;
+            }
+        }
+
 
         // Clamp to map boundaries
         targetX = Math.Clamp(targetX, 0, 9999);

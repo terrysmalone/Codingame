@@ -311,7 +311,6 @@ internal class Game
             }
         }
 
-
         // Clamp to map boundaries
         targetX = Math.Clamp(targetX, 0, 9999);
         targetY = Math.Clamp(targetY, 0, 9999);
@@ -339,6 +338,19 @@ internal class Game
         }
 
         return lightLevel;
+    }
+
+    internal bool IsScannedByMe(int id)
+    {
+        foreach (var drone in myDrones)
+        {
+            if (drone.ScannedCreaturesIds.Contains(id))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
 

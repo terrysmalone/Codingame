@@ -68,12 +68,12 @@ internal class DirectionCalculator
                 incrementAmount = 0;
             }
             // If it's been saved but not scanned/stored by me count it as one
-            else if (game.EnemyStoredCreatureIds.Contains(direction.Key) && !game.MyStoredCreatureIds.Contains(direction.Key) && !drone.ScannedCreaturesIds.Contains(direction.Key))
+            else if (game.EnemyStoredCreatureIds.Contains(direction.Key) && !game.MyStoredCreatureIds.Contains(direction.Key) && !game.IsScannedByMe(direction.Key))
             {
                 incrementAmount = 1;
             }
             // If it's not been save by anyone and not stored by me count it as 3
-            else if (!game.EnemyStoredCreatureIds.Contains(direction.Key) && !game.MyStoredCreatureIds.Contains(direction.Key) && !drone.ScannedCreaturesIds.Contains(direction.Key))
+            else if (!game.EnemyStoredCreatureIds.Contains(direction.Key) && !game.MyStoredCreatureIds.Contains(direction.Key) && !game.IsScannedByMe(direction.Key))
             {
                 incrementAmount = 3;
             }
@@ -86,9 +86,12 @@ internal class DirectionCalculator
             {
                 directionCounts[direction.Value] = incrementAmount;
             }
+
+            Console.Error.WriteLine($"Direction: {direction.Value}, CreatureId: {direction.Key}, IncrementAmount: {incrementAmount}");
         }
 
         // return the key with the highest value
+        Console.Error.WriteLine($"Direction counts: {string.Join(", ", directionCounts.Select(dc => $"{dc.Key}: {dc.Value}"))}");
         return directionCounts.MaxBy(dc => dc.Value).Key;
          
     }
@@ -437,7 +440,6 @@ internal class Game
             }
         }
 
-
         // Clamp to map boundaries
         targetX = Math.Clamp(targetX, 0, 9999);
         targetY = Math.Clamp(targetY, 0, 9999);
@@ -465,6 +467,19 @@ internal class Game
         }
 
         return lightLevel;
+    }
+
+    internal bool IsScannedByMe(int id)
+    {
+        foreach (var drone in myDrones)
+        {
+            if (drone.ScannedCreaturesIds.Contains(id))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
 

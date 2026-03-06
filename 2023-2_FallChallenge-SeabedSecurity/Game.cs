@@ -13,14 +13,14 @@ internal class Game
     private const int _monsterDashSpeed = 540;
     private const int _captureSize = 500;
 
-    internal bool earlyGame = true;
-
     internal int MyScore { get; set; }
     internal int EnemyScore { get; set; }
 
     private List<Creature> creatures = [];
     private List<Drone> myDrones = [];
     private List<Drone> enemyDrones = [];
+
+    private Dictionary<int, bool> earlyGameTracker = new Dictionary<int, bool>();
 
     internal HashSet<int> MyStoredCreatureIds { get; private set; } = new();
     internal HashSet<int> EnemyStoredCreatureIds { get; private set; } = new();
@@ -35,6 +35,13 @@ internal class Game
 
     internal Dictionary<int, int> lastRoundTorchUsed = new();
 
+    public Game()
+    {
+        earlyGameTracker.Add(0, true);
+        earlyGameTracker.Add(1, true);
+        earlyGameTracker.Add(2, true);
+        earlyGameTracker.Add(3, true);
+    }
     internal void InitialiseCreatures(List<Creature> allCreatures)
     {
         creatures = allCreatures;
@@ -126,12 +133,12 @@ internal class Game
             //    continue;
             //}
 
-            if (earlyGame)
+            if (earlyGameTracker[drone.Id] == true)
             {
                 // Drop to 8,000+ then rise to the top
                 if (drone.Position.Y >= 8000)
                 {
-                    earlyGame = false;
+                    earlyGameTracker[drone.Id] = false;
                 }
 
                 // Move to the centre of it's side

@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Text;
 using System.Threading;
+using System.Transactions;
 
 internal class Game
 {
@@ -34,6 +35,10 @@ internal class Game
     internal int round = 0;
 
     internal Dictionary<int, int> lastRoundTorchUsed = new();
+
+    private static double angleStep = Math.PI / 6; // 30 degrees in radians
+    private List<double> _leftDroneDownAlternativeAngles = new List<double> { angleStep, -angleStep, angleStep * 2, -(angleStep * 2), angleStep * 3, -(angleStep * 3), angleStep * 4, -(angleStep * 4), angleStep * 5, -(angleStep * 5), angleStep * 6, -(angleStep * 6) } ;
+    private List<double> _rightDroneDownAlternativeAngles = new List<double> { -angleStep, angleStep, -(angleStep * 2), angleStep * 2, -(angleStep * 3), angleStep * 3, -(angleStep * 4), angleStep * 4, -(angleStep * 5), angleStep * 5, -(angleStep * 6), angleStep * 6 };
 
     public Game()
     {
@@ -179,21 +184,14 @@ internal class Game
                         double dy = originalTarget.Y - drone.Position.Y;
                         double angle = Math.Atan2(dy, dx);
 
-                        // Accumulate the angle adjustment across iterations
-                        adjustmentCount++;
-                        double totalAngleOffset = angleStep * adjustmentCount;
-
-                        // Adjust angle: left drone (X < 5000) counterclockwise, right drone clockwise
                         if (drone.Position.X < 5000)
                         {
-                            angle += totalAngleOffset;
+                            angle += _leftDroneDownAlternativeAngles[adjustmentCount];
                         }
                         else
                         {
-                            angle -= totalAngleOffset;
+                            angle += _rightDroneDownAlternativeAngles[adjustmentCount];
                         }
-
-                        Console.Error.WriteLine($"Adjusted angle: {angle * (180 / Math.PI)} degrees");
 
                         int newX = drone.Position.X + (int)(Math.Cos(angle) * _droneSpeed);
                         int newY = drone.Position.Y + (int)(Math.Sin(angle) * _droneSpeed);
@@ -201,9 +199,8 @@ internal class Game
                         newX = Math.Clamp(newX, 0, 9999);
                         newY = Math.Clamp(newY, 0, 9999);
 
-                        Console.Error.WriteLine($"Drone {drone.Id} - New target point after adjustment: {newX}, {newY}");
-
                         targetPoint = new Point(newX, newY);
+                        adjustmentCount++;
                     }
                     else
                     {

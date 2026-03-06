@@ -22,11 +22,6 @@ internal sealed class Drone
         BatteryLevel = batteryLevel;
     }
 
-    internal void AddScannedCreatures(int id)
-    {
-        ScannedCreaturesIds.Add(id);
-    }
-
     internal void AddCreatureDirection(int creatureId, CreatureDirection direction)
     {
         CreatureDirections[creatureId] = direction;

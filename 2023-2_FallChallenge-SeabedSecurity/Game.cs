@@ -120,20 +120,22 @@ internal class Game
 
         foreach (var drone in myDrones)
         {
-            Console.Error.WriteLine($"Drone {drone.Id}");
+            Console.Error.WriteLine($"Drone {drone.Id} pos: {drone.Position.X}, {drone.Position.Y}");
             var action = string.Empty;
 
             var lightLevel = CalculateLightLevel(drone);
 
             HashSet<int> monstersToAvoid = GetMonstersToAvoid(drone);
 
-            if (earlyGameTracker[drone.Id] == true)
+            // If we're below 8,000 or there are no more fish below, stop diving
+            if (drone.Position.Y >= 8000 || !AreUnscannedFishStillBelow(drone))
             {
-                // Drop to 8,000+ then rise to the top
-                if (drone.Position.Y >= 8000)
-                {
-                    earlyGameTracker[drone.Id] = false;
-                }
+                Console.Error.WriteLine($"Drone {drone.Id} - No more unscanned fish below me or I've reached 8000+ depth, heading to surface and ending early game strategy");
+                earlyGameTracker[drone.Id] = false;
+            }
+
+            if (earlyGameTracker[drone.Id] == true)
+            {                
 
                 // Move to the centre of it's side
                 int xPos = 0;
@@ -255,6 +257,39 @@ internal class Game
         return actions;
     }
 
+    private bool AreUnscannedFishStillBelow(Drone drone)
+    {
+        foreach (var creature in drone.CreatureDirections)
+        {
+            if (creature.Value == CreatureDirection.BL || creature.Value == CreatureDirection.BR)
+            {
+                if (!IsScannedOrStoredByMe(creature.Key))
+                {
+                    Console.Error.WriteLine($"Creature {creature.Key} is below me and unscanned");
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private bool IsScannedOrStoredByMe(int key)
+    {
+        if (MyStoredCreatureIds.Contains(key))
+        {
+            return true;
+        }
+        foreach (var drone in myDrones)
+        {
+            if (drone.ScannedCreaturesIds.Contains(key))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private List<(Point start, Point end)> GetAllMonsterPaths(HashSet<int> monstersToAvoid)
     {
         var monsterPaths = new List<(Point start, Point end)>();
@@ -289,93 +324,7 @@ internal class Game
             }
         }
 
-        // Now add close monsters seen last round to the avoid list
-        //foreach (var creature in creatures)
-        //{
-        //    if (creature.Type != -1 || creature.IsVisible || creature.LastSeenRound == 0)
-        //    {
-        //        continue;
-        //    }
-
-        //    var distanceToMonster = DistanceCalculator.GetDistance(drone.Position, creature.Position);
-
-        //    if ((round - creature.LastSeenRound == 1 && distanceToMonster <= _droneSpeed + (2 * _monsterDashSpeed) + _captureSize) ||
-        //        (round - creature.LastSeenRound == 2 && distanceToMonster <= _droneSpeed + (3 * _monsterDashSpeed) + _captureSize))
-        //    {
-        //        monstersToAvoid.Add(creature.Id);
-        //    }
-        //}
-
         return monstersToAvoid;
-    }
-
-    private Point CalculateAvoidanceVector(Point dronePosition, HashSet<int> monstersToAvoid)
-    {
-        double totalForceX = 0;
-        double totalForceY = 0;
-
-        foreach (var monsterId in monstersToAvoid)
-        {
-            var monster = creatures.Find(c => c.Id == monsterId);
-            var dx = dronePosition.X - monster.Position.X;
-            var dy = dronePosition.Y - monster.Position.Y;
-            var distance = Math.Sqrt(dx * dx + dy * dy);
-
-            if (distance > 0)
-            {
-                // Normalize direction - each monster contributes equally
-                totalForceX += dx / distance;
-                totalForceY += dy / distance;
-            }
-        }
-
-        // Normalize the combined vector and scale to movement speed
-        var magnitude = Math.Sqrt(totalForceX * totalForceX + totalForceY * totalForceY);
-        if (magnitude > 0)
-        {
-            totalForceX = (totalForceX / magnitude) * 600;
-            totalForceY = (totalForceY / magnitude) * 600;
-        }
-
-        var targetX = dronePosition.X + (int)totalForceX;
-        var targetY = dronePosition.Y + (int)totalForceY;
-
-        // If near edge of map, redirect force vertically to avoid getting stuck on the wall
-        if (targetX < 0 || targetX > 10000)
-        {
-            // Redirect horizontal force to vertical (move up)
-            totalForceX = 0;
-
-            if (targetY < dronePosition.Y)
-            {
-                targetY = dronePosition.Y - 600;
-            }
-            else
-            {
-                targetY = dronePosition.Y + 600;
-            }
-        }
-
-        // If near bottom of map, redirect force horizontally to avoid getting stuck at the bottom
-        if (targetY > 10000)
-        {
-            totalForceY = 0;
-
-            if (targetX < dronePosition.X)
-            {
-                targetX = dronePosition.X - 600;
-            }
-            else
-            {
-                targetX = dronePosition.X + 600;
-            }
-        }
-
-        // Clamp to map boundaries
-        targetX = Math.Clamp(targetX, 0, 9999);
-        targetY = Math.Clamp(targetY, 0, 9999);
-
-        return new Point(targetX, targetY);
     }
 
     private int CalculateLightLevel(Drone drone)

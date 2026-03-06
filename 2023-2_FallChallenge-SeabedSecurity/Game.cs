@@ -38,8 +38,12 @@ internal class Game
     internal Dictionary<int, int> lastRoundTorchUsed = new();
 
     private static double angleStep = Math.PI / 6; // 30 degrees in radians
-    private List<double> _leftDroneDownAlternativeAngles = new List<double> { angleStep, -angleStep, angleStep * 2, -(angleStep * 2), angleStep * 3, -(angleStep * 3), angleStep * 4, -(angleStep * 4), angleStep * 5, -(angleStep * 5), angleStep * 6, -(angleStep * 6) } ;
+    private List<double> _leftDroneDownAlternativeAngles = new List<double> { angleStep, -angleStep, angleStep * 2, -(angleStep * 2), angleStep * 3, -(angleStep * 3), angleStep * 4, -(angleStep * 4), angleStep * 5, -(angleStep * 5), angleStep * 6, -(angleStep * 6) };
     private List<double> _rightDroneDownAlternativeAngles = new List<double> { -angleStep, angleStep, -(angleStep * 2), angleStep * 2, -(angleStep * 3), angleStep * 3, -(angleStep * 4), angleStep * 4, -(angleStep * 5), angleStep * 5, -(angleStep * 6), angleStep * 6 };
+
+    private List<double> _leftDroneUpAlternativeAngles = new List<double> { -angleStep, angleStep, -(angleStep * 2), angleStep * 2, -(angleStep * 3), angleStep * 3, -(angleStep * 4), angleStep * 4, -(angleStep * 5), angleStep * 5, -(angleStep * 6), angleStep * 6 };
+    private List<double> _rightDroneUpAlternativeAngles = new List<double> { angleStep, -angleStep, angleStep * 2, -(angleStep * 2), angleStep * 3, -(angleStep * 3), angleStep * 4, -(angleStep * 4), angleStep * 5, -(angleStep * 5), angleStep * 6, -(angleStep * 6) };
+
 
     public Game()
     {

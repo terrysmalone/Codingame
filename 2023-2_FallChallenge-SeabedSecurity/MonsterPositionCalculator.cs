@@ -17,7 +17,6 @@ internal sealed class MonsterPositionCalculator
 
     internal Point PredictTargetPosition(Creature monster)
     {
-        Console.Error.WriteLine($"Predicting position for monster {monster.Id}");
         // Get nearest drone
         // If nearest drone is using battery light is 2000, otherwise 800
         // If creature is within light radius, it will chase the nearest drone at 540 per turn

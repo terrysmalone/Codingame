@@ -318,17 +318,6 @@ internal class Game
 
             HashSet<int> monstersToAvoid = GetMonstersToAvoid(drone);
 
-            //if (monstersToAvoid.Count > 0)
-            //{
-            //    earlyGame = false;
-
-            //    Point avoidancePosition = CalculateAvoidanceVector(drone.Position, monstersToAvoid);
-            //    action = $"MOVE {avoidancePosition.X} {avoidancePosition.Y} {lightLevel} RUNNING AWAY";
-
-            //    actions.Add(action);
-            //    continue;
-            //}
-
             if (earlyGameTracker[drone.Id] == true)
             {
                 // Drop to 8,000+ then rise to the top
@@ -349,45 +338,78 @@ internal class Game
                     xPos = 8000;
                 }
 
-                // Calculate the exact targetPoint that's exactly 540 along the path from drone.Position to target
+                // Calculate the exact targetPoint that's exactly _droneSpeed along the path from drone.Position to target
                 Point targetPoint = DistanceCalculator.GetPointAlongPath(drone.Position, new Point(xPos, 9500), _droneSpeed);
 
-                // Calculate exact next position of monsters to avoid and try to steer clear of them
+                // Get the paths of all monsters we want to avoid and see if any of them will converge with our path to the target point (within 500)
 
+                // If they will converge, adjust the path by 30 degrees either counter clocwise if they're the left drone, or clockwise if they're the right drone to try to avoid the monster. 
+                // Then recheck the paths to see if we still converge, if so adjust further until we don't converge or we've adjusted 11 times (which would be a full circle,
+                // so at that point we just accept the risk and move towards the target)
+                int maxAdjustments = 11;
+                double angleStep = Math.PI / 6; // 30 degrees in radians
+                bool converged = false;
+                int adjustmentCount = 0;
+                Point originalTarget = DistanceCalculator.GetPointAlongPath(drone.Position, new Point(xPos, 9500), _droneSpeed);
 
-                foreach (var monsterId in monstersToAvoid)
+                List<(Point start, Point end)> monsterPaths = GetAllMonsterPaths(monstersToAvoid);
+
+                while (adjustmentCount < maxAdjustments)
                 {
-                    Creature monster = creatures.Find(c => c.Id == monsterId);
-                    Console.Error.WriteLine($"Monster {monster.Id} at position {monster.Position.X},{monster.Position.Y}");
+                    Console.Error.WriteLine($"Checking for target {targetPoint.X}, {targetPoint.Y}");
+                    var willPathsConverge = false;
+                    foreach (var monsterPath in monsterPaths)
+                    {
+                        if (DistanceCalculator.WillPathsConverge(drone.Position, targetPoint, monsterPath.start, monsterPath.end))
+                        {
+                            willPathsConverge = true;
+                            break;
+                        }
+                    }
 
-                    Point monsterTarget = _monsterPositionCalculator.PredictTargetPosition(monster);
-
-                    Console.Error.WriteLine($"Predicting monster will move to {monsterTarget.X},{monsterTarget.Y}");
-
-                    // Should I avoid it
-                    var willPathsConverge = DistanceCalculator.WillPathsConverge(drone.Position, targetPoint, monster.Position, monsterTarget);
-                    
                     if (willPathsConverge)
                     {
-                        Console.Error.WriteLine($"Monster is within 500 of target point, adjusting to avoid");
+                        Console.Error.WriteLine($"Drone {drone.Id} - Path converges with a monster, adjusting path. Adjustment count: {adjustmentCount}");
+                        converged = true;
+                        double dx = originalTarget.X - drone.Position.X;
+                        double dy = originalTarget.Y - drone.Position.Y;
+                        double angle = Math.Atan2(dy, dx);
 
-                        if (drone.Position.X < monster.Position.X)
+                        // Accumulate the angle adjustment across iterations
+                        adjustmentCount++;
+                        double totalAngleOffset = angleStep * adjustmentCount;
+
+                        // Adjust angle: left drone (X < 5000) counterclockwise, right drone clockwise
+                        if (drone.Position.X < 5000)
                         {
-                            targetPoint.X = drone.Position.X - 600;
-                            targetPoint.Y = drone.Position.Y;
+                            angle += totalAngleOffset;
                         }
                         else
                         {
-                            targetPoint.X = drone.Position.X + 600;
-                            targetPoint.Y = drone.Position.Y;
+                            angle -= totalAngleOffset;
                         }
+
+                        Console.Error.WriteLine($"Adjusted angle: {angle * (180 / Math.PI)} degrees");
+
+                        int newX = drone.Position.X + (int)(Math.Cos(angle) * _droneSpeed);
+                        int newY = drone.Position.Y + (int)(Math.Sin(angle) * _droneSpeed);
+
+                        newX = Math.Clamp(newX, 0, 9999);
+                        newY = Math.Clamp(newY, 0, 9999);
+
+                        Console.Error.WriteLine($"Drone {drone.Id} - New target point after adjustment: {newX}, {newY}");
+
+                        targetPoint = new Point(newX, newY);
                     }
                     else
                     {
-                        Console.Error.WriteLine($"Monster is not within 500");
+                        if (converged)
+                        {
+                            Console.Error.WriteLine($"Drone {drone.Id} - Found a path that doesn't converge with monsters after {adjustmentCount} adjustments.");
+                        }
+                        break;
                     }
                 }
-
 
                 actions.Add($"MOVE {targetPoint.X} {targetPoint.Y} {lightLevel} EARLY GAME DIVING");
                 continue;
@@ -430,6 +452,20 @@ internal class Game
         round++;
 
         return actions;
+    }
+
+    private List<(Point start, Point end)> GetAllMonsterPaths(HashSet<int> monstersToAvoid)
+    {
+        var monsterPaths = new List<(Point start, Point end)>();
+        foreach (var monsterId in monstersToAvoid)
+        {
+            Creature monster = creatures.Find(c => c.Id == monsterId);
+            Point monsterTarget = _monsterPositionCalculator.PredictTargetPosition(monster);
+
+            monsterPaths.Add((monster.Position, monsterTarget));
+        }
+
+        return monsterPaths;
     }
 
     private HashSet<int> GetMonstersToAvoid(Drone drone)
@@ -607,6 +643,7 @@ internal class Game
 
 
 
+
 internal static class Logger
 {
     internal static void AllDrones(string? message, List<Drone> drones)
@@ -676,7 +713,6 @@ internal sealed class MonsterPositionCalculator
 
     internal Point PredictTargetPosition(Creature monster)
     {
-        Console.Error.WriteLine($"Predicting position for monster {monster.Id}");
         // Get nearest drone
         // If nearest drone is using battery light is 2000, otherwise 800
         // If creature is within light radius, it will chase the nearest drone at 540 per turn

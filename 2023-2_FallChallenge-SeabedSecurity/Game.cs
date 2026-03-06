@@ -157,14 +157,14 @@ internal class Game
                     Creature monster = creatures.Find(c => c.Id == monsterId);
                     Console.Error.WriteLine($"Monster {monster.Id} at position {monster.Position.X},{monster.Position.Y}");
 
-                    Point target = _monsterPositionCalculator.PredictTargetPosition(monster);
+                    Point monsterTarget = _monsterPositionCalculator.PredictTargetPosition(monster);
 
-                    Console.Error.WriteLine($"Predicting monster will move to {target.X},{target.Y}");
+                    Console.Error.WriteLine($"Predicting monster will move to {monsterTarget.X},{monsterTarget.Y}");
 
                     // Should I avoid it
-                    var distance = DistanceCalculator.GetDistance(targetPoint, target);
-
-                    if (distance <= 500)
+                    var willPathsConverge = DistanceCalculator.WillPathsConverge(drone.Position, targetPoint, _droneSpeed, monster.Position, monsterTarget, _monsterDashSpeed);
+                    
+                    if (willPathsConverge)
                     {
                         Console.Error.WriteLine($"Monster is within 500 of target point, adjusting to avoid");
 

@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Diagnostics;
+using System.Reflection.Metadata;
 using System.Text;
 using System.Threading;
 using System.Transactions;
@@ -348,62 +349,9 @@ internal class Game
                 // If they will converge, adjust the path by 30 degrees either counter clocwise if they're the left drone, or clockwise if they're the right drone to try to avoid the monster. 
                 // Then recheck the paths to see if we still converge, if so adjust further until we don't converge or we've adjusted 11 times (which would be a full circle,
                 // so at that point we just accept the risk and move towards the target)
-                int maxAdjustments = 11;
-                double angleStep = Math.PI / 6; // 30 degrees in radians
-                bool converged = false;
-                int adjustmentCount = 0;
-                Point originalTarget = DistanceCalculator.GetPointAlongPath(drone.Position, new Point(xPos, 9500), _droneSpeed);
+                List<double> alternativeAngles = drone.Position.X < 5000 ? _leftDroneDownAlternativeAngles : _rightDroneDownAlternativeAngles;
 
-                List<(Point start, Point end)> monsterPaths = GetAllMonsterPaths(monstersToAvoid);
-
-                while (adjustmentCount < maxAdjustments)
-                {
-                    Console.Error.WriteLine($"Checking for target {targetPoint.X}, {targetPoint.Y}");
-                    var willPathsConverge = false;
-                    foreach (var monsterPath in monsterPaths)
-                    {
-                        if (DistanceCalculator.WillPathsConverge(drone.Position, targetPoint, monsterPath.start, monsterPath.end))
-                        {
-                            willPathsConverge = true;
-                            break;
-                        }
-                    }
-
-                    if (willPathsConverge)
-                    {
-                        Console.Error.WriteLine($"Drone {drone.Id} - Path converges with a monster, adjusting path. Adjustment count: {adjustmentCount}");
-                        converged = true;
-                        double dx = originalTarget.X - drone.Position.X;
-                        double dy = originalTarget.Y - drone.Position.Y;
-                        double angle = Math.Atan2(dy, dx);
-
-                        if (drone.Position.X < 5000)
-                        {
-                            angle += _leftDroneDownAlternativeAngles[adjustmentCount];
-                        }
-                        else
-                        {
-                            angle += _rightDroneDownAlternativeAngles[adjustmentCount];
-                        }
-
-                        int newX = drone.Position.X + (int)(Math.Cos(angle) * _droneSpeed);
-                        int newY = drone.Position.Y + (int)(Math.Sin(angle) * _droneSpeed);
-
-                        newX = Math.Clamp(newX, 0, 9999);
-                        newY = Math.Clamp(newY, 0, 9999);
-
-                        targetPoint = new Point(newX, newY);
-                        adjustmentCount++;
-                    }
-                    else
-                    {
-                        if (converged)
-                        {
-                            Console.Error.WriteLine($"Drone {drone.Id} - Found a path that doesn't converge with monsters after {adjustmentCount} adjustments.");
-                        }
-                        break;
-                    }
-                }
+                targetPoint = AdjustForMonsters(drone, targetPoint, monstersToAvoid, alternativeAngles);
 
                 actions.Add($"MOVE {targetPoint.X} {targetPoint.Y} {lightLevel} EARLY GAME DIVING");
                 continue;
@@ -412,6 +360,7 @@ internal class Game
             // TODO: Sometimes we'll want to head to surface for other reasons...
             if (allKnownCreatures.Count >= 12)
             {
+                // TO DO: Avoid monsters still
                 actions.Add($"MOVE {drone.Position.X} 500 {lightLevel} HEADING TO SURFACE");
                 continue;
             }
@@ -446,6 +395,67 @@ internal class Game
         round++;
 
         return actions;
+    }
+
+    private Point AdjustForMonsters(Drone drone, Point targetPoint, HashSet<int> monstersToAvoid, List<double> alternativeAngles)
+    {
+        double angleStep = Math.PI / 6; // 30 degrees in radians
+        bool converged = false;
+        int adjustmentCount = 0;
+        Point originalTarget = DistanceCalculator.GetPointAlongPath(drone.Position, new Point(targetPoint.X, targetPoint.Y), _droneSpeed);
+
+        List<(Point start, Point end)> monsterPaths = GetAllMonsterPaths(monstersToAvoid);
+
+        while (adjustmentCount < alternativeAngles.Count)
+        {
+            Console.Error.WriteLine($"Checking for target {targetPoint.X}, {targetPoint.Y}");
+            var willPathsConverge = false;
+            foreach (var monsterPath in monsterPaths)
+            {
+                if (DistanceCalculator.WillPathsConverge(drone.Position, targetPoint, monsterPath.start, monsterPath.end))
+                {
+                    willPathsConverge = true;
+                    break;
+                }
+            }
+
+            if (willPathsConverge)
+            {
+                Console.Error.WriteLine($"Drone {drone.Id} - Path converges with a monster, adjusting path. Adjustment count: {adjustmentCount}");
+                converged = true;
+                double dx = originalTarget.X - drone.Position.X;
+                double dy = originalTarget.Y - drone.Position.Y;
+                double angle = Math.Atan2(dy, dx);
+
+                if (drone.Position.X < 5000)
+                {
+                    angle += _leftDroneDownAlternativeAngles[adjustmentCount];
+                }
+                else
+                {
+                    angle += _rightDroneDownAlternativeAngles[adjustmentCount];
+                }
+
+                int newX = drone.Position.X + (int)(Math.Cos(angle) * _droneSpeed);
+                int newY = drone.Position.Y + (int)(Math.Sin(angle) * _droneSpeed);
+
+                newX = Math.Clamp(newX, 0, 9999);
+                newY = Math.Clamp(newY, 0, 9999);
+
+                targetPoint = new Point(newX, newY);
+                adjustmentCount++;
+            }
+            else
+            {
+                if (converged)
+                {
+                    Console.Error.WriteLine($"Drone {drone.Id} - Found a path that doesn't converge with monsters after {adjustmentCount} adjustments.");
+                }
+                break;
+            }
+        }
+
+        return targetPoint;
     }
 
     private bool AreUnscannedFishStillBelow(Drone drone)

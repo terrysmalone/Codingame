@@ -179,6 +179,13 @@ class Player
             string[] inputs = Console.ReadLine().Split(' ');
             int droneId = int.Parse(inputs[0]);
             int creatureId = int.Parse(inputs[1]);
+
+            // Don't add monsters
+            if (game.IsMonster(creatureId))
+            {
+                continue;
+            }
+
             string radar = inputs[2];
 
             Drone drone = myDrones.FirstOrDefault(d => d.Id == droneId);

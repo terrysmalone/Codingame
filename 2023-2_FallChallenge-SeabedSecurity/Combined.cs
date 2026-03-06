@@ -8,8 +8,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Diagnostics;
+using System.Reflection.Metadata;
 using System.Text;
 using System.Threading;
+using System.Transactions;
 using System.IO;
 using System.Collections;
 using System.Runtime.CompilerServices;
@@ -57,26 +59,20 @@ internal class DirectionCalculator
         // First pass
         // Just go in the direction with the most creatures
         Dictionary<CreatureDirection, int> directionCounts = new Dictionary<CreatureDirection, int>();
-
+               
         foreach (var direction in drone.CreatureDirections)
         {
             var incrementAmount = 0;
 
             // If a creature has been scanned/stored by me don't count it
-            if (game.MyStoredCreatureIds.Contains(direction.Key) || drone.ScannedCreaturesIds.Contains(direction.Key))
-            {
+            if (game.MyStoredCreatureIds.Contains(direction.Key) || game.IsScannedByMe(direction.Key))
+            {                
                 incrementAmount = 0;
             }
-            // If it's been saved but not scanned/stored by me count it as one
-            else if (game.EnemyStoredCreatureIds.Contains(direction.Key) && !game.MyStoredCreatureIds.Contains(direction.Key) && !game.IsScannedByMe(direction.Key))
+            else if (!game.MyStoredCreatureIds.Contains(direction.Key) && !game.IsScannedByMe(direction.Key))
             {
                 incrementAmount = 1;
-            }
-            // If it's not been save by anyone and not stored by me count it as 3
-            else if (!game.EnemyStoredCreatureIds.Contains(direction.Key) && !game.MyStoredCreatureIds.Contains(direction.Key) && !game.IsScannedByMe(direction.Key))
-            {
-                incrementAmount = 3;
-            }
+            }           
 
             if (directionCounts.ContainsKey(direction.Value))
             {
@@ -86,12 +82,9 @@ internal class DirectionCalculator
             {
                 directionCounts[direction.Value] = incrementAmount;
             }
-
-            Console.Error.WriteLine($"Direction: {direction.Value}, CreatureId: {direction.Key}, IncrementAmount: {incrementAmount}");
         }
 
         // return the key with the highest value
-        Console.Error.WriteLine($"Direction counts: {string.Join(", ", directionCounts.Select(dc => $"{dc.Key}: {dc.Value}"))}");
         return directionCounts.MaxBy(dc => dc.Value).Key;
          
     }
@@ -105,6 +98,81 @@ internal static class DistanceCalculator
         var dy = position1.Y - position2.Y;
         return (int)Math.Sqrt(dx * dx + dy * dy);
     }
+
+    internal static Point GetPointAlongPath(Point position, Point target, int droneSpeed)
+    {
+        var dx = target.X - position.X;
+        var dy = target.Y - position.Y;
+        var distance = Math.Sqrt(dx * dx + dy * dy);
+        if (distance == 0)
+        {
+            return position; // Already at the target
+        }
+        var ratio = droneSpeed / distance;
+        var newX = (int)(position.X + dx * ratio);
+        var newY = (int)(position.Y + dy * ratio);
+        return new Point(newX, newY);
+    }
+
+    // Determines whether two objects, each moving linearly from start to target in one game turn,
+    // will ever be within a given proximity (default 500 units) of each other during their movement.
+    internal static bool WillPathsConverge(
+        Point start1, Point target1,
+        Point start2, Point target2,
+        int proximityThreshold = 500)
+    {
+        // Velocity is simply (target - start) since each entity travels the full path in one turn (t in [0, 1])
+        double vx1 = target1.X - start1.X;
+        double vy1 = target1.Y - start1.Y;
+
+        double vx2 = target2.X - start2.X;
+        double vy2 = target2.Y - start2.Y;
+
+        // Relative position and velocity
+        double relX = start1.X - start2.X;
+        double relY = start1.Y - start2.Y;
+        double relVx = vx1 - vx2;
+        double relVy = vy1 - vy2;
+
+        // Squared distance: f(t) = (relX + t*relVx)^2 + (relY + t*relVy)^2
+        //                        = a*t^2 + b*t + c
+        double a = relVx * relVx + relVy * relVy;
+        double b = 2.0 * (relX * relVx + relY * relVy);
+        double c = relX * relX + relY * relY;
+
+        double thresholdSq = (double)proximityThreshold * proximityThreshold;
+
+        // Check start (t=0)
+        if (c <= thresholdSq)
+        {
+            return true;
+        }
+
+        // Check end (t=1)
+        double distSqAtEnd = a + b + c;
+        if (distSqAtEnd <= thresholdSq)
+        {
+            return true;
+        }
+
+        // Check the minimum of the quadratic within [0, 1]
+        if (a > 0)
+        {
+            double tMin = -b / (2.0 * a);
+
+            if (tMin > 0 && tMin < 1)
+            {
+                double minDistSq = a * tMin * tMin + b * tMin + c;
+                if (minDistSq <= thresholdSq)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
 }
 
 internal sealed class Drone
@@ -125,11 +193,6 @@ internal sealed class Drone
         BatteryLevel = batteryLevel;
     }
 
-    internal void AddScannedCreatures(int id)
-    {
-        ScannedCreaturesIds.Add(id);
-    }
-
     internal void AddCreatureDirection(int creatureId, CreatureDirection direction)
     {
         CreatureDirections[creatureId] = direction;
@@ -145,28 +208,45 @@ internal class Game
     internal int MyScore { get; set; }
     internal int EnemyScore { get; set; }
 
-    private List<Creature> creatures = [];
-    private List<Drone> myDrones = [];
-    private List<Drone> enemyDrones = [];
+    private List<Creature> _creatures = [];
+    private List<Drone> _myDrones = [];
+    private List<Drone> _enemyDrones = [];
+
+    private Dictionary<int, bool> earlyGameTracker = new Dictionary<int, bool>();
 
     internal HashSet<int> MyStoredCreatureIds { get; private set; } = new();
     internal HashSet<int> EnemyStoredCreatureIds { get; private set; } = new();
 
-    private DirectionCalculator directionCalculator;
+    private DirectionCalculator _directionCalculator;
+    private MonsterPositionCalculator _monsterPositionCalculator;
 
     internal int visibleCreatureCount;
     internal HashSet<int> VisibleMonsterIds { get; set; } = new();
 
     internal int round = 0;
 
-    internal bool earlyGame = true;
-
     internal Dictionary<int, int> lastRoundTorchUsed = new();
 
+    private static double angleStep = Math.PI / 6; // 30 degrees in radians
+    private List<double> _leftDroneDownAlternativeAngles = new List<double> { angleStep, -angleStep, angleStep * 2, -(angleStep * 2), angleStep * 3, -(angleStep * 3), angleStep * 4, -(angleStep * 4), angleStep * 5, -(angleStep * 5), angleStep * 6, -(angleStep * 6) };
+    private List<double> _rightDroneDownAlternativeAngles = new List<double> { -angleStep, angleStep, -(angleStep * 2), angleStep * 2, -(angleStep * 3), angleStep * 3, -(angleStep * 4), angleStep * 4, -(angleStep * 5), angleStep * 5, -(angleStep * 6), angleStep * 6 };
+
+    private List<double> _leftDroneUpAlternativeAngles = new List<double> { -angleStep, angleStep, -(angleStep * 2), angleStep * 2, -(angleStep * 3), angleStep * 3, -(angleStep * 4), angleStep * 4, -(angleStep * 5), angleStep * 5, -(angleStep * 6), angleStep * 6 };
+    private List<double> _rightDroneUpAlternativeAngles = new List<double> { angleStep, -angleStep, angleStep * 2, -(angleStep * 2), angleStep * 3, -(angleStep * 3), angleStep * 4, -(angleStep * 4), angleStep * 5, -(angleStep * 5), angleStep * 6, -(angleStep * 6) };
+
+
+    public Game()
+    {
+        earlyGameTracker.Add(0, true);
+        earlyGameTracker.Add(1, true);
+        earlyGameTracker.Add(2, true);
+        earlyGameTracker.Add(3, true);
+    }
     internal void InitialiseCreatures(List<Creature> allCreatures)
     {
-        creatures = allCreatures;
-        directionCalculator = new DirectionCalculator(this);
+        _creatures = allCreatures;
+        _directionCalculator = new DirectionCalculator(this);
+        _monsterPositionCalculator = new MonsterPositionCalculator(this);
     }
 
     internal void AddStoredCreature(int creatureId, bool isMyDrone)
@@ -183,17 +263,17 @@ internal class Game
 
     internal void SetMyDrones(List<Drone> drones)
     {
-        myDrones = drones;
+        _myDrones = drones;
     }
 
     internal void SetEnemyDrones(List<Drone> drones)
     {
-        enemyDrones = drones;
+        _enemyDrones = drones;
     }
 
     internal void UpdateCreaturePosition(int creatureId, int creatureX, int creatureY, int creatureVx, int creatureVy)
     {
-        Creature creature = creatures.Find(c => c.Id == creatureId);
+        Creature creature = _creatures.Find(c => c.Id == creatureId);
         if (creature != null)
         {
             creature.Position = new Point(creatureX, creatureY);
@@ -216,7 +296,7 @@ internal class Game
     {
         visibleCreatureCount = 0;
 
-        foreach (var creature in creatures)
+        foreach (var creature in _creatures)
         {
             creature.IsVisible = false;
         }
@@ -224,227 +304,239 @@ internal class Game
 
     internal List<string> CalculateActions()
     {
-        Console.Error.WriteLine($"Round {round} calculate actions");
-
-        Logger.AllMonsters(creatures);
+        // Logger.AllMonsters(creatures);
 
         var actions = new List<string>();
 
         // If a union of stored creatures and currently scanned creatures by both drones is equal to 12, we know all the creatures and can just head to the surface with all of them
         var allKnownCreatures = new HashSet<int>(MyStoredCreatureIds);
-        allKnownCreatures.UnionWith(myDrones[0].ScannedCreaturesIds);
-        allKnownCreatures.UnionWith(myDrones[1].ScannedCreaturesIds);
+        allKnownCreatures.UnionWith(_myDrones[0].ScannedCreaturesIds);
+        allKnownCreatures.UnionWith(_myDrones[1].ScannedCreaturesIds);
 
-        if (allKnownCreatures.Count >= 12)
+        foreach (var drone in _myDrones)
         {
-            earlyGame = false;
-        }
-
-        foreach (var drone in myDrones)
-        {
+            Console.Error.WriteLine($"Drone {drone.Id} pos: {drone.Position.X}, {drone.Position.Y}");
             var action = string.Empty;
 
             var lightLevel = CalculateLightLevel(drone);
 
-            Console.Error.WriteLine($"Drone {drone.Id}");
+            HashSet<int> monstersToAvoid = GetMonstersToAvoid(drone);
 
-            HashSet<int> monstersToAvoid = new HashSet<int>();
-
-            // First add visible monsters to the avoid list
-            if (VisibleMonsterIds.Count > 0)
+            // If we're below 8,000 or there are no more fish below, stop diving
+            if (drone.Position.Y >= 8500 || !AreUnscannedFishStillBelow(drone))
             {
-                foreach (var monsterId in VisibleMonsterIds)
-                {
-                    var monster = creatures.Find(c => c.Id == monsterId);
-
-                    var distanceToMonster = DistanceCalculator.GetDistance(drone.Position, monster.Position);
-
-                    if (distanceToMonster <= _droneSpeed + _monsterDashSpeed + _captureSize)
-                    {
-                        Console.Error.WriteLine($"Adding visible monsters to avoid: {monsterId}");
-                        monstersToAvoid.Add(monsterId);
-                    }
-                }
+                earlyGameTracker[drone.Id] = false;
             }
 
-            // Now add close monsters seen last round to the avoid list
-            foreach (var creature in creatures)
-            {
-                if (creature.Type != -1 || creature.IsVisible)
-                {
-                    continue;
-                }
-
-                var distanceToMonster = DistanceCalculator.GetDistance(drone.Position, creature.Position);
-
-                Console.Error.WriteLine($"Checking non visible monster {creature.Id} at distance {distanceToMonster} last seen {round - creature.LastSeenRound} rounds ago");
-
-                if (round - creature.LastSeenRound == 1)
-                {
-                    Console.Error.WriteLine($"Monster {creature.Id} was seen last round, distance to monster: {distanceToMonster}: distance cutoff: {_droneSpeed + (2 * _monsterDashSpeed) + _captureSize}");
-                }
-                if (round - creature.LastSeenRound == 2)
-                {
-                    Console.Error.WriteLine($"Monster {creature.Id} was seen 2 rounds ago, distance to monster: {distanceToMonster}: distance cutoff: {_droneSpeed + (3 * _monsterDashSpeed) + _captureSize}");
-                }
-
-                // TODO: Increase all by _monsterDashSpeed
-                if ((round - creature.LastSeenRound == 1 && distanceToMonster <= _droneSpeed + (2 *_monsterDashSpeed) + _captureSize) ||
-                    (round - creature.LastSeenRound == 2 && distanceToMonster <= _droneSpeed + (3 * _monsterDashSpeed) + _captureSize))
-                {
-                    Console.Error.WriteLine($"Adding non visible monster to avoid: {creature.Id}");
-                    monstersToAvoid.Add(creature.Id);
-                }
-            }
-
-            Console.Error.WriteLine($"Monsters to avoid: {string.Join(", ", monstersToAvoid)}");
-
-            if (monstersToAvoid.Count > 0)
-            {
-                Point avoidancePosition = CalculateAvoidanceVector(drone.Position, monstersToAvoid);
-                action = $"MOVE {avoidancePosition.X} {avoidancePosition.Y} {lightLevel} RUNNING AWAY";
-            }
-
-            if (action != string.Empty)
-            {
-                actions.Add(action);
-                continue;
-            }
-
-            if (earlyGame)
-            {
-                // Drop to 8,000+ then rise to the top
-                if (drone.Position.Y >= 8000)
-                {
-                    earlyGame = false;
-                }
+            if (earlyGameTracker[drone.Id] == true)
+            {                
 
                 // Move to the centre of it's side
                 int xPos = 0;
 
-                if(drone.Position.X < 5000)
+                if (drone.Position.X < 5000)
                 {
-                    xPos = 2500;
+                    xPos = 2000;
                 }
                 else
                 {
-                    xPos = 7500;
+                    xPos = 8000;
                 }
-                
-                actions.Add($"MOVE {xPos} 9500 {lightLevel} EARLY GAME DIVING");
+
+                // Calculate the exact targetPoint that's exactly _droneSpeed along the path from drone.Position to target
+                Point targetPoint = DistanceCalculator.GetPointAlongPath(drone.Position, new Point(xPos, 9500), _droneSpeed);
+
+                // Get the paths of all monsters we want to avoid and see if any of them will converge with our path to the target point (within 500)
+
+                // If they will converge, adjust the path by 30 degrees either counter clocwise if they're the left drone, or clockwise if they're the right drone to try to avoid the monster. 
+                // Then recheck the paths to see if we still converge, if so adjust further until we don't converge or we've adjusted 11 times (which would be a full circle,
+                // so at that point we just accept the risk and move towards the target)
+                List<double> alternativeAngles = drone.Position.X < 5000 ? _leftDroneDownAlternativeAngles : _rightDroneDownAlternativeAngles;
+
+                targetPoint = AdjustForMonsters(drone, targetPoint, monstersToAvoid, alternativeAngles);
+
+                actions.Add($"MOVE {targetPoint.X} {targetPoint.Y} {lightLevel} EARLY GAME DIVING");
+                continue;
+            }
+
+            // TODO: Sometimes we'll want to head to surface for other reasons...
+            if (allKnownCreatures.Count >= 12)
+            {
+                // TO DO: Avoid monsters still
+                var targetPoint = new Point(drone.Position.X, 0);
+                targetPoint = DistanceCalculator.GetPointAlongPath(drone.Position, targetPoint, _droneSpeed);
+
+                List<double> alternativeAngles = drone.Position.X < 5000 ? _leftDroneUpAlternativeAngles : _rightDroneUpAlternativeAngles;
+                targetPoint = AdjustForMonsters(drone, targetPoint, monstersToAvoid, alternativeAngles);
+
+
+
+
+                actions.Add($"MOVE {targetPoint.X} {targetPoint.Y} {lightLevel} HEADING TO SURFACE");
+                continue;
             }
             else
             {
-                if (drone.ScannedCreaturesIds.Count >= 3 || allKnownCreatures.Count >= 12)
+                // Move in the direction of the most unscanned fish
+                CreatureDirection direction = _directionCalculator.GetBestDirectionFromRadarBlips(drone);
+
+                Console.Error.WriteLine($"Best direction {direction}");
+
+                var targetPosition = new Point(0, 0);
+
+                switch (direction)
                 {
-                    actions.Add($"MOVE {drone.Position.X} 500 {lightLevel} HEADING TO SURFACE");
+                    case CreatureDirection.TL:
+                        targetPosition = new Point(drone.Position.X - 1000, drone.Position.Y - 1000);
+                        break;
+                    case CreatureDirection.TR:
+                        targetPosition = new Point(drone.Position.X + 1000, drone.Position.Y - 1000);
+                        break;
+                    case CreatureDirection.BL:
+                        targetPosition = new Point(drone.Position.X - 1000, drone.Position.Y + 1000);
+                        break;
+                    case CreatureDirection.BR:
+                        targetPosition = new Point(drone.Position.X + 1000, drone.Position.Y + 1000);
+                        break;
                 }
-                else
-                {
-                    // Move in the direction of the most unscanned fish
-                    CreatureDirection direction = directionCalculator.GetBestDirectionFromRadarBlips(drone);
 
-                    var targetPosition = new Point(0, 0);
+                targetPosition = DistanceCalculator.GetPointAlongPath(drone.Position, targetPosition, _droneSpeed);
 
-                    switch (direction)
-                    {
-                        case CreatureDirection.TL:
-                            targetPosition = new Point(drone.Position.X - 1000, drone.Position.Y - 1000);
-                            break;
-                        case CreatureDirection.TR:
-                            targetPosition = new Point(drone.Position.X + 1000, drone.Position.Y - 1000);
-                            break;
-                        case CreatureDirection.BL:
-                            targetPosition = new Point(drone.Position.X - 1000, drone.Position.Y + 1000);
-                            break;
-                        case CreatureDirection.BR:
-                            targetPosition = new Point(drone.Position.X + 1000, drone.Position.Y + 1000);
-                            break;
-                    }
+                List<double> alternativeAngles = drone.Position.X < 5000 ? _leftDroneUpAlternativeAngles : _rightDroneUpAlternativeAngles;
 
-                    actions.Add($"MOVE {targetPosition.X} {targetPosition.Y} {lightLevel}  HEADING TO UNSCANNED FISH");
-                }
+                targetPosition = AdjustForMonsters(drone, targetPosition, monstersToAvoid, alternativeAngles);
+
+                actions.Add($"MOVE {targetPosition.X} {targetPosition.Y} {lightLevel}  HEADING TO UNSCANNED FISH");
+                continue;
             }
         }
-
 
         round++;
 
         return actions;
     }
 
-    private Point CalculateAvoidanceVector(Point dronePosition, HashSet<int> monstersToAvoid)
+    private Point AdjustForMonsters(Drone drone, Point targetPoint, HashSet<int> monstersToAvoid, List<double> alternativeAngles)
     {
-        double totalForceX = 0;
-        double totalForceY = 0;
+        bool converged = false;
+        int adjustmentCount = 0;
 
+        // Derive the base angle from the drone's position to the intended target direction
+        double dx = targetPoint.X - drone.Position.X;
+        double dy = targetPoint.Y - drone.Position.Y;
+        double baseAngle = Math.Atan2(dy, dx);
+
+        List<(Point start, Point end)> monsterPaths = GetAllMonsterPaths(monstersToAvoid);
+
+        while (adjustmentCount < alternativeAngles.Count)
+        {
+            var willPathsConverge = false;
+            foreach (var monsterPath in monsterPaths)
+            {
+                if (DistanceCalculator.WillPathsConverge(drone.Position, targetPoint, monsterPath.start, monsterPath.end))
+                {
+                    willPathsConverge = true;
+                    break;
+                }
+            }
+
+            if (willPathsConverge)
+            {
+                converged = true;
+
+                // Apply the alternative angle offset to the base angle
+                double adjustedAngle = baseAngle + alternativeAngles[adjustmentCount];
+
+                // Always exactly _droneSpeed away from current position
+                int newX = drone.Position.X + (int)(Math.Cos(adjustedAngle) * _droneSpeed);
+                int newY = drone.Position.Y + (int)(Math.Sin(adjustedAngle) * _droneSpeed);
+
+                newX = Math.Clamp(newX, 0, 9999);
+                newY = Math.Clamp(newY, 0, 9999);
+
+                targetPoint = new Point(newX, newY);
+                adjustmentCount++;
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        return targetPoint;
+    }
+
+    private bool AreUnscannedFishStillBelow(Drone drone)
+    {
+        Console.Error.WriteLine($"Checking for unscanned fish below drone {drone.Id}");
+
+        foreach (var creature in drone.CreatureDirections)
+        {
+            Console.Error.WriteLine($"Creature {creature.Key} direction: {creature.Value}");
+            if (creature.Value == CreatureDirection.BL || creature.Value == CreatureDirection.BR)
+            {
+                if (!IsScannedOrStoredByMe(creature.Key))
+                {
+                    Console.Error.WriteLine("It is unscanned!");
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private bool IsScannedOrStoredByMe(int key)
+    {
+        if (MyStoredCreatureIds.Contains(key))
+        {
+            return true;
+        }
+        foreach (var drone in _myDrones)
+        {
+            if (drone.ScannedCreaturesIds.Contains(key))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private List<(Point start, Point end)> GetAllMonsterPaths(HashSet<int> monstersToAvoid)
+    {
+        var monsterPaths = new List<(Point start, Point end)>();
         foreach (var monsterId in monstersToAvoid)
         {
-            var monster = creatures.Find(c => c.Id == monsterId);
-            var dx = dronePosition.X - monster.Position.X;
-            var dy = dronePosition.Y - monster.Position.Y;
-            var distance = Math.Sqrt(dx * dx + dy * dy);
+            Creature monster = _creatures.Find(c => c.Id == monsterId);
+            Point monsterTarget = _monsterPositionCalculator.PredictTargetPosition(monster);
 
-            if (distance > 0)
-            {
-                // Normalize direction - each monster contributes equally
-                totalForceX += dx / distance;
-                totalForceY += dy / distance;
-            }
+            monsterPaths.Add((monster.Position, monsterTarget));
         }
 
-        // Normalize the combined vector and scale to movement speed
-        var magnitude = Math.Sqrt(totalForceX * totalForceX + totalForceY * totalForceY);
-        if (magnitude > 0)
+        return monsterPaths;
+    }
+
+    private HashSet<int> GetMonstersToAvoid(Drone drone)
+    {
+        HashSet<int> monstersToAvoid = new HashSet<int>();
+
+        // First add visible monsters to the avoid list
+        if (VisibleMonsterIds.Count > 0)
         {
-            totalForceX = (totalForceX / magnitude) * 600;
-            totalForceY = (totalForceY / magnitude) * 600;
-        }
-
-        var targetX = dronePosition.X + (int)totalForceX;
-        var targetY = dronePosition.Y + (int)totalForceY;
-
-        // If near edge of map, redirect force vertically to avoid getting stuck on the wall
-        if (targetX < 0 || targetX > 10000)
-        {
-            // Redirect horizontal force to vertical (move up)
-            totalForceX = 0;
-
-            if (targetY < dronePosition.Y)
+            foreach (var monsterId in VisibleMonsterIds)
             {
-                Console.Error.WriteLine($"Redirecting force up, targetY: {targetY}, droneY: {dronePosition.Y}");
-                targetY = dronePosition.Y - 600;
-            }
-            else
-            {
-                Console.Error.WriteLine($"Before Redirecting force down, targetY: {targetY}, droneY: {dronePosition.Y}");
-                targetY = dronePosition.Y + 600;
-                Console.Error.WriteLine($"After Redirecting force down, targetY: {targetY}, droneY: {dronePosition.Y}");
+                var monster = _creatures.Find(c => c.Id == monsterId);
+
+                var distanceToMonster = DistanceCalculator.GetDistance(drone.Position, monster.Position);
+
+                if (distanceToMonster <= _droneSpeed + _monsterDashSpeed + _captureSize)
+                {
+                    monstersToAvoid.Add(monsterId);
+                }
             }
         }
 
-        // If near bottom of map, redirect force horizontally to avoid getting stuck at the bottom
-        if (targetY > 10000)
-        {
-            totalForceY = 0;
-
-            if (targetX < dronePosition.X)
-            {
-                Console.Error.WriteLine($"Redirecting force left, targetX: {targetX}, droneX: {dronePosition.X}");
-                targetX = dronePosition.X - 600;
-            }
-            else
-            {
-                Console.Error.WriteLine($"Redirecting force right, targetX: {targetX}, droneX: {dronePosition.X}");
-                targetX = dronePosition.X + 600;
-            }
-        }
-
-        // Clamp to map boundaries
-        targetX = Math.Clamp(targetX, 0, 9999);
-        targetY = Math.Clamp(targetY, 0, 9999);
-
-        return new Point(targetX, targetY);
+        return monstersToAvoid;
     }
 
     private int CalculateLightLevel(Drone drone)
@@ -471,7 +563,7 @@ internal class Game
 
     internal bool IsScannedByMe(int id)
     {
-        foreach (var drone in myDrones)
+        foreach (var drone in _myDrones)
         {
             if (drone.ScannedCreaturesIds.Contains(id))
             {
@@ -481,7 +573,47 @@ internal class Game
 
         return false;
     }
+
+    internal Drone GetNearestDrone(Creature monster)
+    {
+        Drone nearestDrone = null;
+        double nearestDistance = double.MaxValue;
+        foreach (var drone in _myDrones)
+        {
+            var distance = DistanceCalculator.GetDistance(drone.Position, monster.Position);
+            if (distance < nearestDistance)
+            {
+                nearestDistance = distance;
+                nearestDrone = drone;
+            }
+        }
+
+        foreach (var drone in _enemyDrones)
+        {
+            var distance = DistanceCalculator.GetDistance(drone.Position, monster.Position);
+            if (distance < nearestDistance)
+            {
+                nearestDistance = distance;
+                nearestDrone = drone;
+            }
+        }
+
+        return nearestDrone;
+    }
+
+    internal bool IsMonster(int id)
+    {
+        var creature = _creatures.Find(c => c.Id == id);
+
+        if (creature != null)
+        {
+            return creature.Type == -1;
+        }
+
+        return false;
+    }
 }
+
 
 
 
@@ -544,6 +676,49 @@ internal static class Logger
         Console.Error.WriteLine($"Velocity: {creature.Velocity.X},{creature.Velocity.Y}");
     }
 }
+
+internal sealed class MonsterPositionCalculator
+{
+    private readonly Game _game;
+    public MonsterPositionCalculator(Game game)
+    {
+        _game = game;
+    }
+
+    internal Point PredictTargetPosition(Creature monster)
+    {
+        // Get nearest drone
+        // If nearest drone is using battery light is 2000, otherwise 800
+        // If creature is within light radius, it will chase the nearest drone at 540 per turn
+        var nearestDrone = _game.GetNearestDrone(monster);
+        var lightRadius = nearestDrone.BatteryLevel == 1 ? 2000 : 800;
+
+        var distanceToDrone = DistanceCalculator.GetDistance(monster.Position, nearestDrone.Position);
+                
+        if (distanceToDrone <= lightRadius)
+        {
+            // Monster will chase the nearest drone
+            var direction = new Point(nearestDrone.Position.X - monster.Position.X, nearestDrone.Position.Y - monster.Position.Y);        
+            var magnitude = Math.Sqrt(direction.X * direction.X + direction.Y * direction.Y);
+            
+            double normalisedX = direction.X / magnitude;
+            double normalisedY = direction.Y / magnitude;
+
+            Point targetPoint = new Point((int)(monster.Position.X + normalisedX * 540), (int)(monster.Position.Y + normalisedY * 540));
+
+            return targetPoint;
+        }
+        else
+        {
+            // Monster will continue in the same direction
+            // TOOD: Not always....
+            return new Point(monster.Position.X + monster.Velocity.X, monster.Position.Y + monster.Velocity.Y);
+        }
+    }
+}
+
+
+
 
 class Player
 {
@@ -713,6 +888,13 @@ class Player
             string[] inputs = Console.ReadLine().Split(' ');
             int droneId = int.Parse(inputs[0]);
             int creatureId = int.Parse(inputs[1]);
+
+            // Don't add monsters
+            if (game.IsMonster(creatureId))
+            {
+                continue;
+            }
+
             string radar = inputs[2];
 
             Drone drone = myDrones.FirstOrDefault(d => d.Id == droneId);

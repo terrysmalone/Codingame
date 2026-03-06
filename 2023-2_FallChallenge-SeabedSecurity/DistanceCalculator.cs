@@ -12,4 +12,21 @@ internal static class DistanceCalculator
         var dy = position1.Y - position2.Y;
         return (int)Math.Sqrt(dx * dx + dy * dy);
     }
+
+    internal static Point GetPointAlongPath(Point position, Point target, int droneSpeed)
+    {
+        var dx = target.X - position.X;
+        var dy = target.Y - position.Y;
+        var distance = Math.Sqrt(dx * dx + dy * dy);
+        if (distance == 0)
+        {
+            return position; // Already at the target
+        }
+        var ratio = droneSpeed / distance;
+        var newX = (int)(position.X + dx * ratio);
+        var newY = (int)(position.Y + dy * ratio);
+        return new Point(newX, newY);
+    }
+
+
 }

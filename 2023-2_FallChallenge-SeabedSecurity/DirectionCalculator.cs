@@ -27,16 +27,10 @@ internal class DirectionCalculator
             {
                 incrementAmount = 0;
             }
-            // If it's been saved but not scanned/stored by me count it as one
-            else if (game.EnemyStoredCreatureIds.Contains(direction.Key) && !game.MyStoredCreatureIds.Contains(direction.Key) && !game.IsScannedByMe(direction.Key))
+            else if (!game.MyStoredCreatureIds.Contains(direction.Key) && !game.IsScannedByMe(direction.Key))
             {
                 incrementAmount = 1;
-            }
-            // If it's not been save by anyone and not stored by me count it as 3
-            else if (!game.EnemyStoredCreatureIds.Contains(direction.Key) && !game.MyStoredCreatureIds.Contains(direction.Key) && !game.IsScannedByMe(direction.Key))
-            {
-                incrementAmount = 3;
-            }
+            }           
 
             if (directionCounts.ContainsKey(direction.Value))
             {
@@ -46,12 +40,10 @@ internal class DirectionCalculator
             {
                 directionCounts[direction.Value] = incrementAmount;
             }
-
-            Console.Error.WriteLine($"Direction: {direction.Value}, CreatureId: {direction.Key}, IncrementAmount: {incrementAmount}");
         }
 
         // return the key with the highest value
-        Console.Error.WriteLine($"Direction counts: {string.Join(", ", directionCounts.Select(dc => $"{dc.Key}: {dc.Value}"))}");
+        Console.Error.WriteLine($"Direction Counts: {string.Join(", ", directionCounts.Select(dc => $"{dc.Key}: {dc.Value}"))}");
         return directionCounts.MaxBy(dc => dc.Value).Key;
          
     }

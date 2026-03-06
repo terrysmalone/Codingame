@@ -6,6 +6,8 @@ using System.Drawing;
 
 internal sealed class Drone
 {
+    private bool _isLeftDrone = false;
+
     internal int Id { get; private set; }
 
     internal Point Position { get; set; }
@@ -20,6 +22,11 @@ internal sealed class Drone
         Id = id;
         Position = new Point(xPos, yPos);
         BatteryLevel = batteryLevel;
+
+        if (xPos < 5000)
+        {
+            _isLeftDrone = true;
+        }
     }
 
     internal void AddScannedCreatures(int id)
@@ -30,5 +37,10 @@ internal sealed class Drone
     internal void AddCreatureDirection(int creatureId, CreatureDirection direction)
     {
         CreatureDirections[creatureId] = direction;
+    }
+
+    internal bool IsLeftDrone()
+    {
+        return _isLeftDrone;
     }
 }

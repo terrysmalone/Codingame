@@ -113,35 +113,21 @@ internal static class DistanceCalculator
         return new Point(newX, newY);
     }
 
-    // Determines whether two objects, each moving along a linear path at their own speed,
+    // Determines whether two objects, each moving linearly from start to target in one game turn,
     // will ever be within a given proximity (default 500 units) of each other during their movement.
-    // Returns true if at any point during one step of movement the two entities are within proximityThreshold units.
     internal static bool WillPathsConverge(
-        Point start1, Point target1, int speed1,
-        Point start2, Point target2, int speed2,
+        Point start1, Point target1,
+        Point start2, Point target2,
         int proximityThreshold = 500)
     {
-        // Calculate direction vectors scaled to each entity's speed
-        double dx1 = target1.X - start1.X;
-        double dy1 = target1.Y - start1.Y;
-        double dist1 = Math.Sqrt(dx1 * dx1 + dy1 * dy1);
+        // Velocity is simply (target - start) since each entity travels the full path in one turn (t in [0, 1])
+        double vx1 = target1.X - start1.X;
+        double vy1 = target1.Y - start1.Y;
 
-        double dx2 = target2.X - start2.X;
-        double dy2 = target2.Y - start2.Y;
-        double dist2 = Math.Sqrt(dx2 * dx2 + dy2 * dy2);
+        double vx2 = target2.X - start2.X;
+        double vy2 = target2.Y - start2.Y;
 
-        // Velocity vectors (units moved per step, i.e. over t in [0, 1])
-        double vx1 = dist1 > 0 ? (dx1 / dist1) * speed1 : 0;
-        double vy1 = dist1 > 0 ? (dy1 / dist1) * speed1 : 0;
-
-        double vx2 = dist2 > 0 ? (dx2 / dist2) * speed2 : 0;
-        double vy2 = dist2 > 0 ? (dy2 / dist2) * speed2 : 0;
-
-        // Position at time t (0 <= t <= 1):
-        //   P1(t) = start1 + t * v1
-        //   P2(t) = start2 + t * v2
-        //
-        // Difference: D(t) = (start1 - start2) + t * (v1 - v2)
+        // Relative position and velocity
         double relX = start1.X - start2.X;
         double relY = start1.Y - start2.Y;
         double relVx = vx1 - vx2;
@@ -164,11 +150,11 @@ internal static class DistanceCalculator
         // Check end (t=1)
         double distSqAtEnd = a + b + c;
         if (distSqAtEnd <= thresholdSq)
-        { 
+        {
             return true;
         }
 
-        // If paths are not parallel/same velocity, check the minimum of the quadratic
+        // Check the minimum of the quadratic within [0, 1]
         if (a > 0)
         {
             double tMin = -b / (2.0 * a);
@@ -379,7 +365,7 @@ internal class Game
                     Console.Error.WriteLine($"Predicting monster will move to {monsterTarget.X},{monsterTarget.Y}");
 
                     // Should I avoid it
-                    var willPathsConverge = DistanceCalculator.WillPathsConverge(drone.Position, targetPoint, _droneSpeed, monster.Position, monsterTarget, _monsterDashSpeed);
+                    var willPathsConverge = DistanceCalculator.WillPathsConverge(drone.Position, targetPoint, monster.Position, monsterTarget);
                     
                     if (willPathsConverge)
                     {

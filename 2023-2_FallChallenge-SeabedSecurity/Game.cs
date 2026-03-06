@@ -169,7 +169,7 @@ internal class Game
                     Console.Error.WriteLine($"Predicting monster will move to {monsterTarget.X},{monsterTarget.Y}");
 
                     // Should I avoid it
-                    var willPathsConverge = DistanceCalculator.WillPathsConverge(drone.Position, targetPoint, _droneSpeed, monster.Position, monsterTarget, _monsterDashSpeed);
+                    var willPathsConverge = DistanceCalculator.WillPathsConverge(drone.Position, targetPoint, monster.Position, monsterTarget);
                     
                     if (willPathsConverge)
                     {

@@ -15,6 +15,8 @@ internal class Game
     private const int _monsterDashSpeed = 540;
     private const int _captureSize = 500;
 
+    private int _fishCount = 0;
+
     internal int MyScore { get; set; }
     internal int EnemyScore { get; set; }
 
@@ -29,9 +31,11 @@ internal class Game
 
     private DirectionCalculator _directionCalculator;
     private MonsterPositionCalculator _monsterPositionCalculator;
+    private ScoreCalculator _scoreCalculator;
 
     internal int visibleCreatureCount;
     internal HashSet<int> VisibleMonsterIds { get; set; } = new();
+    public int FishCount { get; internal set; }
 
     internal int round = 0;
 
@@ -51,6 +55,8 @@ internal class Game
         earlyGameTracker.Add(1, true);
         earlyGameTracker.Add(2, true);
         earlyGameTracker.Add(3, true);
+
+        _scoreCalculator = new ScoreCalculator(this);
     }
     internal void InitialiseCreatures(List<Creature> allCreatures)
     {
@@ -114,6 +120,12 @@ internal class Game
 
     internal List<string> CalculateActions()
     {
+        (var myScore, var possibleEnemyScore) = _scoreCalculator.CalculateScanScores();
+        Console.Error.WriteLine($"My score: {myScore}");
+        Console.Error.WriteLine($"Enemy score: {possibleEnemyScore}");
+
+        Console.Error.WriteLine($"FishCount: {FishCount}");
+
         // Logger.AllMonsters(creatures);
 
         var actions = new List<string>();
@@ -126,11 +138,20 @@ internal class Game
         foreach (var drone in _myDrones)
         {
             Console.Error.WriteLine($"Drone {drone.Id} pos: {drone.Position.X}, {drone.Position.Y}");
+
             var action = string.Empty;
 
             var lightLevel = CalculateLightLevel(drone);
 
             HashSet<int> monstersToAvoid = GetMonstersToAvoid(drone);
+
+            if (myScore > possibleEnemyScore)
+            {
+                var targetPoint = GetHeadToSurfacePoint(drone, monstersToAvoid);
+
+                actions.Add($"MOVE {targetPoint.X} {targetPoint.Y} {lightLevel} RACING TO SURFACE");
+                continue;
+            }         
 
             // If we're below 8,000 or there are no more fish below, stop diving
             // TODO: If we're below 8,000 but there are still unscanned fish below, get them before ascending
@@ -171,18 +192,10 @@ internal class Game
             }
 
             // TODO: Sometimes we'll want to head to surface for other reasons...
-            if (allKnownCreatures.Count >= 12)
+            if (allKnownCreatures.Count >= FishCount)
             {
-                // TO DO: Avoid monsters still
-                var targetPoint = new Point(drone.Position.X, 0);
-                targetPoint = DistanceCalculator.GetPointAlongPath(drone.Position, targetPoint, _droneSpeed);
-
-                List<double> alternativeAngles = drone.Position.X < 5000 ? _leftDroneUpAlternativeAngles : _rightDroneUpAlternativeAngles;
-                targetPoint = AdjustForMonsters(drone, targetPoint, monstersToAvoid, alternativeAngles);
-
-
-
-
+                var targetPoint = GetHeadToSurfacePoint(drone, monstersToAvoid);
+                  
                 actions.Add($"MOVE {targetPoint.X} {targetPoint.Y} {lightLevel} HEADING TO SURFACE");
                 continue;
             }
@@ -227,6 +240,17 @@ internal class Game
         return actions;
     }
 
+    private Point GetHeadToSurfacePoint(Drone drone, HashSet<int> monstersToAvoid)
+    {
+        var targetPoint = new Point(drone.Position.X, 0);
+        targetPoint = DistanceCalculator.GetPointAlongPath(drone.Position, targetPoint, _droneSpeed);
+
+        List<double> alternativeAngles = drone.Position.X < 5000 ? _leftDroneUpAlternativeAngles : _rightDroneUpAlternativeAngles;
+        targetPoint = AdjustForMonsters(drone, targetPoint, monstersToAvoid, alternativeAngles);
+
+        return targetPoint;
+    }
+
     private Point AdjustForMonsters(Drone drone, Point targetPoint, HashSet<int> monstersToAvoid, List<double> alternativeAngles)
     {
         bool converged = false;
@@ -266,6 +290,7 @@ internal class Game
                 newY = Math.Clamp(newY, 0, 9999);
 
                 targetPoint = new Point(newX, newY);
+                targetPoint = DistanceCalculator.GetPointAlongPath(drone.Position, targetPoint, _droneSpeed);
                 adjustmentCount++;
             }
             else
@@ -279,11 +304,8 @@ internal class Game
 
     private bool AreUnscannedFishStillBelow(Drone drone)
     {
-        Console.Error.WriteLine($"Checking for unscanned fish below drone {drone.Id}");
-
         foreach (var creature in drone.CreatureDirections)
         {
-            Console.Error.WriteLine($"Creature {creature.Key} direction: {creature.Value}");
             if (creature.Value == CreatureDirection.BL || creature.Value == CreatureDirection.BR)
             {
                 if (!IsScannedOrStoredByMe(creature.Key))
@@ -423,7 +445,35 @@ internal class Game
 
         return false;
     }
+
+    internal HashSet<int> GetMyScannedCreatureIds()
+    {
+        HashSet<int> scannedCreatureIds = new HashSet<int>();
+        foreach (var drone in _myDrones)
+        {
+            scannedCreatureIds.UnionWith(drone.ScannedCreaturesIds);
+        }
+        return scannedCreatureIds;
+    }
+
+    internal HashSet<int> GetEnemyScannedCreatureIds(int clonedId)
+    {
+        HashSet<int> scannedCreatureIds = new HashSet<int>();
+        foreach (var drone in _enemyDrones)
+        {
+            scannedCreatureIds.UnionWith(drone.ScannedCreaturesIds);
+        }
+        return scannedCreatureIds;
+    }
+
+    internal List<Creature> GetAllCreatures()
+    {
+        return _creatures;
+    }
+
+    internal Creature GetCreature(int id)
+    {
+        return _creatures.Find(c => c.Id == id);
+    }
 }
-
-
 

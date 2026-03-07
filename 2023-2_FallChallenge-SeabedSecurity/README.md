@@ -4,6 +4,3 @@
 
 # Issue
 
-seed=-5065579951853646000
-
-On move 15/30 Drone 2 crashes into monster 17. My check says it won't

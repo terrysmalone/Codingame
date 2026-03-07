@@ -15,6 +15,8 @@ using System.Transactions;
 using System.IO;
 using System.Collections;
 using System.Runtime.CompilerServices;
+using System.Reflection.Metadata.Ecma335;
+using static System.Formats.Asn1.AsnWriter;
 
 internal class Creature
 {
@@ -205,6 +207,8 @@ internal class Game
     private const int _monsterDashSpeed = 540;
     private const int _captureSize = 500;
 
+    private int _fishCount = 0;
+
     internal int MyScore { get; set; }
     internal int EnemyScore { get; set; }
 
@@ -219,9 +223,11 @@ internal class Game
 
     private DirectionCalculator _directionCalculator;
     private MonsterPositionCalculator _monsterPositionCalculator;
+    private ScoreCalculator _scoreCalculator;
 
     internal int visibleCreatureCount;
     internal HashSet<int> VisibleMonsterIds { get; set; } = new();
+    public int FishCount { get; internal set; }
 
     internal int round = 0;
 
@@ -241,6 +247,8 @@ internal class Game
         earlyGameTracker.Add(1, true);
         earlyGameTracker.Add(2, true);
         earlyGameTracker.Add(3, true);
+
+        _scoreCalculator = new ScoreCalculator(this);
     }
     internal void InitialiseCreatures(List<Creature> allCreatures)
     {
@@ -304,6 +312,12 @@ internal class Game
 
     internal List<string> CalculateActions()
     {
+        (var myScore, var possibleEnemyScore) = _scoreCalculator.CalculateScanScores();
+        Console.Error.WriteLine($"My score: {myScore}");
+        Console.Error.WriteLine($"Enemy score: {possibleEnemyScore}");
+
+        Console.Error.WriteLine($"FishCount: {FishCount}");
+
         // Logger.AllMonsters(creatures);
 
         var actions = new List<string>();
@@ -316,14 +330,24 @@ internal class Game
         foreach (var drone in _myDrones)
         {
             Console.Error.WriteLine($"Drone {drone.Id} pos: {drone.Position.X}, {drone.Position.Y}");
+
             var action = string.Empty;
 
             var lightLevel = CalculateLightLevel(drone);
 
             HashSet<int> monstersToAvoid = GetMonstersToAvoid(drone);
 
+            if (myScore > possibleEnemyScore)
+            {
+                var targetPoint = GetHeadToSurfacePoint(drone, monstersToAvoid);
+
+                actions.Add($"MOVE {targetPoint.X} {targetPoint.Y} {lightLevel} RACING TO SURFACE");
+                continue;
+            }         
+
             // If we're below 8,000 or there are no more fish below, stop diving
-            if (drone.Position.Y >= 8500 || !AreUnscannedFishStillBelow(drone))
+            // TODO: If we're below 8,000 but there are still unscanned fish below, get them before ascending
+            if (drone.Position.Y >= 8000 || !AreUnscannedFishStillBelow(drone))
             {
                 earlyGameTracker[drone.Id] = false;
             }
@@ -360,18 +384,10 @@ internal class Game
             }
 
             // TODO: Sometimes we'll want to head to surface for other reasons...
-            if (allKnownCreatures.Count >= 12)
+            if (allKnownCreatures.Count >= FishCount)
             {
-                // TO DO: Avoid monsters still
-                var targetPoint = new Point(drone.Position.X, 0);
-                targetPoint = DistanceCalculator.GetPointAlongPath(drone.Position, targetPoint, _droneSpeed);
-
-                List<double> alternativeAngles = drone.Position.X < 5000 ? _leftDroneUpAlternativeAngles : _rightDroneUpAlternativeAngles;
-                targetPoint = AdjustForMonsters(drone, targetPoint, monstersToAvoid, alternativeAngles);
-
-
-
-
+                var targetPoint = GetHeadToSurfacePoint(drone, monstersToAvoid);
+                  
                 actions.Add($"MOVE {targetPoint.X} {targetPoint.Y} {lightLevel} HEADING TO SURFACE");
                 continue;
             }
@@ -416,6 +432,17 @@ internal class Game
         return actions;
     }
 
+    private Point GetHeadToSurfacePoint(Drone drone, HashSet<int> monstersToAvoid)
+    {
+        var targetPoint = new Point(drone.Position.X, 0);
+        targetPoint = DistanceCalculator.GetPointAlongPath(drone.Position, targetPoint, _droneSpeed);
+
+        List<double> alternativeAngles = drone.Position.X < 5000 ? _leftDroneUpAlternativeAngles : _rightDroneUpAlternativeAngles;
+        targetPoint = AdjustForMonsters(drone, targetPoint, monstersToAvoid, alternativeAngles);
+
+        return targetPoint;
+    }
+
     private Point AdjustForMonsters(Drone drone, Point targetPoint, HashSet<int> monstersToAvoid, List<double> alternativeAngles)
     {
         bool converged = false;
@@ -455,6 +482,7 @@ internal class Game
                 newY = Math.Clamp(newY, 0, 9999);
 
                 targetPoint = new Point(newX, newY);
+                targetPoint = DistanceCalculator.GetPointAlongPath(drone.Position, targetPoint, _droneSpeed);
                 adjustmentCount++;
             }
             else
@@ -468,11 +496,8 @@ internal class Game
 
     private bool AreUnscannedFishStillBelow(Drone drone)
     {
-        Console.Error.WriteLine($"Checking for unscanned fish below drone {drone.Id}");
-
         foreach (var creature in drone.CreatureDirections)
         {
-            Console.Error.WriteLine($"Creature {creature.Key} direction: {creature.Value}");
             if (creature.Value == CreatureDirection.BL || creature.Value == CreatureDirection.BR)
             {
                 if (!IsScannedOrStoredByMe(creature.Key))
@@ -612,9 +637,37 @@ internal class Game
 
         return false;
     }
+
+    internal HashSet<int> GetMyScannedCreatureIds()
+    {
+        HashSet<int> scannedCreatureIds = new HashSet<int>();
+        foreach (var drone in _myDrones)
+        {
+            scannedCreatureIds.UnionWith(drone.ScannedCreaturesIds);
+        }
+        return scannedCreatureIds;
+    }
+
+    internal HashSet<int> GetEnemyScannedCreatureIds(int clonedId)
+    {
+        HashSet<int> scannedCreatureIds = new HashSet<int>();
+        foreach (var drone in _enemyDrones)
+        {
+            scannedCreatureIds.UnionWith(drone.ScannedCreaturesIds);
+        }
+        return scannedCreatureIds;
+    }
+
+    internal List<Creature> GetAllCreatures()
+    {
+        return _creatures;
+    }
+
+    internal Creature GetCreature(int id)
+    {
+        return _creatures.Find(c => c.Id == id);
+    }
 }
-
-
 
 
 
@@ -882,6 +935,8 @@ class Player
     
     private static void AddRadarBlips(Game game, List<Drone> myDrones, List<Drone> enemyDrones)
     {
+        HashSet<int> radarCreatureIds = new HashSet<int>();
+
         int radarBlipCount = int.Parse(Console.ReadLine());
         for (int i = 0; i < radarBlipCount; i++)
         {
@@ -894,6 +949,8 @@ class Player
             {
                 continue;
             }
+
+            radarCreatureIds.Add(creatureId);
 
             string radar = inputs[2];
 
@@ -908,7 +965,220 @@ class Player
                 drone.AddCreatureDirection(creatureId, (CreatureDirection)Enum.Parse(typeof(CreatureDirection), radar));
             }
         }
+
+        game.FishCount = radarCreatureIds.Count;
     }
 }
+
+
+internal class ScoreCalculator
+{
+    private Game _game;
+
+    public ScoreCalculator(Game game)
+    {
+        _game = game;
+    }
+
+    // Calculates what my score would be if I scanned both drones now, then 
+    // calculates the total score the enemy could possibly get if they later scanned everything possible.
+    // TODO: At the moment this doesn't care if creatures are unavailable to be scanned
+    internal (int mine, int possibleEnemyScore) CalculateScanScores()
+    {
+        int score = 0;
+
+        Console.Error.WriteLine($"My current score:{_game.MyScore}");
+
+        HashSet<int> scannedCreatureIDs = _game.GetMyScannedCreatureIds();
+
+        HashSet<int> myStoredIds = _game.MyStoredCreatureIds;
+
+        HashSet<int> enemyStoredIds = _game.EnemyStoredCreatureIds;
+
+        HashSet<int> cloneMyStoredIds = new HashSet<int>(myStoredIds);
+
+        // Go through all possible scorings. If it's in the clone and not in the stored add it to the score. If it's not in the enemies stored double it.
+        foreach (int scannedId in scannedCreatureIDs)
+        {
+            // Add points for scans
+
+            Creature creature = _game.GetCreature(scannedId);
+
+            int typeScore = 0;
+            switch (creature.Type)
+            {
+                case 0:
+                    typeScore = 1;
+                    break;
+                case 1:
+                    typeScore = 2;
+                    break;
+                case 2:
+                    typeScore += 3;
+                    break;
+            }
+
+            // Double points if no one has scanned that type yet
+            if (!ContainsType(myStoredIds, creature.Type, creature.Color))
+            {
+                score += typeScore;
+
+                if (!ContainsType(enemyStoredIds, creature.Type, creature.Color))
+                {
+
+                    score += typeScore;
+                }
+            }
+
+            cloneMyStoredIds.Add(scannedId);
+        }
+
+        // First to scan all of each colour 0, 1, 2, 3
+        score += CalculateColourScore(0, cloneMyStoredIds, myStoredIds, enemyStoredIds);
+        score += CalculateColourScore(1, cloneMyStoredIds, myStoredIds, enemyStoredIds);
+        score += CalculateColourScore(2, cloneMyStoredIds, myStoredIds, enemyStoredIds);
+        score += CalculateColourScore(3, cloneMyStoredIds, myStoredIds, enemyStoredIds);
+
+        // First to scan all of each type 0, 1, 2
+        score += CalculateTypeScore(0, cloneMyStoredIds, myStoredIds, enemyStoredIds);
+        score += CalculateTypeScore(1, cloneMyStoredIds, myStoredIds, enemyStoredIds);
+        score += CalculateTypeScore(2, cloneMyStoredIds, myStoredIds, enemyStoredIds);
+
+        var enemyScore = 0;
+        HashSet<int> cloneEnemyStoredIds = new HashSet<int>(myStoredIds);
+        // Create a list of all creatures that are not stored or in clone
+        foreach (Creature creature in _game.GetAllCreatures())
+        {
+            // Add points for the enemy scanning this creature
+            int typeScore = 0;
+            switch (creature.Type)
+            {
+                case 0:
+                    typeScore = 1;
+                    break;
+                case 1:
+                    typeScore = 2;
+                    break;
+                case 2:
+                    typeScore += 3;
+                    break;
+            }
+            // Double points if no one has scanned that type yet
+            if (!ContainsType(enemyStoredIds, creature.Type, creature.Color))
+            {
+                enemyScore += typeScore;
+
+                if (!ContainsType(cloneMyStoredIds, creature.Type, creature.Color))
+                {
+                    enemyScore += typeScore;
+                }
+            }
+
+
+            cloneEnemyStoredIds.Add(creature.Id);
+        }
+
+        // First to scan all of each colour 0, 1, 2, 3
+        enemyScore += CalculateColourScore(0, cloneEnemyStoredIds, enemyStoredIds, cloneMyStoredIds);
+        enemyScore += CalculateColourScore(1, cloneEnemyStoredIds, enemyStoredIds, cloneMyStoredIds);
+        enemyScore += CalculateColourScore(2, cloneEnemyStoredIds, enemyStoredIds, cloneMyStoredIds);
+        enemyScore += CalculateColourScore(3, cloneEnemyStoredIds, enemyStoredIds, cloneMyStoredIds);
+
+        // First to scan all of each type 0, 1, 2
+        enemyScore += CalculateTypeScore(0, cloneEnemyStoredIds, enemyStoredIds, cloneMyStoredIds);
+        enemyScore += CalculateTypeScore(1, cloneEnemyStoredIds, enemyStoredIds, cloneMyStoredIds);
+        enemyScore += CalculateTypeScore(2, cloneEnemyStoredIds, enemyStoredIds, cloneMyStoredIds);
+
+        return (_game.MyScore + score, _game.EnemyScore + enemyScore);
+    }
+
+    private int CalculateColourScore(int colour, HashSet<int> cloneMyStoredIds, HashSet<int> myStoredIds, HashSet<int> enemyStoredIds)
+    {
+        var score = 0;
+
+        if (ContainsAllOfColour(cloneMyStoredIds, colour) && !ContainsAllOfColour(myStoredIds, colour))
+        {
+            score += 3;
+
+            if (!ContainsAllOfColour(enemyStoredIds, colour))
+            {
+                score += 3;
+            }
+        }
+
+        return score;
+    }
+
+    private bool ContainsAllOfColour(HashSet<int> ids, int colour)
+    {
+        int colourCount = 0;
+
+        foreach (int id in ids)
+        {
+            Creature creature = _game.GetCreature(id);
+            if (creature.Color == colour)
+            {
+                colourCount++;
+            }
+        }
+
+        return colourCount == 3;
+    }
+
+    private int CalculateTypeScore(int type, HashSet<int> cloneMyStoredIds, HashSet<int> myStoredIds, HashSet<int> enemyStoredIds)
+    {
+        var score = 0;
+
+        if (ContainsAllOfType(cloneMyStoredIds, type) && !ContainsAllOfType(myStoredIds, type))
+        {
+            score += 4;
+
+            if (!ContainsAllOfType(enemyStoredIds, type))
+            {
+                score += 4;
+            }
+        }
+
+        return score;
+    }
+
+    private bool ContainsAllOfType(HashSet<int> ids, int type)
+    {
+        int typeCount = 0;
+
+        foreach (int id in ids)
+        {
+            Creature creature = _game.GetCreature(id);
+            if (creature.Type == type)
+            {
+                typeCount++;
+            }
+        }
+
+        return typeCount == 4;
+    }
+
+    internal object CalculateEnemyScanScore()
+    {
+        return 0;
+    }
+
+    private bool ContainsType(HashSet<int> storedIds, int type, int color)
+    {
+        foreach (int storedId in storedIds)
+        {
+            Creature creature = _game.GetCreature(storedId);
+            if (creature.Type == type && creature.Color == color)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}
+
+
+
 
 

@@ -173,6 +173,8 @@ class Player
     
     private static void AddRadarBlips(Game game, List<Drone> myDrones, List<Drone> enemyDrones)
     {
+        HashSet<int> radarCreatureIds = new HashSet<int>();
+
         int radarBlipCount = int.Parse(Console.ReadLine());
         for (int i = 0; i < radarBlipCount; i++)
         {
@@ -185,6 +187,8 @@ class Player
             {
                 continue;
             }
+
+            radarCreatureIds.Add(creatureId);
 
             string radar = inputs[2];
 
@@ -199,5 +203,7 @@ class Player
                 drone.AddCreatureDirection(creatureId, (CreatureDirection)Enum.Parse(typeof(CreatureDirection), radar));
             }
         }
+
+        game.FishCount = radarCreatureIds.Count;
     }
 }

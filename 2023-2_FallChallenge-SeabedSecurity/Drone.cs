@@ -11,15 +11,18 @@ internal sealed class Drone
     internal Point Position { get; set; }
     internal int BatteryLevel { get; set; }
 
+    internal bool IsInEmergencyMode { get; set; }
+
     internal HashSet<int> ScannedCreaturesIds { get; private set; } = new();
 
     internal Dictionary<int, CreatureDirection> CreatureDirections = new Dictionary<int, CreatureDirection>();
 
-    internal Drone(int id, int xPos, int yPos, int batteryLevel)
+    internal Drone(int id, int xPos, int yPos, int batteryLevel, int emergency)
     {
         Id = id;
         Position = new Point(xPos, yPos);
         BatteryLevel = batteryLevel;
+        IsInEmergencyMode = emergency == 1;
     }
 
     internal void AddCreatureDirection(int creatureId, CreatureDirection direction)

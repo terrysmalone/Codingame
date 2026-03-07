@@ -15,8 +15,6 @@ internal class Game
     private const int _monsterDashSpeed = 540;
     private const int _captureSize = 500;
 
-    private int _fishCount = 0;
-
     internal int MyScore { get; set; }
     internal int EnemyScore { get; set; }
 
@@ -36,6 +34,7 @@ internal class Game
     internal int visibleCreatureCount;
     internal HashSet<int> VisibleMonsterIds { get; set; } = new();
     public int FishCount { get; internal set; }
+    public int MonsterCount { get; internal set; }
 
     internal int round = 0;
 
@@ -191,9 +190,12 @@ internal class Game
                 continue;
             }
 
-            // TODO: Sometimes we'll want to head to surface for other reasons...
-            if (allKnownCreatures.Count >= FishCount)
+            // TODO: These two don't always match. If we've scanned a fish that's off the map and stored it 
+            // and there's another unscanned fish this can give a false positive
+            if (allKnownCreatures.Count >= FishCount && (drone.ScannedCreaturesIds.Count > 0))
             {
+                Console.Error.WriteLine("All creatures are known, heading to surface");
+                Console.Error.WriteLine($"allKnownCreatures.Count: {allKnownCreatures.Count}, FishCount: {FishCount}");
                 var targetPoint = GetHeadToSurfacePoint(drone, monstersToAvoid);
                   
                 actions.Add($"MOVE {targetPoint.X} {targetPoint.Y} {lightLevel} HEADING TO SURFACE");
@@ -253,6 +255,8 @@ internal class Game
 
     private Point AdjustForMonsters(Drone drone, Point targetPoint, HashSet<int> monstersToAvoid, List<double> alternativeAngles)
     {
+        Console.Error.WriteLine($"Drone {drone.Id} initial target point: {targetPoint.X}, {targetPoint.Y}");
+
         bool converged = false;
         int adjustmentCount = 0;
 
@@ -275,6 +279,8 @@ internal class Game
                 }
             }
 
+            Console.Error.WriteLine($"Will paths converge: {willPathsConverge} with adjustment count: {adjustmentCount}");
+
             if (willPathsConverge)
             {
                 converged = true;
@@ -291,6 +297,7 @@ internal class Game
 
                 targetPoint = new Point(newX, newY);
                 targetPoint = DistanceCalculator.GetPointAlongPath(drone.Position, targetPoint, _droneSpeed);
+                Console.Error.WriteLine($"Adjusted target point: {targetPoint.X}, {targetPoint.Y}");
                 adjustmentCount++;
             }
             else
@@ -413,6 +420,11 @@ internal class Game
         double nearestDistance = double.MaxValue;
         foreach (var drone in _myDrones)
         {
+            if (drone.IsInEmergencyMode)
+            {
+                continue;
+            }
+
             var distance = DistanceCalculator.GetDistance(drone.Position, monster.Position);
             if (distance < nearestDistance)
             {
@@ -423,6 +435,11 @@ internal class Game
 
         foreach (var drone in _enemyDrones)
         {
+            if (drone.IsInEmergencyMode)
+            {
+                continue;
+            }
+
             var distance = DistanceCalculator.GetDistance(drone.Position, monster.Position);
             if (distance < nearestDistance)
             {

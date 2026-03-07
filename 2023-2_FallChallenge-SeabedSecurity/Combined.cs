@@ -184,15 +184,18 @@ internal sealed class Drone
     internal Point Position { get; set; }
     internal int BatteryLevel { get; set; }
 
+    internal bool IsInEmergencyMode { get; set; }
+
     internal HashSet<int> ScannedCreaturesIds { get; private set; } = new();
 
     internal Dictionary<int, CreatureDirection> CreatureDirections = new Dictionary<int, CreatureDirection>();
 
-    internal Drone(int id, int xPos, int yPos, int batteryLevel)
+    internal Drone(int id, int xPos, int yPos, int batteryLevel, int emergency)
     {
         Id = id;
         Position = new Point(xPos, yPos);
         BatteryLevel = batteryLevel;
+        IsInEmergencyMode = emergency == 1;
     }
 
     internal void AddCreatureDirection(int creatureId, CreatureDirection direction)
@@ -383,9 +386,12 @@ internal class Game
                 continue;
             }
 
-            // TODO: Sometimes we'll want to head to surface for other reasons...
-            if (allKnownCreatures.Count >= FishCount)
+            // TODO: These two don't always match. If we've scanned a fish that's off the map and stored it 
+            // and there's another unscanned fish this can give a false positive
+            if (allKnownCreatures.Count >= FishCount && (drone.ScannedCreaturesIds.Count > 0))
             {
+                Console.Error.WriteLine("All creatures are known, heading to surface");
+                Console.Error.WriteLine($"allKnownCreatures.Count: {allKnownCreatures.Count}, FishCount: {FishCount}");
                 var targetPoint = GetHeadToSurfacePoint(drone, monstersToAvoid);
                   
                 actions.Add($"MOVE {targetPoint.X} {targetPoint.Y} {lightLevel} HEADING TO SURFACE");
@@ -445,6 +451,8 @@ internal class Game
 
     private Point AdjustForMonsters(Drone drone, Point targetPoint, HashSet<int> monstersToAvoid, List<double> alternativeAngles)
     {
+        Console.Error.WriteLine($"Drone {drone.Id} initial target point: {targetPoint.X}, {targetPoint.Y}");
+
         bool converged = false;
         int adjustmentCount = 0;
 
@@ -467,6 +475,8 @@ internal class Game
                 }
             }
 
+            Console.Error.WriteLine($"Will paths converge: {willPathsConverge} with adjustment count: {adjustmentCount}");
+
             if (willPathsConverge)
             {
                 converged = true;
@@ -483,6 +493,7 @@ internal class Game
 
                 targetPoint = new Point(newX, newY);
                 targetPoint = DistanceCalculator.GetPointAlongPath(drone.Position, targetPoint, _droneSpeed);
+                Console.Error.WriteLine($"Adjusted target point: {targetPoint.X}, {targetPoint.Y}");
                 adjustmentCount++;
             }
             else
@@ -605,6 +616,11 @@ internal class Game
         double nearestDistance = double.MaxValue;
         foreach (var drone in _myDrones)
         {
+            if (drone.IsInEmergencyMode)
+            {
+                continue;
+            }
+
             var distance = DistanceCalculator.GetDistance(drone.Position, monster.Position);
             if (distance < nearestDistance)
             {
@@ -615,6 +631,11 @@ internal class Game
 
         foreach (var drone in _enemyDrones)
         {
+            if (drone.IsInEmergencyMode)
+            {
+                continue;
+            }
+
             var distance = DistanceCalculator.GetDistance(drone.Position, monster.Position);
             if (distance < nearestDistance)
             {
@@ -866,7 +887,7 @@ class Player
             int emergency = int.Parse(inputs[3]);
             int battery = int.Parse(inputs[4]);
 
-            myDrones.Add(new Drone(droneId, droneX, droneY, battery));
+            myDrones.Add(new Drone(droneId, droneX, droneY, battery, emergency));
         }
 
         return myDrones;
@@ -886,7 +907,7 @@ class Player
             int emergency = int.Parse(inputs[3]);
             int battery = int.Parse(inputs[4]);
 
-            enemyDrones.Add(new Drone(droneId, droneX, droneY, battery));
+            enemyDrones.Add(new Drone(droneId, droneX, droneY, battery, emergency));
         }
 
         return enemyDrones;

@@ -104,7 +104,7 @@ class Player
             int emergency = int.Parse(inputs[3]);
             int battery = int.Parse(inputs[4]);
 
-            myDrones.Add(new Drone(droneId, droneX, droneY, battery));
+            myDrones.Add(new Drone(droneId, droneX, droneY, battery, emergency));
         }
 
         return myDrones;
@@ -124,7 +124,7 @@ class Player
             int emergency = int.Parse(inputs[3]);
             int battery = int.Parse(inputs[4]);
 
-            enemyDrones.Add(new Drone(droneId, droneX, droneY, battery));
+            enemyDrones.Add(new Drone(droneId, droneX, droneY, battery, emergency));
         }
 
         return enemyDrones;

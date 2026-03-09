@@ -210,8 +210,6 @@ internal class Game
     private const int _monsterDashSpeed = 540;
     private const int _captureSize = 500;
 
-    private int _fishCount = 0;
-
     internal int MyScore { get; set; }
     internal int EnemyScore { get; set; }
 
@@ -231,6 +229,7 @@ internal class Game
     internal int visibleCreatureCount;
     internal HashSet<int> VisibleMonsterIds { get; set; } = new();
     public int FishCount { get; internal set; }
+    public int MonsterCount { get; internal set; }
 
     internal int round = 0;
 
@@ -343,16 +342,23 @@ internal class Game
             if (myScore > possibleEnemyScore)
             {
                 var targetPoint = GetHeadToSurfacePoint(drone, monstersToAvoid);
-
                 actions.Add($"MOVE {targetPoint.X} {targetPoint.Y} {lightLevel} RACING TO SURFACE");
                 continue;
-            }         
+            }
+
+            if (MonsterCount > 4 && drone.ScannedCreaturesIds.Count >= 4)
+            {
+                var targetPoint = GetHeadToSurfacePoint(drone, monstersToAvoid);
+                actions.Add($"MOVE {targetPoint.X} {targetPoint.Y} {lightLevel} TOO MANY MONSTERS, HEADING TO SURFACE");
+                continue;
+            }
 
             // If we're below 8,000 or there are no more fish below, stop diving
-            // TODO: If we're below 8,000 but there are still unscanned fish below, get them before ascending
-            if (drone.Position.Y >= 8000 || !AreUnscannedFishStillBelow(drone))
+            // TODO: If we're below 7,500 but there are still unscanned fish below, get them before ascending
+            if (drone.Position.Y >= 7500 || !AreUnscannedFishStillBelow(drone))
             {
                 earlyGameTracker[drone.Id] = false;
+                lightLevel = 1; // Use torch to get more vision of the surface
             }
 
             if (earlyGameTracker[drone.Id] == true)
@@ -367,7 +373,7 @@ internal class Game
                 }
                 else
                 {
-                    xPos = 8000;
+                    xPos = 7500;
                 }
 
                 // Calculate the exact targetPoint that's exactly _droneSpeed along the path from drone.Position to target
@@ -957,6 +963,7 @@ class Player
     private static void AddRadarBlips(Game game, List<Drone> myDrones, List<Drone> enemyDrones)
     {
         HashSet<int> radarCreatureIds = new HashSet<int>();
+        HashSet<int> monsterIds = new HashSet<int>();
 
         int radarBlipCount = int.Parse(Console.ReadLine());
         for (int i = 0; i < radarBlipCount; i++)
@@ -968,6 +975,7 @@ class Player
             // Don't add monsters
             if (game.IsMonster(creatureId))
             {
+                monsterIds.Add(creatureId);
                 continue;
             }
 
@@ -988,6 +996,7 @@ class Player
         }
 
         game.FishCount = radarCreatureIds.Count;
+        game.MonsterCount = monsterIds.Count;
     }
 }
 

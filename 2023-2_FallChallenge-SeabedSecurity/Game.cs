@@ -147,16 +147,23 @@ internal class Game
             if (myScore > possibleEnemyScore)
             {
                 var targetPoint = GetHeadToSurfacePoint(drone, monstersToAvoid);
-
                 actions.Add($"MOVE {targetPoint.X} {targetPoint.Y} {lightLevel} RACING TO SURFACE");
                 continue;
-            }         
+            }
+
+            if (MonsterCount > 4 && drone.ScannedCreaturesIds.Count >= 4)
+            {
+                var targetPoint = GetHeadToSurfacePoint(drone, monstersToAvoid);
+                actions.Add($"MOVE {targetPoint.X} {targetPoint.Y} {lightLevel} TOO MANY MONSTERS, HEADING TO SURFACE");
+                continue;
+            }
 
             // If we're below 8,000 or there are no more fish below, stop diving
-            // TODO: If we're below 8,000 but there are still unscanned fish below, get them before ascending
-            if (drone.Position.Y >= 8000 || !AreUnscannedFishStillBelow(drone))
+            // TODO: If we're below 7,500 but there are still unscanned fish below, get them before ascending
+            if (drone.Position.Y >= 7500 || !AreUnscannedFishStillBelow(drone))
             {
                 earlyGameTracker[drone.Id] = false;
+                lightLevel = 1; // Use torch to get more vision of the surface
             }
 
             if (earlyGameTracker[drone.Id] == true)
@@ -171,7 +178,7 @@ internal class Game
                 }
                 else
                 {
-                    xPos = 8000;
+                    xPos = 7500;
                 }
 
                 // Calculate the exact targetPoint that's exactly _droneSpeed along the path from drone.Position to target

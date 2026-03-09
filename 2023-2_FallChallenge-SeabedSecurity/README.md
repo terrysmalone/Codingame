@@ -1,6 +1,7 @@
 ﻿# Planned changes
 
-* Use the battery to broaden light more (as soon as I scan a fish use bright light. As soon as i see a monster scan (I'm likely to run away so try to get scans sooner))
+* If there are more than 4 monsters be more cautious. head to the surface sooner
+* Try to force fish out the edge
 
-# Issue
+
 

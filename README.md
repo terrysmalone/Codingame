@@ -8,6 +8,12 @@ These are generally algorithmic puzzles and the solutions in no way represent wh
 
 ### Bot Events
 
+#### 2020-1_SpringChallenge
+
+Current progress (https://www.codingame.com/multiplayer/bot-programming/spring-challenge-2020):
+
+Bronze - 191/3,620
+
 #### 2020-2_FallChallenge
 
 Event progress (https://www.codingame.com/challengereport/334104080c9c4e1fd03ac3f33efb0b4be099e813):
@@ -39,6 +45,12 @@ Current progress (https://www.codingame.com/multiplayer/bot-programming/spring-c
 
 Gold - 89/2,468
 
+#### 2023-1_SeabedSecurity
+
+Current progress (https://www.codingame.com/multiplayer/bot-programming/seabed-security):
+
+Gold - 634/730
+
 #### 2024-2_WinterChallenge
 
 Event progress (https://www.codingame.com/challengereport/706500853e692352d79148651e02b40aec699105):
@@ -58,14 +70,6 @@ Global 154/3,827
 Current progress (https://www.codingame.com/multiplayer/bot-programming/soak-overflow)
 
 Legend - 180/211
-
-### Bot Programming
-
-#### 2020-1_SpringChallenge
-
-Current progress (https://www.codingame.com/multiplayer/bot-programming/spring-challenge-2020):
-
-Bronze - 191/3,620
 
 ### Optimizations
 

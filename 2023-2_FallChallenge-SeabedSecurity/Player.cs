@@ -174,6 +174,7 @@ class Player
     private static void AddRadarBlips(Game game, List<Drone> myDrones, List<Drone> enemyDrones)
     {
         HashSet<int> radarCreatureIds = new HashSet<int>();
+        HashSet<int> monsterIds = new HashSet<int>();
 
         int radarBlipCount = int.Parse(Console.ReadLine());
         for (int i = 0; i < radarBlipCount; i++)
@@ -185,6 +186,7 @@ class Player
             // Don't add monsters
             if (game.IsMonster(creatureId))
             {
+                monsterIds.Add(creatureId);
                 continue;
             }
 
@@ -205,5 +207,6 @@ class Player
         }
 
         game.FishCount = radarCreatureIds.Count;
+        game.MonsterCount = monsterIds.Count;
     }
 }

@@ -218,7 +218,7 @@ internal class Game
                 && newHeadPosition.Y >= 0
                 && newHeadPosition.Y < Height
                 && !IsPlatform(newHeadPosition)
-                && !IsSnakePart(newHeadPosition, countTails: false))
+                && !IsSnakePart(newHeadPosition, countTails: false, null))
             {
                 return direction;
             }
@@ -264,27 +264,18 @@ internal class Game
         return false;
     }
 
-    internal bool IsSnakePart(Point pointToCheck, bool countTails)
+    internal bool IsSnakePart(Point pointToCheck, bool countTails, SnakeBot? excludeSnake)
     {
         foreach (var snakeBot in MySnakeBots)
         {
-            if (snakeBot.Body.Contains(pointToCheck))
+            if (excludeSnake != null && snakeBot == excludeSnake)
             {
-                if (!countTails)
-                {
-                    if(snakeBot.Body[snakeBot.Body.Count - 1] == pointToCheck)
-                    {
-                        return false;
-                    }
-                    else
-                    {
-                        return true;
-                    }
-                }
-                else
-                {
-                    return true;
-                }
+                continue;
+            }
+
+            if(IsSnakePart(snakeBot, pointToCheck, countTails))
+            {
+                return true;
             }
         }
 
@@ -292,21 +283,34 @@ internal class Game
         {
             if (snakeBot.Body.Contains(pointToCheck))
             {
-                if (!countTails)
+                if (IsSnakePart(snakeBot, pointToCheck, countTails))
                 {
-                    if (snakeBot.Body[snakeBot.Body.Count - 1] == pointToCheck)
-                    {
-                        return false;
-                    }
-                    else
-                    {
-                        return true;
-                    }
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    internal bool IsSnakePart(SnakeBot snakeBot, Point pointToCheck, bool countTails)
+    {
+        if (snakeBot.Body.Contains(pointToCheck))
+        {
+            if (!countTails)
+            {
+                if (snakeBot.Body[snakeBot.Body.Count - 1] == pointToCheck)
+                {
+                    return false;
                 }
                 else
                 {
                     return true;
                 }
+            }
+            else
+            {
+                return true;
             }
         }
 
@@ -504,6 +508,12 @@ internal sealed class PathFinder
 
     internal List<Point> GetShortestPath(Point startPoint, Point targetPoint, SnakeBot snake)
     {
+        SnakeBot currentSnake = new SnakeBot(-1)
+        {
+            // create a deep copy of snake.body so that we can modify it without affecting the original snake
+            Body = snake.Body.Select(p => new Point(p.X, p.Y)).ToList()
+        };
+
         List<Node> nodes = new List<Node>();
 
         Node currentNode = new Node(startPoint);
@@ -544,7 +554,7 @@ internal sealed class PathFinder
                 {
                     if (pointToCheck == startPoint
                         || pointToCheck == targetPoint
-                        || (!IsPlatform(pointToCheck)
+                        || (!IsPlatform(pointToCheck, snake, currentSnake)
                             && IsValidMove(pointToCheck)))
                     {
                         Node node = new Node(pointToCheck);
@@ -619,7 +629,7 @@ internal sealed class PathFinder
         return true;
     }
 
-    private bool IsPlatform(Point pointToCheck)
+    private bool IsPlatform(Point pointToCheck, SnakeBot excludeSnake, SnakeBot currentSnake)
     {
         // Check that it's not a platform
 
@@ -630,11 +640,18 @@ internal sealed class PathFinder
             return true;
         }
 
-        if (_game.IsSnakePart(pointToCheck, countTails: false))
+
+        // Check all snakes except the current one
+        if (_game.IsSnakePart(pointToCheck, countTails: false, excludeSnake: excludeSnake))
         {
             return true; 
         }
 
+        // Check the current snake
+        if (_game.IsSnakePart(currentSnake, pointToCheck, countTails: false))
+        {
+            return true;
+        }
 
         return false;
     }

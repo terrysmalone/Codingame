@@ -80,6 +80,11 @@ internal sealed class Program
             blockIndex = text.IndexOf("interface");
         }
 
+        if (blockIndex == -1)
+        {
+            blockIndex = text.IndexOf("record");
+        }
+
         int blockStart = text.Substring(0, blockIndex).LastIndexOf("\n");
 
         string blockContent = text.Substring(blockStart + 1);

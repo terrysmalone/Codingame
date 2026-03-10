@@ -11,6 +11,7 @@ internal class Game
 
     internal List<SnakeBot> MySnakeBots { get; set; }
     internal List<SnakeBot> OpponentSnakeBots { get; set; }
+    public int TurnCount { get; internal set; } = 0;
 
     private PathFinder _pathFinder;
 
@@ -90,6 +91,33 @@ internal class Game
     {
         // Logger.EntireGame(_level.Platforms, MySnakeBots, OpponentSnakeBots, _level.PowerSources);
 
+        //List<string> actions = GetBestPathActions();
+
+        List<string> actions = GetMiniMaxActions();
+        
+
+
+        return actions;
+    }
+
+    private List<string> GetMiniMaxActions()
+    {
+        GameState gameState = new GameState(this, MySnakeBots, OpponentSnakeBots, _level.PowerSources, TurnCount);
+        SimultaneousMiniMax miniMax = new SimultaneousMiniMax();
+        MoveSet bestMoveSet = miniMax.FindBestMoveSet(gameState);
+
+        List<string> actions = new List<string>();
+
+        foreach (var move in bestMoveSet.Moves)
+        {
+            actions.Add($"{move.SnakeId} {move.Direction}");
+        }
+
+        return actions;
+    }
+
+    private List<string> GetBestPathActions()
+    {
         List<string> actions = new List<string>();
 
         foreach (var snakeBot in MySnakeBots)
@@ -106,7 +134,7 @@ internal class Game
             {
                 Console.Error.WriteLine($"Trying to find target within distance {Math.Min(shortestPathCount - 1, maxDistance)}");
 
-                (List<Point> path, bool triedSomething) = GetShortestPath(snakeBot, Math.Min(shortestPathCount-1, maxDistance));
+                (List<Point> path, bool triedSomething) = GetShortestPath(snakeBot, Math.Min(shortestPathCount - 1, maxDistance));
 
                 if (path.Count > 0)
                 {
@@ -123,7 +151,7 @@ internal class Game
                     Console.Error.WriteLine($"No targets found but we tried. Don't bother trying again");
                     // We tried a closer one and couldn't get to it. For now, don't try more
                     stopLooking = true;
-                }                
+                }
 
                 maxDistance += 5;
             }
@@ -142,7 +170,7 @@ internal class Game
                 string direction = DirectionHelper.GetDirection(snakeBot.Body[0], shortestPathPoints[0]);
 
                 actions.Add($"{snakeBot.Id} {direction}");
-                snakeBot.AddMove(shortestPathPoints[0]);
+                snakeBot.AddMove(shortestPathPoints[0]); 
             }
         }
 
@@ -263,5 +291,10 @@ internal class Game
         }
 
         return false;
+    }
+
+    internal bool[,] GetPlatforms()
+    {
+        return _level.Platforms;
     }
 }

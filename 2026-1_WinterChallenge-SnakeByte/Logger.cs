@@ -1,4 +1,6 @@
-﻿namespace _2026_1_WinterChallenge_SnakeByte;
+﻿using System.Drawing;
+
+namespace _2026_1_WinterChallenge_SnakeByte;
 
 internal static class Logger    
 {
@@ -47,7 +49,7 @@ internal static class Logger
         }
     }
 
-    internal static void EntireGame(bool[,] platforms, List<SnakeBot> mySnakeBots, List<SnakeBot> opponentSnakeBots, List<System.Drawing.Point> powerSources)
+    internal static void EntireGame(bool[,] platforms, List<SnakeBot> mySnakeBots, List<SnakeBot> opponentSnakeBots, List<Point> powerSources)
     {
         Console.Error.WriteLine("Platforms:");
         for (int y = 0; y < platforms.GetLength(0); y++)
@@ -131,6 +133,17 @@ internal static class Logger
                 }
             }
             Console.Error.WriteLine();
+        }
+    }
+
+    internal static void MoveSets(string debugmessage, List<MoveSet> myMoveSets)
+    {
+        Console.Error.WriteLine(debugmessage);
+        Console.Error.WriteLine("------------------");
+        for (int i = 0; i < myMoveSets.Count; i++)
+        {
+            var moveSet = myMoveSets[i];
+            Console.Error.WriteLine($"MoveSet {i}: {string.Join(";", moveSet.Moves.Select(m => $"SnakeBot {m.SnakeId} -> {m.Direction}"))}");
         }
     }
 }

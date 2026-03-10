@@ -21,6 +21,12 @@ internal class Level
 
     internal bool IsPlatform(Point pointToCheck)
     {
+        // We allow snakes to move off the board
+        if (pointToCheck.X < 0 || pointToCheck.X >= width || pointToCheck.Y < 0 || pointToCheck.Y >= height)
+        {
+            return false;
+        }
+
         return Platforms[pointToCheck.Y, pointToCheck.X];
     }
 }

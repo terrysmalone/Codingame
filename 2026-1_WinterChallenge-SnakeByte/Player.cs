@@ -46,8 +46,6 @@ internal class Player
             game.AddOpponentSnake(new SnakeBot(oppSnakebotId));
         }
 
-        Logger.Platforms(platforms);
-
         // game loop
         while (true)
         {
@@ -93,12 +91,11 @@ internal class Player
             // Write an action using Console.WriteLine()
             // To debug: Console.Error.WriteLine("Debug messages...");
 
-            // Logger.Snakes("My snake Bots", mySnakeBots);
-            // Logger.Snakes("My snake Bots", mySnakeBots);
+            List<string> actions = game.GetActions();
 
-            List<string> actions = game.GetActions();   
+            game.TurnCount++;
             
-            Console.WriteLine(string.Join(";", actions));
+            Console.WriteLine(string.Join(";", actions));            
         }
     }
 }

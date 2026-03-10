@@ -64,5 +64,16 @@ internal class SnakeBot
         }
         return previousMoves.Last();
     }
+
+    internal SnakeBot Clone()
+    {
+        SnakeBot clone = new SnakeBot(Id)
+        {
+            Body = Body.Select(p => new Point(p.X, p.Y)).ToList(),
+            Remove = Remove,
+            previousMoves = previousMoves.Select(p => new Point(p.X, p.Y)).ToList()
+        };
+        return clone;
+    }
 }
 

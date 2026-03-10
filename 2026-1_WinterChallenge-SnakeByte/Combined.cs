@@ -47,6 +47,18 @@ internal static class DirectionHelper
             throw new Exception($"Unable to determine direction from {point1} to {point2}");
         }
     }
+
+    internal static Point GetNewPosition(Point point, string direction)
+    {
+        return direction switch
+        {
+            "UP" => new Point(point.X, point.Y - 1),
+            "DOWN" => new Point(point.X, point.Y + 1),
+            "LEFT" => new Point(point.X - 1, point.Y),
+            "RIGHT" => new Point(point.X + 1, point.Y),
+            _ => throw new Exception($"Unable to determine new position from {point} and direction {direction}")
+        };
+    }
 }
 
 internal class Game
@@ -179,10 +191,10 @@ internal class Game
 
             if (shortestPathPoints.Count == 0)
             {
-                // TODO: Don't just stay there. See if htere are any valid moves
+                // TODO: Don't just stay there. See if there are any valid moves
+                var direction = GetValidDirection(snakeBot);
 
-
-                actions.Add("WAIT");
+                actions.Add($"{snakeBot.Id} {direction}");
             }
             else
             {
@@ -194,7 +206,27 @@ internal class Game
 
         return actions;
     }
-        
+
+    private object GetValidDirection(SnakeBot snakeBot)
+    {
+        var possibleDirections = new List<string>() { "UP", "DOWN", "LEFT", "RIGHT" };
+        foreach (var direction in possibleDirections)
+        {
+            Point newHeadPosition = DirectionHelper.GetNewPosition(snakeBot.Body[0], direction);
+            if (newHeadPosition.X >= 0
+                && newHeadPosition.X < Width
+                && newHeadPosition.Y >= 0
+                && newHeadPosition.Y < Height
+                && !IsPlatform(newHeadPosition)
+                && !IsSnakePart(newHeadPosition, countTails: false))
+            {
+                return direction;
+            }
+        }
+        // No valid moves, just stay there and hope for the best
+        return "DOWN";
+    }
+
     private (List<Point>, bool) GetShortestPath(SnakeBot snakeBot, int maxDistance)
     {
         bool triedSomething = false;
@@ -232,13 +264,27 @@ internal class Game
         return false;
     }
 
-    internal bool IsSnakePart(Point pointToCheck)
+    internal bool IsSnakePart(Point pointToCheck, bool countTails)
     {
         foreach (var snakeBot in MySnakeBots)
         {
             if (snakeBot.Body.Contains(pointToCheck))
             {
-                return true;
+                if (!countTails)
+                {
+                    if(snakeBot.Body[snakeBot.Body.Count - 1] == pointToCheck)
+                    {
+                        return false;
+                    }
+                    else
+                    {
+                        return true;
+                    }
+                }
+                else
+                {
+                    return true;
+                }
             }
         }
 
@@ -246,7 +292,21 @@ internal class Game
         {
             if (snakeBot.Body.Contains(pointToCheck))
             {
-                return true;
+                if (!countTails)
+                {
+                    if (snakeBot.Body[snakeBot.Body.Count - 1] == pointToCheck)
+                    {
+                        return false;
+                    }
+                    else
+                    {
+                        return true;
+                    }
+                }
+                else
+                {
+                    return true;
+                }
             }
         }
 
@@ -570,7 +630,7 @@ internal sealed class PathFinder
             return true;
         }
 
-        if (_game.IsSnakePart(pointToCheck))
+        if (_game.IsSnakePart(pointToCheck, countTails: false))
         {
             return true; 
         }

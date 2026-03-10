@@ -140,7 +140,7 @@ internal sealed class PathFinder
             return true;
         }
 
-        if (_game.IsSnakePart(pointToCheck))
+        if (_game.IsSnakePart(pointToCheck, countTails: false))
         {
             return true; 
         }

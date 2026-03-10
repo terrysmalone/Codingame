@@ -27,4 +27,16 @@ internal static class DirectionHelper
             throw new Exception($"Unable to determine direction from {point1} to {point2}");
         }
     }
+
+    internal static Point GetNewPosition(Point point, string direction)
+    {
+        return direction switch
+        {
+            "UP" => new Point(point.X, point.Y - 1),
+            "DOWN" => new Point(point.X, point.Y + 1),
+            "LEFT" => new Point(point.X - 1, point.Y),
+            "RIGHT" => new Point(point.X + 1, point.Y),
+            _ => throw new Exception($"Unable to determine new position from {point} and direction {direction}")
+        };
+    }
 }

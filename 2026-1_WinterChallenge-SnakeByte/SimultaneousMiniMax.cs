@@ -2,7 +2,7 @@
 
 internal sealed class SimultaneousMiniMax
 {
-    private int _maxDepth = 5;
+    private int _maxDepth = 2;
 
     internal MoveSet FindBestMoveSet(GameState state)
     {
@@ -27,7 +27,11 @@ internal sealed class SimultaneousMiniMax
                 int score = Search(nextState, 1);
 
                 if (score < worstOutcome)
+                {
                     worstOutcome = score;
+                }
+
+                Console.Error.WriteLine($"Checked move set");
             }
 
             if (worstOutcome > bestScore)

@@ -511,26 +511,32 @@ internal sealed class GameState
 
     internal GameState Simulate(MoveSet myMoveSet, MoveSet opponentMoveSet)
     {
-        Console.Error.WriteLine($"Simulating move set for me: {string.Join(", ", myMoveSet.Moves.Select(m => $"{m.SnakeId} {m.Direction}"))}");
-        Console.Error.WriteLine($"Simulating move set for opponent: {string.Join(", ", opponentMoveSet.Moves.Select(m => $"{m.SnakeId} {m.Direction}"))}");
+        //Console.Error.WriteLine($"Simulating move set for me: {string.Join(", ", myMoveSet.Moves.Select(m => $"{m.SnakeId} {m.Direction}"))}");
+        //Console.Error.WriteLine($"Simulating move set for opponent: {string.Join(", ", opponentMoveSet.Moves.Select(m => $"{m.SnakeId} {m.Direction}"))}");
+
+        // Create deep copies of all data so we don't modify the original GameState
+        var mySnakesCopy = _mySnakes.Select(s => s.Clone()).ToList();
+        var opponentSnakesCopy = _opponentSnakes.Select(s => s.Clone()).ToList();
+        var powerUpsCopy = new List<Point>(_powerUps);
+
         // apply all moves simultaneously
         // for each move, move the snake in the direction specified by the move
         foreach (var move in myMoveSet.Moves)
         {
-            var snake = _mySnakes.First(s => s.Id == move.SnakeId);
+            var snake = mySnakesCopy.First(s => s.Id == move.SnakeId);
             MoveSnake(snake, move.Direction);
         }
 
         foreach (var move in opponentMoveSet.Moves)
         {
-            var snake = _opponentSnakes.First(s => s.Id == move.SnakeId);
+            var snake = opponentSnakesCopy.First(s => s.Id == move.SnakeId);
             MoveSnake(snake, move.Direction);
         }
 
         // Check for power up consumption and grow snake if necessary
-        foreach (var snake in _mySnakes.Concat(_opponentSnakes))
+        foreach (var snake in mySnakesCopy.Concat(opponentSnakesCopy))
         {
-            if (!_powerUps.Any(p => p.X == snake.Body[0].X && p.Y == snake.Body[0].Y))
+            if (!powerUpsCopy.Any(p => p.X == snake.Body[0].X && p.Y == snake.Body[0].Y))
             {
                 // If it has a power up we add a tail
                 // Because we moved it forward without removing the tail this effectively negates it
@@ -539,15 +545,15 @@ internal sealed class GameState
         }
 
         // Remove any power ups that are now where a snake head is
-        _powerUps.RemoveAll(p => _mySnakes.Any(s => s.Body[0].X == p.X && s.Body[0].Y == p.Y) 
-                            || _opponentSnakes.Any(s => s.Body[0].X == p.X && s.Body[0].Y == p.Y));
+        powerUpsCopy.RemoveAll(p => mySnakesCopy.Any(s => s.Body[0].X == p.X && s.Body[0].Y == p.Y) 
+                            || opponentSnakesCopy.Any(s => s.Body[0].X == p.X && s.Body[0].Y == p.Y));
 
         // Check for head being destroyed
         // If it's now touching any part of any snake destroy the head
         // If it's now touching any paltform destroy the head (note, if two heads are touching we want to destroy them both, so keep note of these and destroy them all afterwards)
         HashSet<int> toRemoveHeads = new HashSet<int>();
-        
-        foreach (var snake in _mySnakes.Concat(_opponentSnakes))
+
+        foreach (var snake in mySnakesCopy.Concat(opponentSnakesCopy))
         {
             if (_game.IsPlatform(snake.Body[0]))
             {
@@ -555,7 +561,7 @@ internal sealed class GameState
                 continue;
             }
 
-            foreach (var otherSnake in _mySnakes.Concat(_opponentSnakes))
+            foreach (var otherSnake in mySnakesCopy.Concat(opponentSnakesCopy))
             {
                 if (snake.Id == otherSnake.Id)
                 {
@@ -575,7 +581,7 @@ internal sealed class GameState
             }
         }
 
-        foreach (var snake in _mySnakes.Concat(_opponentSnakes))
+        foreach (var snake in mySnakesCopy.Concat(opponentSnakesCopy))
         {
             if (toRemoveHeads.Contains(snake.Id))
             {
@@ -586,38 +592,38 @@ internal sealed class GameState
         // Check for destroyed snakes
         // If they have less than 3 parts, they are destroyed and removed from the game state
         // If they are wholly off the map, they are destroyed and removed from the game state
-        for (int i = _mySnakes.Count - 1; i >= 0; --i)
+        for (int i = mySnakesCopy.Count - 1; i >= 0; --i)
         {
-            if (_mySnakes[i].Body.Count < 3)
+            if (mySnakesCopy[i].Body.Count < 3)
             {
-                Console.Error.WriteLine($"Removing snake {i} with body count {_mySnakes[i].Body.Count}");
-                _mySnakes.RemoveAt(i);
+                Console.Error.WriteLine($"Removing snake {i} with body count {mySnakesCopy[i].Body.Count}");
+                mySnakesCopy.RemoveAt(i);
             }
-            else if (_mySnakes[i].Body.All(p => p.X < 0 || p.X >= _game.Width || p.Y < 0 || p.Y >= _game.Height))
+            else if (mySnakesCopy[i].Body.All(p => p.X < 0 || p.X >= _game.Width || p.Y < 0 || p.Y >= _game.Height))
             {
                 Console.Error.WriteLine($"Removing snake {i} that is off the map");
-                _mySnakes.RemoveAt(i);
+                mySnakesCopy.RemoveAt(i);
             }
         }
 
-        for (int i = _opponentSnakes.Count - 1; i >= 0; --i)
+        for (int i = opponentSnakesCopy.Count - 1; i >= 0; --i)
         {
-            if (_opponentSnakes[i].Body.Count < 3)
+            if (opponentSnakesCopy[i].Body.Count < 3)
             {
-                _opponentSnakes.RemoveAt(i);
+                opponentSnakesCopy.RemoveAt(i);
             }
-            else if (_opponentSnakes[i].Body.All(p => p.X < 0 || p.X >= _game.Width || p.Y < 0 || p.Y >= _game.Height))
+            else if (opponentSnakesCopy[i].Body.All(p => p.X < 0 || p.X >= _game.Width || p.Y < 0 || p.Y >= _game.Height))
             {
-                _opponentSnakes.RemoveAt(i);
+                opponentSnakesCopy.RemoveAt(i);
             }
         }
 
         // First, order all snakes by lowest point on the snake, so that we apply gravity to the lowest snakes first
-        var allSnakes = _mySnakes.Concat(_opponentSnakes).OrderBy(s => s.Body.Max(p => p.Y)).ToList();
+        var allSnakes = mySnakesCopy.Concat(opponentSnakesCopy).OrderBy(s => s.Body.Max(p => p.Y)).ToList();
 
         // debug log all snakes before gravity
         // Console.Error.WriteLine("Map before gravity");
-        // Logger.EntireGame(_game.GetPlatforms(), _mySnakes, _opponentSnakes, _powerUps);
+        // Logger.EntireGame(_game.GetPlatforms(), mySnakesCopy, opponentSnakesCopy, powerUpsCopy);
 
         // Apply gravity
         // Power ups count as platforms, as do other snakes
@@ -628,9 +634,9 @@ internal sealed class GameState
             {
                 // Check if we can move down
                 if (snake.Body.Any(p => _game.IsPlatform(new Point(p.X, p.Y + 1)) 
-                                   || _mySnakes.Any(s => s.Body.Any(bp => bp.X == p.X && bp.Y == p.Y + 1 && s.Id != snake.Id)) 
-                                   || _opponentSnakes.Any(s => s.Body.Any(bp => bp.X == p.X && bp.Y == p.Y + 1 && s.Id != snake.Id))
-                                   || _powerUps.Any(pu => pu.X == p.X && pu.Y == p.Y + 1)))
+                                   || mySnakesCopy.Any(s => s.Body.Any(bp => bp.X == p.X && bp.Y == p.Y + 1 && s.Id != snake.Id)) 
+                                   || opponentSnakesCopy.Any(s => s.Body.Any(bp => bp.X == p.X && bp.Y == p.Y + 1 && s.Id != snake.Id))
+                                   || powerUpsCopy.Any(pu => pu.X == p.X && pu.Y == p.Y + 1)))
                 {
                     canMoveDown = false;
 
@@ -647,9 +653,9 @@ internal sealed class GameState
         }
 
         // Console.Error.WriteLine("Map after gravity");
-        // Logger.EntireGame(_game.GetPlatforms(), _mySnakes, _opponentSnakes, _powerUps);
+        // Logger.EntireGame(_game.GetPlatforms(), mySnakesCopy, opponentSnakesCopy, powerUpsCopy);
 
-        return new GameState(_game, _mySnakes, _opponentSnakes, _powerUps, _turnCount);
+        return new GameState(_game, mySnakesCopy, opponentSnakesCopy, powerUpsCopy, _turnCount + 1);
     }
 
     private void MoveSnake(SnakeBot snake, string direction)
@@ -1155,7 +1161,7 @@ internal class Player
 
 internal sealed class SimultaneousMiniMax
 {
-    private int _maxDepth = 5;
+    private int _maxDepth = 1;
 
     internal MoveSet FindBestMoveSet(GameState state)
     {
@@ -1180,7 +1186,11 @@ internal sealed class SimultaneousMiniMax
                 int score = Search(nextState, 1);
 
                 if (score < worstOutcome)
+                {
                     worstOutcome = score;
+                }
+
+                Console.Error.WriteLine($"Checked move set");
             }
 
             if (worstOutcome > bestScore)

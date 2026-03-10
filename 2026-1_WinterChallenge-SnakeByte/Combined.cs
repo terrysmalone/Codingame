@@ -511,6 +511,8 @@ internal sealed class GameState
 
     internal GameState Simulate(MoveSet myMoveSet, MoveSet opponentMoveSet)
     {
+        Console.Error.WriteLine($"Simulating move set for me: {string.Join(", ", myMoveSet.Moves.Select(m => $"{m.SnakeId} {m.Direction}"))}");
+        Console.Error.WriteLine($"Simulating move set for opponent: {string.Join(", ", opponentMoveSet.Moves.Select(m => $"{m.SnakeId} {m.Direction}"))}");
         // apply all moves simultaneously
         // for each move, move the snake in the direction specified by the move
         foreach (var move in myMoveSet.Moves)
@@ -614,29 +616,27 @@ internal sealed class GameState
         var allSnakes = _mySnakes.Concat(_opponentSnakes).OrderBy(s => s.Body.Max(p => p.Y)).ToList();
 
         // debug log all snakes before gravity
-        Console.Error.WriteLine("Map before gravity");
-        Logger.EntireGame(_game.GetPlatforms(), _mySnakes, _opponentSnakes, _powerUps);
+        // Console.Error.WriteLine("Map before gravity");
+        // Logger.EntireGame(_game.GetPlatforms(), _mySnakes, _opponentSnakes, _powerUps);
 
         // Apply gravity
         // Power ups count as platforms, as do other snakes
         foreach (var snake in allSnakes)
         {
-            Console.Error.WriteLine($"Applying gravity to snake {snake.Id}");
             bool canMoveDown = true;
             while (canMoveDown)
             {
                 // Check if we can move down
                 if (snake.Body.Any(p => _game.IsPlatform(new Point(p.X, p.Y + 1)) 
-                                   || _mySnakes.Any(s => s.Body.Any(bp => bp.X == p.X && bp.Y == p.Y + 1)) 
-                                   || _opponentSnakes.Any(s => s.Body.Any(bp => bp.X == p.X && bp.Y == p.Y + 1))
+                                   || _mySnakes.Any(s => s.Body.Any(bp => bp.X == p.X && bp.Y == p.Y + 1 && s.Id != snake.Id)) 
+                                   || _opponentSnakes.Any(s => s.Body.Any(bp => bp.X == p.X && bp.Y == p.Y + 1 && s.Id != snake.Id))
                                    || _powerUps.Any(pu => pu.X == p.X && pu.Y == p.Y + 1)))
                 {
                     canMoveDown = false;
-                    Console.Error.WriteLine($"Snake cannot move down due to an obstacle");
+
                 }
                 else
                 {
-                    Console.Error.WriteLine("Moving snale down by 1");
                     // Move the snake down by one
                     for (int i = 0; i < snake.Body.Count; ++i)
                     {
@@ -646,8 +646,8 @@ internal sealed class GameState
             }
         }
 
-        Console.Error.WriteLine("Map after gravity");
-        Logger.EntireGame(_game.GetPlatforms(), _mySnakes, _opponentSnakes, _powerUps);
+        // Console.Error.WriteLine("Map after gravity");
+        // Logger.EntireGame(_game.GetPlatforms(), _mySnakes, _opponentSnakes, _powerUps);
 
         return new GameState(_game, _mySnakes, _opponentSnakes, _powerUps, _turnCount);
     }

@@ -201,6 +201,7 @@ internal class Game
                 string direction = DirectionHelper.GetDirection(snakeBot.Body[0], shortestPathPoints[0]);
 
                 actions.Add($"{snakeBot.Id} {direction}");
+                snakeBot.AddMove(shortestPathPoints[0]);
             }
         }
 
@@ -241,7 +242,13 @@ internal class Game
                 continue;
             }
 
-            List<Point> path = _pathFinder.GetShortestPath(snakeBot.Body.First(), powerSource, snakeBot);
+            Point? excludeFirst = null;
+            if (snakeBot.IsStuck())
+            {
+                excludeFirst = snakeBot.GetLastMove();
+            }
+
+            List<Point> path = _pathFinder.GetShortestPath(snakeBot.Body.First(), powerSource, snakeBot, excludeFirst);
             triedSomething = true;
 
             if (path != null && path.Count > 0 && path.Count < shortestPathCount)
@@ -506,7 +513,7 @@ internal sealed class PathFinder
         _game = game;
     }
 
-    internal List<Point> GetShortestPath(Point startPoint, Point targetPoint, SnakeBot snake)
+    internal List<Point> GetShortestPath(Point startPoint, Point targetPoint, SnakeBot snake, Point? excludeFirst)
     {
         SnakeBot currentSnake = new SnakeBot(-1)
         {
@@ -548,6 +555,13 @@ internal sealed class PathFinder
 
             foreach (Point pointToCheck in pointsToCheck)
             {
+                // If there is only one node, we are at the start and we want to ignore the first point to check if it's the excludeFirst point.
+                if (nodes.Count == 1 && pointToCheck == excludeFirst)
+                {
+                    continue;
+                }
+
+
                 Node? existingNode = nodes.SingleOrDefault(n => n.Position == pointToCheck);
 
                 if (existingNode == null)
@@ -760,11 +774,57 @@ internal class SnakeBot
     
     internal bool Remove { get; set; }
 
+    private List<Point> previousMoves = new List<Point>();
+
     internal SnakeBot(int id)
     {
         Id = id;
 
         Body = new List<Point>();
+    }
+
+    internal void AddMove(Point move)
+    {
+        previousMoves.Add(move);
+    }
+
+    internal bool IsStuck()
+    {
+        if (previousMoves.Count < 4)
+        {
+            return false;
+        }
+
+        int repetitions = 0;
+        Point LastMove = previousMoves.Last();
+
+        for (int i = previousMoves.Count - 2; i >= 0; --i)
+        {
+            if (previousMoves[i] == previousMoves.Last())
+            {
+                repetitions++;
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        if (repetitions > 3)
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    internal Point GetLastMove()
+    {
+        if (previousMoves.Count == 0)
+        {
+            return new Point(-1, -1);
+        }
+        return previousMoves.Last();
     }
 }
 

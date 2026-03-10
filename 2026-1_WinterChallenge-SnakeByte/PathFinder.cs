@@ -12,7 +12,7 @@ internal sealed class PathFinder
         _game = game;
     }
 
-    internal List<Point> GetShortestPath(Point startPoint, Point targetPoint, SnakeBot snake)
+    internal List<Point> GetShortestPath(Point startPoint, Point targetPoint, SnakeBot snake, Point? excludeFirst)
     {
         SnakeBot currentSnake = new SnakeBot(-1)
         {
@@ -54,6 +54,13 @@ internal sealed class PathFinder
 
             foreach (Point pointToCheck in pointsToCheck)
             {
+                // If there is only one node, we are at the start and we want to ignore the first point to check if it's the excludeFirst point.
+                if (nodes.Count == 1 && pointToCheck == excludeFirst)
+                {
+                    continue;
+                }
+
+
                 Node? existingNode = nodes.SingleOrDefault(n => n.Position == pointToCheck);
 
                 if (existingNode == null)

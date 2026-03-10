@@ -142,6 +142,7 @@ internal class Game
                 string direction = DirectionHelper.GetDirection(snakeBot.Body[0], shortestPathPoints[0]);
 
                 actions.Add($"{snakeBot.Id} {direction}");
+                snakeBot.AddMove(shortestPathPoints[0]);
             }
         }
 
@@ -182,7 +183,13 @@ internal class Game
                 continue;
             }
 
-            List<Point> path = _pathFinder.GetShortestPath(snakeBot.Body.First(), powerSource, snakeBot);
+            Point? excludeFirst = null;
+            if (snakeBot.IsStuck())
+            {
+                excludeFirst = snakeBot.GetLastMove();
+            }
+
+            List<Point> path = _pathFinder.GetShortestPath(snakeBot.Body.First(), powerSource, snakeBot, excludeFirst);
             triedSomething = true;
 
             if (path != null && path.Count > 0 && path.Count < shortestPathCount)

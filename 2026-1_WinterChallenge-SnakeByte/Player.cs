@@ -96,7 +96,7 @@ internal class Player
             // Logger.Snakes("My snake Bots", mySnakeBots);
             // Logger.Snakes("My snake Bots", mySnakeBots);
 
-            string[] actions = game.GetActions();   
+            List<string> actions = game.GetActions();   
             
             Console.WriteLine(string.Join(";", actions));
         }

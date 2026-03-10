@@ -18,4 +18,9 @@ internal class Level
 
         Platforms = platforms;
     }
+
+    internal bool IsPlatform(Point pointToCheck)
+    {
+        return Platforms[pointToCheck.Y, pointToCheck.X];
+    }
 }

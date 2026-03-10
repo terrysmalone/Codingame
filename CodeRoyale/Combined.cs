@@ -7,11 +7,70 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Threading;
+
+internal static class CommandHelper
+{
+    internal static object TranslateBuildingType(StructureType nextSitePriority)
+    {
+        switch (nextSitePriority)
+        {
+            case StructureType.BarracksArchers:
+                return "BARRACKS-ARCHER";
+            case StructureType.BarracksKnights:
+                return "BARRACKS-KNIGHT";
+            case StructureType.BarracksGiant:
+                return "BARRACKS-GIANT";
+            case StructureType.BarracksUnknown:
+                return "BARRACKS-UNKNOWN";
+            case StructureType.Empty:
+                return "EMPTY";
+            case StructureType.Tower:
+                return "TOWER";
+            case StructureType.Mine:
+                return "MINE";
+            default:
+                throw new ArgumentOutOfRangeException(nameof(nextSitePriority), nextSitePriority, null);
+        }
+    }
+}
+
+internal static class Debug
+{
+    internal static void Sites(List<Site> sites)
+    {
+        Console.Error.WriteLine("Sites");
+        foreach (Site site in sites) 
+        {
+            Console.Error.WriteLine($"Site {site.Id} at {site.Position.X},{site.Position.Y} owned by {site.Owner} with structure {site.Structure}");
+
+            if (site.Structure == StructureType.Mine)
+            {
+                Console.Error.WriteLine($"  Mine size: {site.MineSize}/{site.MaxMineSize} with gold {site.Gold}");
+            }
+        }
+    }
+
+    internal static void Units(string debugMessage, List<Unit> units)
+    {
+        Console.Error.WriteLine(debugMessage);
+        Console.Error.WriteLine("------");
+
+        foreach (Unit unit in units)
+        {
+            Console.Error.WriteLine($"Type:{unit.Type}");
+            Console.Error.WriteLine($"Position:{unit.Position.X},{unit.Position.Y}");
+            Console.Error.WriteLine($"Position:{unit.Health}");
+            Console.Error.WriteLine("------");
+        }
+
+        Console.Error.WriteLine();
+    }
+}
+
 
 internal sealed class Game
-{
-    private  bool _playAggressively = true;
-        
+{        
     private const int _archerCost = 100;
     private const int _knightCost = 80;
     private const int _giantCost = 140;
@@ -21,10 +80,22 @@ internal sealed class Game
     private List<Unit> _playerUnits;
     private List<Unit> _enemyUnits;
 
-    private List<int> _archeryBarracksIds;
-    private List<int> knightBarracksIds;
-    private List<int> giantBarracksIds;
+    private HashSet<int> _archeryBarracksIds;
+    private HashSet<int> knightBarracksIds;
+    private HashSet<int> giantBarracksIds;
     private double distance;
+
+    private List<StructureType> _structurePriorities = new List<StructureType>
+    {
+        StructureType.BarracksKnights,
+        StructureType.Mine,
+        StructureType.Mine,
+        StructureType.Mine,
+        StructureType.Mine,
+        StructureType.BarracksKnights,
+        //StructureType.BarracksArchers,        
+        //StructureType.BarracksGiant,
+    };
 
     internal int Gold { get; set; }
     internal int TouchedSite { get; set; }
@@ -34,9 +105,9 @@ internal sealed class Game
     {
         _sites = sites;
 
-        _archeryBarracksIds = new List<int>();
-        knightBarracksIds = new List<int>();
-        giantBarracksIds = new List<int>();
+        _archeryBarracksIds = new HashSet<int>();
+        knightBarracksIds = new HashSet<int>();
+        giantBarracksIds = new HashSet<int>();
     }
 
     internal void UpdateSite(int siteId, int owner, int structureType, int gold, int maxMineSize)
@@ -69,11 +140,6 @@ internal sealed class Game
                 site.Structure = StructureType.BarracksGiant;
             }
         }
-
-        if (site.Structure == StructureType.Mine)
-        {
-            site.IncrementMineSize();
-        }
             
         if (site.Structure == StructureType.Tower)
         {
@@ -102,19 +168,22 @@ internal sealed class Game
 
     public Tuple<string, string> GetAction()
     {
-        //DebugAll();
-        //DebugSites(false);
+        //Debug.Sites(_sites);
 
         Unit playerQueen = _playerUnits.Single(u => u.Type == UnitType.Queen);
         Unit enemyQueen = _enemyUnits.Single(u => u.Type == UnitType.Queen);
 
         string trainAction = "TRAIN";
 
+        string queenAction = DecideQueenAction();
+
+        // GetAction train action
         List<Site> knightBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksKnights).ToList();
         List<Site> archerBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksArchers).ToList();
         List<Site> giantBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksGiant).ToList();
 
-        string queenAction = DecideQueenAction();
+        List<Site> mines = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.Mine).ToList();
+
 
         UnitType idealUnit = GetIdealUnit();
             
@@ -163,22 +232,10 @@ internal sealed class Game
     }
 
     private string DecideQueenAction()
-    {
-        int idealTowerCount = (_sites.Count - 9) / 2;
-        int idealMineCount = 3;
-
-        //Console.Error.WriteLine($"idealTowerCount:{idealTowerCount}");
-
-        string queenAction = "WAIT";
-
-        Unit queen = _playerUnits.Single(u => u.Type == UnitType.Queen);
-        int closestEmptySiteId = GetClosestEmptySite(queen.Position);
-
-        List<Site> knightBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksKnights).ToList();
-        List<Site> archerBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksArchers).ToList();
-        List<Site> giantBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksGiant).ToList();
-        List<Site> towers = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.Tower).ToList();
-        List<Site> mines = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.Mine).ToList();
+    {        
+        // First priority is building towers if the queen is being attacked and there are empty sites to build on.
+        // Otherwise build to match _structurePriorities
+        Unit queen = _playerUnits.Single(u => u.Type == UnitType.Queen);        
 
         string action = DecideWhetherToRunAway(queen);
 
@@ -187,150 +244,196 @@ internal sealed class Game
             return action;
         }
 
-        // If the queen is touching a mine that can be levelled up
-        if (_sites.Where(s => s.Owner == 0 && s.Structure == StructureType.Mine).Select(s => s.Id).Contains(TouchedSite))
-        {
-            Site touchedMine = _sites.Single(s => s.Id == TouchedSite);
+        StructureType nextSitePriority = GetNextSitePriority();
 
-            if (touchedMine.MaxMineSize > touchedMine.MineSize)
+        int closestEmptySiteId = GetClosestEmptySite(queen.Position);
+        Site closestSite = _sites.Single(s => s.Id == closestEmptySiteId);
+
+        if (nextSitePriority != StructureType.Empty)
+        {
+            if (TouchedSite != closestEmptySiteId)
             {
-                return $"BUILD {touchedMine.Id} MINE";
+                return $"MOVE {closestSite.Position.X} {closestSite.Position.Y}";
             }
-        }
-            
-        if (_sites.Where(s => s.Owner == 0 && s.Structure == StructureType.Tower).Select(s => s.Id).Contains(TouchedSite))
-        {
-            Site touchedTower = _sites.Single(s => s.Id == TouchedSite);
-
-            if (touchedTower.TowerSize < 3 )
-            {
-                return $"BUILD {touchedTower.Id} TOWER";
-            }
-        }
-
-        bool enemyHasTowers = _sites.Any(s => s.Owner != 0 && s.Structure == StructureType.Tower);
-
-        if (_playAggressively)
-        {
-            if (closestEmptySiteId != -1)
-            {
-                Site closestSite = _sites.Single(s => s.Id == closestEmptySiteId);
-
-                string buildingType = string.Empty;
-                    
-                if (mines.Count < idealMineCount && closestSite.Gold > 0)
+            else
+            { 
+                UpdateBuiltSiteIDs(nextSitePriority, closestEmptySiteId);
+                if( nextSitePriority == StructureType.Mine)
                 {
-                    buildingType = "MINE";
+                    closestSite.IncrementMineSize();
                 }
-                else if (towers.Count < 1)
-                {
-                    buildingType = "TOWER";
-                }
-                else if (knightBarracks.Count < 1)
-                {
-                    buildingType = "BARRACKS-KNIGHT";
-                    knightBarracksIds.Add(closestEmptySiteId);
-                }
-                else
-                {
-                    buildingType = "TOWER";
-                }
-                    
-                if (!string.IsNullOrEmpty(buildingType))
-                {
-                    return $"BUILD {closestEmptySiteId} {buildingType}";
-                }
-                    
-                if (towers.Count > 0)
-                {
-                    return $"MOVE {towers.First().Position.X} {towers.First().Position.Y}";
-                }
+                return $"BUILD {closestEmptySiteId} {CommandHelper.TranslateBuildingType(nextSitePriority)}";
             }
         }
         else
         {
-            if (closestEmptySiteId != -1)
+            Debug.Sites(_sites);
+            // Move towards the nearest mine that can be upgraded
+            List<Site> upgradableMines = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.Mine && s.MineSize < s.MaxMineSize).ToList();
+            if (upgradableMines.Any())
             {
-                Site closestSite = _sites.Single(s => s.Id == closestEmptySiteId);
+                Site closestUpgradableMine = upgradableMines.OrderBy(m => CalculateDistance(queen.Position, m.Position)).First();
 
-                string buildingType = string.Empty;
-
-                if (archerBarracks.Count < 1)
+                Console.Error.WriteLine($"Closest upgradable mine is {closestUpgradableMine.Id} at {closestUpgradableMine.Position.X},{closestUpgradableMine.Position.Y} with size {closestUpgradableMine.MineSize} and max size {closestUpgradableMine.MaxMineSize}");
+                if (TouchedSite != closestUpgradableMine.Id)
                 {
-                    buildingType = "BARRACKS-ARCHER";
-                    _archeryBarracksIds.Add(closestEmptySiteId);
-                }
-                else if (mines.Count < idealMineCount && closestSite.Gold > 0)
-                {
-                    buildingType = "MINE";
-                }
-                else if (knightBarracks.Count < 1)
-                {
-                    buildingType = "BARRACKS-KNIGHT";
-                    knightBarracksIds.Add(closestEmptySiteId);
-                }
-                else if (giantBarracks.Count < 1 && enemyHasTowers)
-                {
-                    buildingType = "BARRACKS-GIANT";
-                    giantBarracksIds.Add(closestEmptySiteId);
-                }
-                else if (towers.Count < idealTowerCount)
-                {
-                    buildingType = "TOWER";
+                    return $"MOVE {closestUpgradableMine.Position.X} {closestUpgradableMine.Position.Y}";
                 }
                 else
                 {
-                    // Find closest mine
-                    buildingType = "MINE";
-
-                    // Upgrade it
-                    closestEmptySiteId = mines.First().Id;
+                    closestUpgradableMine.IncrementMineSize();
+                    return $"BUILD {closestUpgradableMine.Id} {CommandHelper.TranslateBuildingType(StructureType.Mine)}";
                 }
-
-                if (!string.IsNullOrEmpty(buildingType))
-                {
-                    return $"BUILD {closestEmptySiteId} {buildingType}";
-                }
-            }
-
-            //queenAction = $"MOVE 0 0";
-
-            //Console.Error.WriteLine($"Queen move to {towers.First().Position.X},{towers.First().Position.Y}");
-
-            if (towers.Count > 0)
-            {
-                return $"MOVE {towers.First().Position.X} {towers.First().Position.Y}";
             }
         }
-            
-        return $"WAIT"; 
+
+        // As a last resort, just build a new mmine on the closest empty site
+        if (TouchedSite != closestEmptySiteId)
+        {
+            return $"MOVE {closestSite.Position.X} {closestSite.Position.Y}";
+        }
+        else
+        {
+            closestSite.IncrementMineSize();
+            return $"BUILD {closestEmptySiteId} {CommandHelper.TranslateBuildingType(StructureType.Mine)}";
+        }
+
+        //return "WAIT";
+    }
+
+    private void UpdateBuiltSiteIDs(StructureType nextSitePriority, int id)
+    {
+        switch(nextSitePriority)
+        {
+            case StructureType.BarracksArchers:
+                _archeryBarracksIds.Add(id);
+                break;
+            case StructureType.BarracksKnights:
+                knightBarracksIds.Add(id);
+                break;
+            case StructureType.BarracksGiant:
+                giantBarracksIds.Add(id);
+                break;
+        }
+    }
+
+    private StructureType GetNextSitePriority()
+    {
+        // console print all Sites in _sites
+        Console.Error.WriteLine($"_sites: {string.Join(" ", _sites.Select(s => s.Structure))}");
+
+        List<Site> knightBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksKnights).ToList();
+        List<Site> archerBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksArchers).ToList();
+        List<Site> giantBarracks = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.BarracksGiant).ToList();
+
+        List<Site> mines = _sites.Where(s => s.Owner == 0 && s.Structure == StructureType.Mine).ToList();
+
+        int knightBarracksCount = knightBarracks.Count;
+        int archerBarracksCount = archerBarracks.Count;
+        int giantBarracksCount = giantBarracks.Count;
+        int minesCount = mines.Count;
+
+        foreach (StructureType structureType in _structurePriorities)
+        {
+            Console.Error.WriteLine($"Checking structure type {structureType} with {knightBarracksCount} knight barracks, {archerBarracksCount} archer barracks, {giantBarracksCount} giant barracks and {minesCount} mines");
+            if (structureType == StructureType.BarracksKnights)
+            {
+                if (knightBarracksCount != 0)
+                {
+                    knightBarracksCount--;
+                }
+                else
+                {
+                    return StructureType.BarracksKnights;
+                }
+            }
+
+            if (structureType == StructureType.BarracksArchers)
+            {
+                if (archerBarracksCount != 0)
+                {
+                    archerBarracksCount--;
+                }
+                else
+                {
+                    return StructureType.BarracksArchers;
+                }
+            }
+
+            if (structureType == StructureType.BarracksGiant)
+            {
+                if (giantBarracksCount != 0)
+                {
+                    giantBarracksCount--;
+                }
+                else
+                {
+                    return StructureType.BarracksGiant;
+                }
+            }
+
+            if (structureType == StructureType.Mine)
+            {
+                if (minesCount != 0)
+                {
+                    minesCount--;
+                }
+                else
+                {
+                    return StructureType.Mine;
+                }
+            }
+        }
+
+        return StructureType.Empty;
     }
 
     private string DecideWhetherToRunAway(Unit queen)
     {
+        Console.Error.WriteLine("Deciding whether to run away");
         Unit closestUnitToQueen = ClosestEnemyUnitToQueen(queen.Position);
+
+        Console.Error.WriteLine($"Closest unit to queen is {closestUnitToQueen?.Type} at {closestUnitToQueen?.Position.X},{closestUnitToQueen?.Position.Y}");
 
         // Prioritise running away  
         int distanceThreshold = 200;
             
         if (closestUnitToQueen != null && CalculateDistance(queen.Position, closestUnitToQueen.Position) < distanceThreshold)
         {
+            Console.Error.WriteLine($"Running away from {closestUnitToQueen.Type} at {closestUnitToQueen.Position.X},{closestUnitToQueen.Position.Y}");
+
             // Try to move towards archers
             if (_playerUnits.Any(u => u.Type == UnitType.Archer))
             {
+                
                 Point closestArcher = GetClosestUnit(queen, UnitType.Archer);
-                    
+                Console.Error.WriteLine($"Running away towards archer at {closestArcher.X},{closestArcher.Y}");
+
                 return $"MOVE {closestArcher.X} {closestArcher.Y}";
             }
-                
-            // if (_sites.Any(u => u.Structure == StructureType.Tower))
-            // {
-            //     // Go to nearest tower
-            //     var closestTower = GetClosestStructure(queen, StructureType.Tower, 0);
-            //     
-            //     return $"MOVE {closestTower.X} {closestTower.Y}";
-            // }
-                
+
+            // Find the nearerst empty site and make it a tower
+            if (_sites.Any(s => s.Structure == StructureType.Empty))
+            {
+                Site closestEmptySite = _sites.Where(s => s.Structure == StructureType.Empty).OrderBy(s => CalculateDistance(queen.Position, s.Position)).First();
+                Console.Error.WriteLine($"Running away towards empty site at {closestEmptySite.Position.X},{closestEmptySite.Position.Y}");
+
+                if(TouchedSite == closestEmptySite.Id)
+                {
+                    return $"BUILD {closestEmptySite.Id} TOWER";
+                }
+
+                return $"MOVE {closestEmptySite.Position.X} {closestEmptySite.Position.Y}";
+            }
+
+            //if (_sites.Any(u => u.Structure == StructureType.Tower))
+            //{
+            //    // Go to nearest tower
+            //    var closestTower = GetClosestStructure(queen, StructureType.Tower, 0);
+
+            //    return $"MOVE {closestTower.X} {closestTower.Y}";
+            //}
+
             // Just run away
             return $"MOVE {queen.Position.X - (closestUnitToQueen.Position.X - queen.Position.X)} {queen.Position.Y - (closestUnitToQueen.Position.Y - queen.Position.Y)}";
         }
@@ -429,140 +532,10 @@ internal sealed class Game
         
     private UnitType GetIdealUnit()
     {
-        int numberOfGiants = _playerUnits.Count(u => u.Type == UnitType.Giant);
-            
-        if (_playAggressively)
-        {
-            // Just make knights
-
-            if (_sites.Count(s => s.Owner == 0 && s.Structure == StructureType.BarracksGiant) > 0
-                && _sites.Count(s => s.Owner != 0 && s.Structure == StructureType.Tower) > 0
-                && numberOfGiants == 0)
-            {
-                return UnitType.Giant;
-            }
-                
-            return UnitType.Knight;
-        }
-        else
-        {
-            // We want a proportion of
-            // 4 knights to
-            // 2 archers to
-            // 1 giant
-            int idealKnightProportion = 2;
-            int idealArcherProportion = 4;
-            int idealGiantProportion = 1;
-
-            int numberOfKnights = _playerUnits.Count(u => u.Type == UnitType.Knight);
-            int numberOfArchers = _playerUnits.Count(u => u.Type == UnitType.Archer);
-
-            if (numberOfArchers <= 2)
-            {
-                return UnitType.Archer;
-            }
-
-            if (numberOfKnights <= 1)
-            {
-                return UnitType.Knight;
-            }
-
-            if (numberOfGiants <= 0)
-            {
-                return UnitType.Giant;
-            }
-
-            while (true)
-            {
-                numberOfKnights -= idealKnightProportion;
-                numberOfArchers -= idealArcherProportion;
-                numberOfGiants -= idealGiantProportion;
-
-                if (numberOfArchers <= 2)
-                {
-                    //Console.Error.WriteLine($"Archer chosen-Counts:{numberOfKnights},{numberOfArchers},{numberOfGiants}");
-                    return UnitType.Archer;
-                }
-
-                if (numberOfKnights <= 1)
-                {
-                    //Console.Error.WriteLine($"Knight chosen-Counts:{numberOfKnights},{numberOfArchers},{numberOfGiants}");
-                    return UnitType.Knight;
-                }
-
-                if (numberOfGiants <= 0)
-                {
-                    //Console.Error.WriteLine($"Giant chosen-Counts:{numberOfKnights},{numberOfArchers},{numberOfGiants}");
-                    return UnitType.Giant;
-                }
-            }
-        }
-
         return UnitType.Knight;
-    }
-
-    private void DebugAll()
-    {
-        DebugSites(false);
-        DebugPlayerUnits();
-        DebugEnemyUnits();
-    }
-
-    private void DebugSites(bool showEmptySites)
-    {
-        Console.Error.WriteLine("Sites");
-        Console.Error.WriteLine("------");
-
-        foreach (Site site in _sites)
-        {
-            if(!showEmptySites && site.Structure == StructureType.Empty)
-            {
-                continue;
-            }
-
-            Console.Error.WriteLine($"SiteId:{site.Id}");
-            Console.Error.WriteLine($"Structure:{site.Structure}");
-            Console.Error.WriteLine($"Owner:{site.Owner}");
-            Console.Error.WriteLine($"Position:{site.Position}");
-            Console.Error.WriteLine($"Radius:{site.Radius}");
-            Console.Error.WriteLine("------");
-        }
-
-        Console.Error.WriteLine();
-    }
-
-    private void DebugPlayerUnits()
-    {
-        Console.Error.WriteLine("Player Units");
-        Console.Error.WriteLine("------");
-
-        foreach (Unit unit in _playerUnits)
-        {
-            Console.Error.WriteLine($"Type:{unit.Type}");
-            Console.Error.WriteLine($"Position:{unit.Position.X},{unit.Position.Y}");
-            Console.Error.WriteLine($"Position:{unit.Health}");
-            Console.Error.WriteLine("------");
-        }
-
-        Console.Error.WriteLine();
-    }
-
-    private void DebugEnemyUnits()
-    {
-        Console.Error.WriteLine("Enemy Units");
-        Console.Error.WriteLine("------");
-
-        foreach (Unit unit in _enemyUnits)
-        {
-            Console.Error.WriteLine($"Type:{unit.Type}");
-            Console.Error.WriteLine($"Position:{unit.Position.X},{unit.Position.Y}");
-            Console.Error.WriteLine($"Position:{unit.Health}");
-            Console.Error.WriteLine("------");
-        }
-
-        Console.Error.WriteLine();
-    }
+    }    
 }
+
 
 internal sealed class Player
 {

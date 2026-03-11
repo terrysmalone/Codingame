@@ -172,6 +172,7 @@ internal class Game
 
                 if (path.Count > 0)
                 {
+                    Console.Error.WriteLine($"Found a path of length {path.Count} to a power source");
                     stopLooking = true;
 
                     shortestPathCount = path.Count;
@@ -225,7 +226,7 @@ internal class Game
                 && newHeadPosition.Y >= 0
                 && newHeadPosition.Y < Height
                 && !IsPlatform(newHeadPosition)
-                && !IsSnakePart(newHeadPosition, countTails: false, null)
+                && !IsSnakePart(newHeadPosition, countTails: true, null)
                 && _movesThisTurn.Contains(newHeadPosition) == false)
             {
                 return direction;
@@ -243,11 +244,14 @@ internal class Game
 
         foreach (Point powerSource in _level.PowerSources)
         {
+            
             // Don't bother trying if it's further away than the shortest one we've found
-            if (CalculationUtil.GetManhattanDistance(snakeBot.Body[0], powerSource) >= maxDistance)
+            if (CalculationUtil.GetManhattanDistance(snakeBot.Body[0], powerSource) >= maxDistance || CalculationUtil.GetManhattanDistance(snakeBot.Body[0], powerSource) >= shortestPathCount)
             {
                 continue;
             }
+            Console.Error.WriteLine($"Checking power source at {powerSource.X},{powerSource.Y}");
+
 
             List<Point> excludePoints = new List<Point>();
             if (snakeBot.IsStuck())
@@ -259,9 +263,10 @@ internal class Game
 
             List<Point> path = _pathFinder.GetShortestPath(snakeBot.Body.First(), powerSource, snakeBot, excludePoints.Concat(_movesThisTurn).ToList());
             triedSomething = true;
-
+            Console.Error.WriteLine($"Tried to find a path to power source at {powerSource.X},{powerSource.Y} with length {path.Count}");
             if (path != null && path.Count > 0 && path.Count < shortestPathCount)
             {
+                Console.Error.WriteLine($"Found a path to power source at {powerSource.X},{powerSource.Y} with length {path.Count}");
                 shortestPathCount = path.Count;
                 shortestPathPoints = path.ToList();
             }
@@ -547,6 +552,12 @@ internal sealed class PathFinder
                 return new List<Point>();
             }
 
+            if (nodes.Count > 100)
+            {
+                Console.Error.WriteLine("Too many nodes, breaking out of loop");
+                return new List<Point>();
+            }
+
             Point[] pointsToCheck = new Point[4];
 
             // Prioritise heading towards the target as the first move
@@ -639,6 +650,7 @@ internal sealed class PathFinder
 
         while (!atStart)
         {
+            Console.Error.WriteLine("X");
             currentNode = nodes.Single(n => n.Position == currentNode.Parent);
 
             if (currentNode.Position == startPoint)
@@ -650,6 +662,8 @@ internal sealed class PathFinder
                 shortestPath.Insert(0, currentNode.Position);
             }
         }
+
+        Console.Error.WriteLine("Created shortestPath");
 
         return shortestPath;
     }
@@ -672,7 +686,7 @@ internal sealed class PathFinder
 
 
         // Check all snakes except the current one
-        if (_game.IsSnakePart(pointToCheck, countTails: false, excludeSnake: excludeSnake))
+        if (_game.IsSnakePart(pointToCheck, countTails: true, excludeSnake: excludeSnake))
         {
             return true; 
         }

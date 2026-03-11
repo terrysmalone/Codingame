@@ -37,6 +37,12 @@ internal sealed class PathFinder
                 return new List<Point>();
             }
 
+            if (nodes.Count > 100)
+            {
+                Console.Error.WriteLine("Too many nodes, breaking out of loop");
+                return new List<Point>();
+            }
+
             Point[] pointsToCheck = new Point[4];
 
             // Prioritise heading towards the target as the first move
@@ -129,6 +135,7 @@ internal sealed class PathFinder
 
         while (!atStart)
         {
+            Console.Error.WriteLine("X");
             currentNode = nodes.Single(n => n.Position == currentNode.Parent);
 
             if (currentNode.Position == startPoint)
@@ -140,6 +147,8 @@ internal sealed class PathFinder
                 shortestPath.Insert(0, currentNode.Position);
             }
         }
+
+        Console.Error.WriteLine("Created shortestPath");
 
         return shortestPath;
     }
@@ -162,7 +171,7 @@ internal sealed class PathFinder
 
 
         // Check all snakes except the current one
-        if (_game.IsSnakePart(pointToCheck, countTails: false, excludeSnake: excludeSnake))
+        if (_game.IsSnakePart(pointToCheck, countTails: true, excludeSnake: excludeSnake))
         {
             return true; 
         }

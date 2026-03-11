@@ -113,6 +113,7 @@ internal class Game
 
                 if (path.Count > 0)
                 {
+                    Console.Error.WriteLine($"Found a path of length {path.Count} to a power source");
                     stopLooking = true;
 
                     shortestPathCount = path.Count;
@@ -166,7 +167,7 @@ internal class Game
                 && newHeadPosition.Y >= 0
                 && newHeadPosition.Y < Height
                 && !IsPlatform(newHeadPosition)
-                && !IsSnakePart(newHeadPosition, countTails: false, null)
+                && !IsSnakePart(newHeadPosition, countTails: true, null)
                 && _movesThisTurn.Contains(newHeadPosition) == false)
             {
                 return direction;
@@ -184,11 +185,14 @@ internal class Game
 
         foreach (Point powerSource in _level.PowerSources)
         {
+            
             // Don't bother trying if it's further away than the shortest one we've found
-            if (CalculationUtil.GetManhattanDistance(snakeBot.Body[0], powerSource) >= maxDistance)
+            if (CalculationUtil.GetManhattanDistance(snakeBot.Body[0], powerSource) >= maxDistance || CalculationUtil.GetManhattanDistance(snakeBot.Body[0], powerSource) >= shortestPathCount)
             {
                 continue;
             }
+            Console.Error.WriteLine($"Checking power source at {powerSource.X},{powerSource.Y}");
+
 
             List<Point> excludePoints = new List<Point>();
             if (snakeBot.IsStuck())
@@ -200,9 +204,10 @@ internal class Game
 
             List<Point> path = _pathFinder.GetShortestPath(snakeBot.Body.First(), powerSource, snakeBot, excludePoints.Concat(_movesThisTurn).ToList());
             triedSomething = true;
-
+            Console.Error.WriteLine($"Tried to find a path to power source at {powerSource.X},{powerSource.Y} with length {path.Count}");
             if (path != null && path.Count > 0 && path.Count < shortestPathCount)
             {
+                Console.Error.WriteLine($"Found a path to power source at {powerSource.X},{powerSource.Y} with length {path.Count}");
                 shortestPathCount = path.Count;
                 shortestPathPoints = path.ToList();
             }

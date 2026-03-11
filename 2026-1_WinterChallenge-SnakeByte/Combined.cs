@@ -337,6 +337,11 @@ internal class Game
 
         return false;
     }
+
+    internal List<Point> GetPowerUps()
+    {
+        return _level.PowerSources;
+    }
 }
 
 
@@ -511,6 +516,8 @@ internal sealed class Node
 
     public bool Closed { get; set; }
 
+    public List<Point> SnakeBodyAtNode { get; set; } = new List<Point>();
+
     public Node(Point position)
     {
         Position = position;
@@ -532,7 +539,7 @@ internal sealed class PathFinder
     internal List<Point> GetShortestPath(Point startPoint, Point targetPoint, SnakeBot snake, List<Point> excludePoints)
     {
         _debugCount = 0;
-        SnakeBot currentSnake = new SnakeBot(-1)
+        SnakeBot currentSnake = new SnakeBot(snake.Id)
         {
             // create a deep copy of snake.body so that we can modify it without affecting the original snake
             Body = snake.Body.Select(p => new Point(p.X, p.Y)).ToList()
@@ -541,6 +548,9 @@ internal sealed class PathFinder
         List<Node> nodes = new List<Node>();
 
         Node currentNode = new Node(startPoint);
+
+        // Store initial snake body
+        currentNode.SnakeBodyAtNode = snake.Body.Select(p => new Point(p.X, p.Y)).ToList();
         nodes.Add(currentNode);
 
         bool targetFound = false;
@@ -589,10 +599,18 @@ internal sealed class PathFinder
 
                 if (existingNode == null)
                 {
+                    // Simulate snake movement to this position
+                    List<Point> snakeBodyAfterMove = SimulateSnakeMovement(
+                        currentNode.SnakeBodyAtNode,
+                        currentNode.Position,
+                        pointToCheck);
+
+                    // Apply gravity to the simulated body
+                    snakeBodyAfterMove = ApplyGravity(snakeBodyAfterMove, currentSnake.Id);
+
                     if (pointToCheck == startPoint
                         || pointToCheck == targetPoint
-                        || (!IsPlatform(pointToCheck, snake, currentSnake)
-                            && IsValidMove(pointToCheck)))
+                        || !IsPlatform(pointToCheck, snake, currentSnake))
                     {
                         Node node = new Node(pointToCheck);
 
@@ -602,6 +620,7 @@ internal sealed class PathFinder
 
                         node.H = CalculationUtil.GetManhattanDistance(pointToCheck, targetPoint);
                         node.F = node.G + node.H;
+                        node.SnakeBodyAtNode = snakeBodyAfterMove;
 
                         nodes.Add(node);
                     }
@@ -619,6 +638,13 @@ internal sealed class PathFinder
                             existingNode.F = existingNode.G + existingNode.H;
 
                             existingNode.Parent = currentNode.Position;
+
+                            // Update snake body for this path
+                            List<Point> snakeBodyAfterMove = SimulateSnakeMovement(
+                                currentNode.SnakeBodyAtNode,
+                                currentNode.Position,
+                                pointToCheck);
+                            existingNode.SnakeBodyAtNode = ApplyGravity(snakeBodyAfterMove, currentSnake.Id);
                         }
                     }
                 }
@@ -668,9 +694,49 @@ internal sealed class PathFinder
         return shortestPath;
     }
 
-    private bool IsValidMove(Point pointToCheck)
+    private List<Point> ApplyGravity(List<Point> snakeBody, int id)
     {
-        return true;
+        bool canMoveDown = true;
+        while (canMoveDown)
+        {
+            // Check if we can move down
+            if (snakeBody.Any(p => p.Y + 1 >= _game.Height
+                                || _game.IsPlatform(new Point(p.X, p.Y + 1))
+                                || _game.MySnakeBots.Any(s => s.Body.Any(bp => bp.X == p.X && bp.Y == p.Y + 1 && s.Id != id))
+                                || _game.OpponentSnakeBots.Any(s => s.Body.Any(bp => bp.X == p.X && bp.Y == p.Y + 1 && s.Id != id))
+                                || _game.GetPowerUps().Any(pu => pu.X == p.X && pu.Y == p.Y + 1)))
+            {
+                canMoveDown = false;
+            }
+            else
+            {
+                // Move the snake down by one
+                for (int i = 0; i < snakeBody.Count; ++i)
+                {
+                    snakeBody[i] = new Point(snakeBody[i].X, snakeBody[i].Y + 1);
+                }
+            }
+        }
+
+        return snakeBody;
+    }
+
+    private List<Point> SimulateSnakeMovement(List<Point> currentBody, Point currentHead, Point newHead)
+    {
+        List<Point> newBody = currentBody.Select(p => new Point(p.X, p.Y)).ToList();
+        newBody.Insert(0, newHead);
+
+        List <Point> powerSources = _game.GetPowerUps();
+
+        if(powerSources.Contains(newHead))
+        {
+            // Don't remove the tail if we are eating a power source
+            return newBody;
+        }
+
+        newBody.RemoveAt(newBody.Count - 1);
+
+        return newBody;
     }
 
     private bool IsPlatform(Point pointToCheck, SnakeBot excludeSnake, SnakeBot currentSnake)

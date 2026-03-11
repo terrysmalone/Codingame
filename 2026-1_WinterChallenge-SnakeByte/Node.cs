@@ -14,6 +14,8 @@ internal sealed class Node
 
     public bool Closed { get; set; }
 
+    public List<Point> SnakeBodyAtNode { get; set; } = new List<Point>();
+
     public Node(Point position)
     {
         Position = position;

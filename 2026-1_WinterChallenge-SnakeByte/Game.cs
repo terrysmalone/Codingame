@@ -278,4 +278,9 @@ internal class Game
 
         return false;
     }
+
+    internal List<Point> GetPowerUps()
+    {
+        return _level.PowerSources;
+    }
 }

@@ -67,16 +67,16 @@ internal static class DirectionHelper
 internal class Game
 {
     internal int Width { get; private set; }
-    internal int Height { get; private set; }
-
-    private Level _level;
+    internal int Height { get; private set; }   
 
     internal List<SnakeBot> MySnakeBots { get; set; }
     internal List<SnakeBot> OpponentSnakeBots { get; set; }
 
+    private Level _level;
+
     private PathFinder _pathFinder;
     private PositionChecker _positionChecker;
-
+    
     private List<Point> _movesThisTurn;    
 
     public Game(int width, int height, bool[,] platforms)
@@ -91,8 +91,16 @@ internal class Game
 
         MySnakeBots = new List<SnakeBot>();
         OpponentSnakeBots = new List<SnakeBot>();
+    }
 
+    internal void AddMySnake(SnakeBot snakeBot)
+    {
+        MySnakeBots.Add(snakeBot);
+    }
 
+    internal void AddOpponentSnake(SnakeBot snakeBot)
+    {
+        OpponentSnakeBots.Add(snakeBot);
     }
 
     internal void MarkAllSnakesForRemoval()
@@ -129,30 +137,20 @@ internal class Game
         }
     }
 
-    internal void AddMySnake(SnakeBot snakeBot)
-    {
-        MySnakeBots.Add(snakeBot);
-    }
-
-    internal void AddOpponentSnake(SnakeBot snakeBot)
-    {
-        OpponentSnakeBots.Add(snakeBot);
-    }
-
     internal SnakeBot GetSnake(int snakebotId)
     {
         return MySnakeBots.FirstOrDefault(s => s.Id == snakebotId) ?? OpponentSnakeBots.FirstOrDefault(s => s.Id == snakebotId);
-    }
-
-    internal void RemoveAllPowerSources()
-    {
-        _level.PowerSources.Clear();
     }
 
     internal void AddPowerSource(int x, int y)
     {
         _level.PowerSources.Add(new Point(x, y));
     }
+
+    internal void RemoveAllPowerSources()
+    {
+        _level.PowerSources.Clear();
+    }    
 
     internal List<string> GetActions()
     {
@@ -163,64 +161,64 @@ internal class Game
 
         foreach (var snakeBot in MySnakeBots)
         {
-            int shortestPathCount = int.MaxValue;
-            var shortestPathPoints = new List<Point>();
+            List<Point> bestPathToPower = GetBestPathToPowerSource(snakeBot);            
 
-            // Use an iterative deepening approach to finding targets
-            bool stopLooking = false;
-            int maxDistance = 5;
-
-            while (stopLooking == false)
+            if (bestPathToPower.Count != 0)
             {
-                (List<Point> path, bool triedSomething) = GetShortestPath(snakeBot, Math.Min(shortestPathCount-1, maxDistance));
+                string direction = DirectionHelper.GetDirection(snakeBot.Body[0], bestPathToPower[0]);
 
-                if (path.Count > 0)
-                {
-                    stopLooking = true;
-
-                    shortestPathCount = path.Count;
-                    shortestPathPoints = path.ToList();
-                }
-
-                
-
-                if (stopLooking == false && triedSomething == true)
-                {
-                    // We tried a closer one and couldn't get to it. For now, don't try more
-                    stopLooking = true;
-                }                
-
-                maxDistance += 5;
-                if (maxDistance > 10)
-                {
-                    stopLooking = true;
-                }
+                actions.Add($"{snakeBot.Id} {direction} CHASING POWER");
+                snakeBot.AddMove(bestPathToPower[0]);
+                _movesThisTurn.Add(bestPathToPower[0]);
             }
-
-            if (shortestPathPoints.Count == 0)
+            else
             {
-                // We didn't find a shortest path
-                // Move towards powersources
-
-
-
                 string direction = GetValidDirection(snakeBot);
 
                 actions.Add($"{snakeBot.Id} {direction} ANY MOVE");
                 snakeBot.AddMove(DirectionHelper.GetNewPosition(snakeBot.Body[0], direction));
                 _movesThisTurn.Add(DirectionHelper.GetNewPosition(snakeBot.Body[0], direction));
             }
-            else
-            {
-                string direction = DirectionHelper.GetDirection(snakeBot.Body[0], shortestPathPoints[0]);
-
-                actions.Add($"{snakeBot.Id} {direction} CHASING POWER");
-                snakeBot.AddMove(shortestPathPoints[0]);
-                _movesThisTurn.Add(shortestPathPoints[0]);
-            }
         }
 
         return actions;
+    }
+
+    private List<Point> GetBestPathToPowerSource(SnakeBot snakeBot)
+    {
+        int shortestPathCount = int.MaxValue;
+        var shortestPathPoints = new List<Point>();
+
+        // Use an iterative deepening approach to finding targets
+        bool stopLooking = false;
+        int maxDistance = 5;
+
+        while (stopLooking == false)
+        {
+            (List<Point> path, bool triedSomething) = GetShortestPath(snakeBot, Math.Min(shortestPathCount - 1, maxDistance));
+
+            if (path.Count > 0)
+            {
+                stopLooking = true;
+
+                shortestPathCount = path.Count;
+                shortestPathPoints = path.ToList();
+            }
+
+            if (stopLooking == false && triedSomething == true)
+            {
+                // We tried a closer one and couldn't get to it. For now, don't try more
+                stopLooking = true;
+            }
+
+            maxDistance += 5;
+            if (maxDistance > 10)
+            {
+                stopLooking = true;
+            }
+        }
+
+        return shortestPathPoints;
     }
 
     private string GetValidDirection(SnakeBot snakeBot)

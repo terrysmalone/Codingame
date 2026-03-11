@@ -161,6 +161,8 @@ internal class Game
 
         foreach (var snakeBot in MySnakeBots)
         {
+            // TODO: CHeck for chance toi destroy an opponent snake and do that if possible
+
             List<Point> bestPathToPower = GetBestPathToPowerSource(snakeBot);            
 
             if (bestPathToPower.Count != 0)
@@ -180,6 +182,8 @@ internal class Game
                 _movesThisTurn.Add(DirectionHelper.GetNewPosition(snakeBot.Body[0], direction));
             }
         }
+
+        // TODO: After we've come up with moves check for clashes and try to resolve them
 
         return actions;
     }
@@ -223,38 +227,17 @@ internal class Game
 
     private string GetValidDirection(SnakeBot snakeBot)
     {
-
-        var possibleDirections = new List<string>();
-
         // Prioritise moving towards the nearest powersource
         Point nearestPowerSource = GetNearestPowerSource(snakeBot);
 
-        if (nearestPowerSource.X > snakeBot.Body[0].X)
-        {
-            possibleDirections = new List<string>() { "RIGHT", "UP", "DOWN", "LEFT" };
 
-        }
-        else
-        {
-            possibleDirections = new List<string>() { "LEFT", "UP", "DOWN", "RIGHT" };
-        }
+        List<string> possibleDirections = nearestPowerSource.X > snakeBot.Body[0].X ? new List<string>() { "RIGHT", "UP", "DOWN", "LEFT" } 
+                                                                                    : new List<string>() { "LEFT", "UP", "DOWN", "RIGHT" };
+
 
         // First, remove the hard no's
-        for (int i=possibleDirections.Count - 1; i >= 0; i--)
-        {
-            Point newHeadPosition = DirectionHelper.GetNewPosition(snakeBot.Body[0], possibleDirections[i]);
-
-            if(newHeadPosition.X < -1
-                || newHeadPosition.X >= Width
-                || newHeadPosition.Y < -1
-                || newHeadPosition.Y >= Height
-                || _positionChecker.IsPlatform(newHeadPosition)
-                || _positionChecker.IsSnakePart(newHeadPosition, countTails: false, null))
-            {
-                possibleDirections.Remove(possibleDirections[i]);
-            }
-        }
-
+        RemoveAllHardNos(possibleDirections, snakeBot);
+        
         if (possibleDirections.Count == 0)
         {
             // No valid moves, just stay there and hope for the best
@@ -264,20 +247,42 @@ internal class Game
         // Store the first just in case we need it
         var bestSoFar = possibleDirections[0];
 
-        if (possibleDirections.Count > 1)
+        RemoveOtherSnakeBodyPositions(possibleDirections, snakeBot);
+
+        string direction;
+
+        if (!string.IsNullOrEmpty(direction = GetEarlyReturn(possibleDirections, bestSoFar)))
         {
-
-            for (int i = possibleDirections.Count - 1; i >= 0; i--)
-            {
-                Point newHeadPosition = DirectionHelper.GetNewPosition(snakeBot.Body[0], possibleDirections[i]);
-
-                if(_positionChecker.IsSnakePart(newHeadPosition, countTails: true, null))
-                { 
-                    possibleDirections.Remove(possibleDirections[i]);
-                }
-            }
+            return direction;
         }
 
+        RemoveBlockingDirections(possibleDirections, snakeBot);
+
+        if (!string.IsNullOrEmpty(direction = GetEarlyReturn(possibleDirections, bestSoFar)))
+        {
+            return direction;
+        }
+
+        RemoveHeadDangerPositions(possibleDirections, snakeBot);
+
+        if (!string.IsNullOrEmpty(direction = GetEarlyReturn(possibleDirections, bestSoFar)))
+        {
+            return direction;
+        }
+
+        RemoveStuckDirections(possibleDirections, snakeBot);
+
+        if (possibleDirections.Count == 0)
+        {
+            // No valid moves, just stay there and hope for the best
+            return bestSoFar;
+        }
+
+        return possibleDirections[0];
+    }
+
+    private string GetEarlyReturn(List<string> possibleDirections, string bestSoFar)
+    {
         if (possibleDirections.Count == 0)
         {
             // No valid moves, just stay there and hope for the best
@@ -289,11 +294,48 @@ internal class Game
             return possibleDirections[0];
         }
 
+        return string.Empty;
+    }
 
+    private void RemoveAllHardNos(List<string> possibleDirections, SnakeBot snakeBot)
+    {
+        for (int i = possibleDirections.Count - 1; i >= 0; i--)
+        {
+            Point newHeadPosition = DirectionHelper.GetNewPosition(snakeBot.Body[0], possibleDirections[i]);
 
+            if (newHeadPosition.X < -1
+                || newHeadPosition.X >= Width
+                || newHeadPosition.Y < -1
+                || newHeadPosition.Y >= Height
+                || _positionChecker.IsPlatform(newHeadPosition)
+                || _positionChecker.IsSnakePart(newHeadPosition, countTails: false, null))
+            {
+                possibleDirections.Remove(possibleDirections[i]);
+            }
+        }
+    }
+
+    private void RemoveOtherSnakeBodyPositions(List<string> possibleDirections, SnakeBot snakeBot)
+    {
+        if (possibleDirections.Count > 1)
+        {
+            for (int i = possibleDirections.Count - 1; i >= 0; i--)
+            {
+                Point newHeadPosition = DirectionHelper.GetNewPosition(snakeBot.Body[0], possibleDirections[i]);
+
+                if (_positionChecker.IsSnakePart(newHeadPosition, countTails: true, null))
+                {
+                    possibleDirections.Remove(possibleDirections[i]);
+                }
+            }
+        }
+    }
+
+    private void RemoveBlockingDirections(List<string> possibleDirections, SnakeBot snakeBot)
+    {
         // Exclude in priority order until we only have one left
         if (possibleDirections.Count > 1)
-        {            
+        {
 
             for (int i = possibleDirections.Count - 1; i >= 0; i--)
             {
@@ -301,23 +343,15 @@ internal class Game
                 if (_positionChecker.IsBlocking(newHeadPosition, snakeBot))
                 {
                     possibleDirections.Remove(possibleDirections[i]);
-                }               
+                }
             }
         }
+    }
 
-        if (possibleDirections.Count == 0)
-        {
-            // No valid moves, just stay there and hope for the best
-            return bestSoFar;
-        }
-
-        if (possibleDirections.Count == 1)
-        {
-            return possibleDirections[0];
-        }
-
+    private void RemoveHeadDangerPositions(List<string> possibleDirections, SnakeBot snakeBot)
+    {
         if (possibleDirections.Count > 1)
-        {            
+        {
 
             for (int i = possibleDirections.Count - 1; i >= 0; i--)
             {
@@ -328,20 +362,12 @@ internal class Game
                 }
             }
         }
+    }
 
-        if (possibleDirections.Count == 0)
-        {
-            // No valid moves, just stay there and hope for the best
-            return bestSoFar;
-        }
-
-        if (possibleDirections.Count == 1)
-        {
-            return possibleDirections[0];
-        }
-
+    private void RemoveStuckDirections(List<string> possibleDirections, SnakeBot snakeBot)
+    {
         if (possibleDirections.Count > 1)
-        {            
+        {
             for (int i = possibleDirections.Count - 1; i >= 0; i--)
             {
                 Point newHeadPosition = DirectionHelper.GetNewPosition(snakeBot.Body[0], possibleDirections[i]);
@@ -352,14 +378,6 @@ internal class Game
                 }
             }
         }
-
-        if (possibleDirections.Count == 0)
-        {
-            // No valid moves, just stay there and hope for the best
-            return bestSoFar;
-        }
-
-        return possibleDirections[0];
     }
 
     private bool IsInHeadDanger(Point newHeadPosition, SnakeBot snakeBot)

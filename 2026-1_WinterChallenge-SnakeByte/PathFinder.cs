@@ -35,15 +35,13 @@ internal sealed class PathFinder
 
         while (!targetFound)
         {
-            Console.Error.WriteLine($"currentNode.Position: {currentNode.Position}");
             if (openNodeCount == 0)
             {
                 return new List<Point>();
             }
 
-            if (nodesByPosition.Count > 50)
+            if (nodesByPosition.Count > 20)
             {
-                Console.Error.WriteLine("Too many nodes, breaking out of loop");
                 return new List<Point>();
             }
 
@@ -156,8 +154,6 @@ internal sealed class PathFinder
             _debugCount++;
         }
 
-        Console.Error.WriteLine($"Debug count: {_debugCount}");
-
         // Build the path
         List<Point> shortestPath = new List<Point>();
         Node pathNode = currentNode;
@@ -165,15 +161,12 @@ internal sealed class PathFinder
         while (pathNode.Parent != null)
         {
             Node parentNode = nodesByPosition[pathNode.Parent.Value];
-            Console.Error.WriteLine($"pathNode.Position: {pathNode.Position}, parentNode.Position: {parentNode.Position}");
 
             // The move is the direction from parent's ACTUAL position to the intermediate position
             // before gravity was applied in pathNode
             shortestPath.Insert(0, pathNode.Position);
             pathNode = parentNode;
         }
-
-        Console.Error.WriteLine("Created shortestPath");
 
         return shortestPath;
     }

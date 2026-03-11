@@ -163,7 +163,7 @@ internal class Game
 
             // Use an iterative deepening approach to finding targets
             bool stopLooking = false;
-            int maxDistance = 5;
+            int maxDistance = 10;
 
             //while (stopLooking == false)
             //{
@@ -198,7 +198,7 @@ internal class Game
             {
                 string direction = GetValidDirection(snakeBot);
 
-                actions.Add($"{snakeBot.Id} {direction}");
+                actions.Add($"{snakeBot.Id} {direction} ANY MOVE");
                 snakeBot.AddMove(DirectionHelper.GetNewPosition(snakeBot.Body[0], direction));
                 _movesThisTurn.Add(DirectionHelper.GetNewPosition(snakeBot.Body[0], direction));
             }
@@ -207,7 +207,7 @@ internal class Game
                 Console.Error.WriteLine($"Patrh fount to {shortestPathPoints[shortestPathPoints.Count-1].X},{shortestPathPoints[shortestPathPoints.Count - 1].Y}, moving towards it");
                 string direction = DirectionHelper.GetDirection(snakeBot.Body[0], shortestPathPoints[0]);
 
-                actions.Add($"{snakeBot.Id} {direction}");
+                actions.Add($"{snakeBot.Id} {direction} CHASING POWER");
                 snakeBot.AddMove(shortestPathPoints[0]);
                 _movesThisTurn.Add(shortestPathPoints[0]);
             }
@@ -342,11 +342,25 @@ internal class Game
 
     internal bool IsPlatform(Point pointToCheck)
     {
+        if (IsOutOfBounds(pointToCheck))
+        {
+            return false;
+        }
+
         if (_level.IsPlatform(pointToCheck))
         {
             return true;
         }
 
+        return false;
+    }
+
+    private bool IsOutOfBounds(Point pointToCheck)
+    {
+        if (pointToCheck.X < 0 || pointToCheck.X >= Width || pointToCheck.Y < 0 || pointToCheck.Y >= Height)
+        {
+            return true;
+        }
         return false;
     }
 
@@ -624,7 +638,7 @@ internal sealed class PathFinder
                 return new List<Point>();
             }
 
-            if (nodes.Count > 50)
+            if (nodes.Count > 20)
             {
                 Console.Error.WriteLine("Too many nodes, breaking out of loop");
                 return new List<Point>();
@@ -635,17 +649,17 @@ internal sealed class PathFinder
             // Prioritise heading towards the target as the first move
             if (Math.Abs(currentNode.Position.X - targetPoint.X) >= Math.Abs(currentNode.Position.Y - targetPoint.Y))
             {
-                pointsToCheck[0] = new Point(Math.Min(_game.Width - 1, currentNode.Position.X + 1), currentNode.Position.Y);
-                pointsToCheck[1] = new Point(Math.Max(0, currentNode.Position.X - 1), currentNode.Position.Y);
-                pointsToCheck[2] = new Point(currentNode.Position.X, Math.Min(_game.Height - 1, currentNode.Position.Y + 1));
-                pointsToCheck[3] = new Point(currentNode.Position.X, Math.Max(0, currentNode.Position.Y - 1));
+                pointsToCheck[0] = new Point(Math.Min(_game.Width, currentNode.Position.X + 1), currentNode.Position.Y);
+                pointsToCheck[1] = new Point(Math.Max(-1, currentNode.Position.X - 1), currentNode.Position.Y);
+                pointsToCheck[2] = new Point(currentNode.Position.X, Math.Min(_game.Height, currentNode.Position.Y + 1));
+                pointsToCheck[3] = new Point(currentNode.Position.X, Math.Max(-1, currentNode.Position.Y - 1));
             }
             else
             {
-                pointsToCheck[0] = new Point(currentNode.Position.X, Math.Min(_game.Height - 1, currentNode.Position.Y + 1));
-                pointsToCheck[1] = new Point(currentNode.Position.X, Math.Max(0, currentNode.Position.Y - 1));
-                pointsToCheck[2] = new Point(Math.Min(_game.Width - 1, currentNode.Position.X + 1), currentNode.Position.Y);
-                pointsToCheck[3] = new Point(Math.Max(0, currentNode.Position.X - 1), currentNode.Position.Y);
+                pointsToCheck[0] = new Point(currentNode.Position.X, Math.Min(_game.Height, currentNode.Position.Y + 1));
+                pointsToCheck[1] = new Point(currentNode.Position.X, Math.Max(-1, currentNode.Position.Y - 1));
+                pointsToCheck[2] = new Point(Math.Min(_game.Width, currentNode.Position.X + 1), currentNode.Position.Y);
+                pointsToCheck[3] = new Point(Math.Max(-1, currentNode.Position.X - 1), currentNode.Position.Y);
             }
 
             foreach (Point pointToCheck in pointsToCheck)
@@ -819,7 +833,7 @@ internal sealed class PathFinder
         }
 
         return false;
-    }
+    }    
 }
 
 

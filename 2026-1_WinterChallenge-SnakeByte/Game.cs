@@ -1,4 +1,5 @@
 ﻿using System.Drawing;
+using System.Xml.Linq;
 
 namespace _2026_1_WinterChallenge_SnakeByte;
 
@@ -104,7 +105,7 @@ internal class Game
 
             // Use an iterative deepening approach to finding targets
             bool stopLooking = false;
-            int maxDistance = 5;
+            int maxDistance = 10;
 
             //while (stopLooking == false)
             //{
@@ -139,7 +140,7 @@ internal class Game
             {
                 string direction = GetValidDirection(snakeBot);
 
-                actions.Add($"{snakeBot.Id} {direction}");
+                actions.Add($"{snakeBot.Id} {direction} ANY MOVE");
                 snakeBot.AddMove(DirectionHelper.GetNewPosition(snakeBot.Body[0], direction));
                 _movesThisTurn.Add(DirectionHelper.GetNewPosition(snakeBot.Body[0], direction));
             }
@@ -148,7 +149,7 @@ internal class Game
                 Console.Error.WriteLine($"Patrh fount to {shortestPathPoints[shortestPathPoints.Count-1].X},{shortestPathPoints[shortestPathPoints.Count - 1].Y}, moving towards it");
                 string direction = DirectionHelper.GetDirection(snakeBot.Body[0], shortestPathPoints[0]);
 
-                actions.Add($"{snakeBot.Id} {direction}");
+                actions.Add($"{snakeBot.Id} {direction} CHASING POWER");
                 snakeBot.AddMove(shortestPathPoints[0]);
                 _movesThisTurn.Add(shortestPathPoints[0]);
             }
@@ -283,11 +284,25 @@ internal class Game
 
     internal bool IsPlatform(Point pointToCheck)
     {
+        if (IsOutOfBounds(pointToCheck))
+        {
+            return false;
+        }
+
         if (_level.IsPlatform(pointToCheck))
         {
             return true;
         }
 
+        return false;
+    }
+
+    private bool IsOutOfBounds(Point pointToCheck)
+    {
+        if (pointToCheck.X < 0 || pointToCheck.X >= Width || pointToCheck.Y < 0 || pointToCheck.Y >= Height)
+        {
+            return true;
+        }
         return false;
     }
 

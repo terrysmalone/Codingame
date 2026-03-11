@@ -101,9 +101,6 @@ internal class Game
 
         foreach (var snakeBot in MySnakeBots)
         {
-            Console.Error.WriteLine($"Checking Snake {snakeBot.Id}");
-            Console.Error.WriteLine($"_movesThisTurn: {string.Join(";", _movesThisTurn.Select(p => $"{p.X},{p.Y}"))}");
-            Console.Error.WriteLine($"_attemptsAtPowerSources: {string.Join(";", snakeBot.GetAttemptsAtPowerSource().Select(kvp => $"{kvp.Key.X},{kvp.Key.Y}:{kvp.Value}"))}");
             int shortestPathCount = int.MaxValue;
             var shortestPathPoints = new List<Point>();
 
@@ -113,19 +110,14 @@ internal class Game
 
             while (stopLooking == false)
             {
-                Console.Error.WriteLine($"maxDistance: {maxDistance}");
                 (List<Point> path, bool triedSomething) = GetShortestPath(snakeBot, Math.Min(shortestPathCount-1, maxDistance));
 
                 if (path.Count > 0)
                 {
-                    Console.Error.WriteLine($"Found a path of length {path.Count} to a power source");
                     stopLooking = true;
 
                     shortestPathCount = path.Count;
                     shortestPathPoints = path.ToList();
-
-                    // DESPERATE FIX: IF we find any path just use it. Hopefully temporary once pathfinder is more efficient
-                    // stopLooking = true;
                 }
 
                 
@@ -143,8 +135,6 @@ internal class Game
                 }
             }
 
-            Console.Error.WriteLine(string.Join(";", shortestPathPoints.Select(p => $"{p.X},{p.Y}")));
-
             if (shortestPathPoints.Count == 0)
             {
                 // We didn't find a shortest path
@@ -160,7 +150,6 @@ internal class Game
             }
             else
             {
-                Console.Error.WriteLine($"Path found to {shortestPathPoints[shortestPathPoints.Count-1].X},{shortestPathPoints[shortestPathPoints.Count - 1].Y}, moving towards it");
                 string direction = DirectionHelper.GetDirection(snakeBot.Body[0], shortestPathPoints[0]);
 
                 actions.Add($"{snakeBot.Id} {direction} CHASING POWER");
@@ -330,7 +319,6 @@ internal class Game
 
                 if (possibleHeadMoves.Contains(newHeadPosition))
                 {
-                    Console.Error.WriteLine($"Move to {newHeadPosition.X},{newHeadPosition.Y} is in danger of being eaten by snake {opponentSnake.Id}");
                     return true;
                 }
             }
@@ -474,10 +462,6 @@ internal class Game
                 snakeBot.ClearAttemptsAtPowerSource(powerSource);
                 continue;                
             }
-
-            Console.Error.WriteLine($"Checking path to power source at {powerSource.X},{powerSource.Y}");
-            Console.Error.WriteLine($"Current shortest Path: {shortestPathCount}");
-            Console.Error.WriteLine($"Current shortest Manhattan Distance: {shortestManhattanDistanceCount}");
 
             snakeBot.AddAttemptAtPowerSource(powerSource);
              

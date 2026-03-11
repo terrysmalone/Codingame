@@ -167,7 +167,7 @@ internal class Game
 
             // Use an iterative deepening approach to finding targets
             bool stopLooking = false;
-            int maxDistance = 10;
+            int maxDistance = 5;
 
             while (stopLooking == false)
             {
@@ -181,7 +181,12 @@ internal class Game
 
                     shortestPathCount = path.Count;
                     shortestPathPoints = path.ToList();
+
+                    // DESPERATE FIX: IF we find any path just use it. Hopefully temporary once pathfinder is more efficient
+                    // stopLooking = true;
                 }
+
+                
 
                 if (stopLooking == false && triedSomething == true)
                 {
@@ -458,6 +463,11 @@ internal class Game
                     visited.Add(adjacentPoint);
                 }
             }
+
+            if(visited.Count > snakeBot.Body.Count)
+            {
+                return false;
+            }
         }
 
         if (visited.Count < snakeBot.Body.Count)
@@ -511,8 +521,8 @@ internal class Game
             // Don't bother trying if it's further away than the shortest one we've found
             int manhattanDistance = CalculationUtil.GetManhattanDistance(snakeBot.Body[0], powerSource);
             if (manhattanDistance >= maxDistance 
-                || manhattanDistance >= shortestPathCount
-                || manhattanDistance >= shortestManhattanDistanceCount)
+                || manhattanDistance >= shortestPathCount)
+                //|| manhattanDistance >= shortestManhattanDistanceCount)
             {
                 continue;
             }
@@ -846,6 +856,7 @@ internal sealed class PathFinder
 
             if (nodesByPosition.Count > 20)
             {
+                Console.Error.WriteLine($"NodeByPostion abouve 20. Cutting out");
                 return new List<Point>();
             }
 
@@ -869,9 +880,11 @@ internal sealed class PathFinder
 
             foreach (Point pointToCheck in pointsToCheck)
             {
+                Console.Error.WriteLine($"Checking point {pointToCheck.X},{pointToCheck.Y} - nodesByPosition.Count:{nodesByPosition.Count}-");
                 // If there is only one node, we are at the start and we want to ignore the excludePoints
                 if (nodesByPosition.Count == 1 && excludePoints.Contains(pointToCheck))
                 {
+                    Console.Error.WriteLine($"Ignoring exclude point {pointToCheck.X},{pointToCheck.Y} because we are at the start");
                     continue;
                 }
 

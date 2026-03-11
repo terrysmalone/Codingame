@@ -17,8 +17,9 @@ internal class Game
     internal List<SnakeBot> OpponentSnakeBots { get; set; }
 
     private PathFinder _pathFinder;
+    private PositionChecker _positionChecker;
 
-    private List<Point> _movesThisTurn;
+    private List<Point> _movesThisTurn;    
 
     public Game(int width, int height, bool[,] platforms)
     {
@@ -26,11 +27,14 @@ internal class Game
         Height = height;
 
         _level = new Level(width, height, platforms);
-
-        _pathFinder = new PathFinder(this);
+                
+        _positionChecker = new PositionChecker(this, _level);
+        _pathFinder = new PathFinder(this, _positionChecker);
 
         MySnakeBots = new List<SnakeBot>();
         OpponentSnakeBots = new List<SnakeBot>();
+
+
     }
 
     internal void MarkAllSnakesForRemoval()
@@ -188,8 +192,8 @@ internal class Game
                 || newHeadPosition.X >= Width
                 || newHeadPosition.Y < -1
                 || newHeadPosition.Y >= Height
-                || IsPlatform(newHeadPosition)
-                || IsSnakePart(newHeadPosition, countTails: false, null))
+                || _positionChecker.IsPlatform(newHeadPosition)
+                || _positionChecker.IsSnakePart(newHeadPosition, countTails: false, null))
             {
                 possibleDirections.Remove(possibleDirections[i]);
             }
@@ -211,7 +215,7 @@ internal class Game
             {
                 Point newHeadPosition = DirectionHelper.GetNewPosition(snakeBot.Body[0], possibleDirections[i]);
 
-                if( IsSnakePart(newHeadPosition, countTails: true, null))
+                if(_positionChecker.IsSnakePart(newHeadPosition, countTails: true, null))
                 { 
                     possibleDirections.Remove(possibleDirections[i]);
                 }
@@ -238,7 +242,7 @@ internal class Game
             for (int i = possibleDirections.Count - 1; i >= 0; i--)
             {
                 Point newHeadPosition = DirectionHelper.GetNewPosition(snakeBot.Body[0], possibleDirections[i]);
-                if (IsBlocking(newHeadPosition, snakeBot))
+                if (_positionChecker.IsBlocking(newHeadPosition, snakeBot))
                 {
                     possibleDirections.Remove(possibleDirections[i]);
                 }               
@@ -358,56 +362,6 @@ internal class Game
         return false;
     }
 
-    private bool IsBlocking(Point newHeadPosition, SnakeBot snakeBot)
-    {
-        // Flood fill algorithm to check if the new position would block the snake in
-        var visited = new HashSet<Point>();
-        var queue = new Queue<Point>();
-
-        queue.Enqueue(newHeadPosition);
-        visited.Add(newHeadPosition);
-
-        while (queue.Count > 0)
-        {
-            Point checkPoint = queue.Dequeue();
-
-            var adjacentPoints = new List<Point>()
-            {
-                new Point(checkPoint.X + 1, checkPoint.Y),
-                new Point(checkPoint.X - 1, checkPoint.Y),
-                new Point(checkPoint.X, checkPoint.Y + 1),
-                new Point(checkPoint.X, checkPoint.Y - 1)
-            };
-
-            foreach (var adjacentPoint in adjacentPoints)
-            {
-                if (adjacentPoint.X >= 0
-                    && adjacentPoint.X < Width
-                    && adjacentPoint.Y >= 0
-                    && adjacentPoint.Y < Height
-                    && !IsPlatform(adjacentPoint)
-                    && !IsSnakePart(adjacentPoint, countTails: true, null)
-                    && !visited.Contains(adjacentPoint))
-                {
-                    queue.Enqueue(adjacentPoint);
-                    visited.Add(adjacentPoint);
-                }
-            }
-
-            if(visited.Count > snakeBot.Body.Count)
-            {
-                return false;
-            }
-        }
-
-        if (visited.Count < snakeBot.Body.Count)
-        {
-            return true;
-        }
-
-        return false;
-    }
-
     private (List<Point>, bool) GetShortestPath(SnakeBot snakeBot, int maxDistance)
     {
         bool triedSomething = false;
@@ -439,7 +393,7 @@ internal class Game
                 excludePoints.Add(possibleMove);
             }
             // exclude a move if it seems immediately blocking
-            else if (IsBlocking(possibleMove, snakeBot))
+            else if (_positionChecker.IsBlocking(possibleMove, snakeBot))
             {
                 excludePoints.Add(possibleMove);
             }
@@ -477,83 +431,6 @@ internal class Game
         }
 
         return (shortestPathPoints, triedSomething);
-    }
-
-    internal bool IsPlatform(Point pointToCheck)
-    {
-        if (IsOutOfBounds(pointToCheck))
-        {
-            return false;
-        }
-
-        if (_level.IsPlatform(pointToCheck))
-        {
-            return true;
-        }
-
-        return false;
-    }
-
-    private bool IsOutOfBounds(Point pointToCheck)
-    {
-        if (pointToCheck.X < 0 || pointToCheck.X >= Width || pointToCheck.Y < 0 || pointToCheck.Y >= Height)
-        {
-            return true;
-        }
-        return false;
-    }
-
-    internal bool IsSnakePart(Point pointToCheck, bool countTails, SnakeBot? excludeSnake)
-    {
-        foreach (var snakeBot in MySnakeBots)
-        {
-            if (excludeSnake != null && snakeBot == excludeSnake)
-            {
-                continue;
-            }
-
-            if(IsSnakePart(snakeBot, pointToCheck, countTails))
-            {
-                return true;
-            }
-        }
-
-        foreach (var snakeBot in OpponentSnakeBots)
-        {
-            if (snakeBot.Body.Contains(pointToCheck))
-            {
-                if (IsSnakePart(snakeBot, pointToCheck, countTails))
-                {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    internal bool IsSnakePart(SnakeBot snakeBot, Point pointToCheck, bool countTails)
-    {
-        if (snakeBot.Body.Contains(pointToCheck))
-        {
-            if (!countTails)
-            {
-                if (snakeBot.Body[snakeBot.Body.Count - 1] == pointToCheck)
-                {
-                    return false;
-                }
-                else
-                {
-                    return true;
-                }
-            }
-            else
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     internal List<Point> GetPowerUps()

@@ -6,12 +6,13 @@ namespace _2026_1_WinterChallenge_SnakeByte;
 internal sealed class PathFinder
 {
     private Game _game;
-
+    private readonly PositionChecker _positionChecker;
     private int _debugCount = 0;
 
-    public PathFinder(Game game)
+    public PathFinder(Game game, PositionChecker positionChecker)
     {
         _game = game;
+        _positionChecker = positionChecker;
     }
 
     internal List<Point> GetShortestPath(Point startPoint, Point targetPoint, SnakeBot snake, List<Point> excludePoints)
@@ -181,7 +182,7 @@ internal sealed class PathFinder
         {
             // Check if we can move down
             if (snakeBody.Any(p => p.Y + 1 >= _game.Height
-                                || _game.IsPlatform(new Point(p.X, p.Y + 1))
+                                || _positionChecker.IsPlatform(new Point(p.X, p.Y + 1))
                                 || _game.MySnakeBots.Any(s => s.Body.Any(bp => bp.X == p.X && bp.Y == p.Y + 1 && s.Id != id))
                                 || _game.OpponentSnakeBots.Any(s => s.Body.Any(bp => bp.X == p.X && bp.Y == p.Y + 1 && s.Id != id))
                                 || _game.GetPowerUps().Any(pu => pu.X == p.X && pu.Y == p.Y + 1)))
@@ -225,20 +226,20 @@ internal sealed class PathFinder
 
         // Check that it's not a snakes head or body
 
-        if (_game.IsPlatform(pointToCheck))
+        if (_positionChecker.IsPlatform(pointToCheck))
         {
             return true;
         }
 
 
         // Check all snakes except the current one
-        if (_game.IsSnakePart(pointToCheck, countTails: true, excludeSnake: excludeSnake))
+        if (_positionChecker.IsSnakePart(pointToCheck, countTails: true, excludeSnake: excludeSnake))
         {
             return true; 
         }
 
         // Check the current snake
-        if (_game.IsSnakePart(currentSnake, pointToCheck, countTails: false))
+        if (_positionChecker.IsSnakePart(currentSnake, pointToCheck, countTails: false))
         {
             return true;
         }

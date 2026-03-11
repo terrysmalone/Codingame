@@ -19,15 +19,12 @@ internal sealed class PathFinder
         _debugCount = 0;
         SnakeBot currentSnake = new SnakeBot(snake.Id)
         {
-            // create a deep copy of snake.body so that we can modify it without affecting the original snake
             Body = snake.Body.Select(p => new Point(p.X, p.Y)).ToList()
         };
 
         List<Node> nodes = new List<Node>();
 
         Node currentNode = new Node(startPoint);
-
-        // Store initial snake body
         currentNode.SnakeBodyAtNode = snake.Body.Select(p => new Point(p.X, p.Y)).ToList();
         nodes.Add(currentNode);
 
@@ -40,7 +37,7 @@ internal sealed class PathFinder
                 return new List<Point>();
             }
 
-            if (nodes.Count > 100)
+            if (nodes.Count > 50)
             {
                 Console.Error.WriteLine("Too many nodes, breaking out of loop");
                 return new List<Point>();
@@ -49,7 +46,7 @@ internal sealed class PathFinder
             Point[] pointsToCheck = new Point[4];
 
             // Prioritise heading towards the target as the first move
-            if (Math.Abs(startPoint.X - targetPoint.X) >= Math.Abs(startPoint.Y - targetPoint.Y))
+            if (Math.Abs(currentNode.Position.X - targetPoint.X) >= Math.Abs(currentNode.Position.Y - targetPoint.Y))
             {
                 pointsToCheck[0] = new Point(Math.Min(_game.Width - 1, currentNode.Position.X + 1), currentNode.Position.Y);
                 pointsToCheck[1] = new Point(Math.Max(0, currentNode.Position.X - 1), currentNode.Position.Y);
@@ -72,31 +69,33 @@ internal sealed class PathFinder
                     continue;
                 }
 
+                // Simulate snake movement to this position
+                List<Point> snakeBodyAfterMove = SimulateSnakeMovement(
+                    currentNode.SnakeBodyAtNode,
+                    currentNode.Position,
+                    pointToCheck);
 
-                Node? existingNode = nodes.SingleOrDefault(n => n.Position == pointToCheck);
+                // Apply gravity to the simulated body
+                snakeBodyAfterMove = ApplyGravity(snakeBodyAfterMove, currentSnake.Id);
+
+                // IMPORTANT: After gravity, the head position may have changed!
+                Point actualHeadPosition = snakeBodyAfterMove[0];
+
+                // Check if a node at this actual position already exists
+                Node? existingNode = nodes.SingleOrDefault(n => n.Position == actualHeadPosition);
 
                 if (existingNode == null)
                 {
-                    // Simulate snake movement to this position
-                    List<Point> snakeBodyAfterMove = SimulateSnakeMovement(
-                        currentNode.SnakeBodyAtNode,
-                        currentNode.Position,
-                        pointToCheck);
-
-                    // Apply gravity to the simulated body
-                    snakeBodyAfterMove = ApplyGravity(snakeBodyAfterMove, currentSnake.Id);
-
+                    // Check if the intended move is valid (before gravity)
                     if (pointToCheck == startPoint
                         || pointToCheck == targetPoint
                         || !IsPlatform(pointToCheck, snake, currentSnake))
                     {
-                        Node node = new Node(pointToCheck);
-
+                        // Create node at the ACTUAL position after gravity
+                        Node node = new Node(actualHeadPosition);
                         node.Parent = currentNode.Position;
-
                         node.G = currentNode.G + 1;
-
-                        node.H = CalculationUtil.GetManhattanDistance(pointToCheck, targetPoint);
+                        node.H = CalculationUtil.GetManhattanDistance(actualHeadPosition, targetPoint);
                         node.F = node.G + node.H;
                         node.SnakeBodyAtNode = snakeBodyAfterMove;
 
@@ -112,17 +111,9 @@ internal sealed class PathFinder
                         if (g < existingNode.G)
                         {
                             existingNode.G = g;
-
                             existingNode.F = existingNode.G + existingNode.H;
-
                             existingNode.Parent = currentNode.Position;
-
-                            // Update snake body for this path
-                            List<Point> snakeBodyAfterMove = SimulateSnakeMovement(
-                                currentNode.SnakeBodyAtNode,
-                                currentNode.Position,
-                                pointToCheck);
-                            existingNode.SnakeBodyAtNode = ApplyGravity(snakeBodyAfterMove, currentSnake.Id);
+                            existingNode.SnakeBodyAtNode = snakeBodyAfterMove;
                         }
                     }
                 }
@@ -138,7 +129,13 @@ internal sealed class PathFinder
             {
                 nodes = nodes.OrderBy(n => n.Closed == true).ThenBy(n => n.F).ToList();
 
-                currentNode = nodes.First();
+                var openNode = nodes.FirstOrDefault(n => !n.Closed);
+                if (openNode == null)
+                {
+                    return new List<Point>();
+                }
+
+                currentNode = openNode;
             }
 
             _debugCount++;
@@ -146,25 +143,18 @@ internal sealed class PathFinder
 
         Console.Error.WriteLine($"Debug count: {_debugCount}");
 
-        int numberOfSteps = currentNode.G;
+        // Build the path - but we need to return the MOVES, not the final positions
+        List<Point> shortestPath = new List<Point>();
+        Node pathNode = currentNode;
 
-        List<Point> shortestPath = [currentNode.Position];
-
-        bool atStart = false;
-
-        while (!atStart)
+        while (pathNode.Parent != default(Point))
         {
-            Console.Error.WriteLine("X");
-            currentNode = nodes.Single(n => n.Position == currentNode.Parent);
+            Node parentNode = nodes.Single(n => n.Position == pathNode.Parent);
 
-            if (currentNode.Position == startPoint)
-            {
-                atStart = true;
-            }
-            else
-            {
-                shortestPath.Insert(0, currentNode.Position);
-            }
+            // The move is the direction from parent's ACTUAL position to the intermediate position
+            // before gravity was applied in pathNode
+            shortestPath.Insert(0, pathNode.Position);
+            pathNode = parentNode;
         }
 
         Console.Error.WriteLine("Created shortestPath");

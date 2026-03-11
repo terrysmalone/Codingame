@@ -165,8 +165,8 @@ internal class Game
             bool stopLooking = false;
             int maxDistance = 5;
 
-            while (stopLooking == false)
-            {
+            //while (stopLooking == false)
+            //{
                 Console.Error.WriteLine($"maxDistance: {maxDistance}");
                 (List<Point> path, bool triedSomething) = GetShortestPath(snakeBot, Math.Min(shortestPathCount-1, maxDistance));
 
@@ -185,25 +185,26 @@ internal class Game
                     stopLooking = true;
                 }                
 
-                maxDistance += 5;
-                if (maxDistance > 10)
-                {
-                    stopLooking = true;
-                }
-            }
+            //    maxDistance += 5;
+            //    if (maxDistance > 10)
+            //    {
+            //        stopLooking = true;
+            //    }
+            //}
 
             Console.Error.WriteLine(string.Join(";", shortestPathPoints.Select(p => $"{p.X},{p.Y}")));
 
             if (shortestPathPoints.Count == 0)
             {
-                // TODO: Add possible other
                 string direction = GetValidDirection(snakeBot);
 
                 actions.Add($"{snakeBot.Id} {direction}");
+                snakeBot.AddMove(DirectionHelper.GetNewPosition(snakeBot.Body[0], direction));
                 _movesThisTurn.Add(DirectionHelper.GetNewPosition(snakeBot.Body[0], direction));
             }
             else
             {
+                Console.Error.WriteLine($"Patrh fount to {shortestPathPoints[shortestPathPoints.Count-1].X},{shortestPathPoints[shortestPathPoints.Count - 1].Y}, moving towards it");
                 string direction = DirectionHelper.GetDirection(snakeBot.Body[0], shortestPathPoints[0]);
 
                 actions.Add($"{snakeBot.Id} {direction}");
@@ -227,13 +228,75 @@ internal class Game
                 && newHeadPosition.Y < Height
                 && !IsPlatform(newHeadPosition)
                 && !IsSnakePart(newHeadPosition, countTails: true, null)
-                && _movesThisTurn.Contains(newHeadPosition) == false)
+                && _movesThisTurn.Contains(newHeadPosition) == false
+                && !IsBlocking(newHeadPosition, snakeBot)
+                && !ExcludeMove(newHeadPosition, snakeBot))
             {
                 return direction;
             }
         }
         // No valid moves, just stay there and hope for the best
-        return "DOWN";
+        return "LEFT";
+    }
+
+    private bool ExcludeMove(Point newHeadPosition, SnakeBot snakeBot)
+    {
+        if (snakeBot.IsStuck())
+        {
+            if (newHeadPosition == snakeBot.GetLastMove())
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private bool IsBlocking(Point newHeadPosition, SnakeBot snakeBot)
+    {
+        Console.Error.WriteLine($"Checking if move to {newHeadPosition.X},{newHeadPosition.Y} would block us in");
+        // Flood fill algorithm to check if the new position would block the snake in
+        var visited = new HashSet<Point>();
+        var queue = new Queue<Point>();
+
+        queue.Enqueue(newHeadPosition);
+        visited.Add(newHeadPosition);
+
+        while (queue.Count > 0)
+        {
+            Point checkPoint = queue.Dequeue();
+
+            var adjacentPoints = new List<Point>()
+            {
+                new Point(checkPoint.X + 1, checkPoint.Y),
+                new Point(checkPoint.X - 1, checkPoint.Y),
+                new Point(checkPoint.X, checkPoint.Y + 1),
+                new Point(checkPoint.X, checkPoint.Y - 1)
+            };
+
+            foreach (var adjacentPoint in adjacentPoints)
+            {
+                if (adjacentPoint.X >= 0
+                    && adjacentPoint.X < Width
+                    && adjacentPoint.Y >= 0
+                    && adjacentPoint.Y < Height
+                    && !IsPlatform(adjacentPoint)
+                    && !IsSnakePart(adjacentPoint, countTails: true, null)
+                    && !visited.Contains(adjacentPoint))
+                {
+                    queue.Enqueue(adjacentPoint);
+                    visited.Add(adjacentPoint);
+                }
+            }
+        }
+
+        // If we visited less than 3 points, we are probably blocking ourselves in
+        if (visited.Count < snakeBot.Body.Count)
+        {
+            return true;
+        }
+
+        return false;
     }
 
     private (List<Point>, bool) GetShortestPath(SnakeBot snakeBot, int maxDistance)
@@ -244,14 +307,19 @@ internal class Game
 
         foreach (Point powerSource in _level.PowerSources)
         {
-            
             // Don't bother trying if it's further away than the shortest one we've found
             if (CalculationUtil.GetManhattanDistance(snakeBot.Body[0], powerSource) >= maxDistance || CalculationUtil.GetManhattanDistance(snakeBot.Body[0], powerSource) >= shortestPathCount)
             {
                 continue;
             }
-            Console.Error.WriteLine($"Checking power source at {powerSource.X},{powerSource.Y}");
 
+            if (snakeBot.GetAttemptAtPowerSource(powerSource) > 20)
+            {
+                snakeBot.ClearAttemptsAtPowerSource(powerSource);
+                continue;                
+            }
+
+            snakeBot.AddAttemptAtPowerSource(powerSource);
 
             List<Point> excludePoints = new List<Point>();
             if (snakeBot.IsStuck())
@@ -259,14 +327,11 @@ internal class Game
                 excludePoints.Add(snakeBot.GetLastMove());
             }
 
-
-
             List<Point> path = _pathFinder.GetShortestPath(snakeBot.Body.First(), powerSource, snakeBot, excludePoints.Concat(_movesThisTurn).ToList());
             triedSomething = true;
-            Console.Error.WriteLine($"Tried to find a path to power source at {powerSource.X},{powerSource.Y} with length {path.Count}");
+
             if (path != null && path.Count > 0 && path.Count < shortestPathCount)
             {
-                Console.Error.WriteLine($"Found a path to power source at {powerSource.X},{powerSource.Y} with length {path.Count}");
                 shortestPathCount = path.Count;
                 shortestPathPoints = path.ToList();
             }
@@ -541,15 +606,12 @@ internal sealed class PathFinder
         _debugCount = 0;
         SnakeBot currentSnake = new SnakeBot(snake.Id)
         {
-            // create a deep copy of snake.body so that we can modify it without affecting the original snake
             Body = snake.Body.Select(p => new Point(p.X, p.Y)).ToList()
         };
 
         List<Node> nodes = new List<Node>();
 
         Node currentNode = new Node(startPoint);
-
-        // Store initial snake body
         currentNode.SnakeBodyAtNode = snake.Body.Select(p => new Point(p.X, p.Y)).ToList();
         nodes.Add(currentNode);
 
@@ -562,7 +624,7 @@ internal sealed class PathFinder
                 return new List<Point>();
             }
 
-            if (nodes.Count > 100)
+            if (nodes.Count > 50)
             {
                 Console.Error.WriteLine("Too many nodes, breaking out of loop");
                 return new List<Point>();
@@ -571,7 +633,7 @@ internal sealed class PathFinder
             Point[] pointsToCheck = new Point[4];
 
             // Prioritise heading towards the target as the first move
-            if (Math.Abs(startPoint.X - targetPoint.X) >= Math.Abs(startPoint.Y - targetPoint.Y))
+            if (Math.Abs(currentNode.Position.X - targetPoint.X) >= Math.Abs(currentNode.Position.Y - targetPoint.Y))
             {
                 pointsToCheck[0] = new Point(Math.Min(_game.Width - 1, currentNode.Position.X + 1), currentNode.Position.Y);
                 pointsToCheck[1] = new Point(Math.Max(0, currentNode.Position.X - 1), currentNode.Position.Y);
@@ -594,31 +656,33 @@ internal sealed class PathFinder
                     continue;
                 }
 
+                // Simulate snake movement to this position
+                List<Point> snakeBodyAfterMove = SimulateSnakeMovement(
+                    currentNode.SnakeBodyAtNode,
+                    currentNode.Position,
+                    pointToCheck);
 
-                Node? existingNode = nodes.SingleOrDefault(n => n.Position == pointToCheck);
+                // Apply gravity to the simulated body
+                snakeBodyAfterMove = ApplyGravity(snakeBodyAfterMove, currentSnake.Id);
+
+                // IMPORTANT: After gravity, the head position may have changed!
+                Point actualHeadPosition = snakeBodyAfterMove[0];
+
+                // Check if a node at this actual position already exists
+                Node? existingNode = nodes.SingleOrDefault(n => n.Position == actualHeadPosition);
 
                 if (existingNode == null)
                 {
-                    // Simulate snake movement to this position
-                    List<Point> snakeBodyAfterMove = SimulateSnakeMovement(
-                        currentNode.SnakeBodyAtNode,
-                        currentNode.Position,
-                        pointToCheck);
-
-                    // Apply gravity to the simulated body
-                    snakeBodyAfterMove = ApplyGravity(snakeBodyAfterMove, currentSnake.Id);
-
+                    // Check if the intended move is valid (before gravity)
                     if (pointToCheck == startPoint
                         || pointToCheck == targetPoint
                         || !IsPlatform(pointToCheck, snake, currentSnake))
                     {
-                        Node node = new Node(pointToCheck);
-
+                        // Create node at the ACTUAL position after gravity
+                        Node node = new Node(actualHeadPosition);
                         node.Parent = currentNode.Position;
-
                         node.G = currentNode.G + 1;
-
-                        node.H = CalculationUtil.GetManhattanDistance(pointToCheck, targetPoint);
+                        node.H = CalculationUtil.GetManhattanDistance(actualHeadPosition, targetPoint);
                         node.F = node.G + node.H;
                         node.SnakeBodyAtNode = snakeBodyAfterMove;
 
@@ -634,17 +698,9 @@ internal sealed class PathFinder
                         if (g < existingNode.G)
                         {
                             existingNode.G = g;
-
                             existingNode.F = existingNode.G + existingNode.H;
-
                             existingNode.Parent = currentNode.Position;
-
-                            // Update snake body for this path
-                            List<Point> snakeBodyAfterMove = SimulateSnakeMovement(
-                                currentNode.SnakeBodyAtNode,
-                                currentNode.Position,
-                                pointToCheck);
-                            existingNode.SnakeBodyAtNode = ApplyGravity(snakeBodyAfterMove, currentSnake.Id);
+                            existingNode.SnakeBodyAtNode = snakeBodyAfterMove;
                         }
                     }
                 }
@@ -660,7 +716,13 @@ internal sealed class PathFinder
             {
                 nodes = nodes.OrderBy(n => n.Closed == true).ThenBy(n => n.F).ToList();
 
-                currentNode = nodes.First();
+                var openNode = nodes.FirstOrDefault(n => !n.Closed);
+                if (openNode == null)
+                {
+                    return new List<Point>();
+                }
+
+                currentNode = openNode;
             }
 
             _debugCount++;
@@ -668,25 +730,18 @@ internal sealed class PathFinder
 
         Console.Error.WriteLine($"Debug count: {_debugCount}");
 
-        int numberOfSteps = currentNode.G;
+        // Build the path - but we need to return the MOVES, not the final positions
+        List<Point> shortestPath = new List<Point>();
+        Node pathNode = currentNode;
 
-        List<Point> shortestPath = [currentNode.Position];
-
-        bool atStart = false;
-
-        while (!atStart)
+        while (pathNode.Parent != default(Point))
         {
-            Console.Error.WriteLine("X");
-            currentNode = nodes.Single(n => n.Position == currentNode.Parent);
+            Node parentNode = nodes.Single(n => n.Position == pathNode.Parent);
 
-            if (currentNode.Position == startPoint)
-            {
-                atStart = true;
-            }
-            else
-            {
-                shortestPath.Insert(0, currentNode.Position);
-            }
+            // The move is the direction from parent's ACTUAL position to the intermediate position
+            // before gravity was applied in pathNode
+            shortestPath.Insert(0, pathNode.Position);
+            pathNode = parentNode;
         }
 
         Console.Error.WriteLine("Created shortestPath");
@@ -872,6 +927,8 @@ internal class SnakeBot
 
     private List<Point> previousMoves = new List<Point>();
 
+    private Dictionary<Point, int> _attemptsAtPowerSources = new Dictionary<Point, int>();
+
     internal SnakeBot(int id)
     {
         Id = id;
@@ -921,6 +978,38 @@ internal class SnakeBot
             return new Point(-1, -1);
         }
         return previousMoves.Last();
+    }
+
+    internal void AddAttemptAtPowerSource(Point powerSource)
+    {
+        if (_attemptsAtPowerSources.ContainsKey(powerSource))
+        {
+            _attemptsAtPowerSources[powerSource]++;
+        }
+        else
+        {
+            _attemptsAtPowerSources[powerSource] = 1;
+        }
+    }
+
+    internal int GetAttemptAtPowerSource(Point powerSource)
+    {
+        if (_attemptsAtPowerSources.ContainsKey(powerSource))
+        {
+            return _attemptsAtPowerSources[powerSource];
+        }
+        else
+        {
+            return 0;
+        }
+    }
+
+    internal void ClearAttemptsAtPowerSource(Point powerSource)
+    {
+        if (_attemptsAtPowerSources.ContainsKey(powerSource))
+        {
+            _attemptsAtPowerSources.Remove(powerSource);
+        }
     }
 }
 

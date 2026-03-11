@@ -106,8 +106,8 @@ internal class Game
             bool stopLooking = false;
             int maxDistance = 5;
 
-            while (stopLooking == false)
-            {
+            //while (stopLooking == false)
+            //{
                 Console.Error.WriteLine($"maxDistance: {maxDistance}");
                 (List<Point> path, bool triedSomething) = GetShortestPath(snakeBot, Math.Min(shortestPathCount-1, maxDistance));
 
@@ -126,25 +126,26 @@ internal class Game
                     stopLooking = true;
                 }                
 
-                maxDistance += 5;
-                if (maxDistance > 10)
-                {
-                    stopLooking = true;
-                }
-            }
+            //    maxDistance += 5;
+            //    if (maxDistance > 10)
+            //    {
+            //        stopLooking = true;
+            //    }
+            //}
 
             Console.Error.WriteLine(string.Join(";", shortestPathPoints.Select(p => $"{p.X},{p.Y}")));
 
             if (shortestPathPoints.Count == 0)
             {
-                // TODO: Add possible other
                 string direction = GetValidDirection(snakeBot);
 
                 actions.Add($"{snakeBot.Id} {direction}");
+                snakeBot.AddMove(DirectionHelper.GetNewPosition(snakeBot.Body[0], direction));
                 _movesThisTurn.Add(DirectionHelper.GetNewPosition(snakeBot.Body[0], direction));
             }
             else
             {
+                Console.Error.WriteLine($"Patrh fount to {shortestPathPoints[shortestPathPoints.Count-1].X},{shortestPathPoints[shortestPathPoints.Count - 1].Y}, moving towards it");
                 string direction = DirectionHelper.GetDirection(snakeBot.Body[0], shortestPathPoints[0]);
 
                 actions.Add($"{snakeBot.Id} {direction}");
@@ -168,13 +169,75 @@ internal class Game
                 && newHeadPosition.Y < Height
                 && !IsPlatform(newHeadPosition)
                 && !IsSnakePart(newHeadPosition, countTails: true, null)
-                && _movesThisTurn.Contains(newHeadPosition) == false)
+                && _movesThisTurn.Contains(newHeadPosition) == false
+                && !IsBlocking(newHeadPosition, snakeBot)
+                && !ExcludeMove(newHeadPosition, snakeBot))
             {
                 return direction;
             }
         }
         // No valid moves, just stay there and hope for the best
-        return "DOWN";
+        return "LEFT";
+    }
+
+    private bool ExcludeMove(Point newHeadPosition, SnakeBot snakeBot)
+    {
+        if (snakeBot.IsStuck())
+        {
+            if (newHeadPosition == snakeBot.GetLastMove())
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private bool IsBlocking(Point newHeadPosition, SnakeBot snakeBot)
+    {
+        Console.Error.WriteLine($"Checking if move to {newHeadPosition.X},{newHeadPosition.Y} would block us in");
+        // Flood fill algorithm to check if the new position would block the snake in
+        var visited = new HashSet<Point>();
+        var queue = new Queue<Point>();
+
+        queue.Enqueue(newHeadPosition);
+        visited.Add(newHeadPosition);
+
+        while (queue.Count > 0)
+        {
+            Point checkPoint = queue.Dequeue();
+
+            var adjacentPoints = new List<Point>()
+            {
+                new Point(checkPoint.X + 1, checkPoint.Y),
+                new Point(checkPoint.X - 1, checkPoint.Y),
+                new Point(checkPoint.X, checkPoint.Y + 1),
+                new Point(checkPoint.X, checkPoint.Y - 1)
+            };
+
+            foreach (var adjacentPoint in adjacentPoints)
+            {
+                if (adjacentPoint.X >= 0
+                    && adjacentPoint.X < Width
+                    && adjacentPoint.Y >= 0
+                    && adjacentPoint.Y < Height
+                    && !IsPlatform(adjacentPoint)
+                    && !IsSnakePart(adjacentPoint, countTails: true, null)
+                    && !visited.Contains(adjacentPoint))
+                {
+                    queue.Enqueue(adjacentPoint);
+                    visited.Add(adjacentPoint);
+                }
+            }
+        }
+
+        // If we visited less than 3 points, we are probably blocking ourselves in
+        if (visited.Count < snakeBot.Body.Count)
+        {
+            return true;
+        }
+
+        return false;
     }
 
     private (List<Point>, bool) GetShortestPath(SnakeBot snakeBot, int maxDistance)
@@ -185,14 +248,19 @@ internal class Game
 
         foreach (Point powerSource in _level.PowerSources)
         {
-            
             // Don't bother trying if it's further away than the shortest one we've found
             if (CalculationUtil.GetManhattanDistance(snakeBot.Body[0], powerSource) >= maxDistance || CalculationUtil.GetManhattanDistance(snakeBot.Body[0], powerSource) >= shortestPathCount)
             {
                 continue;
             }
-            Console.Error.WriteLine($"Checking power source at {powerSource.X},{powerSource.Y}");
 
+            if (snakeBot.GetAttemptAtPowerSource(powerSource) > 20)
+            {
+                snakeBot.ClearAttemptsAtPowerSource(powerSource);
+                continue;                
+            }
+
+            snakeBot.AddAttemptAtPowerSource(powerSource);
 
             List<Point> excludePoints = new List<Point>();
             if (snakeBot.IsStuck())
@@ -200,14 +268,11 @@ internal class Game
                 excludePoints.Add(snakeBot.GetLastMove());
             }
 
-
-
             List<Point> path = _pathFinder.GetShortestPath(snakeBot.Body.First(), powerSource, snakeBot, excludePoints.Concat(_movesThisTurn).ToList());
             triedSomething = true;
-            Console.Error.WriteLine($"Tried to find a path to power source at {powerSource.X},{powerSource.Y} with length {path.Count}");
+
             if (path != null && path.Count > 0 && path.Count < shortestPathCount)
             {
-                Console.Error.WriteLine($"Found a path to power source at {powerSource.X},{powerSource.Y} with length {path.Count}");
                 shortestPathCount = path.Count;
                 shortestPathPoints = path.ToList();
             }

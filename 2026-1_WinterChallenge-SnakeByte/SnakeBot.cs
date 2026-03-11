@@ -14,6 +14,8 @@ internal class SnakeBot
 
     private List<Point> previousMoves = new List<Point>();
 
+    private Dictionary<Point, int> _attemptsAtPowerSources = new Dictionary<Point, int>();
+
     internal SnakeBot(int id)
     {
         Id = id;
@@ -63,6 +65,38 @@ internal class SnakeBot
             return new Point(-1, -1);
         }
         return previousMoves.Last();
+    }
+
+    internal void AddAttemptAtPowerSource(Point powerSource)
+    {
+        if (_attemptsAtPowerSources.ContainsKey(powerSource))
+        {
+            _attemptsAtPowerSources[powerSource]++;
+        }
+        else
+        {
+            _attemptsAtPowerSources[powerSource] = 1;
+        }
+    }
+
+    internal int GetAttemptAtPowerSource(Point powerSource)
+    {
+        if (_attemptsAtPowerSources.ContainsKey(powerSource))
+        {
+            return _attemptsAtPowerSources[powerSource];
+        }
+        else
+        {
+            return 0;
+        }
+    }
+
+    internal void ClearAttemptsAtPowerSource(Point powerSource)
+    {
+        if (_attemptsAtPowerSources.ContainsKey(powerSource))
+        {
+            _attemptsAtPowerSources.Remove(powerSource);
+        }
     }
 }
 

@@ -7,13 +7,16 @@ internal sealed class PathFinder
 {
     private Game _game;
 
+    private int _debugCount = 0;
+
     public PathFinder(Game game)
     {
         _game = game;
     }
 
-    internal List<Point> GetShortestPath(Point startPoint, Point targetPoint, SnakeBot snake, Point? excludeFirst)
+    internal List<Point> GetShortestPath(Point startPoint, Point targetPoint, SnakeBot snake, List<Point> excludePoints)
     {
+        _debugCount = 0;
         SnakeBot currentSnake = new SnakeBot(-1)
         {
             // create a deep copy of snake.body so that we can modify it without affecting the original snake
@@ -54,8 +57,8 @@ internal sealed class PathFinder
 
             foreach (Point pointToCheck in pointsToCheck)
             {
-                // If there is only one node, we are at the start and we want to ignore the first point to check if it's the excludeFirst point.
-                if (nodes.Count == 1 && pointToCheck == excludeFirst)
+                // If there is only one node, we are at the start and we want to ignore the excludePoints
+                if (nodes.Count == 1 && excludePoints.Contains(pointToCheck))
                 {
                     continue;
                 }
@@ -112,7 +115,11 @@ internal sealed class PathFinder
 
                 currentNode = nodes.First();
             }
+
+            _debugCount++;
         }
+
+        Console.Error.WriteLine($"Debug count: {_debugCount}");
 
         int numberOfSteps = currentNode.G;
 

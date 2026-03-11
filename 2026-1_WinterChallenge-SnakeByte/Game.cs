@@ -14,6 +14,8 @@ internal class Game
 
     private PathFinder _pathFinder;
 
+    private List<Point> _movesThisTurn;
+
     public Game(int width, int height, bool[,] platforms)
     {
         Width = width;
@@ -88,6 +90,7 @@ internal class Game
 
     internal List<string> GetActions()
     {
+        _movesThisTurn = new List<Point>();
         // Logger.EntireGame(_level.Platforms, MySnakeBots, OpponentSnakeBots, _level.PowerSources);
 
         List<string> actions = new List<string>();
@@ -95,6 +98,7 @@ internal class Game
         foreach (var snakeBot in MySnakeBots)
         {
             Console.Error.WriteLine($"Checking Snake {snakeBot.Id}");
+            Console.Error.WriteLine($"_movesThisTurn: {string.Join(";", _movesThisTurn.Select(p => $"{p.X},{p.Y}"))}");
             int shortestPathCount = int.MaxValue;
             var shortestPathPoints = new List<Point>();
 
@@ -104,8 +108,7 @@ internal class Game
 
             while (stopLooking == false)
             {
-                Console.Error.WriteLine($"Trying to find target within distance {Math.Min(shortestPathCount - 1, maxDistance)}");
-
+                Console.Error.WriteLine($"maxDistance: {maxDistance}");
                 (List<Point> path, bool triedSomething) = GetShortestPath(snakeBot, Math.Min(shortestPathCount-1, maxDistance));
 
                 if (path.Count > 0)
@@ -114,28 +117,30 @@ internal class Game
 
                     shortestPathCount = path.Count;
                     shortestPathPoints = path.ToList();
-
-                    Console.Error.WriteLine($"Path found at {string.Join(",", shortestPathPoints)}");
                 }
 
                 if (stopLooking == false && triedSomething == true)
                 {
-                    Console.Error.WriteLine($"No targets found but we tried. Don't bother trying again");
                     // We tried a closer one and couldn't get to it. For now, don't try more
                     stopLooking = true;
                 }                
 
                 maxDistance += 5;
+                if (maxDistance > 10)
+                {
+                    stopLooking = true;
+                }
             }
 
             Console.Error.WriteLine(string.Join(";", shortestPathPoints.Select(p => $"{p.X},{p.Y}")));
 
             if (shortestPathPoints.Count == 0)
             {
-                // TODO: Don't just stay there. See if there are any valid moves
-                var direction = GetValidDirection(snakeBot);
+                // TODO: Add possible other
+                string direction = GetValidDirection(snakeBot);
 
                 actions.Add($"{snakeBot.Id} {direction}");
+                _movesThisTurn.Add(DirectionHelper.GetNewPosition(snakeBot.Body[0], direction));
             }
             else
             {
@@ -143,13 +148,14 @@ internal class Game
 
                 actions.Add($"{snakeBot.Id} {direction}");
                 snakeBot.AddMove(shortestPathPoints[0]);
+                _movesThisTurn.Add(shortestPathPoints[0]);
             }
         }
 
         return actions;
     }
 
-    private object GetValidDirection(SnakeBot snakeBot)
+    private string GetValidDirection(SnakeBot snakeBot)
     {
         var possibleDirections = new List<string>() { "UP", "DOWN", "LEFT", "RIGHT" };
         foreach (var direction in possibleDirections)
@@ -160,7 +166,8 @@ internal class Game
                 && newHeadPosition.Y >= 0
                 && newHeadPosition.Y < Height
                 && !IsPlatform(newHeadPosition)
-                && !IsSnakePart(newHeadPosition, countTails: false, null))
+                && !IsSnakePart(newHeadPosition, countTails: false, null)
+                && _movesThisTurn.Contains(newHeadPosition) == false)
             {
                 return direction;
             }
@@ -183,13 +190,15 @@ internal class Game
                 continue;
             }
 
-            Point? excludeFirst = null;
+            List<Point> excludePoints = new List<Point>();
             if (snakeBot.IsStuck())
             {
-                excludeFirst = snakeBot.GetLastMove();
+                excludePoints.Add(snakeBot.GetLastMove());
             }
 
-            List<Point> path = _pathFinder.GetShortestPath(snakeBot.Body.First(), powerSource, snakeBot, excludeFirst);
+
+
+            List<Point> path = _pathFinder.GetShortestPath(snakeBot.Body.First(), powerSource, snakeBot, excludePoints.Concat(_movesThisTurn).ToList());
             triedSomething = true;
 
             if (path != null && path.Count > 0 && path.Count < shortestPathCount)

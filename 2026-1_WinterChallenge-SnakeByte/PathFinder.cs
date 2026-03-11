@@ -43,7 +43,6 @@ internal sealed class PathFinder
 
             if (nodesByPosition.Count > 20)
             {
-                Console.Error.WriteLine($"NodeByPostion abouve 20. Cutting out");
                 return new List<Point>();
             }
 
@@ -79,8 +78,16 @@ internal sealed class PathFinder
                     currentNode.Position,
                     pointToCheck);
 
-                // Apply gravity to the simulated body
-                snakeBodyAfterMove = ApplyGravity(snakeBodyAfterMove, currentSnake.Id);
+                // Apply gravity to the simulated body UNLESS we're at the target
+                // (reaching the target means eating a power-up, gravity doesn't apply mid-eating)
+                if (pointToCheck != targetPoint)
+                {
+                    snakeBodyAfterMove = ApplyGravity(snakeBodyAfterMove, currentSnake.Id);
+                }
+                else
+                {
+                    Console.Error.WriteLine($"Not applying gravity to snake body after moving to target {pointToCheck}");
+                }
 
                 // IMPORTANT: After gravity, the head position may have changed!
                 Point actualHeadPosition = snakeBodyAfterMove[0];
@@ -104,6 +111,16 @@ internal sealed class PathFinder
                         node.SnakeBodyAtNode = snakeBodyAfterMove;
 
                         nodesByPosition.Add(actualHeadPosition, node);
+
+                        // Check if we've reached the target immediately
+                        if (actualHeadPosition == targetPoint)
+                        {
+                            Console.Error.WriteLine($"Target found at {actualHeadPosition} with path length {node.G}");
+                            currentNode = node;
+                            targetFound = true;
+                            break; // Exit the foreach loop
+                        }
+
                         openNodes.Enqueue(node, node.F);
                         openNodeCount++;
                     }

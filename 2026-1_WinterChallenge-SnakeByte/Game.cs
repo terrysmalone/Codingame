@@ -103,6 +103,7 @@ internal class Game
 
         foreach (var snakeBot in MySnakeBots)
         {
+            Console.Error.WriteLine($"Getting action for snakeBot {snakeBot.Id} with head at {snakeBot.Body[0].X},{snakeBot.Body[0].Y}");
             // TODO: CHeck for chance toi destroy an opponent snake and do that if possible
 
             List<Point> bestPathToPower = GetBestPathToPowerSource(snakeBot);            
@@ -386,7 +387,6 @@ internal class Game
             new Point(snakeBot.Body[0].X, snakeBot.Body[0].Y + 1),
             new Point(snakeBot.Body[0].X, snakeBot.Body[0].Y - 1)
         };
-
        
         foreach (var possibleMove in possibleMoves)
         {
@@ -404,7 +404,7 @@ internal class Game
 
 
         foreach (Point powerSource in _level.PowerSources)
-        {
+        {            
             // Don't bother trying if it's further away than the shortest one we've found
             int manhattanDistance = CalculationUtil.GetManhattanDistance(snakeBot.Body[0], powerSource);
             if (manhattanDistance >= maxDistance 
@@ -420,6 +420,8 @@ internal class Game
                 continue;                
             }
 
+            Console.Error.WriteLine($"Checking path to power source at {powerSource.X},{powerSource.Y} for snakeBot {snakeBot.Id}");
+
             snakeBot.AddAttemptAtPowerSource(powerSource);
              
             List<Point> path = _pathFinder.GetShortestPath(snakeBot.Body.First(), powerSource, snakeBot, excludePoints.Concat(_movesThisTurn).ToList());
@@ -432,6 +434,8 @@ internal class Game
                 shortestPathPoints = path.ToList();
             }
         }
+        
+        Console.Error.WriteLine($"Shortest path for snakeBot {snakeBot.Id} is {string.Join(";", shortestPathPoints.Select(p => $"{p.X},{p.Y}"))} with count {shortestPathCount} and manhattan distance {shortestManhattanDistanceCount}");
 
         return (shortestPathPoints, triedSomething);
     }

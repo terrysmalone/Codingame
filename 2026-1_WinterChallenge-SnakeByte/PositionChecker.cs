@@ -140,4 +140,17 @@ internal sealed class PositionChecker
         return false;
     }
 
+    internal bool IsStuckMove(Point newHeadPosition, SnakeBot snakeBot)
+    {
+        if (snakeBot.IsStuck())
+        {
+            if (newHeadPosition == snakeBot.GetLastMove())
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
 }

@@ -314,7 +314,7 @@ internal class Game
             {
                 Point newHeadPosition = DirectionHelper.GetNewPosition(snakeBot.Body[0], possibleDirections[i]);
 
-                if (IsStuckMove(newHeadPosition, snakeBot) || _movesThisTurn.Contains(newHeadPosition))
+                if (_positionChecker.IsStuckMove(newHeadPosition, snakeBot) || _movesThisTurn.Contains(newHeadPosition))
                 {
                     possibleDirections.Remove(possibleDirections[i]);
                 }
@@ -363,19 +363,6 @@ internal class Game
         }
 
         return nearestPowerSource;
-    }
-
-    private bool IsStuckMove(Point newHeadPosition, SnakeBot snakeBot)
-    {
-        if (snakeBot.IsStuck())
-        {
-            if (newHeadPosition == snakeBot.GetLastMove())
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     private (List<Point>, bool) GetShortestPath(SnakeBot snakeBot, int maxDistance)

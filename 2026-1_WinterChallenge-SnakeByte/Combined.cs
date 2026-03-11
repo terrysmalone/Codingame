@@ -372,7 +372,7 @@ internal class Game
             {
                 Point newHeadPosition = DirectionHelper.GetNewPosition(snakeBot.Body[0], possibleDirections[i]);
 
-                if (IsStuckMove(newHeadPosition, snakeBot) || _movesThisTurn.Contains(newHeadPosition))
+                if (_positionChecker.IsStuckMove(newHeadPosition, snakeBot) || _movesThisTurn.Contains(newHeadPosition))
                 {
                     possibleDirections.Remove(possibleDirections[i]);
                 }
@@ -421,19 +421,6 @@ internal class Game
         }
 
         return nearestPowerSource;
-    }
-
-    private bool IsStuckMove(Point newHeadPosition, SnakeBot snakeBot)
-    {
-        if (snakeBot.IsStuck())
-        {
-            if (newHeadPosition == snakeBot.GetLastMove())
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     private (List<Point>, bool) GetShortestPath(SnakeBot snakeBot, int maxDistance)
@@ -757,11 +744,9 @@ internal sealed class PathFinder
 
             foreach (Point pointToCheck in pointsToCheck)
             {
-                Console.Error.WriteLine($"Checking point {pointToCheck.X},{pointToCheck.Y} - nodesByPosition.Count:{nodesByPosition.Count}-");
                 // If we are expanding the start node, ignore the excludePoints
                 if (currentNode.Parent == null && excludePoints.Contains(pointToCheck))
                 {
-                    Console.Error.WriteLine($"Ignoring exclude point {pointToCheck.X},{pointToCheck.Y} because we are at the start");
                     continue;
                 }
 
@@ -1164,6 +1149,19 @@ internal sealed class PositionChecker
                 }
             }
             else
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    internal bool IsStuckMove(Point newHeadPosition, SnakeBot snakeBot)
+    {
+        if (snakeBot.IsStuck())
+        {
+            if (newHeadPosition == snakeBot.GetLastMove())
             {
                 return true;
             }

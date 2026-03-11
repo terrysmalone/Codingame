@@ -67,11 +67,9 @@ internal sealed class PathFinder
 
             foreach (Point pointToCheck in pointsToCheck)
             {
-                Console.Error.WriteLine($"Checking point {pointToCheck.X},{pointToCheck.Y} - nodesByPosition.Count:{nodesByPosition.Count}-");
                 // If we are expanding the start node, ignore the excludePoints
                 if (currentNode.Parent == null && excludePoints.Contains(pointToCheck))
                 {
-                    Console.Error.WriteLine($"Ignoring exclude point {pointToCheck.X},{pointToCheck.Y} because we are at the start");
                     continue;
                 }
 

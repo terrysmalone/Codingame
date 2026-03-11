@@ -249,7 +249,7 @@ internal class Game
         var shortestPathPoints = new List<Point>();
 
         foreach (Point powerSource in _level.PowerSources)
-        {
+        {            
             // Don't bother trying if it's further away than the shortest one we've found
             if (CalculationUtil.GetManhattanDistance(snakeBot.Body[0], powerSource) >= maxDistance || CalculationUtil.GetManhattanDistance(snakeBot.Body[0], powerSource) >= shortestPathCount)
             {
@@ -261,6 +261,8 @@ internal class Game
                 snakeBot.ClearAttemptsAtPowerSource(powerSource);
                 continue;                
             }
+
+            Console.Error.WriteLine($"Checking path to power source at {powerSource.X},{powerSource.Y}");
 
             snakeBot.AddAttemptAtPowerSource(powerSource);
 

@@ -6,7 +6,7 @@ internal sealed class Node
 {
     public Point Position { get; set; }
 
-    public Point Parent { get; set; }
+    public Point? Parent { get; set; }
 
     public int G { get; set; }
     public int H { get; set; }

@@ -22,22 +22,26 @@ internal sealed class PathFinder
             Body = snake.Body.Select(p => new Point(p.X, p.Y)).ToList()
         };
 
-        List<Node> nodes = new List<Node>();
+        Dictionary<Point, Node> nodesByPosition = new Dictionary<Point, Node>();
+        PriorityQueue<Node, int> openNodes = new PriorityQueue<Node, int>();
 
         Node currentNode = new Node(startPoint);
         currentNode.SnakeBodyAtNode = snake.Body.Select(p => new Point(p.X, p.Y)).ToList();
-        nodes.Add(currentNode);
+        nodesByPosition.Add(startPoint, currentNode);
+        openNodes.Enqueue(currentNode, currentNode.F);
+        int openNodeCount = 1;
 
         bool targetFound = false;
 
         while (!targetFound)
         {
-            if (nodes.Count(n => n.Closed == false) == 0)
+            Console.Error.WriteLine($"currentNode.Position: {currentNode.Position}");
+            if (openNodeCount == 0)
             {
                 return new List<Point>();
             }
 
-            if (nodes.Count > 50)
+            if (nodesByPosition.Count > 50)
             {
                 Console.Error.WriteLine("Too many nodes, breaking out of loop");
                 return new List<Point>();
@@ -64,7 +68,7 @@ internal sealed class PathFinder
             foreach (Point pointToCheck in pointsToCheck)
             {
                 // If there is only one node, we are at the start and we want to ignore the excludePoints
-                if (nodes.Count == 1 && excludePoints.Contains(pointToCheck))
+                if (nodesByPosition.Count == 1 && excludePoints.Contains(pointToCheck))
                 {
                     continue;
                 }
@@ -82,7 +86,7 @@ internal sealed class PathFinder
                 Point actualHeadPosition = snakeBodyAfterMove[0];
 
                 // Check if a node at this actual position already exists
-                Node? existingNode = nodes.SingleOrDefault(n => n.Position == actualHeadPosition);
+                nodesByPosition.TryGetValue(actualHeadPosition, out Node? existingNode);
 
                 if (existingNode == null)
                 {
@@ -99,7 +103,9 @@ internal sealed class PathFinder
                         node.F = node.G + node.H;
                         node.SnakeBodyAtNode = snakeBodyAfterMove;
 
-                        nodes.Add(node);
+                        nodesByPosition.Add(actualHeadPosition, node);
+                        openNodes.Enqueue(node, node.F);
+                        openNodeCount++;
                     }
                 }
                 else
@@ -114,12 +120,14 @@ internal sealed class PathFinder
                             existingNode.F = existingNode.G + existingNode.H;
                             existingNode.Parent = currentNode.Position;
                             existingNode.SnakeBodyAtNode = snakeBodyAfterMove;
+                            openNodes.Enqueue(existingNode, existingNode.F);
                         }
                     }
                 }
             }
 
             currentNode.Closed = true;
+            openNodeCount--;
 
             if (currentNode.Position == targetPoint)
             {
@@ -127,15 +135,22 @@ internal sealed class PathFinder
             }
             else
             {
-                nodes = nodes.OrderBy(n => n.Closed == true).ThenBy(n => n.F).ToList();
+                Node? nextNode = null;
+                while (openNodes.Count > 0 && nextNode == null)
+                {
+                    Node candidate = openNodes.Dequeue();
+                    if (!candidate.Closed)
+                    {
+                        nextNode = candidate;
+                    }
+                }
 
-                var openNode = nodes.FirstOrDefault(n => !n.Closed);
-                if (openNode == null)
+                if (nextNode == null)
                 {
                     return new List<Point>();
                 }
 
-                currentNode = openNode;
+                currentNode = nextNode;
             }
 
             _debugCount++;
@@ -143,13 +158,14 @@ internal sealed class PathFinder
 
         Console.Error.WriteLine($"Debug count: {_debugCount}");
 
-        // Build the path - but we need to return the MOVES, not the final positions
+        // Build the path
         List<Point> shortestPath = new List<Point>();
         Node pathNode = currentNode;
 
-        while (pathNode.Parent != default(Point))
+        while (pathNode.Parent != null)
         {
-            Node parentNode = nodes.Single(n => n.Position == pathNode.Parent);
+            Node parentNode = nodesByPosition[pathNode.Parent.Value];
+            Console.Error.WriteLine($"pathNode.Position: {pathNode.Position}, parentNode.Position: {parentNode.Position}");
 
             // The move is the direction from parent's ACTUAL position to the intermediate position
             // before gravity was applied in pathNode

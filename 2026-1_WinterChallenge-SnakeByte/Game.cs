@@ -100,6 +100,7 @@ internal class Game
         {
             Console.Error.WriteLine($"Checking Snake {snakeBot.Id}");
             Console.Error.WriteLine($"_movesThisTurn: {string.Join(";", _movesThisTurn.Select(p => $"{p.X},{p.Y}"))}");
+            Console.Error.WriteLine($"_attemptsAtPowerSources: {string.Join(";", snakeBot.GetAttemptsAtPowerSource().Select(kvp => $"{kvp.Key.X},{kvp.Key.Y}:{kvp.Value}"))}");
             int shortestPathCount = int.MaxValue;
             var shortestPathPoints = new List<Point>();
 
@@ -255,7 +256,7 @@ internal class Game
                 continue;
             }
 
-            if (snakeBot.GetAttemptAtPowerSource(powerSource) > 20)
+            if (snakeBot.GetAttemptsAtPowerSource(powerSource) > 20)
             {
                 snakeBot.ClearAttemptsAtPowerSource(powerSource);
                 continue;                

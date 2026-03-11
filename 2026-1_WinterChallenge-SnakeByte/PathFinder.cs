@@ -37,7 +37,7 @@ internal sealed class PathFinder
                 return new List<Point>();
             }
 
-            if (nodes.Count > 20)
+            if (nodes.Count > 50)
             {
                 Console.Error.WriteLine("Too many nodes, breaking out of loop");
                 return new List<Point>();

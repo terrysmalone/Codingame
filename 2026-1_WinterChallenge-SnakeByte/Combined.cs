@@ -158,6 +158,7 @@ internal class Game
         {
             Console.Error.WriteLine($"Checking Snake {snakeBot.Id}");
             Console.Error.WriteLine($"_movesThisTurn: {string.Join(";", _movesThisTurn.Select(p => $"{p.X},{p.Y}"))}");
+            Console.Error.WriteLine($"_attemptsAtPowerSources: {string.Join(";", snakeBot.GetAttemptsAtPowerSource().Select(kvp => $"{kvp.Key.X},{kvp.Key.Y}:{kvp.Value}"))}");
             int shortestPathCount = int.MaxValue;
             var shortestPathPoints = new List<Point>();
 
@@ -313,7 +314,7 @@ internal class Game
                 continue;
             }
 
-            if (snakeBot.GetAttemptAtPowerSource(powerSource) > 20)
+            if (snakeBot.GetAttemptsAtPowerSource(powerSource) > 20)
             {
                 snakeBot.ClearAttemptsAtPowerSource(powerSource);
                 continue;                
@@ -638,7 +639,7 @@ internal sealed class PathFinder
                 return new List<Point>();
             }
 
-            if (nodes.Count > 20)
+            if (nodes.Count > 50)
             {
                 Console.Error.WriteLine("Too many nodes, breaking out of loop");
                 return new List<Point>();
@@ -1006,7 +1007,7 @@ internal class SnakeBot
         }
     }
 
-    internal int GetAttemptAtPowerSource(Point powerSource)
+    internal int GetAttemptsAtPowerSource(Point powerSource)
     {
         if (_attemptsAtPowerSources.ContainsKey(powerSource))
         {
@@ -1024,6 +1025,11 @@ internal class SnakeBot
         {
             _attemptsAtPowerSources.Remove(powerSource);
         }
+    }
+
+    internal Dictionary<Point, int> GetAttemptsAtPowerSource()
+    {
+        return _attemptsAtPowerSources;
     }
 }
 

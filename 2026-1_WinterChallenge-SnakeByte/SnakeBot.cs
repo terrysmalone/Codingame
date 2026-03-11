@@ -79,7 +79,7 @@ internal class SnakeBot
         }
     }
 
-    internal int GetAttemptAtPowerSource(Point powerSource)
+    internal int GetAttemptsAtPowerSource(Point powerSource)
     {
         if (_attemptsAtPowerSources.ContainsKey(powerSource))
         {
@@ -97,6 +97,11 @@ internal class SnakeBot
         {
             _attemptsAtPowerSources.Remove(powerSource);
         }
+    }
+
+    internal Dictionary<Point, int> GetAttemptsAtPowerSource()
+    {
+        return _attemptsAtPowerSources;
     }
 }
 

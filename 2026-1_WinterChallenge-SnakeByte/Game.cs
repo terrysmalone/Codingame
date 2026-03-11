@@ -19,7 +19,8 @@ internal class Game
     private PathFinder _pathFinder;
     private PositionChecker _positionChecker;
     
-    private List<Point> _movesThisTurn;    
+    private List<Point> _movesThisTurn;
+    private List<Point> _powerUpsThisTurn;
 
     public Game(int width, int height, bool[,] platforms)
     {
@@ -97,6 +98,7 @@ internal class Game
     internal List<string> GetActions()
     {
         _movesThisTurn = new List<Point>();
+        _powerUpsThisTurn = new List<Point>();
         // Logger.EntireGame(_level.Platforms, MySnakeBots, OpponentSnakeBots, _level.PowerSources);
 
         List<string> actions = new List<string>();
@@ -115,6 +117,7 @@ internal class Game
                 actions.Add($"{snakeBot.Id} {direction} CHASING POWER");
                 snakeBot.AddMove(bestPathToPower[0]);
                 _movesThisTurn.Add(bestPathToPower[0]);
+                _powerUpsThisTurn.Add(bestPathToPower[bestPathToPower.Count-1]);
             }
             else
             {
@@ -405,6 +408,11 @@ internal class Game
 
         foreach (Point powerSource in _level.PowerSources)
         {            
+            if (_powerUpsThisTurn.Contains(powerSource))
+            {
+                continue;
+            }
+
             // Don't bother trying if it's further away than the shortest one we've found
             int manhattanDistance = CalculationUtil.GetManhattanDistance(snakeBot.Body[0], powerSource);
             if (manhattanDistance >= maxDistance 

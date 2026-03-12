@@ -23,4 +23,22 @@ internal class Level
     {
         return Platforms[pointToCheck.Y, pointToCheck.X];
     }
+
+    internal HashSet<Point> GetAllPlatformPositions()
+    {
+        var platformPositions = new HashSet<Point>();
+
+        for (int y = 0; y < height; y++)
+        {
+            for (int x = 0; x < width; x++)
+            {
+                if (Platforms[y, x])
+                {
+                    platformPositions.Add(new Point(x, y));
+                }
+            }
+        }
+
+        return platformPositions;
+    }
 }

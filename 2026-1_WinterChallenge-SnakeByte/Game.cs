@@ -115,6 +115,7 @@ internal class Game
                 string direction = DirectionHelper.GetDirection(snakeBot.Body[0], bestPathToPower[0]);
 
                 actions.Add($"{snakeBot.Id} {direction} CHASING POWER");
+                actions.Add($"MARK {bestPathToPower[bestPathToPower.Count-1].X} {bestPathToPower[bestPathToPower.Count - 1].Y}");
                 snakeBot.AddMove(bestPathToPower[0]);
                 _movesThisTurn.Add(bestPathToPower[0]);
                 _powerUpsThisTurn.Add(bestPathToPower[bestPathToPower.Count-1]);
@@ -123,7 +124,7 @@ internal class Game
             {
                 string direction = GetValidDirection(snakeBot);
 
-                actions.Add($"{snakeBot.Id} {direction} ANY MOVE");
+                actions.Add($"{snakeBot.Id} {direction} WANDERING");
                 snakeBot.AddMove(DirectionHelper.GetNewPosition(snakeBot.Body[0], direction));
                 _movesThisTurn.Add(DirectionHelper.GetNewPosition(snakeBot.Body[0], direction));
             }
@@ -162,7 +163,7 @@ internal class Game
             }
 
             maxDistance += 5;
-            if (maxDistance > 10)
+            if (maxDistance > 20)
             {
                 stopLooking = true;
             }
@@ -254,7 +255,7 @@ internal class Game
                 || newHeadPosition.Y < -1
                 || newHeadPosition.Y >= Height
                 || _positionChecker.IsPlatform(newHeadPosition)
-                || _positionChecker.IsSnakePart(newHeadPosition, countTails: false, null))
+                || _positionChecker.IsPointInAnySnake(newHeadPosition, countTails: false))
             {
                 possibleDirections.Remove(possibleDirections[i]);
             }
@@ -269,7 +270,7 @@ internal class Game
             {
                 Point newHeadPosition = DirectionHelper.GetNewPosition(snakeBot.Body[0], possibleDirections[i]);
 
-                if (_positionChecker.IsSnakePart(newHeadPosition, countTails: true, null))
+                if (_positionChecker.IsPointInAnySnake(newHeadPosition, countTails: true))
                 {
                     possibleDirections.Remove(possibleDirections[i]);
                 }
@@ -449,5 +450,10 @@ internal class Game
     internal List<Point> GetPowerUps()
     {
         return _level.PowerSources;
+    }
+
+    internal HashSet<Point> GetAllPlatformPositions()
+    {
+        return _level.GetAllPlatformPositions();
     }
 }

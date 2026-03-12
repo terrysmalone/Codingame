@@ -8,6 +8,7 @@ using System.Reflection.Metadata.Ecma335;
 using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
 using System.Xml.Linq;
+using System.Diagnostics;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -173,6 +174,7 @@ internal class Game
                 string direction = DirectionHelper.GetDirection(snakeBot.Body[0], bestPathToPower[0]);
 
                 actions.Add($"{snakeBot.Id} {direction} CHASING POWER");
+                actions.Add($"MARK {bestPathToPower[bestPathToPower.Count-1].X} {bestPathToPower[bestPathToPower.Count - 1].Y}");
                 snakeBot.AddMove(bestPathToPower[0]);
                 _movesThisTurn.Add(bestPathToPower[0]);
                 _powerUpsThisTurn.Add(bestPathToPower[bestPathToPower.Count-1]);
@@ -181,7 +183,7 @@ internal class Game
             {
                 string direction = GetValidDirection(snakeBot);
 
-                actions.Add($"{snakeBot.Id} {direction} ANY MOVE");
+                actions.Add($"{snakeBot.Id} {direction} WANDERING");
                 snakeBot.AddMove(DirectionHelper.GetNewPosition(snakeBot.Body[0], direction));
                 _movesThisTurn.Add(DirectionHelper.GetNewPosition(snakeBot.Body[0], direction));
             }
@@ -220,7 +222,7 @@ internal class Game
             }
 
             maxDistance += 5;
-            if (maxDistance > 10)
+            if (maxDistance > 20)
             {
                 stopLooking = true;
             }
@@ -312,7 +314,7 @@ internal class Game
                 || newHeadPosition.Y < -1
                 || newHeadPosition.Y >= Height
                 || _positionChecker.IsPlatform(newHeadPosition)
-                || _positionChecker.IsSnakePart(newHeadPosition, countTails: false, null))
+                || _positionChecker.IsPointInAnySnake(newHeadPosition, countTails: false))
             {
                 possibleDirections.Remove(possibleDirections[i]);
             }
@@ -327,7 +329,7 @@ internal class Game
             {
                 Point newHeadPosition = DirectionHelper.GetNewPosition(snakeBot.Body[0], possibleDirections[i]);
 
-                if (_positionChecker.IsSnakePart(newHeadPosition, countTails: true, null))
+                if (_positionChecker.IsPointInAnySnake(newHeadPosition, countTails: true))
                 {
                     possibleDirections.Remove(possibleDirections[i]);
                 }
@@ -508,6 +510,11 @@ internal class Game
     {
         return _level.PowerSources;
     }
+
+    internal HashSet<Point> GetAllPlatformPositions()
+    {
+        return _level.GetAllPlatformPositions();
+    }
 }
 
 internal class Level
@@ -530,6 +537,24 @@ internal class Level
     internal bool IsPlatform(Point pointToCheck)
     {
         return Platforms[pointToCheck.Y, pointToCheck.X];
+    }
+
+    internal HashSet<Point> GetAllPlatformPositions()
+    {
+        var platformPositions = new HashSet<Point>();
+
+        for (int y = 0; y < height; y++)
+        {
+            for (int x = 0; x < width; x++)
+            {
+                if (Platforms[y, x])
+                {
+                    platformPositions.Add(new Point(x, y));
+                }
+            }
+        }
+
+        return platformPositions;
     }
 }
 
@@ -697,6 +722,8 @@ internal sealed class PathFinder
     private readonly PositionChecker _positionChecker;
     private int _debugCount = 0;
 
+    private const int MAX_NODE_COUNT = 1000;
+
     public PathFinder(Game game, PositionChecker positionChecker)
     {
         _game = game;
@@ -705,11 +732,13 @@ internal sealed class PathFinder
 
     internal List<Point> GetShortestPath(Point startPoint, Point targetPoint, SnakeBot snake, List<Point> excludePoints)
     {
+        // Calculate points we use for collision detection and gravity, then we can use it for every search
+        // Note: This doesn't include the current snake body since that will be moving as we simulate movement
+        HashSet<Point> collisionPoints = BuildCollisionPoints(snake.Id);
+        HashSet<Point> platformPoints = BuildPlatformPoints(snake.Id);
+
+        long startTime = Stopwatch.GetTimestamp();
         _debugCount = 0;
-        SnakeBot currentSnake = new SnakeBot(snake.Id)
-        {
-            Body = snake.Body.Select(p => new Point(p.X, p.Y)).ToList()
-        };
 
         Dictionary<SnakeState, Node> nodesByState = new Dictionary<SnakeState, Node>();
         PriorityQueue<Node, int> openNodes = new PriorityQueue<Node, int>();
@@ -728,40 +757,68 @@ internal sealed class PathFinder
         while (!targetFound)
         {
             // TODO: I need to experiment with this number.
-            // It was 20 before I added snake state
-            if (openNodeCount == 0 || nodesByState.Count > 100)
+            if (openNodeCount == 0 || nodesByState.Count > MAX_NODE_COUNT)
             {
-                Console.Error.WriteLine($"Pathfinding stopped: openNodeCount={openNodeCount}, statesExplored={nodesByState.Count}");
                 return new List<Point>();
             }
 
-            Point[] pointsToCheck = new Point[4];
+            List<Point> pointsToCheck = new List<Point>();
 
-            // Prioritise heading towards the target as the first move
-            // TODO: Does this actually speed anything up? Check. If it does work we should order for
-            // prioritising up and down
-            if (Math.Abs(currentNode.Position.X - targetPoint.X) >= Math.Abs(currentNode.Position.Y - targetPoint.Y))
+            if (currentNode.Position.X + 1 <= _game.Width)
             {
-                pointsToCheck[0] = new Point(Math.Min(_game.Width, currentNode.Position.X + 1), currentNode.Position.Y);
-                pointsToCheck[1] = new Point(Math.Max(-1, currentNode.Position.X - 1), currentNode.Position.Y);
-                pointsToCheck[2] = new Point(currentNode.Position.X, Math.Min(_game.Height, currentNode.Position.Y + 1));
-                pointsToCheck[3] = new Point(currentNode.Position.X, Math.Max(-1, currentNode.Position.Y - 1));
+                pointsToCheck.Add(new Point(currentNode.Position.X + 1, currentNode.Position.Y));
             }
-            else
+            
+            if (currentNode.Position.X - 1 >= -1)
             {
-                pointsToCheck[0] = new Point(currentNode.Position.X, Math.Min(_game.Height, currentNode.Position.Y + 1));
-                pointsToCheck[1] = new Point(currentNode.Position.X, Math.Max(-1, currentNode.Position.Y - 1));
-                pointsToCheck[2] = new Point(Math.Min(_game.Width, currentNode.Position.X + 1), currentNode.Position.Y);
-                pointsToCheck[3] = new Point(Math.Max(-1, currentNode.Position.X - 1), currentNode.Position.Y);
+                pointsToCheck.Add(new Point(currentNode.Position.X - 1, currentNode.Position.Y));
             }
 
+            if (currentNode.Position.Y + 1 <= _game.Height)
+            {
+                pointsToCheck.Add(new Point(currentNode.Position.X, currentNode.Position.Y + 1));
+            }
+
+            if (currentNode.Position.Y - 1 >= -1)
+            {
+                pointsToCheck.Add(new Point(currentNode.Position.X, currentNode.Position.Y - 1));
+            }
+
+            if(pointsToCheck.Count == 0)
+            {
+                Console.Error.WriteLine("ERROR: No points to check from current node");
+            }
+
+            // log points to check
             foreach (Point pointToCheck in pointsToCheck)
             {
+                // If pointToCheck is the same as the current point skip it
+                if (pointToCheck == currentNode.Position)
+                {
+                    continue;
+                }
+
                 // If we are expanding the start node, ignore the excludePoints
                 if (currentNode.Parent == null && excludePoints.Contains(pointToCheck))
                 {
                     continue;
                 }
+
+                // We can check the majority of collisions before simulating snake movement, which is expensive.
+                // We only need to simulate the movement if the point is not an immediate collision.
+
+                bool isValidMove =
+                    pointToCheck == targetPoint
+                    || (!collisionPoints.Contains(pointToCheck)
+                        && !IsSelfCollision(pointToCheck, currentNode.SnakeBodyAtNode, checkHead: true, checkTail: false));
+
+
+                if (!isValidMove)
+                {
+                    continue;
+                }
+
+                isValidMove = true;
 
                 // Simulate snake movement to this position
                 List<Point> snakeBodyAfterMove = SimulateSnakeMovement(
@@ -769,10 +826,14 @@ internal sealed class PathFinder
                     currentNode.Position,
                     pointToCheck);
 
+                // TODO: We can check most of the below before simulating snake movement. 
+                // We can opt out before it on everything except current snake checks.
                 // Check if the move is valid. If it's not we don't want to continue
-                bool isValidMove = pointToCheck == startPoint
-                    || pointToCheck == targetPoint
-                    || !IsPlatform(pointToCheck, snake, currentSnake);
+
+                // TODO Check if entire snake is out of wider map bounds
+                isValidMove =
+                    !IsSelfCollision(pointToCheck, snakeBodyAfterMove, checkHead: false, checkTail: true)
+                    && !IsFullyOutOfBounds(snakeBodyAfterMove);
 
                 if (!isValidMove)
                 {
@@ -783,7 +844,7 @@ internal sealed class PathFinder
                 // (reaching the target means eating a power-up, gravity doesn't apply mid-eating)
                 if (pointToCheck != targetPoint)
                 {
-                    snakeBodyAfterMove = ApplyGravity(snakeBodyAfterMove, currentSnake.Id);
+                    snakeBodyAfterMove = ApplyGravity(snakeBodyAfterMove, platformPoints);
                 }
 
                 // IMPORTANT: After gravity, the head position may have changed!
@@ -883,31 +944,125 @@ internal sealed class PathFinder
 
         Console.Error.WriteLine($"shortestPath: {string.Join(" -> ", shortestPath.Select(p => $"({p.X},{p.Y})"))}");
 
+        TimeSpan elapsedTime = Stopwatch.GetElapsedTime(startTime);
+        Console.Error.WriteLine($"Pathfinding completed in {elapsedTime.TotalMilliseconds} ms, states explored: {nodesByState.Count}, debugCount: {_debugCount}");
         return shortestPath;
     }
 
-    private List<Point> ApplyGravity(List<Point> snakeBody, int id)
+    private bool IsFullyOutOfBounds(List<Point> snakeBodyAfterMove)
     {
+        foreach (var bodyPart in snakeBodyAfterMove)
+        {
+            if (!_positionChecker.IsOutOfMapBounds(bodyPart))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private HashSet<Point> BuildPlatformPoints(int excludeSnakeId)
+    {
+        HashSet<Point> collisionPoints = new HashSet<Point>();
+
+        foreach (var snake in _game.MySnakeBots)
+        {
+            if (snake.Id == excludeSnakeId)
+            {
+                continue;
+            }
+            foreach (var bodyPart in snake.Body)
+            {
+                collisionPoints.Add(bodyPart);
+            }
+        }
+
+        foreach (var snake in _game.OpponentSnakeBots)
+        {
+            foreach (var bodyPart in snake.Body)
+            {
+                collisionPoints.Add(bodyPart);
+            }
+        }
+
+        foreach (var platform in _game.GetAllPlatformPositions())
+        {
+            collisionPoints.Add(platform);
+        }
+
+        foreach (var powerUp in _game.GetPowerUps())
+        {
+            collisionPoints.Add(powerUp);
+        }
+
+        return collisionPoints;
+    }
+
+    private HashSet<Point> BuildCollisionPoints(int excludeSnakeId)
+    {
+        HashSet<Point> collisionPoints = new HashSet<Point>();
+
+        foreach (var snake in _game.MySnakeBots)
+        {
+            if (snake.Id == excludeSnakeId)
+            {
+                continue;
+            }
+            foreach (var bodyPart in snake.Body)
+            {
+                collisionPoints.Add(bodyPart);
+            }
+        }
+
+        foreach (var snake in _game.OpponentSnakeBots)
+        {
+            foreach (var bodyPart in snake.Body)
+            {
+                collisionPoints.Add(bodyPart);
+            }
+        }
+
+        foreach (var platform in _game.GetAllPlatformPositions())
+        {
+            collisionPoints.Add(platform);
+        }
+        
+        return collisionPoints;
+    }
+
+    private List<Point> ApplyGravity(List<Point> snakeBody, HashSet<Point> platformPoints)
+    {
+        int count = 0;
         bool canMoveDown = true;
         while (canMoveDown)
         {
-            // Check if we can move down
-            if (snakeBody.Any(
-                p => p.Y + 1 >= _game.Height
-                || _positionChecker.IsPlatform(new Point(p.X, p.Y + 1))
-                || _game.MySnakeBots.Any(s => s.Body.Any(bp => bp.X == p.X && bp.Y == p.Y + 1 && s.Id != id))
-                || _game.OpponentSnakeBots.Any(s => s.Body.Any(bp => bp.X == p.X && bp.Y == p.Y + 1 && s.Id != id))
-                || _game.GetPowerUps().Any(pu => pu.X == p.X && pu.Y == p.Y + 1)))
+            foreach (var bodyPart in snakeBody)
             {
-                canMoveDown = false;
+                Point bodyCheckPoint = new Point(bodyPart.X, bodyPart.Y + 1);
+
+                if (platformPoints.Contains(bodyCheckPoint))
+                {
+                    canMoveDown = false;
+                    break;
+                }
             }
-            else
+
+            if (canMoveDown)
             {
                 // Move the snake down by one
                 for (int i = 0; i < snakeBody.Count; ++i)
                 {
                     snakeBody[i] = new Point(snakeBody[i].X, snakeBody[i].Y + 1);
                 }
+            }
+
+            count++;
+            if (count > 20)
+            {
+                Console.Error.WriteLine($"Gravity count: {count}");
+
+                // log the whole snake position
+                Console.Error.WriteLine($"Snake body: {string.Join(";", snakeBody.Select(p => $"({p.X},{p.Y})"))}");
             }
         }
 
@@ -932,24 +1087,18 @@ internal sealed class PathFinder
         return newBody;
     }
 
-    private bool IsPlatform(Point pointToCheck, SnakeBot excludeSnake, SnakeBot currentSnake)
+    private bool IsSelfCollision(Point pointToCheck, List<Point> snakeBodyPoints, bool checkHead, bool checkTail)
     {
-        if (_positionChecker.IsPlatform(pointToCheck))
-        {
-            return true;
-        }
+        int startPoint = checkHead ? 0 : 1;
+        int endPoint = checkTail ? snakeBodyPoints.Count - 1  : snakeBodyPoints.Count - 2;
 
-
-        // Check all snakes except the current one
-        if (_positionChecker.IsSnakePart(pointToCheck, countTails: true, excludeSnake: excludeSnake))
+        // Check the current snake body, skipping the head and tail
+        for (int i = startPoint; i <= endPoint; i++)
         {
-            return true; 
-        }
-
-        // Check the current snake
-        if (_positionChecker.IsSnakePart(currentSnake, pointToCheck, countTails: false))
-        {
-            return true;
+            if (snakeBodyPoints[i] == pointToCheck)
+            {
+                return true;
+            }
         }
 
         return false;
@@ -994,8 +1143,6 @@ internal class Player
             int oppSnakebotId = int.Parse(Console.ReadLine());
             game.AddOpponentSnake(new SnakeBot(oppSnakebotId));
         }
-
-        Logger.Platforms(platforms);
 
         // game loop
         while (true)
@@ -1064,7 +1211,7 @@ internal sealed class PositionChecker
         _level = level;
     }
 
-    internal bool IsOutOfBounds(Point pointToCheck)
+    internal bool IsOutOfMapBounds(Point pointToCheck)
     {
         if (pointToCheck.X < 0 || pointToCheck.X >= _game.Width || pointToCheck.Y < 0 || pointToCheck.Y >= _game.Height)
         {
@@ -1101,7 +1248,7 @@ internal sealed class PositionChecker
                     && adjacentPoint.Y >= 0
                     && adjacentPoint.Y < _game.Height
                     && !IsPlatform(adjacentPoint)
-                    && !IsSnakePart(adjacentPoint, countTails: true, null)
+                    && !IsPointInAnySnake(adjacentPoint, countTails: true)
                     && !visited.Contains(adjacentPoint))
                 {
                     queue.Enqueue(adjacentPoint);
@@ -1125,7 +1272,7 @@ internal sealed class PositionChecker
 
     internal bool IsPlatform(Point pointToCheck)
     {
-        if (IsOutOfBounds(pointToCheck))
+        if (IsOutOfMapBounds(pointToCheck))
         {
             return false;
         }
@@ -1138,16 +1285,16 @@ internal sealed class PositionChecker
         return false;
     }
 
-    internal bool IsSnakePart(Point pointToCheck, bool countTails, SnakeBot? excludeSnake)
+    internal bool IsPointInAnySnake(Point pointToCheck, bool countTails, int excludeSnakeId=-1)
     {
         foreach (var snakeBot in _game.MySnakeBots)
         {
-            if (excludeSnake != null && snakeBot == excludeSnake)
+            if (excludeSnakeId > 0 && snakeBot.Id == excludeSnakeId)
             {
                 continue;
             }
 
-            if (IsSnakePart(snakeBot, pointToCheck, countTails))
+            if (IsPointInGivenSnake(snakeBot.Body, pointToCheck, countTails))
             {
                 return true;
             }
@@ -1157,7 +1304,7 @@ internal sealed class PositionChecker
         {
             if (snakeBot.Body.Contains(pointToCheck))
             {
-                if (IsSnakePart(snakeBot, pointToCheck, countTails))
+                if (IsPointInGivenSnake(snakeBot.Body, pointToCheck, countTails))
                 {
                     return true;
                 }
@@ -1167,13 +1314,13 @@ internal sealed class PositionChecker
         return false;
     }
 
-    internal bool IsSnakePart(SnakeBot snakeBot, Point pointToCheck, bool countTails)
+    internal bool IsPointInGivenSnake(List<Point> snakeBody, Point pointToCheck, bool countTails)
     {
-        if (snakeBot.Body.Contains(pointToCheck))
+        if (snakeBody.Contains(pointToCheck))
         {
             if (!countTails)
             {
-                if (snakeBot.Body[snakeBot.Body.Count - 1] == pointToCheck)
+                if (snakeBody[snakeBody.Count - 1] == pointToCheck)
                 {
                     return false;
                 }

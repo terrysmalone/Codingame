@@ -10,6 +10,12 @@ It should move to it in most cases, but it can't if the snake is going to grow.
 
 # Levels
 
+If I play as both I see numerous issues. 
+1. I often go for a further away one while passing through another. 
+2. I change my mind as it moves me to another
+3. I can just go down to get a snake but I don't.
+seed=-4177556490613841400
+
 At move 8 I have an avoidable collission
 
 seed=-3844532163469018000

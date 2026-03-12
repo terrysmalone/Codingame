@@ -46,8 +46,6 @@ internal class Player
             game.AddOpponentSnake(new SnakeBot(oppSnakebotId));
         }
 
-        Logger.Platforms(platforms);
-
         // game loop
         while (true)
         {

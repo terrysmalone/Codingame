@@ -13,7 +13,7 @@ internal sealed class PositionChecker
         _level = level;
     }
 
-    internal bool IsOutOfBounds(Point pointToCheck)
+    internal bool IsOutOfMapBounds(Point pointToCheck)
     {
         if (pointToCheck.X < 0 || pointToCheck.X >= _game.Width || pointToCheck.Y < 0 || pointToCheck.Y >= _game.Height)
         {
@@ -50,7 +50,7 @@ internal sealed class PositionChecker
                     && adjacentPoint.Y >= 0
                     && adjacentPoint.Y < _game.Height
                     && !IsPlatform(adjacentPoint)
-                    && !IsSnakePart(adjacentPoint, countTails: true, null)
+                    && !IsPointInAnySnake(adjacentPoint, countTails: true)
                     && !visited.Contains(adjacentPoint))
                 {
                     queue.Enqueue(adjacentPoint);
@@ -74,7 +74,7 @@ internal sealed class PositionChecker
 
     internal bool IsPlatform(Point pointToCheck)
     {
-        if (IsOutOfBounds(pointToCheck))
+        if (IsOutOfMapBounds(pointToCheck))
         {
             return false;
         }
@@ -87,16 +87,16 @@ internal sealed class PositionChecker
         return false;
     }
 
-    internal bool IsSnakePart(Point pointToCheck, bool countTails, SnakeBot? excludeSnake)
+    internal bool IsPointInAnySnake(Point pointToCheck, bool countTails, int excludeSnakeId=-1)
     {
         foreach (var snakeBot in _game.MySnakeBots)
         {
-            if (excludeSnake != null && snakeBot == excludeSnake)
+            if (excludeSnakeId > 0 && snakeBot.Id == excludeSnakeId)
             {
                 continue;
             }
 
-            if (IsSnakePart(snakeBot, pointToCheck, countTails))
+            if (IsPointInGivenSnake(snakeBot.Body, pointToCheck, countTails))
             {
                 return true;
             }
@@ -106,7 +106,7 @@ internal sealed class PositionChecker
         {
             if (snakeBot.Body.Contains(pointToCheck))
             {
-                if (IsSnakePart(snakeBot, pointToCheck, countTails))
+                if (IsPointInGivenSnake(snakeBot.Body, pointToCheck, countTails))
                 {
                     return true;
                 }
@@ -116,13 +116,13 @@ internal sealed class PositionChecker
         return false;
     }
 
-    internal bool IsSnakePart(SnakeBot snakeBot, Point pointToCheck, bool countTails)
+    internal bool IsPointInGivenSnake(List<Point> snakeBody, Point pointToCheck, bool countTails)
     {
-        if (snakeBot.Body.Contains(pointToCheck))
+        if (snakeBody.Contains(pointToCheck))
         {
             if (!countTails)
             {
-                if (snakeBot.Body[snakeBot.Body.Count - 1] == pointToCheck)
+                if (snakeBody[snakeBody.Count - 1] == pointToCheck)
                 {
                     return false;
                 }

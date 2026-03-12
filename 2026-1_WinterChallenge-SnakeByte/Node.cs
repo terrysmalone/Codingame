@@ -5,8 +5,9 @@ namespace _2026_1_WinterChallenge_SnakeByte;
 internal sealed class Node
 {
     public Point Position { get; set; }
+    public Point IntendedMove { get; set; }
 
-    public Point? Parent { get; set; }
+    public Node? Parent { get; set; }
 
     public int G { get; set; }
     public int H { get; set; }

@@ -105,7 +105,7 @@ internal class Game
 
         foreach (var snakeBot in MySnakeBots)
         {
-            Console.Error.WriteLine($"Getting action for snakeBot {snakeBot.Id} with head at {snakeBot.Body[0].X},{snakeBot.Body[0].Y}");
+            Console.Error.WriteLine($"SnakeBot: {snakeBot.Id}. Position:{snakeBot.Body[0].X},{snakeBot.Body[0].Y}");
             // TODO: CHeck for chance toi destroy an opponent snake and do that if possible
 
             List<Point> bestPathToPower = GetBestPathToPowerSource(snakeBot);            

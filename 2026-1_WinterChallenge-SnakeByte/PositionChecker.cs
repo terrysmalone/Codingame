@@ -45,9 +45,9 @@ internal sealed class PositionChecker
 
             foreach (var adjacentPoint in adjacentPoints)
             {
-                if (adjacentPoint.X >= 0
-                    && adjacentPoint.X < _game.Width
-                    && adjacentPoint.Y >= 0
+                if (adjacentPoint.X >= -1
+                    && adjacentPoint.X <= _game.Width
+                    && adjacentPoint.Y >= -1
                     && adjacentPoint.Y < _game.Height
                     && !IsPlatform(adjacentPoint)
                     && !IsPointInAnySnake(adjacentPoint, countTails: true)

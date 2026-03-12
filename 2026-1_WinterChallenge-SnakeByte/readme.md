@@ -8,26 +8,13 @@ At some point, I'll want the pathfinder to be sensible about whether it counts a
 It should move to it in most cases, but it can't if the snake is going to grow.
 
 
-On seed=-4177556490613841400 at around move 17 I don't eat a power up when I could, even though it's safe. THis is because IsBlocking thinks it's not. 
-I need a more sensible HasEscapeRoute method.
+Implement attacking, especially when I don't have a power up to follow and I'm bigger. The below gives a good example of it at
+around move 18. 
 
+seed=1185552052233567700
+player 1: ziemekb player 2: me - last battle in arena: 67
 
 
 # Levels
 
-If I play as both I see numerous issues. 
-1. I often go for a further away one while passing through another. 
-2. I change my mind as it moves me to another
-3. I can just go down to get a snake but I don't.
-seed=-4177556490613841400
-
-At move 8 I have an avoidable collission
-
-seed=-3844532163469018000
-
-Snakebot 0 should 100% be able to reach the power up at 9,7 from move 7 onwards but it doesn't
-
-seed=7163216027620687000
-
-Player 1: me in IDE - Player 2: Me in arena
 

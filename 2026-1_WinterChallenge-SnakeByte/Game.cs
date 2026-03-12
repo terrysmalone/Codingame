@@ -138,13 +138,54 @@ internal class Game
             Console.Error.WriteLine($"SnakeBot: {snakeBot.Id}. Position:{snakeBot.Body[0].X},{snakeBot.Body[0].Y}");
             // TODO: CHeck for chance toi destroy an opponent snake and do that if possible
 
-            List<Point> bestPathToPower = GetBestPathToPowerSource(snakeBot);            
+            HashSet<Point> excludePoints = new HashSet<Point>();
+            
+            // If any surrounding points are in danger of the enemy attacking them add to exclude points
+            var possibleMoves = new List<Point>()
+            {
+                new Point(snakeBot.Body[0].X + 1, snakeBot.Body[0].Y),
+                new Point(snakeBot.Body[0].X - 1, snakeBot.Body[0].Y),
+                new Point(snakeBot.Body[0].X, snakeBot.Body[0].Y + 1),
+                new Point(snakeBot.Body[0].X, snakeBot.Body[0].Y - 1)
+            };
+
+            foreach (var possibleMove in possibleMoves)
+            {
+                // exclude a move if it seems to be in danger of being attacked by an enemy snake on their next turn
+                (bool useMove, bool excludeMove) = CheckForHeadClash(possibleMove, snakeBot);
+                Console.Error.WriteLine($"Checking move to {possibleMove.X},{possibleMove.Y} for head clash. Use move: {useMove}, Exclude move: {excludeMove}");
+                if (useMove)
+                {
+                    actions.Add($"{snakeBot.Id} {DirectionHelper.GetDirection(snakeBot.Body[0], possibleMove)} attack");
+                    snakeBot.AddMove(possibleMove);
+                    actions.Add($"MARK {possibleMove.X} {possibleMove.Y}");
+                    _movesThisTurn.Add(possibleMove);
+                    continue;
+                }
+
+                if (excludeMove)
+                {
+                    excludePoints.Add(possibleMove);
+                }
+                // exclude a move if it seems immediately blocking
+                else if (_positionChecker.IsBlocking(possibleMove, snakeBot))
+                {
+                    excludePoints.Add(possibleMove);
+                }
+            }
+
+            if (snakeBot.IsStuck())
+            {
+                excludePoints.Add(snakeBot.GetLastMove());
+            }
+
+            List<Point> bestPathToPower = GetBestPathToPowerSource(snakeBot, excludePoints);            
 
             if (bestPathToPower.Count != 0)
             {
                 string direction = DirectionHelper.GetDirection(snakeBot.Body[0], bestPathToPower[0]);
 
-                actions.Add($"{snakeBot.Id} {direction} CHASING POWER");
+                actions.Add($"{snakeBot.Id} {direction} power");
                 actions.Add($"MARK {bestPathToPower[bestPathToPower.Count-1].X} {bestPathToPower[bestPathToPower.Count - 1].Y}");
                 snakeBot.AddMove(bestPathToPower[0]);
                 _movesThisTurn.Add(bestPathToPower[0]);
@@ -154,7 +195,7 @@ internal class Game
             {
                 string direction = GetValidDirection(snakeBot);
 
-                actions.Add($"{snakeBot.Id} {direction} WANDERING");
+                actions.Add($"{snakeBot.Id} {direction} wander");
                 snakeBot.AddMove(DirectionHelper.GetNewPosition(snakeBot.Body[0], direction));
                 _movesThisTurn.Add(DirectionHelper.GetNewPosition(snakeBot.Body[0], direction));
             }
@@ -165,7 +206,7 @@ internal class Game
         return actions;
     }
 
-    private List<Point> GetBestPathToPowerSource(SnakeBot snakeBot)
+    private List<Point> GetBestPathToPowerSource(SnakeBot snakeBot, HashSet<Point> excludePoints)
     {
         int shortestPathCount = int.MaxValue;
         var shortestPathPoints = new List<Point>();
@@ -176,7 +217,7 @@ internal class Game
 
         while (stopLooking == false)
         {
-            (List<Point> path, bool triedSomething) = GetShortestPath(snakeBot, Math.Min(shortestPathCount - 1, maxDistance));
+            (List<Point> path, bool triedSomething) = GetShortestPath(snakeBot, Math.Min(shortestPathCount - 1, maxDistance), excludePoints);
 
             if (path.Count > 0)
             {
@@ -210,7 +251,6 @@ internal class Game
 
         List<string> possibleDirections = nearestPowerSource.X > snakeBot.Body[0].X ? new List<string>() { "RIGHT", "UP", "DOWN", "LEFT" } 
                                                                                     : new List<string>() { "LEFT", "UP", "DOWN", "RIGHT" };
-
 
         // First, remove the hard no's
         RemoveAllHardNos(possibleDirections, snakeBot);
@@ -333,7 +373,12 @@ internal class Game
             for (int i = possibleDirections.Count - 1; i >= 0; i--)
             {
                 Point newHeadPosition = DirectionHelper.GetNewPosition(snakeBot.Body[0], possibleDirections[i]);
-                if (IsInHeadDanger(newHeadPosition, snakeBot))
+                
+                // We don't have to worry about using the move here, since we check it as part
+                // of the pathfinding move
+                (_, var excludeMove) = CheckForHeadClash(newHeadPosition, snakeBot);
+                
+                if (excludeMove)
                 {
                     possibleDirections.Remove(possibleDirections[i]);
                 }
@@ -357,29 +402,96 @@ internal class Game
         }
     }
 
-    private bool IsInHeadDanger(Point newHeadPosition, SnakeBot snakeBot)
+    private (bool useMove, bool excludeMove) CheckForHeadClash(Point newHeadPosition, SnakeBot snakeBot)
     {
-        // If an enemy snake's head could move to the new head position on their next turn remove it if their body is equal to or bigger than ours
+        // If an enemy snake's head could move to the new head position decide how to deal with it
+        // 
+        // If there is a power up on that spot
+        //    If their snake is smaller than mine, it's not a problem
+        //    If the snakes are the same, it's not a problem as we would both die and take each other out
+        //    If my snake is smaller than theirs
+        //       If my snake will die, let them have it
+        //       Else go for it, we don't want to give them an extra point
+        // If there is not a power up on that spot
+        //    If their snake is smaller than mine, it's not a problem
+        //    If the snakes are the same, it's neutral but we probably want to avoid it as we could easily get unlucky and lose
+        //    If my snake is smaller than theirs, it's a problem, avoid it
+
+        bool headClash = false;
+
+        // Track the size of the biggest snake. That's the one that matters
+        // TODO: Technically, there's can be more advantage in clashing with
+        // multiple snakes, since I can theoretically destroy multiple snakes
+        // at once if I'm bigger than them
+        int clashingSnakeSize = 0;
+
         foreach (var opponentSnake in OpponentSnakeBots)
         {
-            if (opponentSnake.Body.Count >= snakeBot.Body.Count)
+            var possibleHeadMoves = new List<Point>()
             {
-                var possibleHeadMoves = new List<Point>()
-                {
-                    new Point(opponentSnake.Body[0].X + 1, opponentSnake.Body[0].Y),
-                    new Point(opponentSnake.Body[0].X - 1, opponentSnake.Body[0].Y),
-                    new Point(opponentSnake.Body[0].X, opponentSnake.Body[0].Y + 1),
-                    new Point(opponentSnake.Body[0].X, opponentSnake.Body[0].Y - 1)
-                };
+                new Point(opponentSnake.Body[0].X + 1, opponentSnake.Body[0].Y),
+                new Point(opponentSnake.Body[0].X - 1, opponentSnake.Body[0].Y),
+                new Point(opponentSnake.Body[0].X, opponentSnake.Body[0].Y + 1),
+                new Point(opponentSnake.Body[0].X, opponentSnake.Body[0].Y - 1)
+            };
 
-                if (possibleHeadMoves.Contains(newHeadPosition))
+            // Exclude any points that are not valid moves. I don't want to count them as head clashes
+            for (int i = 3; i >= 0; i--)
+            {
+                Point possibleMove = possibleHeadMoves[i];
+                if (possibleMove.X < -1
+                    || possibleMove.X > Width
+                    || possibleMove.Y < -1
+                    || possibleMove.Y > Height
+                    || _positionChecker.IsPlatform(possibleMove)
+                    || _positionChecker.IsPointInAnySnake(possibleMove, countTails: false))
                 {
-                    return true;
+                    possibleHeadMoves.RemoveAt(i);
+                }
+            }
+
+            if (possibleHeadMoves.Contains(newHeadPosition))
+            {
+                headClash = true;
+                if (opponentSnake.Body.Count > clashingSnakeSize)
+                {
+                    clashingSnakeSize = opponentSnake.Body.Count;
                 }
             }
         }
 
-        return false;
+        if (!headClash)
+        {
+            return (useMove: false, excludeMove: false);
+        }
+
+        bool powerUpOnSpot = _level.PowerSources.Contains(newHeadPosition);
+
+        if (powerUpOnSpot)
+        {// If there is a power up the only reason not to take it is if the enemy snake is bigger
+         // and they can destroy me on their next turn. 
+            if (snakeBot.Body.Count < clashingSnakeSize && snakeBot.Body.Count <= 3)
+            {
+                return (useMove: false, excludeMove: true);
+            }
+            else
+            {
+                return (useMove: true, excludeMove: true);
+            }
+        }
+        else
+        {
+            // TODO: At some point we'll want to split out more than and equal to, since more than
+            // should score way higher
+            if (snakeBot.Body.Count >= clashingSnakeSize)
+            {
+                return (useMove: true, excludeMove: false);
+            }
+            else
+            {
+                return (useMove: false, excludeMove: true);
+            }
+        }
     }
 
     private Point GetNearestPowerSource(SnakeBot snakeBot)
@@ -400,42 +512,12 @@ internal class Game
         return nearestPowerSource;
     }
 
-    private (List<Point>, bool) GetShortestPath(SnakeBot snakeBot, int maxDistance)
+    private (List<Point>, bool) GetShortestPath(SnakeBot snakeBot, int maxDistance, HashSet<Point> excludePoints)
     {
         bool triedSomething = false;
         int shortestPathCount = int.MaxValue;
         int shortestManhattanDistanceCount = int.MaxValue;
         var shortestPathPoints = new List<Point>();
-
-        List<Point> excludePoints = new List<Point>();
-        if (snakeBot.IsStuck())
-        {
-            excludePoints.Add(snakeBot.GetLastMove());
-        }
-
-        // If any surrounding points are in danger of the enemy attacking them add to exclude points
-        var possibleMoves = new List<Point>()
-        {
-            new Point(snakeBot.Body[0].X + 1, snakeBot.Body[0].Y),
-            new Point(snakeBot.Body[0].X - 1, snakeBot.Body[0].Y),
-            new Point(snakeBot.Body[0].X, snakeBot.Body[0].Y + 1),
-            new Point(snakeBot.Body[0].X, snakeBot.Body[0].Y - 1)
-        };
-       
-        foreach (var possibleMove in possibleMoves)
-        {
-            // exclude a move if it seems to be in danger of being attacked by an enemy snake on their next turn
-            if (IsInHeadDanger(possibleMove, snakeBot))
-            {
-                excludePoints.Add(possibleMove);
-            }
-            // exclude a move if it seems immediately blocking
-            else if (_positionChecker.IsBlocking(possibleMove, snakeBot))
-            {
-                excludePoints.Add(possibleMove);
-            }
-        }
-
 
         foreach (Point powerSource in _level.PowerSources)
         {            

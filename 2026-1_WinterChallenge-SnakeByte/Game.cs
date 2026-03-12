@@ -443,8 +443,6 @@ internal class Game
             }
         }
         
-        Console.Error.WriteLine($"Shortest path for snakeBot {snakeBot.Id} is {string.Join(";", shortestPathPoints.Select(p => $"{p.X},{p.Y}"))} with count {shortestPathCount} and manhattan distance {shortestManhattanDistanceCount}");
-
         return (shortestPathPoints, triedSomething);
     }
 

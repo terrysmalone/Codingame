@@ -501,8 +501,6 @@ internal class Game
             }
         }
         
-        Console.Error.WriteLine($"Shortest path for snakeBot {snakeBot.Id} is {string.Join(";", shortestPathPoints.Select(p => $"{p.X},{p.Y}"))} with count {shortestPathCount} and manhattan distance {shortestManhattanDistanceCount}");
-
         return (shortestPathPoints, triedSomething);
     }
 
@@ -725,19 +723,19 @@ internal sealed class PathFinder
 
         while (!targetFound)
         {
-            if (openNodeCount == 0)
+            if (openNodeCount == 0 || nodesByPosition.Count > 20)
             {
                 return new List<Point>();
             }
 
-            if (nodesByPosition.Count > 20)
-            {
-                return new List<Point>();
-            }
+            Console.Error.WriteLine($"Iteration: {_debugCount}");
+            Console.Error.WriteLine($"Current Node: {currentNode.Position.X}, {currentNode.Position.Y}");
 
             Point[] pointsToCheck = new Point[4];
 
             // Prioritise heading towards the target as the first move
+            // TODO: Does this actually speed anything up? Check. If it does work we should order for
+            // prioritising up and down
             if (Math.Abs(currentNode.Position.X - targetPoint.X) >= Math.Abs(currentNode.Position.Y - targetPoint.Y))
             {
                 pointsToCheck[0] = new Point(Math.Min(_game.Width, currentNode.Position.X + 1), currentNode.Position.Y);
@@ -761,11 +759,24 @@ internal sealed class PathFinder
                     continue;
                 }
 
+                Console.Error.WriteLine($"pointToCheck: {pointToCheck.X}, {pointToCheck.Y}");
+
                 // Simulate snake movement to this position
                 List<Point> snakeBodyAfterMove = SimulateSnakeMovement(
                     currentNode.SnakeBodyAtNode,
                     currentNode.Position,
                     pointToCheck);
+
+                // Check if the move is valid. If it's not we don't want to continue
+                bool isValidMove = pointToCheck == startPoint
+                    || pointToCheck == targetPoint
+                    || !IsPlatform(pointToCheck, snake, currentSnake);
+
+                if (!isValidMove)
+                {
+                    Console.Error.WriteLine($"Not adding {pointToCheck.X}, {pointToCheck.Y} - invalid move");
+                    continue;
+                }
 
                 // Apply gravity to the simulated body UNLESS we're at the target
                 // (reaching the target means eating a power-up, gravity doesn't apply mid-eating)
@@ -775,7 +786,7 @@ internal sealed class PathFinder
                 }
                 else
                 {
-                    Console.Error.WriteLine($"Not applying gravity to snake body after moving to target {pointToCheck}");
+                    Console.Error.WriteLine($"Not applying gravity to snake body after moving to target {pointToCheck.X}, {pointToCheck.Y}");
                 }
 
                 // IMPORTANT: After gravity, the head position may have changed!
@@ -786,33 +797,27 @@ internal sealed class PathFinder
 
                 if (existingNode == null)
                 {
-                    // Check if the intended move is valid (before gravity)
-                    if (pointToCheck == startPoint
-                        || pointToCheck == targetPoint
-                        || !IsPlatform(pointToCheck, snake, currentSnake))
+                    // Create node at the ACTUAL position after gravity
+                    Node node = new Node(actualHeadPosition);
+                    node.Parent = currentNode.Position;
+                    node.G = currentNode.G + 1;
+                    node.H = CalculationUtil.GetManhattanDistance(actualHeadPosition, targetPoint);
+                    node.F = node.G + node.H;
+                    node.SnakeBodyAtNode = snakeBodyAfterMove;
+
+                    nodesByPosition.Add(actualHeadPosition, node);
+
+                    // Check if we've reached the target immediately
+                    if (actualHeadPosition == targetPoint)
                     {
-                        // Create node at the ACTUAL position after gravity
-                        Node node = new Node(actualHeadPosition);
-                        node.Parent = currentNode.Position;
-                        node.G = currentNode.G + 1;
-                        node.H = CalculationUtil.GetManhattanDistance(actualHeadPosition, targetPoint);
-                        node.F = node.G + node.H;
-                        node.SnakeBodyAtNode = snakeBodyAfterMove;
-
-                        nodesByPosition.Add(actualHeadPosition, node);
-
-                        // Check if we've reached the target immediately
-                        if (actualHeadPosition == targetPoint)
-                        {
-                            Console.Error.WriteLine($"Target found at {actualHeadPosition} with path length {node.G}");
-                            currentNode = node;
-                            targetFound = true;
-                            break; // Exit the foreach loop
-                        }
-
-                        openNodes.Enqueue(node, node.F);
-                        openNodeCount++;
+                        Console.Error.WriteLine($"Target found at {actualHeadPosition} with path length {node.G}");
+                        currentNode = node;
+                        targetFound = true;
+                        break; // Exit the foreach loop
                     }
+
+                    openNodes.Enqueue(node, node.F);
+                    openNodeCount++;
                 }
                 else
                 {
@@ -926,10 +931,6 @@ internal sealed class PathFinder
 
     private bool IsPlatform(Point pointToCheck, SnakeBot excludeSnake, SnakeBot currentSnake)
     {
-        // Check that it's not a platform
-
-        // Check that it's not a snakes head or body
-
         if (_positionChecker.IsPlatform(pointToCheck))
         {
             return true;

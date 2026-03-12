@@ -1,10 +1,11 @@
 # TO DO
 
-I don't like the way snakes zig zag upwards when doing "ANY MOVE"
-
-
 At some point, I'll want the pathfinder to be sensible about whether it counts a tail as something it can't move to.
 It should move to it in most cases, but it can't if the snake is going to grow.
+
+
+On seed=-4177556490613841400 at around move 17 I don't eat a power up when I could, even though it's safe. THis is because IsBlocking thinks it's not. 
+I need a more sensible HasEscapeRoute method.
 
 
 

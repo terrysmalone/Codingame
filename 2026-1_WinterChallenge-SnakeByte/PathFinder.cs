@@ -23,12 +23,15 @@ internal sealed class PathFinder
             Body = snake.Body.Select(p => new Point(p.X, p.Y)).ToList()
         };
 
-        Dictionary<Point, Node> nodesByPosition = new Dictionary<Point, Node>();
+        Dictionary<SnakeState, Node> nodesByState = new Dictionary<SnakeState, Node>();
         PriorityQueue<Node, int> openNodes = new PriorityQueue<Node, int>();
 
         Node currentNode = new Node(startPoint);
         currentNode.SnakeBodyAtNode = snake.Body.Select(p => new Point(p.X, p.Y)).ToList();
-        nodesByPosition.Add(startPoint, currentNode);
+
+        SnakeState startState = new SnakeState(startPoint, currentNode.SnakeBodyAtNode);
+
+        nodesByState.Add(startState, currentNode);
         openNodes.Enqueue(currentNode, currentNode.F);
         int openNodeCount = 1;
 
@@ -36,8 +39,11 @@ internal sealed class PathFinder
 
         while (!targetFound)
         {
-            if (openNodeCount == 0 || nodesByPosition.Count > 20)
+            // TODO: I need to experiment with this number.
+            // It was 20 before I added snake state
+            if (openNodeCount == 0 || nodesByState.Count > 100)
             {
+                Console.Error.WriteLine($"Pathfinding stopped: openNodeCount={openNodeCount}, statesExplored={nodesByState.Count}");
                 return new List<Point>();
             }
 
@@ -105,8 +111,10 @@ internal sealed class PathFinder
                 // IMPORTANT: After gravity, the head position may have changed!
                 Point actualHeadPosition = snakeBodyAfterMove[0];
 
+                SnakeState newState = new SnakeState(actualHeadPosition, snakeBodyAfterMove);
+
                 // Check if a node at this actual position already exists
-                nodesByPosition.TryGetValue(actualHeadPosition, out Node? existingNode);
+                nodesByState.TryGetValue(newState, out Node? existingNode);
 
                 if (existingNode == null)
                 {
@@ -118,7 +126,7 @@ internal sealed class PathFinder
                     node.F = node.G + node.H;
                     node.SnakeBodyAtNode = snakeBodyAfterMove;
 
-                    nodesByPosition.Add(actualHeadPosition, node);
+                    nodesByState.Add(newState, node);
 
                     // Check if we've reached the target immediately
                     if (actualHeadPosition == targetPoint)
@@ -186,7 +194,12 @@ internal sealed class PathFinder
 
         while (pathNode.Parent != null)
         {
-            Node parentNode = nodesByPosition[pathNode.Parent.Value];
+            Node? parentNode = nodesByState.Values.FirstOrDefault(n => n.Position == pathNode.Parent.Value);
+
+            if (parentNode == null)
+            {
+                break;
+            }
 
             // The move is the direction from parent's ACTUAL position to the intermediate position
             // before gravity was applied in pathNode
@@ -264,5 +277,6 @@ internal sealed class PathFinder
         }
 
         return false;
-    }    
+    }
 }
+

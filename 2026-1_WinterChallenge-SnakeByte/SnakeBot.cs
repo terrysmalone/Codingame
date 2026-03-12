@@ -16,6 +16,8 @@ internal class SnakeBot
 
     private Dictionary<Point, int> _attemptsAtPowerSources = new Dictionary<Point, int>();
 
+    private List<Plan> _plans = new List<Plan>();
+
     internal SnakeBot(int id)
     {
         Id = id;
@@ -102,6 +104,26 @@ internal class SnakeBot
     internal Dictionary<Point, int> GetAttemptsAtPowerSource()
     {
         return _attemptsAtPowerSources;
+    }
+
+    internal void AddPlan(Plan plan)
+    {
+        _plans.Add(plan);
+    }
+
+    internal void ClearAllPlans()
+    {
+        _plans.Clear();
+    }
+
+    internal void RemovePlan(Plan plan)
+    {
+        _plans.Remove(plan);
+    }
+
+    internal List<Plan> GetPlans()
+    {
+        return _plans;
     }
 }
 

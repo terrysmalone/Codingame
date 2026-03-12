@@ -1,3 +1,7 @@
+
+# Changes since last Test in Arena
+* I added a check to IsBlocking that excludes the current snakes tail. This was so that if there was an escape route via the tail I could use that
+
 # TO DO
 
 At some point, I'll want the pathfinder to be sensible about whether it counts a tail as something it can't move to.

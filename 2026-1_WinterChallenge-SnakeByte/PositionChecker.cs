@@ -50,7 +50,8 @@ internal sealed class PositionChecker
                     && adjacentPoint.Y >= -1
                     && adjacentPoint.Y < _game.Height
                     && !IsPlatform(adjacentPoint)
-                    && !IsPointInAnySnake(adjacentPoint, countTails: true)
+                    && !IsPointInAnySnake(adjacentPoint, countTails: true, excludeSnakeId: snakeBot.Id)
+                    && !IsPointInGivenSnake(snakeBot.Body, adjacentPoint, countTails: false)
                     && !visited.Contains(adjacentPoint))
                 {
                     queue.Enqueue(adjacentPoint);

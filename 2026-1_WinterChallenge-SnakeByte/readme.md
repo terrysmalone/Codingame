@@ -1,15 +1,12 @@
+# TO DO
+
+* I don't like the way snakes zig zag upwards when doing "ANY MOVE"
+
 # Levels
 
-On move 35 two bots crash into each other. That shouldn't ever happen
-seed=1462816658135702000
-Player 1 me IDE - player 2 me arena
+Snakebot 0 should 100% be able to reach the power up at 9,7 from move 7 onwards but it doesn't
 
-At the start he wanders off the map....
-seed=4206247946450940000
-Player 1 me IDE - player 2 me arena
+seed=7163216027620687000
 
-I should be able to go off the ege at move 33
-seed=7357066182987978000
-
-
+Player 1: me in IDE - Player 2: Me in arena
 

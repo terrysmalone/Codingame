@@ -1,6 +1,10 @@
+# Current Submission
 
-# Changes since last Test in Arena
-* I added a check to IsBlocking that excludes the current snakes tail. This was so that if there was an escape route via the tail I could use that
+## Commit in Arena
+
+35e497605bacc59114856d45629e223bcaa7dcd8
+
+## Changes since last Test in Arena
 
 # TO DO
 

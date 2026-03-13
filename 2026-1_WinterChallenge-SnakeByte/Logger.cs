@@ -1,9 +1,15 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
 
 namespace _2026_1_WinterChallenge_SnakeByte;
 
 internal static class Logger    
 {
+    private static bool DISABLE_LOGGING = false;
+    private static bool DISABLE_TIMES = false;
+
     private static long _roundStartTime;
 
     private static char _platformChar = '#';
@@ -16,8 +22,22 @@ internal static class Logger
     private static char _opponentSnakeHeadChar = 'X';
     private static char _opponentSnakeBodyChar = 'x';
 
+    internal static void Message(string message)
+    {
+        if (DISABLE_LOGGING)
+        {
+            return;
+        }
+
+        Console.Error.WriteLine(message);
+    }
     internal static void Snakes(string debugMessage, List<SnakeBot> snakeBots)
     {
+        if (DISABLE_LOGGING)
+        {
+            return;
+        }
+
         Console.Error.WriteLine(debugMessage);
         Console.Error.WriteLine("-----------");
         foreach (var snakeBot in snakeBots)
@@ -28,11 +48,21 @@ internal static class Logger
 
     internal static void Snake(SnakeBot snakeBot)
     {
+        if (DISABLE_LOGGING)
+        {
+            return;
+        }
+
         Console.Error.WriteLine($"SnakeBot {snakeBot.Id}: {string.Join(";", snakeBot.Body.Select(p => $"{p.X},{p.Y}"))}");
     }
 
     internal static void Platforms(bool[,] platforms)
     {
+        if (DISABLE_LOGGING)
+        {
+            return;
+        }
+
         Console.Error.WriteLine("Platforms:");
         for (int y = 0; y < platforms.GetLength(0); y++)
         {
@@ -53,6 +83,11 @@ internal static class Logger
 
     internal static void EntireGame(bool[,] platforms, List<SnakeBot> mySnakeBots, List<SnakeBot> opponentSnakeBots, List<System.Drawing.Point> powerSources)
     {
+        if (DISABLE_LOGGING)
+        {
+            return;
+        }
+
         Console.Error.WriteLine("Platforms:");
         for (int y = 0; y < platforms.GetLength(0); y++)
         {
@@ -140,11 +175,19 @@ internal static class Logger
 
     internal static void StartRoundStopwatch()
     {
+        if (DISABLE_TIMES)
+        {
+            return;
+        }
         _roundStartTime = Stopwatch.GetTimestamp();
     }
 
     internal static void LogTime(string message)
     {
+        if (DISABLE_TIMES)
+        {
+            return;
+        }
         TimeSpan elapsedTime = Stopwatch.GetElapsedTime(_roundStartTime);
         Console.Error.WriteLine($"{elapsedTime.TotalMilliseconds}: {message}");
     }

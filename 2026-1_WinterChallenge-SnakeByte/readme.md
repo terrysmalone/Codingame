@@ -6,6 +6,8 @@
 
 ## Changes since last Test in Arena
 
+- Fixed bug where bot would keep searching after finding a head clash move 9b354cec8a958379aa503a87e6179481ba81581e
+
 # TO DO
 
 At some point, I'll want the pathfinder to be sensible about whether it counts a tail as something it can't move to.

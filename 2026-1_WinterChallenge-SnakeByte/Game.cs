@@ -1,4 +1,7 @@
-﻿using System.Drawing;
+﻿using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.Linq;
 using System.Reflection.Metadata.Ecma335;
 using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
@@ -137,7 +140,7 @@ internal class Game
         {
             var foundMove = false;
 
-            Console.Error.WriteLine($"SnakeBot: {snakeBot.Id}. Position:{snakeBot.Body[0].X},{snakeBot.Body[0].Y}");
+            Logger.LogTime($"STARTING FOR SNAKEBOT {snakeBot.Id}. Position:{snakeBot.Body[0].X},{snakeBot.Body[0].Y}");
             // TODO: CHeck for chance toi destroy an opponent snake and do that if possible
 
             HashSet<Point> excludePoints = new HashSet<Point>();
@@ -548,8 +551,6 @@ internal class Game
                 snakeBot.ClearAttemptsAtPowerSource(powerSource);
                 continue;                
             }
-
-            Console.Error.WriteLine($"Checking path to power source at {powerSource.X},{powerSource.Y} for snakeBot {snakeBot.Id}");
 
             snakeBot.AddAttemptAtPowerSource(powerSource);
              

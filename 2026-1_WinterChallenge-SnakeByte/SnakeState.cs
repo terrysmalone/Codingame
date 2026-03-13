@@ -1,4 +1,6 @@
-﻿using System.Drawing;
+﻿using System;
+using System.Collections.Generic;
+using System.Drawing;
 
 namespace _2026_1_WinterChallenge_SnakeByte;
 

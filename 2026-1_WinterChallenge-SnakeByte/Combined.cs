@@ -4,17 +4,18 @@
 ***************************************************************/
 
 using System.Drawing;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Reflection.Metadata.Ecma335;
 using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
 using System.Xml.Linq;
 using System.Diagnostics;
-using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Text;
+using System.Threading;
 
 internal static class CalculationUtil
 {
@@ -196,7 +197,7 @@ internal class Game
         {
             var foundMove = false;
 
-            Console.Error.WriteLine($"SnakeBot: {snakeBot.Id}. Position:{snakeBot.Body[0].X},{snakeBot.Body[0].Y}");
+            Logger.LogTime($"STARTING FOR SNAKEBOT {snakeBot.Id}. Position:{snakeBot.Body[0].X},{snakeBot.Body[0].Y}");
             // TODO: CHeck for chance toi destroy an opponent snake and do that if possible
 
             HashSet<Point> excludePoints = new HashSet<Point>();
@@ -608,8 +609,6 @@ internal class Game
                 continue;                
             }
 
-            Console.Error.WriteLine($"Checking path to power source at {powerSource.X},{powerSource.Y} for snakeBot {snakeBot.Id}");
-
             snakeBot.AddAttemptAtPowerSource(powerSource);
              
             List<Point> path = _pathFinder.GetShortestPath(snakeBot.Body.First(), powerSource, snakeBot, excludePoints.Concat(_movesThisTurn).ToList());
@@ -681,6 +680,9 @@ internal class Level
 
 internal static class Logger    
 {
+    private static bool DISABLE_LOGGING = false;
+    private static bool DISABLE_TIMES = false;
+
     private static long _roundStartTime;
 
     private static char _platformChar = '#';
@@ -693,8 +695,22 @@ internal static class Logger
     private static char _opponentSnakeHeadChar = 'X';
     private static char _opponentSnakeBodyChar = 'x';
 
+    internal static void Message(string message)
+    {
+        if (DISABLE_LOGGING)
+        {
+            return;
+        }
+
+        Console.Error.WriteLine(message);
+    }
     internal static void Snakes(string debugMessage, List<SnakeBot> snakeBots)
     {
+        if (DISABLE_LOGGING)
+        {
+            return;
+        }
+
         Console.Error.WriteLine(debugMessage);
         Console.Error.WriteLine("-----------");
         foreach (var snakeBot in snakeBots)
@@ -705,11 +721,21 @@ internal static class Logger
 
     internal static void Snake(SnakeBot snakeBot)
     {
+        if (DISABLE_LOGGING)
+        {
+            return;
+        }
+
         Console.Error.WriteLine($"SnakeBot {snakeBot.Id}: {string.Join(";", snakeBot.Body.Select(p => $"{p.X},{p.Y}"))}");
     }
 
     internal static void Platforms(bool[,] platforms)
     {
+        if (DISABLE_LOGGING)
+        {
+            return;
+        }
+
         Console.Error.WriteLine("Platforms:");
         for (int y = 0; y < platforms.GetLength(0); y++)
         {
@@ -730,6 +756,11 @@ internal static class Logger
 
     internal static void EntireGame(bool[,] platforms, List<SnakeBot> mySnakeBots, List<SnakeBot> opponentSnakeBots, List<System.Drawing.Point> powerSources)
     {
+        if (DISABLE_LOGGING)
+        {
+            return;
+        }
+
         Console.Error.WriteLine("Platforms:");
         for (int y = 0; y < platforms.GetLength(0); y++)
         {
@@ -817,11 +848,19 @@ internal static class Logger
 
     internal static void StartRoundStopwatch()
     {
+        if (DISABLE_TIMES)
+        {
+            return;
+        }
         _roundStartTime = Stopwatch.GetTimestamp();
     }
 
     internal static void LogTime(string message)
     {
+        if (DISABLE_TIMES)
+        {
+            return;
+        }
         TimeSpan elapsedTime = Stopwatch.GetElapsedTime(_roundStartTime);
         Console.Error.WriteLine($"{elapsedTime.TotalMilliseconds}: {message}");
     }
@@ -865,9 +904,6 @@ internal sealed class PathFinder
 
     internal List<Point> GetShortestPath(Point startPoint, Point targetPoint, SnakeBot snake, List<Point> excludePoints)
     {
-        // Log exclude Points
-        Console.Error.WriteLine($"Exclude points: {string.Join(";", excludePoints.Select(p => $"({p.X},{p.Y})"))}");
-
         // Calculate points we use for collision detection and gravity, then we can use it for every search
         // Note: This doesn't include the current snake body since that will be moving as we simulate movement
         HashSet<Point> collisionPoints = BuildCollisionPoints(snake.Id);
@@ -1009,8 +1045,6 @@ internal sealed class PathFinder
                     // Check if we've reached the target immediately
                     if (actualHeadPosition == targetPoint)
                     {
-                        Console.Error.WriteLine($"Target found at {actualHeadPosition} with path length {node.G}");
-                        
                         currentNode = node;
                         targetFound = true;
                         break; // Exit the foreach loop
@@ -1019,8 +1053,6 @@ internal sealed class PathFinder
                     // Check if we've on another power up
                     if (onPowerUp)
                     {
-                        Console.Error.WriteLine($"New target found at {actualHeadPosition} with path length {node.G}");
-
                         currentNode = node;
                         targetFound = true;
                         break; // Exit the foreach loop
@@ -1088,8 +1120,6 @@ internal sealed class PathFinder
             shortestPath.Insert(0, pathNode.IntendedMove);
             pathNode = pathNode.Parent;
         }
-
-        Console.Error.WriteLine($"shortestPath: {string.Join(" -> ", shortestPath.Select(p => $"({p.X},{p.Y})"))}");
 
         return shortestPath;
     }
@@ -1204,10 +1234,8 @@ internal sealed class PathFinder
             count++;
             if (count > 20)
             {
-                Console.Error.WriteLine($"Gravity count: {count}");
-
-                // log the whole snake position
-                Console.Error.WriteLine($"Snake body: {string.Join(";", snakeBody.Select(p => $"({p.X},{p.Y})"))}");
+                Console.Error.WriteLine($"ERROR: Gravity count exceeded max of 20");
+                Console.Error.WriteLine($"ERROR: Snake body: {string.Join(";", snakeBody.Select(p => $"({p.X},{p.Y})"))}");
             }
         }
 
@@ -1303,13 +1331,14 @@ internal class Player
 
         // game loop
         while (true)
-        {
-            Logger.StartRoundStopwatch();
-            Logger.LogTime("START OF TURN");
+        { 
             game.MarkAllSnakesForRemoval();
 
             game.RemoveAllPowerSources();
             int powerSourceCount = int.Parse(Console.ReadLine());
+            Logger.StartRoundStopwatch();
+            Logger.LogTime("START OF TURN");
+
             for (int i = 0; i < powerSourceCount; i++)
             {
                 inputs = Console.ReadLine().Split(' ');
@@ -1342,6 +1371,8 @@ internal class Player
                     }
                 }
             }
+
+            Logger.LogTime("PARSED ALL INPUT");
 
             game.RemoveMarkedSnakes();
 

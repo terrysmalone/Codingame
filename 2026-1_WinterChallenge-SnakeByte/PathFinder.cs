@@ -1,5 +1,8 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
+using System.Linq;
 using System.Xml.Linq;
 
 namespace _2026_1_WinterChallenge_SnakeByte;
@@ -20,9 +23,6 @@ internal sealed class PathFinder
 
     internal List<Point> GetShortestPath(Point startPoint, Point targetPoint, SnakeBot snake, List<Point> excludePoints)
     {
-        // Log exclude Points
-        Console.Error.WriteLine($"Exclude points: {string.Join(";", excludePoints.Select(p => $"({p.X},{p.Y})"))}");
-
         // Calculate points we use for collision detection and gravity, then we can use it for every search
         // Note: This doesn't include the current snake body since that will be moving as we simulate movement
         HashSet<Point> collisionPoints = BuildCollisionPoints(snake.Id);
@@ -164,8 +164,6 @@ internal sealed class PathFinder
                     // Check if we've reached the target immediately
                     if (actualHeadPosition == targetPoint)
                     {
-                        Console.Error.WriteLine($"Target found at {actualHeadPosition} with path length {node.G}");
-                        
                         currentNode = node;
                         targetFound = true;
                         break; // Exit the foreach loop
@@ -174,8 +172,6 @@ internal sealed class PathFinder
                     // Check if we've on another power up
                     if (onPowerUp)
                     {
-                        Console.Error.WriteLine($"New target found at {actualHeadPosition} with path length {node.G}");
-
                         currentNode = node;
                         targetFound = true;
                         break; // Exit the foreach loop
@@ -243,8 +239,6 @@ internal sealed class PathFinder
             shortestPath.Insert(0, pathNode.IntendedMove);
             pathNode = pathNode.Parent;
         }
-
-        Console.Error.WriteLine($"shortestPath: {string.Join(" -> ", shortestPath.Select(p => $"({p.X},{p.Y})"))}");
 
         return shortestPath;
     }
@@ -359,10 +353,8 @@ internal sealed class PathFinder
             count++;
             if (count > 20)
             {
-                Console.Error.WriteLine($"Gravity count: {count}");
-
-                // log the whole snake position
-                Console.Error.WriteLine($"Snake body: {string.Join(";", snakeBody.Select(p => $"({p.X},{p.Y})"))}");
+                Console.Error.WriteLine($"ERROR: Gravity count exceeded max of 20");
+                Console.Error.WriteLine($"ERROR: Snake body: {string.Join(";", snakeBody.Select(p => $"({p.X},{p.Y})"))}");
             }
         }
 

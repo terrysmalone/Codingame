@@ -5,6 +5,7 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 
 namespace _2026_1_WinterChallenge_SnakeByte;
 
@@ -48,13 +49,14 @@ internal class Player
 
         // game loop
         while (true)
-        {
-            Logger.StartRoundStopwatch();
-            Logger.LogTime("START OF TURN");
+        { 
             game.MarkAllSnakesForRemoval();
 
             game.RemoveAllPowerSources();
             int powerSourceCount = int.Parse(Console.ReadLine());
+            Logger.StartRoundStopwatch();
+            Logger.LogTime("START OF TURN");
+
             for (int i = 0; i < powerSourceCount; i++)
             {
                 inputs = Console.ReadLine().Split(' ');
@@ -87,6 +89,8 @@ internal class Player
                     }
                 }
             }
+
+            Logger.LogTime("PARSED ALL INPUT");
 
             game.RemoveMarkedSnakes();
 

@@ -11,6 +11,7 @@ internal static class Logger
     private static bool DISABLE_TIMES = false;
 
     private static long _roundStartTime;
+    private static long _lastTimedLog;
 
     private static char _platformChar = '#';
     private static char _emptySpaceChar = '.';
@@ -180,6 +181,7 @@ internal static class Logger
             return;
         }
         _roundStartTime = Stopwatch.GetTimestamp();
+        _lastTimedLog = Stopwatch.GetTimestamp();
     }
 
     internal static void LogTime(string message)
@@ -189,6 +191,8 @@ internal static class Logger
             return;
         }
         TimeSpan elapsedTime = Stopwatch.GetElapsedTime(_roundStartTime);
-        Console.Error.WriteLine($"{elapsedTime.TotalMilliseconds}: {message}");
+        TimeSpan elapsedSinceLastLog = Stopwatch.GetElapsedTime(_lastTimedLog);
+        Console.Error.WriteLine($"{elapsedTime.TotalMilliseconds}({elapsedSinceLastLog.TotalMilliseconds}): {message}");
+        _lastTimedLog = Stopwatch.GetTimestamp();
     }
 }

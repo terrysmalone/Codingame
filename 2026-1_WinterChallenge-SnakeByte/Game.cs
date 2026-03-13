@@ -180,6 +180,8 @@ internal class Game
                 }
             }
 
+            Logger.LogTime("Checked for head clash");
+
             if (foundMove)
             {
                 continue;
@@ -190,8 +192,9 @@ internal class Game
                 excludePoints.Add(snakeBot.GetLastMove());
             }
 
-            List<Point> bestPathToPower = GetBestPathToPowerSource(snakeBot, excludePoints);            
+            List<Point> bestPathToPower = GetBestPathToPowerSource(snakeBot, excludePoints);
 
+            Logger.LogTime("Finished path finding");
             if (bestPathToPower.Count != 0)
             {
                 string direction = DirectionHelper.GetDirection(snakeBot.Body[0], bestPathToPower[0]);
@@ -205,6 +208,7 @@ internal class Game
             else
             {
                 string direction = GetValidDirection(snakeBot);
+                Logger.LogTime("Found valid direction");
 
                 actions.Add($"{snakeBot.Id} {direction} wander");
                 snakeBot.AddMove(DirectionHelper.GetNewPosition(snakeBot.Body[0], direction));
@@ -530,6 +534,7 @@ internal class Game
         int shortestManhattanDistanceCount = int.MaxValue;
         var shortestPathPoints = new List<Point>();
 
+        var checkedSources = 0;
         foreach (Point powerSource in _level.PowerSources)
         {            
             if (_powerUpsThisTurn.Contains(powerSource))
@@ -557,6 +562,8 @@ internal class Game
             List<Point> path = _pathFinder.GetShortestPath(snakeBot.Body.First(), powerSource, snakeBot, excludePoints.Concat(_movesThisTurn).ToList());
             triedSomething = true;
 
+            checkedSources++;
+
             if (path != null && path.Count > 0 && path.Count < shortestPathCount)
             {
                 shortestManhattanDistanceCount = manhattanDistance;
@@ -564,7 +571,9 @@ internal class Game
                 shortestPathPoints = path.ToList();
             }
         }
-        
+
+        Logger.LogTime($"Finished looking with max distance {maxDistance}. Checked {checkedSources} power sources.");
+
         return (shortestPathPoints, triedSomething);
     }
 

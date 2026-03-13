@@ -1,4 +1,6 @@
-﻿using System.Drawing;
+﻿using System;
+using System.Collections.Generic;
+using System.Drawing;
 
 namespace _2026_1_WinterChallenge_SnakeByte;
 
@@ -154,4 +156,75 @@ internal sealed class PositionChecker
         return false;
     }
 
+    internal int GetNearestPlatformDistance(Point pointToCheck, int excludeSnakeId)
+    {
+        int nearestPlatformDistance = int.MaxValue;
+
+        for (int y=0; y < _game.Height; y++)
+        {
+            for (int x=0; x < _game.Width; x++)
+            {
+                if (_level.IsPlatform(new Point(x, y)))
+                {
+                    int distance = GetNearestDistance(pointToCheck, new Point(x, y));
+                    
+                    if (distance < nearestPlatformDistance)
+                    {
+                        nearestPlatformDistance = distance;
+                    }
+                }
+            }
+        }
+
+        // Now check snakes
+        foreach (var snakeBot in _game.MySnakeBots)
+        {
+            if (excludeSnakeId == snakeBot.Id)
+            {
+                continue;
+            }
+
+            foreach (var bodyPart in snakeBot.Body)
+            {               
+                int distance = GetNearestDistance(pointToCheck, bodyPart);
+                    
+                if (distance < nearestPlatformDistance)
+                {
+                    nearestPlatformDistance = distance;
+                }
+            }
+        }
+
+        foreach (var snakeBot in _game.OpponentSnakeBots)
+        {
+            foreach (var bodyPart in snakeBot.Body)
+            {
+                int distance = GetNearestDistance(pointToCheck, bodyPart);
+                        
+                if (distance < nearestPlatformDistance)
+                {
+                    nearestPlatformDistance = distance;
+                }
+            }
+        }
+
+        return nearestPlatformDistance;
+    }
+
+    private int GetNearestDistance(Point pointToCheck, Point point)
+    {
+        int distance = int.MaxValue;
+        // If the power up is lower than the platform we don't need to count vertical distance because gravity
+        // can do some of the work
+        if (pointToCheck.Y >= point.Y)
+        {
+            distance = Math.Abs(pointToCheck.X - point.X);
+        }
+        else
+        {
+            distance = Math.Abs(pointToCheck.X - point.X) + Math.Abs(pointToCheck.Y - point.Y);
+        }
+
+        return distance;
+    }
 }

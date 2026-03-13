@@ -608,6 +608,16 @@ internal class Game
                 continue;
             }
 
+            Console.Error.WriteLine($"snakeBot.Body.Count {snakeBot.Body.Count}");
+            Console.Error.WriteLine($"_positionChecker.GetNearestPlatformDistance(powerSource, snakeBot.Id) {_positionChecker.GetNearestPlatformDistance(powerSource, snakeBot.Id)}");
+
+            // If the snake can't reach the power source from a platform don't even bother trying
+            if (snakeBot.Body.Count < _positionChecker.GetNearestPlatformDistance(powerSource, snakeBot.Id) - 1)
+            {
+                Console.Error.WriteLine($"Not trying for power source at {powerSource.X},{powerSource.Y} because snake size {snakeBot.Body.Count} is too small to reach it from a platform");
+                continue;
+            }
+
             if (snakeBot.GetAttemptsAtPowerSource(powerSource) > 20)
             {
                 snakeBot.ClearAttemptsAtPowerSource(powerSource);
@@ -615,7 +625,7 @@ internal class Game
             }
 
             snakeBot.AddAttemptAtPowerSource(powerSource);
-             
+
             List<Point> path = _pathFinder.GetShortestPath(snakeBot.Body.First(), powerSource, snakeBot, excludePoints.Concat(_movesThisTurn).ToList());
             triedSomething = true;
 
@@ -1556,6 +1566,77 @@ internal sealed class PositionChecker
         return false;
     }
 
+    internal int GetNearestPlatformDistance(Point pointToCheck, int excludeSnakeId)
+    {
+        int nearestPlatformDistance = int.MaxValue;
+
+        for (int y=0; y < _game.Height; y++)
+        {
+            for (int x=0; x < _game.Width; x++)
+            {
+                if (_level.IsPlatform(new Point(x, y)))
+                {
+                    int distance = GetNearestDistance(pointToCheck, new Point(x, y));
+                    
+                    if (distance < nearestPlatformDistance)
+                    {
+                        nearestPlatformDistance = distance;
+                    }
+                }
+            }
+        }
+
+        // Now check snakes
+        foreach (var snakeBot in _game.MySnakeBots)
+        {
+            if (excludeSnakeId == snakeBot.Id)
+            {
+                continue;
+            }
+
+            foreach (var bodyPart in snakeBot.Body)
+            {               
+                int distance = GetNearestDistance(pointToCheck, bodyPart);
+                    
+                if (distance < nearestPlatformDistance)
+                {
+                    nearestPlatformDistance = distance;
+                }
+            }
+        }
+
+        foreach (var snakeBot in _game.OpponentSnakeBots)
+        {
+            foreach (var bodyPart in snakeBot.Body)
+            {
+                int distance = GetNearestDistance(pointToCheck, bodyPart);
+                        
+                if (distance < nearestPlatformDistance)
+                {
+                    nearestPlatformDistance = distance;
+                }
+            }
+        }
+
+        return nearestPlatformDistance;
+    }
+
+    private int GetNearestDistance(Point pointToCheck, Point point)
+    {
+        int distance = int.MaxValue;
+        // If the power up is lower than the platform we don't need to count vertical distance because gravity
+        // can do some of the work
+        if (pointToCheck.Y >= point.Y)
+        {
+            distance = Math.Abs(pointToCheck.X - point.X);
+        }
+        else
+        {
+            distance = Math.Abs(pointToCheck.X - point.X) + Math.Abs(pointToCheck.Y - point.Y);
+        }
+
+        return distance;
+    }
 }
 
 

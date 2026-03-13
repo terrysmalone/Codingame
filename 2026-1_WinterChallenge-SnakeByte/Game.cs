@@ -551,6 +551,16 @@ internal class Game
                 continue;
             }
 
+            Console.Error.WriteLine($"snakeBot.Body.Count {snakeBot.Body.Count}");
+            Console.Error.WriteLine($"_positionChecker.GetNearestPlatformDistance(powerSource, snakeBot.Id) {_positionChecker.GetNearestPlatformDistance(powerSource, snakeBot.Id)}");
+
+            // If the snake can't reach the power source from a platform don't even bother trying
+            if (snakeBot.Body.Count < _positionChecker.GetNearestPlatformDistance(powerSource, snakeBot.Id) - 1)
+            {
+                Console.Error.WriteLine($"Not trying for power source at {powerSource.X},{powerSource.Y} because snake size {snakeBot.Body.Count} is too small to reach it from a platform");
+                continue;
+            }
+
             if (snakeBot.GetAttemptsAtPowerSource(powerSource) > 20)
             {
                 snakeBot.ClearAttemptsAtPowerSource(powerSource);
@@ -558,7 +568,7 @@ internal class Game
             }
 
             snakeBot.AddAttemptAtPowerSource(powerSource);
-             
+
             List<Point> path = _pathFinder.GetShortestPath(snakeBot.Body.First(), powerSource, snakeBot, excludePoints.Concat(_movesThisTurn).ToList());
             triedSomething = true;
 

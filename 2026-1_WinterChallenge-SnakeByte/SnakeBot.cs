@@ -14,6 +14,7 @@ internal class SnakeBot
     private List<Point> previousMoves = new List<Point>();
 
     private Dictionary<Point, int> _attemptsAtPowerSources = new Dictionary<Point, int>();
+    private HashSet<Point> _checkedPowerSourcesThisTurn = new HashSet<Point>();
 
     private List<Plan> _plans = new List<Plan>();
 
@@ -123,6 +124,20 @@ internal class SnakeBot
     internal List<Plan> GetPlans()
     {
         return _plans;
+    }
+
+    internal void ClearCheckedPowerSources()
+    {
+        _checkedPowerSourcesThisTurn.Clear();
+    }
+
+    internal void AddCheckedPowerSource(Point powerSource)
+    {
+        _checkedPowerSourcesThisTurn.Add(powerSource);
+    }
+    internal bool HasCheckedPowerSource(Point powerSource)
+    {
+        return _checkedPowerSourcesThisTurn.Contains(powerSource);
     }
 }
 

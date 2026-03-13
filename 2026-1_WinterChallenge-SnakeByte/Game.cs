@@ -138,6 +138,9 @@ internal class Game
 
         foreach (var snakeBot in MySnakeBots)
         {
+            // We track power sources we've tried to get to so that we don't keep trying at different depths
+            snakeBot.ClearCheckedPowerSources();
+
             var foundMove = false;
 
             Logger.LogTime($"STARTING FOR SNAKEBOT {snakeBot.Id}. Position:{snakeBot.Body[0].X},{snakeBot.Body[0].Y}");
@@ -232,7 +235,7 @@ internal class Game
 
         while (stopLooking == false)
         {
-            (List<Point> path, bool triedSomething) = GetShortestPath(snakeBot, Math.Min(shortestPathCount - 1, maxDistance), excludePoints);
+            List<Point> path = GetShortestPath(snakeBot, Math.Min(shortestPathCount - 1, maxDistance), excludePoints);
 
             if (path.Count > 0)
             {
@@ -242,14 +245,8 @@ internal class Game
                 shortestPathPoints = path.ToList();
             }
 
-            if (stopLooking == false && triedSomething == true)
-            {
-                // We tried a closer one and couldn't get to it. For now, don't try more
-                stopLooking = true;
-            }
-
             maxDistance += 5;
-            if (maxDistance > 20)
+            if (maxDistance > 10)
             {
                 stopLooking = true;
             }
@@ -527,9 +524,8 @@ internal class Game
         return nearestPowerSource;
     }
 
-    private (List<Point>, bool) GetShortestPath(SnakeBot snakeBot, int maxDistance, HashSet<Point> excludePoints)
+    private List<Point> GetShortestPath(SnakeBot snakeBot, int maxDistance, HashSet<Point> excludePoints)
     {
-        bool triedSomething = false;
         int shortestPathCount = int.MaxValue;
         int shortestManhattanDistanceCount = int.MaxValue;
         var shortestPathPoints = new List<Point>();
@@ -538,6 +534,11 @@ internal class Game
         foreach (Point powerSource in _level.PowerSources)
         {            
             if (_powerUpsThisTurn.Contains(powerSource))
+            {
+                continue;
+            }
+
+            if(snakeBot.HasCheckedPowerSource(powerSource))
             {
                 continue;
             }
@@ -570,8 +571,7 @@ internal class Game
             snakeBot.AddAttemptAtPowerSource(powerSource);
 
             List<Point> path = _pathFinder.GetShortestPath(snakeBot.Body.First(), powerSource, snakeBot, excludePoints.Concat(_movesThisTurn).ToList());
-            triedSomething = true;
-
+            snakeBot.AddCheckedPowerSource(powerSource);
             checkedSources++;
 
             if (path != null && path.Count > 0 && path.Count < shortestPathCount)
@@ -584,7 +584,7 @@ internal class Game
 
         Logger.LogTime($"Finished looking with max distance {maxDistance}. Checked {checkedSources} power sources.");
 
-        return (shortestPathPoints, triedSomething);
+        return shortestPathPoints;
     }
 
     internal List<Point> GetPowerUps()

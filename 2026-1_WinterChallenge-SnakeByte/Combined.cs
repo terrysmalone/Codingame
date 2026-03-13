@@ -194,6 +194,8 @@ internal class Game
 
         foreach (var snakeBot in MySnakeBots)
         {
+            var foundMove = false;
+
             Console.Error.WriteLine($"SnakeBot: {snakeBot.Id}. Position:{snakeBot.Body[0].X},{snakeBot.Body[0].Y}");
             // TODO: CHeck for chance toi destroy an opponent snake and do that if possible
 
@@ -212,13 +214,14 @@ internal class Game
             {
                 // exclude a move if it seems to be in danger of being attacked by an enemy snake on their next turn
                 (bool useMove, bool excludeMove) = CheckForHeadClash(possibleMove, snakeBot);
-                Console.Error.WriteLine($"Checking move to {possibleMove.X},{possibleMove.Y} for head clash. Use move: {useMove}, Exclude move: {excludeMove}");
+                
                 if (useMove)
                 {
                     actions.Add($"{snakeBot.Id} {DirectionHelper.GetDirection(snakeBot.Body[0], possibleMove)} attack");
                     snakeBot.AddMove(possibleMove);
                     actions.Add($"MARK {possibleMove.X} {possibleMove.Y}");
                     _movesThisTurn.Add(possibleMove);
+                    foundMove = true;
                     continue;
                 }
 
@@ -231,6 +234,11 @@ internal class Game
                 {
                     excludePoints.Add(possibleMove);
                 }
+            }
+
+            if (foundMove)
+            {
+                continue;
             }
 
             if (snakeBot.IsStuck())

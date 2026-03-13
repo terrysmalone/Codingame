@@ -29,8 +29,6 @@ internal sealed class PathFinder
         HashSet<Point> powerUpPoints = _game.GetPowerUps().ToHashSet();
         HashSet<Point> platformPoints = BuildPlatformPoints(snake.Id, powerUpPoints);
         
-
-        long startTime = Stopwatch.GetTimestamp();
         _debugCount = 0;
 
         Dictionary<SnakeState, Node> nodesByState = new Dictionary<SnakeState, Node>();
@@ -248,8 +246,6 @@ internal sealed class PathFinder
 
         Console.Error.WriteLine($"shortestPath: {string.Join(" -> ", shortestPath.Select(p => $"({p.X},{p.Y})"))}");
 
-        TimeSpan elapsedTime = Stopwatch.GetElapsedTime(startTime);
-        Console.Error.WriteLine($"Pathfinding completed in {elapsedTime.TotalMilliseconds} ms, states explored: {nodesByState.Count}, debugCount: {_debugCount}");
         return shortestPath;
     }
 

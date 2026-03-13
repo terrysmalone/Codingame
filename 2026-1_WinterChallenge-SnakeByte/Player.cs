@@ -49,6 +49,8 @@ internal class Player
         // game loop
         while (true)
         {
+            Logger.StartRoundStopwatch();
+            Logger.LogTime("START OF TURN");
             game.MarkAllSnakesForRemoval();
 
             game.RemoveAllPowerSources();
@@ -94,8 +96,9 @@ internal class Player
             // Logger.Snakes("My snake Bots", mySnakeBots);
             // Logger.Snakes("My snake Bots", mySnakeBots);
 
-            List<string> actions = game.GetActions();   
-            
+            List<string> actions = game.GetActions();
+
+            Logger.LogTime("END OF TURN");
             Console.WriteLine(string.Join(";", actions));
         }
     }

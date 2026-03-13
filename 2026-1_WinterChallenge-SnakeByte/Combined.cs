@@ -673,6 +673,8 @@ internal class Level
 
 internal static class Logger    
 {
+    private static long _roundStartTime;
+
     private static char _platformChar = '#';
     private static char _emptySpaceChar = '.';
     private static char _powerUpChar = '*';
@@ -804,6 +806,17 @@ internal static class Logger
             Console.Error.WriteLine();
         }
     }
+
+    internal static void StartRoundStopwatch()
+    {
+        _roundStartTime = Stopwatch.GetTimestamp();
+    }
+
+    internal static void LogTime(string message)
+    {
+        TimeSpan elapsedTime = Stopwatch.GetElapsedTime(_roundStartTime);
+        Console.Error.WriteLine($"{elapsedTime.TotalMilliseconds}: {message}");
+    }
 }
 
 internal sealed class Node
@@ -853,8 +866,6 @@ internal sealed class PathFinder
         HashSet<Point> powerUpPoints = _game.GetPowerUps().ToHashSet();
         HashSet<Point> platformPoints = BuildPlatformPoints(snake.Id, powerUpPoints);
         
-
-        long startTime = Stopwatch.GetTimestamp();
         _debugCount = 0;
 
         Dictionary<SnakeState, Node> nodesByState = new Dictionary<SnakeState, Node>();
@@ -1072,8 +1083,6 @@ internal sealed class PathFinder
 
         Console.Error.WriteLine($"shortestPath: {string.Join(" -> ", shortestPath.Select(p => $"({p.X},{p.Y})"))}");
 
-        TimeSpan elapsedTime = Stopwatch.GetElapsedTime(startTime);
-        Console.Error.WriteLine($"Pathfinding completed in {elapsedTime.TotalMilliseconds} ms, states explored: {nodesByState.Count}, debugCount: {_debugCount}");
         return shortestPath;
     }
 
@@ -1287,6 +1296,8 @@ internal class Player
         // game loop
         while (true)
         {
+            Logger.StartRoundStopwatch();
+            Logger.LogTime("START OF TURN");
             game.MarkAllSnakesForRemoval();
 
             game.RemoveAllPowerSources();
@@ -1332,8 +1343,9 @@ internal class Player
             // Logger.Snakes("My snake Bots", mySnakeBots);
             // Logger.Snakes("My snake Bots", mySnakeBots);
 
-            List<string> actions = game.GetActions();   
-            
+            List<string> actions = game.GetActions();
+
+            Logger.LogTime("END OF TURN");
             Console.WriteLine(string.Join(";", actions));
         }
     }

@@ -1,7 +1,11 @@
-﻿namespace _2026_1_WinterChallenge_SnakeByte;
+﻿using System.Diagnostics;
+
+namespace _2026_1_WinterChallenge_SnakeByte;
 
 internal static class Logger    
 {
+    private static long _roundStartTime;
+
     private static char _platformChar = '#';
     private static char _emptySpaceChar = '.';
     private static char _powerUpChar = '*';
@@ -132,5 +136,16 @@ internal static class Logger
             }
             Console.Error.WriteLine();
         }
+    }
+
+    internal static void StartRoundStopwatch()
+    {
+        _roundStartTime = Stopwatch.GetTimestamp();
+    }
+
+    internal static void LogTime(string message)
+    {
+        TimeSpan elapsedTime = Stopwatch.GetElapsedTime(_roundStartTime);
+        Console.Error.WriteLine($"{elapsedTime.TotalMilliseconds}: {message}");
     }
 }

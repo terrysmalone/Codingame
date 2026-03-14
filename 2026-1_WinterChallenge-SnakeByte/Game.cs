@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Net.Http;
 using System.Reflection.Metadata.Ecma335;
 using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
@@ -95,7 +96,7 @@ internal class Game
     }    
 
     internal List<string> GetActions()
-    {
+    { 
         foreach (var snakeBot in MySnakeBots)
         {
             snakeBot.ClearAllPlans();
@@ -153,17 +154,16 @@ internal class Game
 
             foreach (var possibleMove in possibleMoves)
             {
-                // TODO: Don't exclude these. Add plans and scores for them instead.
-                // exclude a move if it seems to be in danger of being attacked by an enemy snake on their next turn
-                (bool useMove, bool excludeMove) = CheckForHeadClash(possibleMove, snakeBot);
-                
-                if (useMove)
-                {
-                    // TODO: As a first pass just score them so that it keeps the previous priority
-                    Plan plan = new Plan(new List<Point> { possibleMove }, score: 300, "attack", turnsToFruition: 1);
-                    snakeBot.AddPlan(plan);                    
-                }
+                Logger.Message($"Checking possible move {possibleMove.X},{possibleMove.Y} for snakebot {snakeBot.Id}");
+                (Plan? goldenMove, bool excludeMove) = GetGoldenMove(possibleMove, snakeBot);
 
+                if (goldenMove != null)
+                {
+                    snakeBot.AddPlan(goldenMove);
+                    continue;
+                }
+                
+                // TODO: We'll want to add this back in at some point
                 if (excludeMove)
                 {
                     excludePoints.Add(possibleMove);
@@ -171,6 +171,7 @@ internal class Game
                 // exclude a move if it seems immediately blocking
                 else if (_positionChecker.IsBlocking(possibleMove, snakeBot))
                 {
+                    Logger.Message($"Excluding move {possibleMove.X},{possibleMove.Y} for snakebot {snakeBot.Id} as it seems immediately blocking");
                     excludePoints.Add(possibleMove);
                 }
             }
@@ -179,7 +180,6 @@ internal class Game
 
             if (snakeBot.IsStuck())
             {
-                Logger.Message($"SnakeBot {snakeBot.Id} is stuck, adding last move to exclude points");
                 excludePoints.Add(snakeBot.GetLastMove());
             }
 
@@ -422,6 +422,134 @@ internal class Game
             }
             
         }
+    }
+
+    // Create plans for any clashing moves that would result in a positive headclash
+    // For example, if I can move into a position where an enemy snake could move into
+    // on their next turn but they are smaller than me, then it's worth it
+    private (Plan?, bool) GetGoldenMove(Point newHeadPosition, SnakeBot snakeBot)
+    {
+        var excludeMove = false;
+
+        List<int> clashingEnemyBodySizes = new List<int>();
+
+        bool powerUpOnSpot = _level.PowerSources.Contains(newHeadPosition);
+
+        foreach (var opponentSnake in OpponentSnakeBots)
+        {
+            var possibleHeadMoves = new List<Point>()
+            {
+                new Point(opponentSnake.Body[0].X + 1, opponentSnake.Body[0].Y),
+                new Point(opponentSnake.Body[0].X - 1, opponentSnake.Body[0].Y),
+                new Point(opponentSnake.Body[0].X, opponentSnake.Body[0].Y + 1),
+                new Point(opponentSnake.Body[0].X, opponentSnake.Body[0].Y - 1)
+            };
+
+            foreach (Point possibleMove in possibleHeadMoves)
+            {
+               // Don't check invalid moves
+                if (possibleMove.X < -1
+                    || possibleMove.X > Width
+                    || possibleMove.Y < -1
+                    || possibleMove.Y > Height
+                    || _positionChecker.IsPlatform(possibleMove)
+                    || _positionChecker.IsPointInAnySnake(possibleMove, countTails: powerUpOnSpot))
+                {
+                    continue;
+                }
+
+                if (possibleMove == newHeadPosition)
+                {
+                    clashingEnemyBodySizes.Add(opponentSnake.Body.Count);
+                }
+            }
+        }
+
+        if (clashingEnemyBodySizes.Count == 0)
+        {
+            return (null, false);
+        }
+
+        int myLossOnImpact = 0;
+        int enemyLossOnImpact = 0;
+
+        if (powerUpOnSpot)
+        {
+            myLossOnImpact = 1;
+
+            foreach (var enemyBodySize in clashingEnemyBodySizes)
+            {
+                enemyLossOnImpact += 1;
+            }
+        }
+        else
+        {
+            myLossOnImpact = snakeBot.Body.Count <= 3 ? 3 : 1;
+
+            foreach (var enemyBodySize in clashingEnemyBodySizes)
+            {
+                enemyLossOnImpact += enemyBodySize <= 3 ? 3 : 1;
+            }
+        }
+
+        // If I win overall, it's a golden move (highest score)
+        // If it's neutral, and I'm bigger than the enemy snake, it's a golden move (mid score)
+        // If it's 100% neutral, it's only a golden move if I have the highest score (the game ending 
+        // is in my favour.
+
+        int diff = enemyLossOnImpact - myLossOnImpact;
+
+        Logger.Message($" Diff: {diff}");
+        int score = 0;
+
+        if (diff > 0)
+        {
+            score = int.MaxValue / 2 + 500;           
+        }
+        else if (diff == 0 && snakeBot.Body.Count > clashingEnemyBodySizes.Min())
+        {
+            score = int.MaxValue / 2 + 400;
+        }
+        else if (diff == 0 && snakeBot.Body.Count == clashingEnemyBodySizes.Min() && GetMyScore() > GetEnemyScore())
+        {
+            score = int.MaxValue / 2 + 300;
+        }
+        else if (diff < 0)
+        {
+            excludeMove = true;
+        }
+
+        Plan? plan = null;
+        
+        if (score > 0)
+        {
+            score += _positionChecker.FloodFillCount(newHeadPosition, snakeBot.Id, snakeBot.Body, 20);
+            plan = new Plan(new List<Point> { newHeadPosition }, score, "attack", turnsToFruition: 1);
+        }
+
+        return (plan, excludeMove);
+    }
+
+    private int GetEnemyScore()
+    {
+        return GetTotalBodyCount(OpponentSnakeBots);
+    }
+
+    private int GetMyScore()
+    {
+        return GetTotalBodyCount(MySnakeBots);
+    }
+
+    private static int GetTotalBodyCount(List<SnakeBot> snakes)
+    {
+        int bodyCount = 0;
+
+        foreach (var snake in snakes)
+        {
+            bodyCount += snake.Body.Count;
+        }
+
+        return bodyCount;
     }
 
     private (bool useMove, bool excludeMove) CheckForHeadClash(Point newHeadPosition, SnakeBot snakeBot)

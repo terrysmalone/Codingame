@@ -33,7 +33,6 @@ internal class SnakeBot
 
     internal bool IsStuck()
     {
-        Logger.Message($"Checking if SnakeBot {Id} is stuck. Previous moves: {string.Join(";", previousMoves.Select(p => $"{p.X},{p.Y}"))}");
         if (previousMoves.Count < 4)
         {
             return false;

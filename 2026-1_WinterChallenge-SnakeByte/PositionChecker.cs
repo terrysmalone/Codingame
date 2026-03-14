@@ -141,7 +141,7 @@ internal sealed class PositionChecker
     {
         foreach (var snakeBot in _game.MySnakeBots)
         {
-            if (excludeSnakeId > 0 && snakeBot.Id == excludeSnakeId)
+            if (excludeSnakeId >= 0 && snakeBot.Id == excludeSnakeId)
             {
                 continue;
             }

@@ -189,6 +189,16 @@ internal static class Logger
         }
     }
 
+    internal static void DisableLogging() 
+    {
+        DISABLE_LOGGING = true;
+    }
+
+    internal static void EnableLogging()
+    {
+        DISABLE_LOGGING = false;
+    }
+
     internal static void StartRoundStopwatch()
     {
         if (DISABLE_TIMES)

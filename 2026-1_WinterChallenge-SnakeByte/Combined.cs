@@ -223,7 +223,12 @@ internal class Game
                 {
                     actions.Add($"{snakeBot.Id} {DirectionHelper.GetDirection(snakeBot.Body[0], possibleMove)} attack");
                     snakeBot.AddMove(possibleMove);
-                    actions.Add($"MARK {possibleMove.X} {possibleMove.Y}");
+
+                    if (!_positionChecker.IsOutOfMapBounds(possibleMove))
+                    {
+                        actions.Add($"MARK {possibleMove.X} {possibleMove.Y}");
+                    }
+
                     _movesThisTurn.Add(possibleMove);
                     foundMove = true;
                     continue;
@@ -260,7 +265,12 @@ internal class Game
                 string direction = DirectionHelper.GetDirection(snakeBot.Body[0], bestPathToPower[0]);
 
                 actions.Add($"{snakeBot.Id} {direction} power");
-                actions.Add($"MARK {bestPathToPower[bestPathToPower.Count-1].X} {bestPathToPower[bestPathToPower.Count - 1].Y}");
+
+                if (!_positionChecker.IsOutOfMapBounds(bestPathToPower[bestPathToPower.Count - 1]))
+                {
+                    actions.Add($"MARK {bestPathToPower[bestPathToPower.Count - 1].X} {bestPathToPower[bestPathToPower.Count - 1].Y}");
+                }
+               
                 snakeBot.AddMove(bestPathToPower[0]);
                 _movesThisTurn.Add(bestPathToPower[0]);
                 _powerUpsThisTurn.Add(bestPathToPower[bestPathToPower.Count-1]);

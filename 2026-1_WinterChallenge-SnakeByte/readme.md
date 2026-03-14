@@ -8,13 +8,31 @@
 
 # TO DO
 
-I should add a heuristic to exclude some checks. (For exmple, if distance frm powersource to nearest platform is more
-than snake length don't bother. Although I should exclude ones that are lower since gravity can help...
+Scoring moves
+Prefer getting power sources near the middle of the map
+Prefer getting power sources when i'm guaranteed to win
+Prefer not overlapping paths (this should encourage my snakes to sread out more
 
-When I increase search distance I redo the previous checks
+When calculating scores, take direction into account. For example, if 5 moves have UP as their next direction, and they all score 50, do we really want 
+LEFT, which only has one score if it's scored 60? Maybe not, maybe we do. It's something to consider.
 
-For head clash checking I need to make sure that I properly exclude my own snakes. THere are different rules.
-For example, I don't want to exclude them for both snakes.
+-------------------------------------
+Before any moves, do a look ahead of all possible move combinations. 
+For each one check for:
+- Me getting blocked in
+- opponent getting blocked in
+- Head clashes
+
+If any of the move sets increase or decrease from the current svore, these are classed as golden/killing movesets.
+For these, find the common denominator move, and make that either forced, or score it insanely highly. The common denominator
+means that if moving snake 1 results in a plus score no matter what we do with the others, force that one. If there's no commpn denominator, 
+score all moves as golden/killing.
+
+-------------------------------------
+
+Test: Just do one look ahead and time it to see if it's feasible. 
+
+If an opponent can get to a snake before me. Find another
 
 At some point, I'll want the pathfinder to be sensible about whether it counts a tail as something it can't move to.
 It should move to it in most cases, but it can't if the snake is going to grow.

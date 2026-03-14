@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 
@@ -32,6 +33,7 @@ internal class SnakeBot
 
     internal bool IsStuck()
     {
+        Logger.Message($"Checking if SnakeBot {Id} is stuck. Previous moves: {string.Join(";", previousMoves.Select(p => $"{p.X},{p.Y}"))}");
         if (previousMoves.Count < 4)
         {
             return false;
@@ -111,6 +113,11 @@ internal class SnakeBot
         _plans.Add(plan);
     }
 
+    internal void AddPlans(List<Plan> plans)
+    {
+        _plans.AddRange(plans);
+    }
+
     internal void ClearAllPlans()
     {
         _plans.Clear();
@@ -138,6 +145,6 @@ internal class SnakeBot
     internal bool HasCheckedPowerSource(Point powerSource)
     {
         return _checkedPowerSourcesThisTurn.Contains(powerSource);
-    }
+    }    
 }
 

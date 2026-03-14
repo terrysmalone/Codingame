@@ -8,6 +8,10 @@
 
 # TO DO
 
+IDE 1, arena 2
+Move 18 I pick the wrong attack
+seed=3478893539146914000
+
 Scoring moves
 Prefer getting power sources near the middle of the map
 Prefer getting power sources when i'm guaranteed to win

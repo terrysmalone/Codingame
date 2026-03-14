@@ -174,6 +174,21 @@ internal static class Logger
         }
     }
 
+    internal static void Plans(string message, List<Plan> plans)
+    {
+        if (DISABLE_LOGGING)
+        {
+            return;
+        }
+
+        Console.Error.WriteLine(message);
+
+        foreach (var plan in plans)
+        {
+            Console.Error.WriteLine($"Plan Type: {plan.PlanType}, Score: {plan.Score}, Turns to Fruition: {plan.TurnsToFruition}, Moves: {string.Join(";", plan.Moves.Select(p => $"{p.X},{p.Y}"))}");
+        }
+    }
+
     internal static void StartRoundStopwatch()
     {
         if (DISABLE_TIMES)

@@ -278,6 +278,11 @@ internal class Game
             }
         }
 
+        if (actions.Count == 0)
+        {
+            actions.Add("WAIT");
+        }
+
         return actions;
     }
 

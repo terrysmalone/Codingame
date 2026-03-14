@@ -272,6 +272,7 @@ internal class Game
                     if (plan.Moves[0] == terribleMove.Moves[0])
                     {
                         plan.Score = terribleMove.Score;
+                        Logger.Message($"Made move with first position {plan.Moves[0].X},{plan.Moves[0].Y} just as bad as terrible move with score {plan.Score}");
                     }
                 }
             }
@@ -332,6 +333,11 @@ internal class Game
                 }
                 break;
             }
+        }
+
+        if (actions.Count == 0)
+        {
+            actions.Add("WAIT");
         }
 
         return actions;

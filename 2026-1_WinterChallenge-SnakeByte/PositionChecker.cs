@@ -75,6 +75,53 @@ internal sealed class PositionChecker
         return false;
     }
 
+    internal int FloodFillCount(Point newHeadPosition, int excludeSnakeId, List<Point> includeBody, int cutOff)
+    {
+        var visited = new HashSet<Point>();
+        var queue = new Queue<Point>();
+
+        queue.Enqueue(newHeadPosition);
+        visited.Add(newHeadPosition);
+
+        while (queue.Count > 0 && visited.Count < cutOff)
+        {
+            Point checkPoint = queue.Dequeue();
+
+            var adjacentPoints = new List<Point>()
+            {
+                new Point(checkPoint.X + 1, checkPoint.Y),
+                new Point(checkPoint.X - 1, checkPoint.Y),
+                new Point(checkPoint.X, checkPoint.Y + 1),
+                new Point(checkPoint.X, checkPoint.Y - 1)
+            };
+
+            foreach (var adjacentPoint in adjacentPoints)
+            {
+                if (adjacentPoint.X >= -1
+                    && adjacentPoint.X <= _game.Width
+                    && adjacentPoint.Y >= -1
+                    && adjacentPoint.Y < _game.Height
+                    && !IsPlatform(adjacentPoint)
+                    && !IsPointInAnySnake(adjacentPoint, countTails: true, excludeSnakeId: excludeSnakeId)
+                    && !IsPointInGivenSnake(includeBody, adjacentPoint, countTails: true)
+                    && !visited.Contains(adjacentPoint))
+                {
+                    queue.Enqueue(adjacentPoint);
+                    visited.Add(adjacentPoint);
+                }
+            }
+        }
+
+        if(queue.Count == 0)
+        {
+            return visited.Count - 1;
+        }
+        else
+        {
+            return cutOff;
+        }
+    }
+
     internal bool IsPlatform(Point pointToCheck)
     {
         if (IsOutOfMapBounds(pointToCheck))

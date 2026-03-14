@@ -2,11 +2,9 @@
 
 ## Commit in Arena
 
-35e497605bacc59114856d45629e223bcaa7dcd8
+070b318ae4652b056dfe3b0df60bd554980370a9
 
 ## Changes since last Test in Arena
-
-- Fixed bug where bot would keep searching after finding a head clash move 9b354cec8a958379aa503a87e6179481ba81581e
 
 # TO DO
 

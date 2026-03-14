@@ -185,8 +185,6 @@ internal class Game
         // If there are no clashes just picj the highest from each. 
         // Otherwise get the highest combination I can get from each without a clash
 
-
-
         _movesThisTurn = new List<Point>();
         _powerUpsThisTurn = new List<Point>();
         // Logger.EntireGame(_level.Platforms, MySnakeBots, OpponentSnakeBots, _level.PowerSources);
@@ -325,6 +323,8 @@ internal class Game
     private string GetValidDirection(SnakeBot snakeBot)
     {
         // Prioritise moving towards the nearest powersource
+        // TODO: We should also prioritise climbing. For example, if I'm below a platform and I can get up there,
+        // I should prioritise that as it opens up the map and gives more options.
         Point nearestPowerSource = GetNearestPowerSource(snakeBot);
 
 
@@ -374,7 +374,50 @@ internal class Game
             return bestSoFar;
         }
 
-        return possibleDirections[0];
+        if (possibleDirections.Count == 1)
+        {
+            return possibleDirections[0];
+        }
+
+        // Use flood fill to either move to a more open space, or to give the opponent less space
+        // Score the current position:
+        // For every direction score all my snake flood fills minus all opponent square flood fills.
+        // The highest one wins.
+        Logger.Message("Space Scores");
+
+        Dictionary<string, int> directionScores = new Dictionary<string, int>();
+
+        foreach (var possibleDirection in possibleDirections)
+        {
+            int score = 0;
+
+            // Simulate the movement (just adding a head and removing a tail. At some point we might want to think about
+            // simulating gravity but not yet
+            List<Point> newSnakeBody = new List<Point>() { DirectionHelper.GetNewPosition(snakeBot.Body[0], possibleDirection) };
+            newSnakeBody.AddRange(snakeBot.Body.Take(snakeBot.Body.Count - 1));
+            
+            // For the flood fill I want to exclude this snake ID, but include newSnakeBody
+            foreach (var mySnake in MySnakeBots)
+            {
+                if (mySnake.Id == snakeBot.Id)
+                {
+                    score += _positionChecker.FloodFillCount(newSnakeBody[0], snakeBot.Id, newSnakeBody, 20);
+                }
+                else
+                {
+                    score += _positionChecker.FloodFillCount(mySnake.Body[0], snakeBot.Id, newSnakeBody, 20);
+                }
+            }
+
+            foreach (var opponentSnake in OpponentSnakeBots)
+            { 
+                score -= _positionChecker.FloodFillCount(opponentSnake.Body[0], snakeBot.Id, newSnakeBody, 20);
+            }
+
+            directionScores.Add(possibleDirection, score);
+        }
+
+        return directionScores.OrderByDescending(d => d.Value).First().Key;
     }
 
     private string GetEarlyReturn(List<string> possibleDirections, string bestSoFar)
@@ -705,7 +748,7 @@ internal class Level
 
 internal static class Logger    
 {
-    private static bool DISABLE_LOGGING = false;
+    private static bool DISABLE_LOGGING = true;
     private static bool DISABLE_TIMES = false;
 
     private static long _roundStartTime;
@@ -1489,6 +1532,53 @@ internal sealed class PositionChecker
         }
 
         return false;
+    }
+
+    internal int FloodFillCount(Point newHeadPosition, int excludeSnakeId, List<Point> includeBody, int cutOff)
+    {
+        var visited = new HashSet<Point>();
+        var queue = new Queue<Point>();
+
+        queue.Enqueue(newHeadPosition);
+        visited.Add(newHeadPosition);
+
+        while (queue.Count > 0 && visited.Count < cutOff)
+        {
+            Point checkPoint = queue.Dequeue();
+
+            var adjacentPoints = new List<Point>()
+            {
+                new Point(checkPoint.X + 1, checkPoint.Y),
+                new Point(checkPoint.X - 1, checkPoint.Y),
+                new Point(checkPoint.X, checkPoint.Y + 1),
+                new Point(checkPoint.X, checkPoint.Y - 1)
+            };
+
+            foreach (var adjacentPoint in adjacentPoints)
+            {
+                if (adjacentPoint.X >= -1
+                    && adjacentPoint.X <= _game.Width
+                    && adjacentPoint.Y >= -1
+                    && adjacentPoint.Y < _game.Height
+                    && !IsPlatform(adjacentPoint)
+                    && !IsPointInAnySnake(adjacentPoint, countTails: true, excludeSnakeId: excludeSnakeId)
+                    && !IsPointInGivenSnake(includeBody, adjacentPoint, countTails: true)
+                    && !visited.Contains(adjacentPoint))
+                {
+                    queue.Enqueue(adjacentPoint);
+                    visited.Add(adjacentPoint);
+                }
+            }
+        }
+
+        if(queue.Count == 0)
+        {
+            return visited.Count - 1;
+        }
+        else
+        {
+            return cutOff;
+        }
     }
 
     internal bool IsPlatform(Point pointToCheck)

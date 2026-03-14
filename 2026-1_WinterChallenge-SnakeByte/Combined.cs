@@ -153,7 +153,8 @@ internal class Game
     }    
 
     internal List<string> GetActions()
-    { 
+    {
+
         foreach (var snakeBot in MySnakeBots)
         {
             snakeBot.ClearAllPlans();
@@ -211,7 +212,6 @@ internal class Game
 
             foreach (var possibleMove in possibleMoves)
             {
-                Logger.Message($"Checking possible move {possibleMove.X},{possibleMove.Y} for snakebot {snakeBot.Id}");
                 (Plan? goldenMove, bool excludeMove) = GetGoldenMove(possibleMove, snakeBot);
 
                 if (goldenMove != null)
@@ -228,7 +228,6 @@ internal class Game
                 // exclude a move if it seems immediately blocking
                 else if (_positionChecker.IsBlocking(possibleMove, snakeBot))
                 {
-                    Logger.Message($"Excluding move {possibleMove.X},{possibleMove.Y} for snakebot {snakeBot.Id} as it seems immediately blocking");
                     excludePoints.Add(possibleMove);
                 }
             }
@@ -399,9 +398,36 @@ internal class Game
             directionScores[directionScore.Key] = directionScores[directionScore.Key] += score;
         }
 
+        // Add small position bonuses
+        // At the start of the game move towards the centre and up. When there are hardly any 
+        // power sources left, head towards the nearest one
+        // TODO: Add bonus for heading towards the most power sources
+        foreach (var directionScore in directionScores)
+        {
+            if (_level.PowerSources.Count > 2)
+            {
+                int distanceFromCentre = CalculationUtil.GetManhattanDistance(directionScore.Key, new Point(Width / 2, Height / 2));
+                directionScores[directionScore.Key] = directionScores[directionScore.Key] - distanceFromCentre;
+
+                // Add a small bomus for moving towards the top of the map
+                int distanceFromTop = directionScore.Key.Y;
+                directionScores[directionScore.Key] = directionScores[directionScore.Key] - distanceFromTop;
+            }
+            else
+            {
+                // Bonus for moving nearer to the nearest powersource
+                int distanceToPowerSource = CalculationUtil.GetManhattanDistance(
+                    directionScore.Key, 
+                    GetNearestPowerSource(directionScore.Key));
+                directionScores[directionScore.Key] = directionScores[directionScore.Key] - distanceToPowerSource;
+
+            }
+        }
+
+
         // Make plans from the direction scores
 
-           List<Plan> plans = new List<Plan>();
+        List<Plan> plans = new List<Plan>();
 
         foreach (var directionScore in directionScores)
         {
@@ -556,7 +582,6 @@ internal class Game
 
         int diff = enemyLossOnImpact - myLossOnImpact;
 
-        Logger.Message($" Diff: {diff}");
         int score = 0;
 
         if (diff > 0)
@@ -703,12 +728,17 @@ internal class Game
 
     private Point GetNearestPowerSource(SnakeBot snakeBot)
     {
+        return GetNearestPowerSource(snakeBot.Body[0]);
+    }
+
+    private Point GetNearestPowerSource(Point point)
+    {
         int nearestDistance = int.MaxValue;
         Point nearestPowerSource = new Point(-1, -1);
 
         foreach (var powerSource in _level.PowerSources)
         {
-            int distance = CalculationUtil.GetManhattanDistance(snakeBot.Body[0], powerSource);
+            int distance = CalculationUtil.GetManhattanDistance(point, powerSource);
             if (distance < nearestDistance)
             {
                 nearestDistance = distance;
@@ -754,15 +784,10 @@ internal class Game
                 continue;                
             }
 
-            Logger.Message($"Trying to find path to power source at {powerSource.X},{powerSource.Y}");
-
             snakeBot.AddAttemptAtPowerSource(powerSource);
-
-            Logger.Message($"excludePoints: {string.Join(";", excludePoints.Select(p => $"{p.X},{p.Y}"))}");
 
             List<Point> path = _pathFinder.GetShortestPath(snakeBot.Body.First(), powerSource, snakeBot, excludePoints.ToList());
 
-            Logger.Message($"Finished path finding to power source at {powerSource.X},{powerSource.Y}. Path: {string.Join(";", path.Select(p => $"{p.X},{p.Y}"))}");
             snakeBot.AddCheckedPowerSource(powerSource);
             checkedSources++;
 

@@ -7,7 +7,7 @@ internal record Plan
 {
     internal int SnakeID { get; private set; }
     internal List<Point> Moves { get; private set; }
-    internal int Score { get; private set; }
+    internal int Score { get; set; }
     internal string PlanType { get; private set; }
     internal int TurnsToFruition { get; private set; }
 

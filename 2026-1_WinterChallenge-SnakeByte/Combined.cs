@@ -259,9 +259,23 @@ internal class Game
             
         }
 
-        // TODO
         // If any snake has a terrible move (usually meaning it would lower mu score)
         // give the same score to any other moves for that snake that has the same first position
+        foreach (var snakeBot in MySnakeBots)
+        {
+            var terribleMoves = snakeBot.GetPlans().Where(p => p.Score < int.MinValue/4).ToList();
+
+            foreach (Plan terribleMove in terribleMoves)
+            {
+                foreach (Plan plan in snakeBot.GetPlans())
+                {
+                    if (plan.Moves[0] == terribleMove.Moves[0])
+                    {
+                        plan.Score = terribleMove.Score;
+                    }
+                }
+            }
+        }
 
         // Get all combinations of all plans. Score them by adding the scores together. Pick the highest scoring combination that doesn't have any clashes.
         Dictionary<List<Plan>, int> planCombinations = GetAllPlanCombinations();
@@ -1591,7 +1605,7 @@ internal record Plan
 {
     internal int SnakeID { get; private set; }
     internal List<Point> Moves { get; private set; }
-    internal int Score { get; private set; }
+    internal int Score { get; set; }
     internal string PlanType { get; private set; }
     internal int TurnsToFruition { get; private set; }
 

@@ -326,6 +326,8 @@ internal class Game
         // Score the current position:
         // For every direction score all my snake flood fills minus all opponent square flood fills.
         // The highest one wins.
+        // TODO: At some point check for all opponent moves here too. 
+        // For example, If I go left, give a score for all opponent moves. Count the worse one for me as the score. 
         Logger.Message("Space Scores");
 
         Dictionary<string, int> directionScores = new Dictionary<string, int>();

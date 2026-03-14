@@ -12,9 +12,9 @@ using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
 using System.Xml.Linq;
 using System.Diagnostics;
+using System.Text;
 using System.Collections;
 using System.IO;
-using System.Text;
 using System.Threading;
 
 internal static class CalculationUtil
@@ -78,9 +78,6 @@ internal class Game
 
     private PathFinder _pathFinder;
     private PositionChecker _positionChecker;
-    
-    private List<Point> _movesThisTurn;
-    private List<Point> _powerUpsThisTurn;
 
     public Game(int width, int height, bool[,] platforms)
     {
@@ -121,7 +118,6 @@ internal class Game
 
     internal void RemoveMarkedSnakes()
     {
-
         // Iterate through the snakes backwards to safely remove any where Remove == true
         for (int i = MySnakeBots.Count - 1; i >= 0; --i)
         {
@@ -157,6 +153,10 @@ internal class Game
 
     internal List<string> GetActions()
     {
+        foreach (var snakeBot in MySnakeBots)
+        {
+            snakeBot.ClearAllPlans();
+        }
         // BIG MAD REFACTOR PLAN
         // 
         // GENERAL
@@ -185,8 +185,6 @@ internal class Game
         // If there are no clashes just picj the highest from each. 
         // Otherwise get the highest combination I can get from each without a clash
 
-        _movesThisTurn = new List<Point>();
-        _powerUpsThisTurn = new List<Point>();
         // Logger.EntireGame(_level.Platforms, MySnakeBots, OpponentSnakeBots, _level.PowerSources);
 
         List<string> actions = new List<string>();
@@ -219,17 +217,9 @@ internal class Game
                 
                 if (useMove)
                 {
-                    actions.Add($"{snakeBot.Id} {DirectionHelper.GetDirection(snakeBot.Body[0], possibleMove)} attack");
-                    snakeBot.AddMove(possibleMove);
-
-                    if (!_positionChecker.IsOutOfMapBounds(possibleMove))
-                    {
-                        actions.Add($"MARK {possibleMove.X} {possibleMove.Y}");
-                    }
-
-                    _movesThisTurn.Add(possibleMove);
-                    foundMove = true;
-                    continue;
+                    // TODO: As a first pass just score them so that it keeps the previous priority
+                    Plan plan = new Plan(new List<Point> { possibleMove }, score: 300, "attack", turnsToFruition: 1);
+                    snakeBot.AddPlan(plan);                    
                 }
 
                 if (excludeMove)
@@ -252,39 +242,71 @@ internal class Game
 
             if (snakeBot.IsStuck())
             {
+                Logger.Message($"SnakeBot {snakeBot.Id} is stuck, adding last move to exclude points");
                 excludePoints.Add(snakeBot.GetLastMove());
             }
 
+            // TODO: We'll want to return more than one here at some point
             List<Point> bestPathToPower = GetBestPathToPowerSource(snakeBot, excludePoints);
 
             Logger.LogTime("Finished path finding");
             if (bestPathToPower.Count != 0)
             {
-                string direction = DirectionHelper.GetDirection(snakeBot.Body[0], bestPathToPower[0]);
-
-                actions.Add($"{snakeBot.Id} {direction} power");
-
-                if (!_positionChecker.IsOutOfMapBounds(bestPathToPower[bestPathToPower.Count - 1]))
-                {
-                    actions.Add($"MARK {bestPathToPower[bestPathToPower.Count - 1].X} {bestPathToPower[bestPathToPower.Count - 1].Y}");
-                }
-               
-                snakeBot.AddMove(bestPathToPower[0]);
-                _movesThisTurn.Add(bestPathToPower[0]);
-                _powerUpsThisTurn.Add(bestPathToPower[bestPathToPower.Count-1]);
+                snakeBot.AddPlan(new Plan(bestPathToPower, score: 200, "power", turnsToFruition: bestPathToPower.Count));
             }
             else
             {
-                string direction = GetValidDirection(snakeBot);
-                Logger.LogTime("Found valid direction");
+                List<(Point, int)> validPoints = GetValidDirectionPoints(snakeBot);
 
-                actions.Add($"{snakeBot.Id} {direction} wander");
-                snakeBot.AddMove(DirectionHelper.GetNewPosition(snakeBot.Body[0], direction));
-                _movesThisTurn.Add(DirectionHelper.GetNewPosition(snakeBot.Body[0], direction));
+                foreach (var validPoint in validPoints)
+                {
+                    snakeBot.AddPlan(new Plan(new List<Point> { validPoint.Item1 }, score: 100 + validPoint.Item2, "wander", turnsToFruition: 1));
+                }
+
+                Logger.LogTime("Found valid direction");              
             }
         }
 
         // TODO: After we've come up with moves check for clashes and try to resolve them
+        foreach (var snakeBot in MySnakeBots)
+        {
+            List<Plan> plans = snakeBot.GetPlans();
+
+            // Get highest scoring plan
+            int bestScore = int.MinValue;
+            Plan bestPlan = null;
+
+            foreach (var plan in plans) 
+            {
+                if (plan.Score > bestScore)
+                {
+                    bestScore = plan.Score;
+                    bestPlan = plan;
+                }
+            }
+
+            if (bestPlan != null)
+            {
+                Logger.LogTime($"Best plan for snakebot {snakeBot.Id} is {bestPlan.PlanType} with score {bestPlan.Score} and moves {string.Join(",", bestPlan.Moves.Select(m => $"{m.X},{m.Y}"))}");
+                string direction = DirectionHelper.GetDirection(snakeBot.Body[0], bestPlan.Moves[0]);
+                actions.Add($"{snakeBot.Id} {direction} {bestPlan.PlanType}");
+
+                Point planTarget = bestPlan.Moves[bestPlan.Moves.Count-1];
+                if (!_positionChecker.IsOutOfMapBounds(planTarget))
+                {
+                    actions.Add($"MARK {planTarget.X} {planTarget.Y}");
+                }
+
+                Logger.LogTime($"Chose plan {bestPlan.PlanType} with score {bestPlan.Score} and direction {direction}");
+
+            }
+            else
+            {
+                // If we don't have a plan just move up as a default. We should never get here since we should always have at least a wandering plan, but just in case.
+                actions.Add("UP");
+                Logger.LogTime("No plan found, defaulting to UP");
+            }
+        }
 
         return actions;
     }
@@ -320,7 +342,7 @@ internal class Game
         return shortestPathPoints;
     }
 
-    private string GetValidDirection(SnakeBot snakeBot)
+    private List<(Point, int)> GetValidDirectionPoints(SnakeBot snakeBot)
     {
         // Prioritise moving towards the nearest powersource
         // TODO: We should also prioritise climbing. For example, if I'm below a platform and I can get up there,
@@ -333,59 +355,40 @@ internal class Game
 
         // First, remove the hard no's
         RemoveAllHardNos(possibleDirections, snakeBot);
-        
-        if (possibleDirections.Count == 0)
+
+        if (possibleDirections.Count > 0)
         {
-            // No valid moves, just stay there and hope for the best
-            return "LEFT";
+            RemoveOtherSnakeBodyPositions(possibleDirections, snakeBot);
         }
 
-        // Store the first just in case we need it
-        var bestSoFar = possibleDirections[0];
-
-        RemoveOtherSnakeBodyPositions(possibleDirections, snakeBot);
-
-        string direction;
-
-        if (!string.IsNullOrEmpty(direction = GetEarlyReturn(possibleDirections, bestSoFar)))
+        if (possibleDirections.Count > 0)
         {
-            return direction;
+            RemoveBlockingDirections(possibleDirections, snakeBot);
         }
 
-        RemoveBlockingDirections(possibleDirections, snakeBot);
-
-        if (!string.IsNullOrEmpty(direction = GetEarlyReturn(possibleDirections, bestSoFar)))
+        if (possibleDirections.Count > 0)
         {
-            return direction;
+            RemoveHeadDangerPositions(possibleDirections, snakeBot);
         }
 
-        RemoveHeadDangerPositions(possibleDirections, snakeBot);
-
-        if (!string.IsNullOrEmpty(direction = GetEarlyReturn(possibleDirections, bestSoFar)))
+        if (possibleDirections.Count > 0)
         {
-            return direction;
+            RemoveStuckDirections(possibleDirections, snakeBot);
         }
-
-        RemoveStuckDirections(possibleDirections, snakeBot);
 
         if (possibleDirections.Count == 0)
         {
-            // No valid moves, just stay there and hope for the best
-            return bestSoFar;
-        }
-
-        if (possibleDirections.Count == 1)
-        {
-            return possibleDirections[0];
+            return new List<(Point, int)>();
         }
 
         // Use flood fill to either move to a more open space, or to give the opponent less space
         // Score the current position:
         // For every direction score all my snake flood fills minus all opponent square flood fills.
         // The highest one wins.
-        Logger.Message("Space Scores");
+        // TODO: At some point check for all opponent moves here too. 
+        // For example, If I go left, give a score for all opponent moves. Count the worse one for me as the score. 
 
-        Dictionary<string, int> directionScores = new Dictionary<string, int>();
+        List<(Point, int)> directionScores = new List<(Point, int)>();
 
         foreach (var possibleDirection in possibleDirections)
         {
@@ -414,26 +417,10 @@ internal class Game
                 score -= _positionChecker.FloodFillCount(opponentSnake.Body[0], snakeBot.Id, newSnakeBody, 20);
             }
 
-            directionScores.Add(possibleDirection, score);
+            directionScores.Add((newSnakeBody[0], score));
         }
 
-        return directionScores.OrderByDescending(d => d.Value).First().Key;
-    }
-
-    private string GetEarlyReturn(List<string> possibleDirections, string bestSoFar)
-    {
-        if (possibleDirections.Count == 0)
-        {
-            // No valid moves, just stay there and hope for the best
-            return bestSoFar;
-        }
-
-        if (possibleDirections.Count == 1)
-        {
-            return possibleDirections[0];
-        }
-
-        return string.Empty;
+        return directionScores;
     }
 
     private void RemoveAllHardNos(List<string> possibleDirections, SnakeBot snakeBot)
@@ -516,7 +503,7 @@ internal class Game
             {
                 Point newHeadPosition = DirectionHelper.GetNewPosition(snakeBot.Body[0], possibleDirections[i]);
 
-                if (_positionChecker.IsStuckMove(newHeadPosition, snakeBot) || _movesThisTurn.Contains(newHeadPosition))
+                if (_positionChecker.IsStuckMove(newHeadPosition, snakeBot))
                 {
                     possibleDirections.Remove(possibleDirections[i]);
                 }
@@ -642,12 +629,7 @@ internal class Game
 
         var checkedSources = 0;
         foreach (Point powerSource in _level.PowerSources)
-        {            
-            if (_powerUpsThisTurn.Contains(powerSource))
-            {
-                continue;
-            }
-
+        {
             if(snakeBot.HasCheckedPowerSource(powerSource))
             {
                 continue;
@@ -674,9 +656,15 @@ internal class Game
                 continue;                
             }
 
+            Logger.Message($"Trying to find path to power source at {powerSource.X},{powerSource.Y}");
+
             snakeBot.AddAttemptAtPowerSource(powerSource);
 
-            List<Point> path = _pathFinder.GetShortestPath(snakeBot.Body.First(), powerSource, snakeBot, excludePoints.Concat(_movesThisTurn).ToList());
+            Logger.Message($"excludePoints: {string.Join(";", excludePoints.Select(p => $"{p.X},{p.Y}"))}");
+
+            List<Point> path = _pathFinder.GetShortestPath(snakeBot.Body.First(), powerSource, snakeBot, excludePoints.ToList());
+
+            Logger.Message($"Finished path finding to power source at {powerSource.X},{powerSource.Y}. Path: {string.Join(";", path.Select(p => $"{p.X},{p.Y}"))}");
             snakeBot.AddCheckedPowerSource(powerSource);
             checkedSources++;
 
@@ -748,7 +736,7 @@ internal class Level
 
 internal static class Logger    
 {
-    private static bool DISABLE_LOGGING = true;
+    private static bool DISABLE_LOGGING = false;
     private static bool DISABLE_TIMES = false;
 
     private static long _roundStartTime;
@@ -937,6 +925,30 @@ internal static class Logger
         _lastTimedLog = Stopwatch.GetTimestamp();
     }
 }
+
+internal record Move
+{    
+    internal int SnakeId { get; init; }
+    internal string Direction { get; init; }
+    internal Move(int snakeId, string direction)
+    {
+        SnakeId = snakeId;
+        Direction = direction;
+    }
+}
+
+
+
+internal record MoveSet
+{
+    internal List<Move> Moves { get; init; }
+    internal MoveSet(List<Move> moves)
+    {
+        Moves = moves;
+    }
+}
+
+
 
 internal sealed class Node
 {
@@ -1352,13 +1364,17 @@ internal sealed class PathFinder
 
 internal record Plan
 {
-    private readonly List<Point> _moves;
-    private readonly int _score;
+    internal List<Point> Moves { get; private set; }
+    internal int Score { get; private set; }
+    internal string PlanType { get; private set; }
+    internal int TurnsToFruition { get; private set; }
 
-    public Plan(List<Point> moves, int score)
+    public Plan(List<Point> moves, int score, string planType, int turnsToFruition)
     {
-        _moves = moves;
-        _score = score;
+        Moves = moves;
+        Score = score;
+        PlanType = planType;
+        TurnsToFruition = turnsToFruition;
     }
 }
 

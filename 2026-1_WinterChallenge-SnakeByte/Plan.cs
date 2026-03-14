@@ -1,16 +1,21 @@
-﻿using System.Drawing;
+﻿using System.Collections.Generic;
+using System.Drawing;
 
 namespace _2026_1_WinterChallenge_SnakeByte;
 
 internal record Plan
 {
-    private readonly List<Point> _moves;
-    private readonly int _score;
+    internal List<Point> Moves { get; private set; }
+    internal int Score { get; private set; }
+    internal string PlanType { get; private set; }
+    internal int TurnsToFruition { get; private set; }
 
-    public Plan(List<Point> moves, int score)
+    public Plan(List<Point> moves, int score, string planType, int turnsToFruition)
     {
-        _moves = moves;
-        _score = score;
+        Moves = moves;
+        Score = score;
+        PlanType = planType;
+        TurnsToFruition = turnsToFruition;
     }
 }
 

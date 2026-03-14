@@ -8,9 +8,15 @@
 
 # TO DO
 
+seed=1870029513596017000
+player 1 arena player 2 ide
+On move 35 my own snakes clash. This is a good place to test best combos
+
 IDE 1, arena 2
 Move 18 I pick the wrong attack
 seed=3478893539146914000
+
+------------------------------------
 
 Scoring moves
 Prefer getting power sources near the middle of the map

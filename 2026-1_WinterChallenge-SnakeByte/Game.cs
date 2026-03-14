@@ -7,6 +7,7 @@ using System.Reflection.Metadata.Ecma335;
 using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
 using System.Xml.Linq;
+using System.Xml.Schema;
 
 namespace _2026_1_WinterChallenge_SnakeByte;
 
@@ -22,6 +23,9 @@ internal class Game
 
     private PathFinder _pathFinder;
     private PositionChecker _positionChecker;
+
+    private const int BASE_POWER_SCORE = 10000;
+    private const int BASE_WANDER_SCORE = 500;
 
     public Game(int width, int height, bool[,] platforms)
     {
@@ -188,7 +192,7 @@ internal class Game
             Logger.LogTime("Finished path finding");
             if (bestPathToPower.Count != 0)
             {
-                snakeBot.AddPlan(new Plan(bestPathToPower, score: 200, "power", turnsToFruition: bestPathToPower.Count));
+                snakeBot.AddPlan(new Plan(bestPathToPower, score: BASE_POWER_SCORE, "power", turnsToFruition: bestPathToPower.Count, snakeBot.Id));
             }
 
             List<Plan> validPlans = GetValidDirectionPointPlans(snakeBot);
@@ -198,49 +202,102 @@ internal class Game
             
         }
 
-        // TODO: After we've come up with moves check for clashes and try to resolve them
-        foreach (var snakeBot in MySnakeBots)
+        // TODO
+        // If any snake has a terrible move (usually meaning it would lower mu score)
+        // give the same score to any other moves for that snake that has the same first position
+
+        // Get all combinations of all plans. Score them by adding the scores together. Pick the highest scoring combination that doesn't have any clashes.
+        Dictionary<List<Plan>, int> planCombinations = GetAllPlanCombinations();
+        planCombinations.OrderByDescending(pc => pc.Value);
+
+        // Logger.PlanCombinations(planCombinations);
+
+        Logger.LogTime($"Got all plan combinations: {planCombinations.Count}");
+
+        // Get the first combination that doesn't have any clashes for the next move
+        // TODO: We should check for clashes for the target too, because we don't want
+        // snakes going for the same source. Wait until we return multiple power source 
+        // plans to do this though.
+
+        foreach (var planCombination in planCombinations)
         {
-            Logger.Plans($"Plans for snakebot {snakeBot.Id}", snakeBot.GetPlans());
-            List<Plan> plans = snakeBot.GetPlans();
+            HashSet<Point> plannedPositions = new HashSet<Point>();
+            bool clash = false;
 
-            // Get highest scoring plan
-            int bestScore = int.MinValue;
-            Plan bestPlan = null;
-
-            foreach (var plan in plans) 
+            foreach (var plan in planCombination.Key)
             {
-                if (plan.Score > bestScore)
+                if (plannedPositions.Contains(plan.Moves[0]))
                 {
-                    bestScore = plan.Score;
-                    bestPlan = plan;
+                    clash = true;
+                    break;
+                }
+                else
+                {
+                    plannedPositions.Add(plan.Moves[0]);
                 }
             }
 
-            if (bestPlan != null)
+            if (!clash)
             {
-                Logger.LogTime($"Best plan for snakebot {snakeBot.Id} is {bestPlan.PlanType} with score {bestPlan.Score} and moves {string.Join(",", bestPlan.Moves.Select(m => $"{m.X},{m.Y}"))}");
-                string direction = DirectionHelper.GetDirection(snakeBot.Body[0], bestPlan.Moves[0]);
-                actions.Add($"{snakeBot.Id} {direction} {bestPlan.PlanType}");
-
-                snakeBot.AddMove(bestPlan.Moves[0]);
-
-                Point planTarget = bestPlan.Moves[bestPlan.Moves.Count-1];
-                if (!_positionChecker.IsOutOfMapBounds(planTarget))
+                Logger.LogTime($"Chose plan combination with score {planCombination.Value}");
+                foreach (Plan? plan in planCombination.Key)
                 {
-                    actions.Add($"MARK {planTarget.X} {planTarget.Y}");
+                    var snakeBot = MySnakeBots.First(s => s.Id == plan.SnakeID);
+
+                    string direction = DirectionHelper.GetDirection(snakeBot.Body[0], plan.Moves[0]);
+                    
+                    actions.Add($"{snakeBot.Id} {direction} {plan.PlanType}");
+
+                    snakeBot.AddMove(plan.Moves[0]);
+
+                    Point planTarget = plan.Moves[plan.Moves.Count - 1];
+                    if (!_positionChecker.IsOutOfMapBounds(planTarget))
+                    {
+                        actions.Add($"MARK {planTarget.X} {planTarget.Y}");
+                    }
+
+                    Logger.Message($"Chose plan {plan.PlanType} with score {plan.Score} and direction {direction}");
+
                 }
-
-                Logger.LogTime($"Chose plan {bestPlan.PlanType} with score {bestPlan.Score} and direction {direction}");
-
-            }
-            else
-            {
-                Logger.LogTime("No plan found for snakebot {snakeBot.Id}");
+                break;
             }
         }
 
         return actions;
+    }
+
+    private Dictionary<List<Plan>, int> GetAllPlanCombinations()
+    {
+        var allSnakePlans = MySnakeBots.Select(s => s.GetPlans())
+                                       .Where(plans => plans.Count > 0)
+                                       .ToList();
+
+        var planCombinations = new Dictionary<List<Plan>, int>();
+
+        if (allSnakePlans.Count == 0)
+        {
+            return planCombinations;
+        }
+
+        GetAllPlanCombinationsRecursive(allSnakePlans, 0, new List<Plan>(), planCombinations);
+
+        return planCombinations;
+    }
+
+    private void GetAllPlanCombinationsRecursive(List<List<Plan>> allSnakePlans, int snakeIndex, List<Plan> plans, Dictionary<List<Plan>, int> planCombinations)
+    {
+        if (snakeIndex == allSnakePlans.Count)
+        {
+            int score = plans.Sum(p => p.Score);
+            planCombinations.Add(plans.ToList(), score);
+            return;
+        }
+        foreach (var plan in allSnakePlans[snakeIndex])
+        {
+            plans.Add(plan);
+            GetAllPlanCombinationsRecursive(allSnakePlans, snakeIndex + 1, plans, planCombinations);
+            plans.RemoveAt(plans.Count - 1);
+        }
     }
 
     private List<Point> GetBestPathToPowerSource(SnakeBot snakeBot, HashSet<Point> excludePoints)
@@ -313,7 +370,7 @@ internal class Game
         // For example, If I go left, give a score for all opponent moves. Count the worse one for me as the score. 
         foreach (var directionScore in directionScores)
         {
-            int score = 0;
+            int score = BASE_WANDER_SCORE;
 
             // TODO: Simulate the movement (just adding a head and removing a tail. At some point we might want to think about
             // simulating gravity but not yet
@@ -374,7 +431,7 @@ internal class Game
 
         foreach (var directionScore in directionScores)
         {
-            plans.Add(new Plan(new List<Point> { directionScore.Key }, directionScore.Value, "wander", turnsToFruition: 1));
+            plans.Add(new Plan(new List<Point> { directionScore.Key }, directionScore.Value, "wander", turnsToFruition: 1, snakeBot.Id));
         }
 
         return plans;
@@ -549,7 +606,7 @@ internal class Game
         if (score > 0)
         {
             score += _positionChecker.FloodFillCount(newHeadPosition, snakeBot.Id, snakeBot.Body, 20);
-            plan = new Plan(new List<Point> { newHeadPosition }, score, "attack", turnsToFruition: 1);
+            plan = new Plan(new List<Point> { newHeadPosition }, score, "attack", turnsToFruition: 1, snakeBot.Id);
         }
 
         return (plan, excludeMove);

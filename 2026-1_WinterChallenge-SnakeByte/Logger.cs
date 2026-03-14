@@ -220,4 +220,24 @@ internal static class Logger
         Console.Error.WriteLine($"{elapsedTime.TotalMilliseconds}({elapsedSinceLastLog.TotalMilliseconds}): {message}");
         _lastTimedLog = Stopwatch.GetTimestamp();
     }
+
+    internal static void PlanCombinations(Dictionary<List<Plan>, int> planCombinations)
+    {
+        if (DISABLE_LOGGING || planCombinations == null) 
+        {
+            return;
+        }
+
+        Console.Error.WriteLine("Plan Combinations:");
+        foreach (var kvp in planCombinations)
+        {
+            var plans = kvp.Key;
+            var score = kvp.Value;
+            Console.Error.WriteLine($"Score: {score}");
+            foreach (var plan in plans)
+            {
+                Console.Error.WriteLine($"  Plan Type: {plan.PlanType}, Score: {plan.Score}, Turns to Fruition: {plan.TurnsToFruition}, Moves: {string.Join(";", plan.Moves.Select(p => $"{p.X},{p.Y}"))}");
+            }
+        }
+    }
 }

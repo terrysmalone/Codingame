@@ -23,14 +23,14 @@ internal sealed class PathFinder
 
     internal List<Point> GetShortestPath(Point startPoint, Point targetPoint, SnakeBot snake, List<Point> excludePoints)
     {
-        // TODO: Add all power sources as platforms....
-
         // Calculate points we use for collision detection and gravity, then we can use it for every search
         // Note: This doesn't include the current snake body since that will be moving as we simulate movement
-        HashSet<Point> collisionPoints = BuildCollisionPoints(snake.Id);
-        HashSet<Point> powerUpPoints = _game.GetPowerUps().ToHashSet();
+
+        HashSet<Point> powerUpPoints = _game.GetPowerUps().ToHashSet(); 
+        HashSet<Point> collisionPoints = BuildCollisionPoints(snake.Id, powerUpPoints);
         HashSet<Point> platformPoints = BuildPlatformPoints(snake.Id, powerUpPoints);
-        
+        // TODO: collisionPoints and platformPoints might be the same now. Consolidate
+
         _debugCount = 0;
 
         Dictionary<SnakeState, Node> nodesByState = new Dictionary<SnakeState, Node>();
@@ -294,7 +294,7 @@ internal sealed class PathFinder
         return collisionPoints;
     }
 
-    private HashSet<Point> BuildCollisionPoints(int excludeSnakeId)
+    private HashSet<Point> BuildCollisionPoints(int excludeSnakeId, HashSet<Point> powerUpPoints)
     {
         HashSet<Point> collisionPoints = new HashSet<Point>();
 
@@ -322,7 +322,12 @@ internal sealed class PathFinder
         {
             collisionPoints.Add(platform);
         }
-        
+
+        foreach (var powerUp in powerUpPoints)
+        {
+            collisionPoints.Add(powerUp);
+        }
+
         return collisionPoints;
     }
 

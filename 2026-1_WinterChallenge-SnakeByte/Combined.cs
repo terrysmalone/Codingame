@@ -294,19 +294,22 @@ internal class Game
 
         foreach (var planCombination in planCombinations.OrderByDescending(pc => pc.Value))
         {
-            HashSet<Point> plannedPositions = new HashSet<Point>();
+            HashSet<Point> plannedStartMoves = new HashSet<Point>();
+            HashSet<Point> plannedEndMoves = new HashSet<Point>();
             bool clash = false;
 
             foreach (var plan in planCombination.Key)
             {
-                if (plannedPositions.Contains(plan.Moves[0]))
+                if (plannedStartMoves.Contains(plan.Moves[0])
+                    || plannedEndMoves.Contains(plan.Moves[plan.Moves.Count - 1]))
                 {
                     clash = true;
                     break;
                 }
                 else
                 {
-                    plannedPositions.Add(plan.Moves[0]);
+                    plannedStartMoves.Add(plan.Moves[0]);
+                    plannedEndMoves.Add(plan.Moves[plan.Moves.Count - 1]);
                 }
             }
 
@@ -858,8 +861,6 @@ internal class Game
 
     private List<Plan> GetShortestPathPlans(SnakeBot snakeBot, int maxDistance, HashSet<Point> excludePoints)
     {
-        // TODO: We might want an early cut off if we've gone to distance 10. Those searches take a lot longer
-
         List<Plan> plans = new List<Plan>();
 
         foreach (Point powerSource in _level.PowerSources)
@@ -900,13 +901,17 @@ internal class Game
                 int score = BASE_POWER_SCORE - (path.Count * 10); // Small penalty for longer paths
                 plans.Add(new Plan(path, score, "power", turnsToFruition: path.Count, snakeBot.Id));
                 Logger.LogTime($"Added path to power source {powerSource.X}, {powerSource.Y}. Path: {string.Join(", ", path.Select(p => $"({p.X},{p.Y})"))}");
+            
+                if (maxDistance >= 10)
+                {
+                    // Exit early. Paths of 10 can be expensive
+                    break;
+                }
             }
             else
             {
                 Logger.LogTime($"No path to power source {powerSource.X}, {powerSource.Y}.");
             }
-
-            
         }
 
         Logger.LogTime($"Finished looking with max distance {maxDistance}");
@@ -1269,10 +1274,12 @@ internal sealed class PathFinder
     {
         // Calculate points we use for collision detection and gravity, then we can use it for every search
         // Note: This doesn't include the current snake body since that will be moving as we simulate movement
-        HashSet<Point> collisionPoints = BuildCollisionPoints(snake.Id);
-        HashSet<Point> powerUpPoints = _game.GetPowerUps().ToHashSet();
+
+        HashSet<Point> powerUpPoints = _game.GetPowerUps().ToHashSet(); 
+        HashSet<Point> collisionPoints = BuildCollisionPoints(snake.Id, powerUpPoints);
         HashSet<Point> platformPoints = BuildPlatformPoints(snake.Id, powerUpPoints);
-        
+        // TODO: collisionPoints and platformPoints might be the same now. Consolidate
+
         _debugCount = 0;
 
         Dictionary<SnakeState, Node> nodesByState = new Dictionary<SnakeState, Node>();
@@ -1536,7 +1543,7 @@ internal sealed class PathFinder
         return collisionPoints;
     }
 
-    private HashSet<Point> BuildCollisionPoints(int excludeSnakeId)
+    private HashSet<Point> BuildCollisionPoints(int excludeSnakeId, HashSet<Point> powerUpPoints)
     {
         HashSet<Point> collisionPoints = new HashSet<Point>();
 
@@ -1564,7 +1571,12 @@ internal sealed class PathFinder
         {
             collisionPoints.Add(platform);
         }
-        
+
+        foreach (var powerUp in powerUpPoints)
+        {
+            collisionPoints.Add(powerUp);
+        }
+
         return collisionPoints;
     }
 

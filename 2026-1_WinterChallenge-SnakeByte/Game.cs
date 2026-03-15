@@ -25,6 +25,8 @@ internal class Game
     private PathFinder _pathFinder;
     private PositionChecker _positionChecker;
 
+    private Dictionary<Point, int> _closestSnakeToPowerSourceMap = new Dictionary<Point, int>();
+
     private const int BASE_POWER_SCORE = 10000;
     private const int BASE_WANDER_SCORE = 500;
     private const int BASE_CRITICAL_MOVE_SCORE = 100000;
@@ -103,6 +105,7 @@ internal class Game
 
     internal List<string> GetActions()
     {
+        _closestSnakeToPowerSourceMap = _positionChecker.GetClosestPowerSourceToOpponentSnakeMap();
 
         foreach (var snakeBot in MySnakeBots)
         {
@@ -842,9 +845,28 @@ internal class Game
             {
                 // Create a plan for this path
                 int score = BASE_POWER_SCORE - (path.Count * 10); // Small penalty for longer paths
+
+                // If doing this blocks an opponent from getting to a power source give bonus points
+                // Get closest opponent snake head to power source
+                int numberOfCloseSnakes;
+                
+                _closestSnakeToPowerSourceMap.TryGetValue(powerSource, out numberOfCloseSnakes);
+                
+                foreach (var c in _closestSnakeToPowerSourceMap)
+                {
+                    Logger.Message($"Power source {c.Key.X},{c.Key.Y} has closest snake count {c.Value}");
+                }
+
+                if (numberOfCloseSnakes > 0)
+                {
+                    score += numberOfCloseSnakes * 20;
+                    Logger.LogTime($"Added bonus for blocking {numberOfCloseSnakes} snakes from power source {powerSource.X}, {powerSource.Y}.");
+                }
+
                 plans.Add(new Plan(path, score, "power", turnsToFruition: path.Count, snakeBot.Id));
                 Logger.LogTime($"Added path to power source {powerSource.X}, {powerSource.Y}. Path: {string.Join(", ", path.Select(p => $"({p.X},{p.Y})"))}");
-            
+
+
                 if (maxDistance >= 10)
                 {
                     // Exit early. Paths of 10 can be expensive
@@ -862,7 +884,7 @@ internal class Game
         return plans;
     }
 
-    internal List<Point> GetPowerUps()
+    internal List<Point> GetPowerSources()
     {
         return _level.PowerSources;
     }

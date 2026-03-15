@@ -26,7 +26,7 @@ internal sealed class PathFinder
         // Calculate points we use for collision detection and gravity, then we can use it for every search
         // Note: This doesn't include the current snake body since that will be moving as we simulate movement
 
-        HashSet<Point> powerUpPoints = _game.GetPowerUps().ToHashSet(); 
+        HashSet<Point> powerUpPoints = _game.GetPowerSources().ToHashSet(); 
         HashSet<Point> collisionPoints = BuildCollisionPoints(snake.Id, powerUpPoints);
         HashSet<Point> platformPoints = BuildPlatformPoints(snake.Id, powerUpPoints);
         // TODO: collisionPoints and platformPoints might be the same now. Consolidate

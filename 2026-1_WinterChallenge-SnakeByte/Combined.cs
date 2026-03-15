@@ -82,6 +82,8 @@ internal class Game
     private PathFinder _pathFinder;
     private PositionChecker _positionChecker;
 
+    private Dictionary<Point, int> _closestSnakeToPowerSourceMap = new Dictionary<Point, int>();
+
     private const int BASE_POWER_SCORE = 10000;
     private const int BASE_WANDER_SCORE = 500;
     private const int BASE_CRITICAL_MOVE_SCORE = 100000;
@@ -160,6 +162,7 @@ internal class Game
 
     internal List<string> GetActions()
     {
+        _closestSnakeToPowerSourceMap = _positionChecker.GetClosestPowerSourceToOpponentSnakeMap();
 
         foreach (var snakeBot in MySnakeBots)
         {
@@ -899,9 +902,28 @@ internal class Game
             {
                 // Create a plan for this path
                 int score = BASE_POWER_SCORE - (path.Count * 10); // Small penalty for longer paths
+
+                // If doing this blocks an opponent from getting to a power source give bonus points
+                // Get closest opponent snake head to power source
+                int numberOfCloseSnakes;
+                
+                _closestSnakeToPowerSourceMap.TryGetValue(powerSource, out numberOfCloseSnakes);
+                
+                foreach (var c in _closestSnakeToPowerSourceMap)
+                {
+                    Logger.Message($"Power source {c.Key.X},{c.Key.Y} has closest snake count {c.Value}");
+                }
+
+                if (numberOfCloseSnakes > 0)
+                {
+                    score += numberOfCloseSnakes * 20;
+                    Logger.LogTime($"Added bonus for blocking {numberOfCloseSnakes} snakes from power source {powerSource.X}, {powerSource.Y}.");
+                }
+
                 plans.Add(new Plan(path, score, "power", turnsToFruition: path.Count, snakeBot.Id));
                 Logger.LogTime($"Added path to power source {powerSource.X}, {powerSource.Y}. Path: {string.Join(", ", path.Select(p => $"({p.X},{p.Y})"))}");
-            
+
+
                 if (maxDistance >= 10)
                 {
                     // Exit early. Paths of 10 can be expensive
@@ -919,7 +941,7 @@ internal class Game
         return plans;
     }
 
-    internal List<Point> GetPowerUps()
+    internal List<Point> GetPowerSources()
     {
         return _level.PowerSources;
     }
@@ -1275,7 +1297,7 @@ internal sealed class PathFinder
         // Calculate points we use for collision detection and gravity, then we can use it for every search
         // Note: This doesn't include the current snake body since that will be moving as we simulate movement
 
-        HashSet<Point> powerUpPoints = _game.GetPowerUps().ToHashSet(); 
+        HashSet<Point> powerUpPoints = _game.GetPowerSources().ToHashSet(); 
         HashSet<Point> collisionPoints = BuildCollisionPoints(snake.Id, powerUpPoints);
         HashSet<Point> platformPoints = BuildPlatformPoints(snake.Id, powerUpPoints);
         // TODO: collisionPoints and platformPoints might be the same now. Consolidate
@@ -1981,7 +2003,7 @@ internal sealed class PositionChecker
             {
                 if (_level.IsPlatform(new Point(x, y)))
                 {
-                    int distance = GetNearestDistance(pointToCheck, new Point(x, y));
+                    int distance = GetNearestPowerSourceDistance(pointToCheck, new Point(x, y));
                     
                     if (distance < nearestPlatformDistance)
                     {
@@ -2001,7 +2023,7 @@ internal sealed class PositionChecker
 
             foreach (var bodyPart in snakeBot.Body)
             {               
-                int distance = GetNearestDistance(pointToCheck, bodyPart);
+                int distance = GetNearestPowerSourceDistance(pointToCheck, bodyPart);
                     
                 if (distance < nearestPlatformDistance)
                 {
@@ -2014,7 +2036,7 @@ internal sealed class PositionChecker
         {
             foreach (var bodyPart in snakeBot.Body)
             {
-                int distance = GetNearestDistance(pointToCheck, bodyPart);
+                int distance = GetNearestPowerSourceDistance(pointToCheck, bodyPart);
                         
                 if (distance < nearestPlatformDistance)
                 {
@@ -2026,21 +2048,54 @@ internal sealed class PositionChecker
         return nearestPlatformDistance;
     }
 
-    private int GetNearestDistance(Point pointToCheck, Point point)
+    private int GetNearestPowerSourceDistance(Point powerSourcePoint, Point checkPoint, bool excludeGravity = true)
     {
         int distance = int.MaxValue;
         // If the power up is lower than the platform we don't need to count vertical distance because gravity
         // can do some of the work
-        if (pointToCheck.Y >= point.Y)
+        if (excludeGravity && powerSourcePoint.Y >= checkPoint.Y)
         {
-            distance = Math.Abs(pointToCheck.X - point.X);
+            distance = Math.Abs(powerSourcePoint.X - checkPoint.X);
         }
         else
         {
-            distance = Math.Abs(pointToCheck.X - point.X) + Math.Abs(pointToCheck.Y - point.Y);
+            distance = Math.Abs(powerSourcePoint.X - checkPoint.X) + Math.Abs(powerSourcePoint.Y - checkPoint.Y);
         }
 
         return distance;
+    }
+
+    internal Dictionary<Point, int> GetClosestPowerSourceToOpponentSnakeMap()
+    {
+        Dictionary<Point, int> closestPowerSourceToOpponentSnakeMap = new Dictionary<Point, int>();
+
+        foreach (var snakeBot in _game.OpponentSnakeBots)
+        {
+            int closestPowerSourceDistance = int.MaxValue;
+            Point closestPowerSource = new Point(-1, -1);
+
+            foreach (var powerSource in _game.GetPowerSources())
+            {
+                int distance = GetNearestPowerSourceDistance(powerSource, snakeBot.Body[0], excludeGravity: false);
+                if (distance < closestPowerSourceDistance)
+                {
+                    closestPowerSourceDistance = distance;
+                    closestPowerSource = powerSource;
+                }
+            }
+
+            int num;
+            if (closestPowerSourceToOpponentSnakeMap.TryGetValue(closestPowerSource, out num))
+            {
+                closestPowerSourceToOpponentSnakeMap[closestPowerSource]++;
+            }
+            else
+            { 
+                closestPowerSourceToOpponentSnakeMap[closestPowerSource] = 1;
+            }
+        }
+
+        return closestPowerSourceToOpponentSnakeMap;
     }
 }
 

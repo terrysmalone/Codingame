@@ -213,7 +213,7 @@ internal sealed class PositionChecker
             {
                 if (_level.IsPlatform(new Point(x, y)))
                 {
-                    int distance = GetNearestDistance(pointToCheck, new Point(x, y));
+                    int distance = GetNearestPowerSourceDistance(pointToCheck, new Point(x, y));
                     
                     if (distance < nearestPlatformDistance)
                     {
@@ -233,7 +233,7 @@ internal sealed class PositionChecker
 
             foreach (var bodyPart in snakeBot.Body)
             {               
-                int distance = GetNearestDistance(pointToCheck, bodyPart);
+                int distance = GetNearestPowerSourceDistance(pointToCheck, bodyPart);
                     
                 if (distance < nearestPlatformDistance)
                 {
@@ -246,7 +246,7 @@ internal sealed class PositionChecker
         {
             foreach (var bodyPart in snakeBot.Body)
             {
-                int distance = GetNearestDistance(pointToCheck, bodyPart);
+                int distance = GetNearestPowerSourceDistance(pointToCheck, bodyPart);
                         
                 if (distance < nearestPlatformDistance)
                 {
@@ -258,20 +258,53 @@ internal sealed class PositionChecker
         return nearestPlatformDistance;
     }
 
-    private int GetNearestDistance(Point pointToCheck, Point point)
+    private int GetNearestPowerSourceDistance(Point powerSourcePoint, Point checkPoint, bool excludeGravity = true)
     {
         int distance = int.MaxValue;
         // If the power up is lower than the platform we don't need to count vertical distance because gravity
         // can do some of the work
-        if (pointToCheck.Y >= point.Y)
+        if (excludeGravity && powerSourcePoint.Y >= checkPoint.Y)
         {
-            distance = Math.Abs(pointToCheck.X - point.X);
+            distance = Math.Abs(powerSourcePoint.X - checkPoint.X);
         }
         else
         {
-            distance = Math.Abs(pointToCheck.X - point.X) + Math.Abs(pointToCheck.Y - point.Y);
+            distance = Math.Abs(powerSourcePoint.X - checkPoint.X) + Math.Abs(powerSourcePoint.Y - checkPoint.Y);
         }
 
         return distance;
+    }
+
+    internal Dictionary<Point, int> GetClosestPowerSourceToOpponentSnakeMap()
+    {
+        Dictionary<Point, int> closestPowerSourceToOpponentSnakeMap = new Dictionary<Point, int>();
+
+        foreach (var snakeBot in _game.OpponentSnakeBots)
+        {
+            int closestPowerSourceDistance = int.MaxValue;
+            Point closestPowerSource = new Point(-1, -1);
+
+            foreach (var powerSource in _game.GetPowerSources())
+            {
+                int distance = GetNearestPowerSourceDistance(powerSource, snakeBot.Body[0], excludeGravity: false);
+                if (distance < closestPowerSourceDistance)
+                {
+                    closestPowerSourceDistance = distance;
+                    closestPowerSource = powerSource;
+                }
+            }
+
+            int num;
+            if (closestPowerSourceToOpponentSnakeMap.TryGetValue(closestPowerSource, out num))
+            {
+                closestPowerSourceToOpponentSnakeMap[closestPowerSource]++;
+            }
+            else
+            { 
+                closestPowerSourceToOpponentSnakeMap[closestPowerSource] = 1;
+            }
+        }
+
+        return closestPowerSourceToOpponentSnakeMap;
     }
 }

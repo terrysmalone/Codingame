@@ -1,4 +1,6 @@
-﻿using System.Drawing;
+﻿using System;
+using System.Collections.Generic;
+using System.Drawing;
 
 namespace _2026_1_WinterChallenge_SnakeByte;
 
@@ -9,6 +11,9 @@ internal class Level
 
     internal bool[,] Platforms { get; private set; }
 
+    private HashSet<Point> _allPlatformPositions = new HashSet<Point>();
+    private HashSet<Point> _walkableLedges = new HashSet<Point>();
+
     internal List<Point> PowerSources { get; private set; } = new List<Point>();
 
     public Level(int width, int height, bool[,] platforms)
@@ -17,6 +22,47 @@ internal class Level
         this.height = height;
 
         Platforms = platforms;
+
+        CalculateAllPlatformPositions();
+        CalculateWalkableLedges();
+    }
+
+    private void CalculateAllPlatformPositions()
+    {
+        for (int y = 0; y < height; y++)
+        {
+            for (int x = 0; x < width; x++)
+            {
+                if (Platforms[y, x])
+                {
+                    _allPlatformPositions.Add(new Point(x, y));
+                }
+            }
+        }
+    }
+
+    private void CalculateWalkableLedges()
+    {
+        // Only go to height minus 1 because we'll never want to check the ground for
+        // climbing to
+        for (int y = 1; y < height-1; y++)
+        {
+            for (int x = 0; x < width; x++)
+            {
+                if (Platforms[y, x])
+                {
+                    if(!Platforms[y-1, x])
+                    {
+                        _walkableLedges.Add(new Point(x, y-1));
+                    }
+                }
+            }
+        }
+    }
+
+    internal HashSet<Point> GetWalkableLedges()
+    {
+        return _walkableLedges;
     }
 
     internal bool IsPlatform(Point pointToCheck)
@@ -26,19 +72,6 @@ internal class Level
 
     internal HashSet<Point> GetAllPlatformPositions()
     {
-        var platformPositions = new HashSet<Point>();
-
-        for (int y = 0; y < height; y++)
-        {
-            for (int x = 0; x < width; x++)
-            {
-                if (Platforms[y, x])
-                {
-                    platformPositions.Add(new Point(x, y));
-                }
-            }
-        }
-
-        return platformPositions;
+        return _allPlatformPositions;
     }
 }

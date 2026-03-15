@@ -85,6 +85,7 @@ internal class Game
     private Dictionary<Point, int> _closestSnakeToPowerSourceMap = new Dictionary<Point, int>();
 
     private const int BASE_POWER_SCORE = 10000;
+    private const int BASE_CLIMBABLE_LEDGE_SCORE = 2000;
     private const int BASE_WANDER_SCORE = 500;
     private const int BASE_CRITICAL_MOVE_SCORE = 100000;
 
@@ -256,6 +257,10 @@ internal class Game
             snakeBot.AddPlans(bestPlansToPowerSources);
             Logger.LogTime("Finished path finding");
             
+            // Before wandering randomly, try to get some paths to nearby platforms that are above me
+            List<Plan> climbableLedgePlans = GetClimbableLedgePlans(snakeBot, excludePoints);
+            snakeBot.AddPlans(climbableLedgePlans);
+
             List<Plan> validPlans = GetValidDirectionPointPlans(snakeBot);
             snakeBot.AddPlans(validPlans);
                
@@ -350,6 +355,85 @@ internal class Game
         return actions;
     }
 
+    private List<Plan> GetClimbableLedgePlans(SnakeBot snakeBot, HashSet<Point> excludePoints)
+    {
+        List<Plan> plans = new List<Plan>();
+        var shortestPathPoints = new List<Point>();
+
+        //bool stopLooking = false;
+        int maxDistance = 5;
+
+        //while (stopLooking == false)
+        //{
+        plans = GetShortestPathToClimbableLedgePlans(snakeBot, maxDistance, excludePoints);
+
+        //    if (plans.Count > 0)
+        //    {
+        //        stopLooking = true;
+        //    }
+
+        //    maxDistance += 5;
+        //    if (maxDistance > 10)
+        //    {
+        //        stopLooking = true;
+        //    }
+        //}
+
+        return plans;
+    }
+
+    private List<Plan> GetShortestPathToClimbableLedgePlans(SnakeBot snakeBot, int maxDistance, HashSet<Point> excludePoints)
+    {
+        List<Plan> plans = new List<Plan>();
+
+        // Get lowest point on SnakeBot body
+        var lowestSnakePoint = snakeBot.Body.OrderByDescending(p => p.Y).First();
+
+        foreach (Point ledge in _level.GetWalkableLedges())
+        {
+            if(ledge.Y >= lowestSnakePoint.Y)
+            {
+                continue;
+            }
+
+            // Don't bother trying if it's further away than maxDistance
+            int manhattanDistance = CalculationUtil.GetManhattanDistance(snakeBot.Body[0], ledge);
+            if (manhattanDistance >= maxDistance)
+            {
+                continue;
+            }
+
+            // Don't try if something is on the ledge
+            if(_positionChecker.IsPointInAnySnake(ledge, countTails: false))
+            {
+                continue;
+            }
+
+            List<Point> path = _pathFinder.GetShortestPath(snakeBot.Body.First(), ledge, snakeBot, excludePoints.ToList());
+
+            Logger.Message($"Checked path to climbable ledge {ledge.X}, {ledge.Y}. Path length: {(path != null ? path.Count : -1)}");
+
+            if (path?.Count > 0)
+            {
+                // Create a plan for this path
+                int score = BASE_CLIMBABLE_LEDGE_SCORE - (path.Count * 10); // Small penalty for longer paths
+
+                plans.Add(new Plan(path, score, "climbing", turnsToFruition: path.Count, snakeBot.Id));
+                Logger.LogTime($"Added path to climbable ledge {ledge.X}, {ledge.Y}. Path: {string.Join(", ", path.Select(p => $"({p.X},{p.Y})"))}");
+
+                if (maxDistance >= 10)
+                {
+                    // Exit early. Paths of 10 can be expensive
+                    break;
+                }
+            }
+        }
+
+        Logger.LogTime($"Finished looking for ledges with max distance {maxDistance}");
+
+        return plans;
+    }
+
     private Dictionary<List<Plan>, int> GetAllPlanCombinations()
     {
         var allSnakePlans = MySnakeBots.Select(s => s.GetPlans())
@@ -387,7 +471,6 @@ internal class Game
     private List<Plan> GetBestPlansToPowerSources(SnakeBot snakeBot, HashSet<Point> excludePoints)
     {
         List<Plan> plans = new List<Plan>();
-        int shortestPathCount = int.MaxValue;
         var shortestPathPoints = new List<Point>();
 
         // Use an iterative deepening approach to finding targets
@@ -396,7 +479,7 @@ internal class Game
 
         while (stopLooking == false)
         {
-            plans = GetShortestPathPlans(snakeBot, Math.Min(shortestPathCount - 1, maxDistance), excludePoints);
+            plans = GetShortestPathToPowerSourcePlans(snakeBot, maxDistance, excludePoints);
 
             if (plans.Count > 0)
             {
@@ -862,7 +945,7 @@ internal class Game
         return nearestPowerSource;
     }
 
-    private List<Plan> GetShortestPathPlans(SnakeBot snakeBot, int maxDistance, HashSet<Point> excludePoints)
+    private List<Plan> GetShortestPathToPowerSourcePlans(SnakeBot snakeBot, int maxDistance, HashSet<Point> excludePoints)
     {
         List<Plan> plans = new List<Plan>();
 
@@ -899,7 +982,7 @@ internal class Game
             Logger.Message($"Checked path to power source {powerSource.X}, {powerSource.Y}. Path length: {(path != null ? path.Count : -1)}. Attempts: {snakeBot.GetAttemptsAtPowerSource(powerSource)}");
             snakeBot.AddCheckedPowerSource(powerSource);
 
-            if (path.Count > 0)
+            if (path?.Count > 0)
             {
                 // Create a plan for this path
                 int score = BASE_POWER_SCORE - (path.Count * 10); // Small penalty for longer paths
@@ -940,7 +1023,7 @@ internal class Game
             }
         }
 
-        Logger.LogTime($"Finished looking with max distance {maxDistance}");
+        Logger.LogTime($"Finished looking for power sources with max distance {maxDistance}");
 
         return plans;
     }
@@ -963,6 +1046,9 @@ internal class Level
 
     internal bool[,] Platforms { get; private set; }
 
+    private HashSet<Point> _allPlatformPositions = new HashSet<Point>();
+    private HashSet<Point> _walkableLedges = new HashSet<Point>();
+
     internal List<Point> PowerSources { get; private set; } = new List<Point>();
 
     public Level(int width, int height, bool[,] platforms)
@@ -971,6 +1057,47 @@ internal class Level
         this.height = height;
 
         Platforms = platforms;
+
+        CalculateAllPlatformPositions();
+        CalculateWalkableLedges();
+    }
+
+    private void CalculateAllPlatformPositions()
+    {
+        for (int y = 0; y < height; y++)
+        {
+            for (int x = 0; x < width; x++)
+            {
+                if (Platforms[y, x])
+                {
+                    _allPlatformPositions.Add(new Point(x, y));
+                }
+            }
+        }
+    }
+
+    private void CalculateWalkableLedges()
+    {
+        // Only go to height minus 1 because we'll never want to check the ground for
+        // climbing to
+        for (int y = 1; y < height-1; y++)
+        {
+            for (int x = 0; x < width; x++)
+            {
+                if (Platforms[y, x])
+                {
+                    if(!Platforms[y-1, x])
+                    {
+                        _walkableLedges.Add(new Point(x, y-1));
+                    }
+                }
+            }
+        }
+    }
+
+    internal HashSet<Point> GetWalkableLedges()
+    {
+        return _walkableLedges;
     }
 
     internal bool IsPlatform(Point pointToCheck)
@@ -980,20 +1107,7 @@ internal class Level
 
     internal HashSet<Point> GetAllPlatformPositions()
     {
-        var platformPositions = new HashSet<Point>();
-
-        for (int y = 0; y < height; y++)
-        {
-            for (int x = 0; x < width; x++)
-            {
-                if (Platforms[y, x])
-                {
-                    platformPositions.Add(new Point(x, y));
-                }
-            }
-        }
-
-        return platformPositions;
+        return _allPlatformPositions;
     }
 }
 

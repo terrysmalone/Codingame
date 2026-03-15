@@ -648,6 +648,10 @@ internal class Game
         {
             score = BASE_CRITICAL_MOVE_SCORE + 4000;
         }
+        else if (diff == 0 && powerUpOnSpot)
+        {
+            score = BASE_CRITICAL_MOVE_SCORE + 3500;
+        }
         else if (diff == 0 && snakeBot.Body.Count == clashingEnemyBodySizes.Min() && GetMyScore() > GetEnemyScore())
         {
             score = BASE_CRITICAL_MOVE_SCORE + 3000;

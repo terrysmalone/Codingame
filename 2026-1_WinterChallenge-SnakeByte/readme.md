@@ -8,6 +8,14 @@
 
 # TO DO
 
+seed=-2697487452895781000
+player 1 ide player 2 ide
+
+On move 3 snake 5 and snake 6 both go for the power source on 16,7. My old implementation didn't do this
+becuse it excluded previous moves from searches. I need to add multiple moves in find best paths and then
+discourage snakes going for the same power source.
+------------------------------------------------------------
+
 seed=1870029513596017000
 player 1 arena player 2 ide
 On move 35 my own snakes clash. This is a good place to test best combos

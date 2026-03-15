@@ -26,6 +26,7 @@ internal class Game
 
     private const int BASE_POWER_SCORE = 10000;
     private const int BASE_WANDER_SCORE = 500;
+    private const int BASE_CRITICAL_MOVE_SCORE = 100000;
 
     public Game(int width, int height, bool[,] platforms)
     {
@@ -157,6 +158,8 @@ internal class Game
                 new Point(snakeBot.Body[0].X, snakeBot.Body[0].Y - 1)
             };
 
+            var goldenMovesAdded = 0;
+
             foreach (var possibleMove in possibleMoves)
             {
                 (Plan? goldenMove, bool excludeMove) = GetGoldenMove(possibleMove, snakeBot);
@@ -164,6 +167,7 @@ internal class Game
                 if (goldenMove != null)
                 {
                     snakeBot.AddPlan(goldenMove);
+                    goldenMovesAdded++;
                     continue;
                 }
                 
@@ -179,7 +183,7 @@ internal class Game
                 }
             }
 
-            Logger.LogTime("Checked for head clash");
+            Logger.LogTime($"Checked for head clash. Added {goldenMovesAdded} plans");
 
             if (snakeBot.IsStuck())
             {
@@ -198,15 +202,15 @@ internal class Game
             List<Plan> validPlans = GetValidDirectionPointPlans(snakeBot);
             snakeBot.AddPlans(validPlans);
                
-            Logger.LogTime("Added valid directions");              
+            Logger.LogTime($"Finished checking valid directions. Added {validPlans.Count} plans");              
             
         }
 
-        // If any snake has a terrible move (usually meaning it would lower mu score)
+        // If any snake has a terrible move (usually meaning it would lower my score)
         // give the same score to any other moves for that snake that has the same first position
         foreach (var snakeBot in MySnakeBots)
         {
-            var terribleMoves = snakeBot.GetPlans().Where(p => p.Score < int.MinValue/4).ToList();
+            var terribleMoves = snakeBot.GetPlans().Where(p => p.Score < -BASE_CRITICAL_MOVE_SCORE + 10000).ToList();
 
             foreach (Plan terribleMove in terribleMoves)
             {
@@ -219,12 +223,13 @@ internal class Game
                     }
                 }
             }
+
+            Logger.Plans($"After...Plans for snake {snakeBot.Id}", snakeBot.GetPlans());
         }
 
         // Get all combinations of all plans. Score them by adding the scores together. Pick the highest scoring combination that doesn't have any clashes.
         Dictionary<List<Plan>, int> planCombinations = GetAllPlanCombinations();
-        planCombinations.OrderByDescending(pc => pc.Value);
-
+        
         // Logger.PlanCombinations(planCombinations);
 
         Logger.LogTime($"Got all plan combinations: {planCombinations.Count}");
@@ -234,7 +239,7 @@ internal class Game
         // snakes going for the same source. Wait until we return multiple power source 
         // plans to do this though.
 
-        foreach (var planCombination in planCombinations)
+        foreach (var planCombination in planCombinations.OrderByDescending(pc => pc.Value))
         {
             HashSet<Point> plannedPositions = new HashSet<Point>();
             bool clash = false;
@@ -426,6 +431,13 @@ internal class Game
         {
             if (_level.PowerSources.Count > 2)
             {
+                // If the head is out of bounds, and this move will bring it back in, give it a stronger bonus
+ 
+                if (_positionChecker.IsOutOfMapBounds(snakeBot.Body[0]) && !_positionChecker.IsOutOfMapBounds(directionScore.Key))
+                {
+                    directionScores[directionScore.Key] = directionScores[directionScore.Key] + 10;
+                }
+
                 int distanceFromCentre = CalculationUtil.GetManhattanDistance(directionScore.Key, new Point(Width / 2, Height / 2));
                 directionScores[directionScore.Key] = directionScores[directionScore.Key] - distanceFromCentre;
 
@@ -474,7 +486,29 @@ internal class Game
             {
                 pointsToRemove.Add(newHeadPosition);
             }
+
+            // If the new position is out of bounds, And the tail is the only one in bounds, hard no the move.
+            if (_positionChecker.IsOutOfMapBounds(newHeadPosition))
+            {
+                int inBoundsCount = 0;
+
+                foreach (var bodyPart in snakeBot.Body)
+                {
+                    if (!_positionChecker.IsOutOfMapBounds(bodyPart))
+                    {
+                        inBoundsCount++;
+                    }
+                }
+
+                if (inBoundsCount <= 1)
+                {
+                    pointsToRemove.Add(newHeadPosition);
+                }
+            }
         }
+
+       
+          
 
         foreach (var point in pointsToRemove)
         {
@@ -488,10 +522,11 @@ internal class Game
         {
             Point newHeadPosition = direction.Key;
 
-            if (_positionChecker.IsPointInAnySnake(newHeadPosition, countTails: true))
+            if (_positionChecker.IsPointInAnySnake(newHeadPosition, countTails: true, snakeBot.Id)
+                || _positionChecker.IsPointInGivenSnake(snakeBot.Body, newHeadPosition, countTails: false))
             {
                 // We never want to do this unless it's the only choice. Give it a preposterously low score
-                possibleDirections[direction.Key] = possibleDirections[direction.Key] - int.MaxValue/2;
+                possibleDirections[direction.Key] = possibleDirections[direction.Key] - BASE_CRITICAL_MOVE_SCORE;
             }
         }        
     }
@@ -508,7 +543,7 @@ internal class Game
 
             if (excludeMove)
             {
-                possibleDirections[direction.Key] = possibleDirections[direction.Key] - 100;
+                possibleDirections[direction.Key] = possibleDirections[direction.Key] - BASE_CRITICAL_MOVE_SCORE;
             }
         }        
     }
@@ -602,19 +637,20 @@ internal class Game
 
         int diff = enemyLossOnImpact - myLossOnImpact;
 
+        Console.Error.WriteLine($"Checking for head clash at {newHeadPosition.X},{newHeadPosition.Y}. My loss: {myLossOnImpact}, Enemy loss: {enemyLossOnImpact}, Diff: {diff}");
         int score = 0;
 
         if (diff > 0)
         {
-            score = int.MaxValue / 2 + 500;           
+            score = BASE_CRITICAL_MOVE_SCORE + 5000;           
         }
         else if (diff == 0 && snakeBot.Body.Count > clashingEnemyBodySizes.Min())
         {
-            score = int.MaxValue / 2 + 400;
+            score = BASE_CRITICAL_MOVE_SCORE + 4000;
         }
         else if (diff == 0 && snakeBot.Body.Count == clashingEnemyBodySizes.Min() && GetMyScore() > GetEnemyScore())
         {
-            score = int.MaxValue / 2 + 300;
+            score = BASE_CRITICAL_MOVE_SCORE + 3000;
         }
         else if (diff < 0)
         {

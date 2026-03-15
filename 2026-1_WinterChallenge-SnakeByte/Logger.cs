@@ -221,7 +221,7 @@ internal static class Logger
         _lastTimedLog = Stopwatch.GetTimestamp();
     }
 
-    internal static void PlanCombinations(Dictionary<List<Plan>, int> planCombinations)
+    internal static void PlanCombinations(Dictionary<List<Plan>, int> planCombinations, int showTop)
     {
         if (DISABLE_LOGGING || planCombinations == null) 
         {
@@ -229,8 +229,9 @@ internal static class Logger
         }
 
         Console.Error.WriteLine("Plan Combinations:");
-        foreach (var kvp in planCombinations)
+        for (int i = 0; i < Math.Min(showTop, planCombinations.Count); i++)
         {
+            var kvp = planCombinations.ElementAt(i);
             var plans = kvp.Key;
             var score = kvp.Value;
             Console.Error.WriteLine($"Score: {score}");

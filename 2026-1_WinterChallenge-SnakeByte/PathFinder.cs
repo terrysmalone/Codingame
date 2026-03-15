@@ -23,6 +23,8 @@ internal sealed class PathFinder
 
     internal List<Point> GetShortestPath(Point startPoint, Point targetPoint, SnakeBot snake, List<Point> excludePoints)
     {
+        // TODO: Add all power sources as platforms....
+
         // Calculate points we use for collision detection and gravity, then we can use it for every search
         // Note: This doesn't include the current snake body since that will be moving as we simulate movement
         HashSet<Point> collisionPoints = BuildCollisionPoints(snake.Id);

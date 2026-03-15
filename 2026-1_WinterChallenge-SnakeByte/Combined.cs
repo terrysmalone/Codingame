@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Numerics;
 using System.Reflection.Metadata.Ecma335;
 using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
@@ -248,19 +249,14 @@ internal class Game
             }
 
             // TODO: We'll want to return more than one here at some point
-            List<Point> bestPathToPower = GetBestPathToPowerSource(snakeBot, excludePoints);
-
+            List<Plan> bestPlansToPowerSources = GetBestPlansToPowerSources(snakeBot, excludePoints);
+            snakeBot.AddPlans(bestPlansToPowerSources);
             Logger.LogTime("Finished path finding");
-            if (bestPathToPower.Count != 0)
-            {
-                snakeBot.AddPlan(new Plan(bestPathToPower, score: BASE_POWER_SCORE, "power", turnsToFruition: bestPathToPower.Count, snakeBot.Id));
-            }
-
+            
             List<Plan> validPlans = GetValidDirectionPointPlans(snakeBot);
             snakeBot.AddPlans(validPlans);
                
-            Logger.LogTime($"Finished checking valid directions. Added {validPlans.Count} plans");              
-            
+            Logger.LogTime($"Finished checking valid directions. Added {validPlans.Count} plans");             
         }
 
         // If any snake has a terrible move (usually meaning it would lower my score)
@@ -382,8 +378,9 @@ internal class Game
         }
     }
 
-    private List<Point> GetBestPathToPowerSource(SnakeBot snakeBot, HashSet<Point> excludePoints)
+    private List<Plan> GetBestPlansToPowerSources(SnakeBot snakeBot, HashSet<Point> excludePoints)
     {
+        List<Plan> plans = new List<Plan>();
         int shortestPathCount = int.MaxValue;
         var shortestPathPoints = new List<Point>();
 
@@ -393,14 +390,11 @@ internal class Game
 
         while (stopLooking == false)
         {
-            List<Point> path = GetShortestPath(snakeBot, Math.Min(shortestPathCount - 1, maxDistance), excludePoints);
+            plans = GetShortestPathPlans(snakeBot, Math.Min(shortestPathCount - 1, maxDistance), excludePoints);
 
-            if (path.Count > 0)
+            if (plans.Count > 0)
             {
                 stopLooking = true;
-
-                shortestPathCount = path.Count;
-                shortestPathPoints = path.ToList();
             }
 
             maxDistance += 5;
@@ -410,7 +404,7 @@ internal class Game
             }
         }
 
-        return shortestPathPoints;
+        return plans;
     }
 
     private List<Plan> GetValidDirectionPointPlans(SnakeBot snakeBot)
@@ -862,13 +856,12 @@ internal class Game
         return nearestPowerSource;
     }
 
-    private List<Point> GetShortestPath(SnakeBot snakeBot, int maxDistance, HashSet<Point> excludePoints)
+    private List<Plan> GetShortestPathPlans(SnakeBot snakeBot, int maxDistance, HashSet<Point> excludePoints)
     {
-        int shortestPathCount = int.MaxValue;
-        int shortestManhattanDistanceCount = int.MaxValue;
-        var shortestPathPoints = new List<Point>();
+        // TODO: We might want an early cut off if we've gone to distance 10. Those searches take a lot longer
 
-        var checkedSources = 0;
+        List<Plan> plans = new List<Plan>();
+
         foreach (Point powerSource in _level.PowerSources)
         {
             if (snakeBot.HasCheckedPowerSource(powerSource))
@@ -876,11 +869,9 @@ internal class Game
                 continue;
             }
 
-            // Don't bother trying if it's further away than the shortest one we've found
+            // Don't bother trying if it's further away than maxDistance
             int manhattanDistance = CalculationUtil.GetManhattanDistance(snakeBot.Body[0], powerSource);
-            if (manhattanDistance >= maxDistance 
-                || manhattanDistance >= shortestPathCount)
-                //|| manhattanDistance >= shortestManhattanDistanceCount)
+            if (manhattanDistance >= maxDistance)
             {
                 continue;
             }
@@ -902,19 +893,25 @@ internal class Game
             List<Point> path = _pathFinder.GetShortestPath(snakeBot.Body.First(), powerSource, snakeBot, excludePoints.ToList());
 
             snakeBot.AddCheckedPowerSource(powerSource);
-            checkedSources++;
 
-            if (path != null && path.Count > 0 && path.Count < shortestPathCount)
+            if (path.Count > 0)
             {
-                shortestManhattanDistanceCount = manhattanDistance;
-                shortestPathCount = path.Count;
-                shortestPathPoints = path.ToList();
+                // Create a plan for this path
+                int score = BASE_POWER_SCORE - (path.Count * 10); // Small penalty for longer paths
+                plans.Add(new Plan(path, score, "power", turnsToFruition: path.Count, snakeBot.Id));
+                Logger.LogTime($"Added path to power source {powerSource.X}, {powerSource.Y}. Path: {string.Join(", ", path.Select(p => $"({p.X},{p.Y})"))}");
             }
+            else
+            {
+                Logger.LogTime($"No path to power source {powerSource.X}, {powerSource.Y}.");
+            }
+
+            
         }
 
-        Logger.LogTime($"Finished looking with max distance {maxDistance}. Checked {checkedSources} power sources.");
+        Logger.LogTime($"Finished looking with max distance {maxDistance}");
 
-        return shortestPathPoints;
+        return plans;
     }
 
     internal List<Point> GetPowerUps()

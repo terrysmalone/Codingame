@@ -896,6 +896,7 @@ internal class Game
 
             List<Point> path = _pathFinder.GetShortestPath(snakeBot.Body.First(), powerSource, snakeBot, excludePoints.ToList());
 
+            Logger.Message($"Checked path to power source {powerSource.X}, {powerSource.Y}. Path length: {(path != null ? path.Count : -1)}. Attempts: {snakeBot.GetAttemptsAtPowerSource(powerSource)}");
             snakeBot.AddCheckedPowerSource(powerSource);
 
             if (path.Count > 0)
@@ -903,21 +904,24 @@ internal class Game
                 // Create a plan for this path
                 int score = BASE_POWER_SCORE - (path.Count * 10); // Small penalty for longer paths
 
-                // If doing this blocks an opponent from getting to a power source give bonus points
-                // Get closest opponent snake head to power source
-                int numberOfCloseSnakes;
-                
-                _closestSnakeToPowerSourceMap.TryGetValue(powerSource, out numberOfCloseSnakes);
-                
-                foreach (var c in _closestSnakeToPowerSourceMap)
+                // If it's a small path and doing this blocks an opponent from getting to a power source
+                // give bonus points
+                if (path.Count < 3)
                 {
-                    Logger.Message($"Power source {c.Key.X},{c.Key.Y} has closest snake count {c.Value}");
-                }
+                    int numberOfCloseSnakes;
 
-                if (numberOfCloseSnakes > 0)
-                {
-                    score += numberOfCloseSnakes * 20;
-                    Logger.LogTime($"Added bonus for blocking {numberOfCloseSnakes} snakes from power source {powerSource.X}, {powerSource.Y}.");
+                    _closestSnakeToPowerSourceMap.TryGetValue(powerSource, out numberOfCloseSnakes);
+
+                    foreach (var c in _closestSnakeToPowerSourceMap)
+                    {
+                        Logger.Message($"Power source {c.Key.X},{c.Key.Y} has closest snake count {c.Value}");
+                    }
+
+                    if (numberOfCloseSnakes > 0)
+                    {
+                        score += numberOfCloseSnakes * 5;
+                        Logger.LogTime($"Added bonus for blocking {numberOfCloseSnakes} snakes from power source {powerSource.X}, {powerSource.Y}.");
+                    }
                 }
 
                 plans.Add(new Plan(path, score, "power", turnsToFruition: path.Count, snakeBot.Id));

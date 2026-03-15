@@ -17,6 +17,8 @@ internal class SnakeBot
     private Dictionary<Point, int> _attemptsAtPowerSources = new Dictionary<Point, int>();
     private HashSet<Point> _checkedPowerSourcesThisTurn = new HashSet<Point>();
 
+    private HashSet<Point> _attemptedToClimbLedge = new HashSet<Point>();
+
     private List<Plan> _plans = new List<Plan>();
 
     internal SnakeBot(int id)
@@ -102,11 +104,6 @@ internal class SnakeBot
         }
     }
 
-    internal Dictionary<Point, int> GetAttemptsAtPowerSource()
-    {
-        return _attemptsAtPowerSources;
-    }
-
     internal void AddPlan(Plan plan)
     {
         _plans.Add(plan);
@@ -145,5 +142,15 @@ internal class SnakeBot
     {
         return _checkedPowerSourcesThisTurn.Contains(powerSource);
     }    
+
+    internal void AddAttemptedClimbLedge(Point ledge)
+    {
+        _attemptedToClimbLedge.Add(ledge);
+    }
+
+    internal bool HasAttemptedClimbLedge(Point ledge)
+    {
+        return _attemptedToClimbLedge.Contains(ledge);
+    }
 }
 

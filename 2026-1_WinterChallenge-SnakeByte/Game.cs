@@ -339,6 +339,12 @@ internal class Game
                 continue;
             }
 
+            // Don't bother trying if we've already climbed this ledge
+            if (snakeBot.HasAttemptedClimbLedge(ledge))
+            {
+                continue;
+            }
+
             // Don't bother trying if it's further away than maxDistance
             int manhattanDistance = CalculationUtil.GetManhattanDistance(snakeBot.Body[0], ledge);
             if (manhattanDistance >= maxDistance)

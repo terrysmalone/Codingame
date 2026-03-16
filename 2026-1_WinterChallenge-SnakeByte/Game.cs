@@ -469,13 +469,37 @@ internal class Game
         {
             return new List<Plan>();
         }
-        
-        UpdateForOtherSnakeBodyPositions(directionScores, snakeBot);
+
+        UpdateScores(directionScores, snakeBot);
          
+
+        // Make plans from the direction scores
+
+        List<Plan> plans = new List<Plan>();
+
+        foreach (var directionScore in directionScores)
+        {
+            plans.Add(new Plan(new List<Point> { directionScore.Key }, directionScore.Value, "wander", turnsToFruition: 1, snakeBot.Id));
+        }
+
+        return plans;
+    }
+
+    private void UpdateScores(Dictionary<Point, int> directionScores, SnakeBot snakeBot)
+    {
+        UpdateForOtherSnakeBodyPositions(directionScores, snakeBot);
+
         UpdateForHeadDangerPositions(directionScores, snakeBot);
-        
+
         UpdateForStuckDirections(directionScores, snakeBot);
-        
+
+        UpdateForSpaceCreated(directionScores, snakeBot);
+
+        UpdateForPosition(directionScores, snakeBot);
+    }
+
+    private void UpdateForSpaceCreated(Dictionary<Point, int> directionScores, SnakeBot snakeBot)
+    {
         // Use flood fill to either move to a more open space, or to give the opponent less space
         // Score the current position:
         // For every direction score all my snake flood fills minus all opponent square flood fills.
@@ -490,7 +514,7 @@ internal class Game
             // simulating gravity but not yet
             List<Point> newSnakeBody = new List<Point>() { directionScore.Key };
             newSnakeBody.AddRange(snakeBot.Body.Take(snakeBot.Body.Count - 1));
-            
+
             // For the flood fill I want to exclude this snake ID, but include newSnakeBody
             foreach (var mySnake in MySnakeBots)
             {
@@ -505,13 +529,16 @@ internal class Game
             }
 
             foreach (var opponentSnake in OpponentSnakeBots)
-            { 
+            {
                 score -= _positionChecker.FloodFillCount(opponentSnake.Body[0], snakeBot.Id, newSnakeBody, 20);
             }
 
             directionScores[directionScore.Key] = directionScores[directionScore.Key] += score;
         }
+    }
 
+    private void UpdateForPosition(Dictionary<Point, int> directionScores, SnakeBot snakeBot)
+    {
         // Add small position bonuses
         // At the start of the game move towards the centre and up. When there are hardly any 
         // power sources left, head towards the nearest one
@@ -521,7 +548,7 @@ internal class Game
             if (_level.PowerSources.Count > 2)
             {
                 // If the head is out of bounds, and this move will bring it back in, give it a stronger bonus
- 
+
                 if (_positionChecker.IsOutOfMapBounds(snakeBot.Body[0]) && !_positionChecker.IsOutOfMapBounds(directionScore.Key))
                 {
                     directionScores[directionScore.Key] = directionScores[directionScore.Key] + 10;
@@ -538,24 +565,12 @@ internal class Game
             {
                 // Bonus for moving nearer to the nearest powersource
                 int distanceToPowerSource = CalculationUtil.GetManhattanDistance(
-                    directionScore.Key, 
+                    directionScore.Key,
                     GetNearestPowerSource(directionScore.Key));
                 directionScores[directionScore.Key] = directionScores[directionScore.Key] - distanceToPowerSource;
 
             }
         }
-
-
-        // Make plans from the direction scores
-
-        List<Plan> plans = new List<Plan>();
-
-        foreach (var directionScore in directionScores)
-        {
-            plans.Add(new Plan(new List<Point> { directionScore.Key }, directionScore.Value, "wander", turnsToFruition: 1, snakeBot.Id));
-        }
-
-        return plans;
     }
 
     private void RemoveAllHardNos(Dictionary<Point, int> directionScores, SnakeBot snakeBot)

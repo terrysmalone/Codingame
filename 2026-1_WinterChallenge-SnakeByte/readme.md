@@ -12,9 +12,15 @@
 
 # TO DO
 
+## Specific
+
 - Don't climb a ledge if it's a blocked position
 
+## General
 
+- Take more care not to get blocked
+- How can I attack better
+- How can I be more aware of my own snakes positions
 
 ------------------------------------------------------------
 

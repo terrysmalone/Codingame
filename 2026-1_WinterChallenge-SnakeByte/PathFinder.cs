@@ -14,6 +14,7 @@ internal sealed class PathFinder
     private int _debugCount = 0;
 
     private const int MAX_NODE_COUNT = 300;
+    private const int MAX_EXPANSIONS_WITHOUT_H_IMPROVEMENT = 40;
 
     public PathFinder(Game game, PositionChecker positionChecker)
     {
@@ -38,6 +39,7 @@ internal sealed class PathFinder
 
         Node currentNode = new Node(startPoint);
         currentNode.SnakeBodyAtNode = snake.Body.Select(p => new Point(p.X, p.Y)).ToList();
+        currentNode.H = CalculationUtil.GetManhattanDistance(startPoint, targetPoint);
 
         SnakeState startState = new SnakeState(startPoint, currentNode.SnakeBodyAtNode);
 
@@ -47,12 +49,29 @@ internal sealed class PathFinder
 
         bool targetFound = false;
 
+        int bestHSeen = currentNode.H;
+        int expansionsWithoutHImprovement = 0;        
+
         while (!targetFound)
         {
             // TODO: I need to experiment with this number.
             if (openNodeCount == 0 || nodesByState.Count > MAX_NODE_COUNT)
             {
                 return new List<Point>();
+            }
+
+            if (currentNode.H < bestHSeen)
+            {
+                bestHSeen = currentNode.H;
+                expansionsWithoutHImprovement = 0;
+            }
+            else
+            {
+                expansionsWithoutHImprovement++;
+                if (expansionsWithoutHImprovement >= MAX_EXPANSIONS_WITHOUT_H_IMPROVEMENT)
+                {
+                    return new List<Point>();
+                }
             }
 
             List<Point> pointsToCheck = new List<Point>();
@@ -122,8 +141,6 @@ internal sealed class PathFinder
                 // TODO: We can check most of the below before simulating snake movement. 
                 // We can opt out before it on everything except current snake checks.
                 // Check if the move is valid. If it's not we don't want to continue
-
-                // TODO Check if entire snake is out of wider map bounds
                 isValidMove =
                     !IsSelfCollision(pointToCheck, snakeBodyAfterMove, checkHead: false, checkTail: true)
                     && !IsFullyOutOfBounds(snakeBodyAfterMove);

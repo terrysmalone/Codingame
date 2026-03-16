@@ -2,23 +2,16 @@
 
 ## Commit in Arena
 
-6b5c53e740eb8ae4c9d410952fdfb07ce3fde9d0
+28d41143d4627da8966daac168a49445432a3eb9
 
 ## Changes since last Test in Arena
 
-- Started template for gettting snakes to climb ledges
-
+- Add max expansion node cut off in pathfinder
 
 # TO DO
 
-seed=2681003246553152500
-Player 1 and 2 IDE
+- Don't climb a ledge if it's a blocked position
 
-This is a tangled mess at the start. I really need to fix it.
-
-Ideas:
-* Can checking the first move have any impact. 
-* What about a bonus score for keeping distance away from each other?
 
 
 ------------------------------------------------------------
@@ -30,16 +23,6 @@ On move 35 my own snakes clash. This is a good place to test best combos
 IDE 1, arena 2
 Move 18 I pick the wrong attack
 seed=3478893539146914000
-
-------------------------------------
-
-Scoring moves
-Prefer getting power sources near the middle of the map
-Prefer getting power sources when i'm guaranteed to win
-Prefer not overlapping paths (this should encourage my snakes to sread out more
-
-When calculating scores, take direction into account. For example, if 5 moves have UP as their next direction, and they all score 50, do we really want 
-LEFT, which only has one score if it's scored 60? Maybe not, maybe we do. It's something to consider.
 
 -------------------------------------
 Before any moves, do a look ahead of all possible move combinations. 

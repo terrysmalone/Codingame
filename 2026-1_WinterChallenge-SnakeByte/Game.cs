@@ -917,6 +917,8 @@ internal class Game
             }
 
             // If the snake can't reach the power source from a platform don't even bother trying
+            // TODO: We should really check more than just power to the nearest platform. We need to check if an entire path can be made.
+            //       For exaample. Power to ledge1, ledge1 to ledge2, ledge 2 to ledge that snake is already on.
             if (snakeBot.Body.Count < _positionChecker.GetNearestPlatformDistance(powerSource, snakeBot.Id) - 1)
             {
                 continue;

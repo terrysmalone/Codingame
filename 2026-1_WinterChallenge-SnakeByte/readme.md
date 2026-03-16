@@ -11,14 +11,14 @@
 
 # TO DO
 
-seed=-2697487452895781000
-player 1 ide player 2 ide
+seed=2681003246553152500
+Player 1 and 2 IDE
 
-On move 3 snake 5 and snake 6 both go for the power source on 16,7. My old implementation didn't do this
-becuse it excluded previous moves from searches. I need to add multiple moves in find best paths and then
-discourage snakes going for the same power source.
+This is a tangled mess at the start. I really need to fix it.
 
-Note: The arena beats me in this game because of that.
+Ideas:
+* Can checking the first move have any impact. 
+* What about a bonus score for keeping distance away from each other?
 
 
 ------------------------------------------------------------

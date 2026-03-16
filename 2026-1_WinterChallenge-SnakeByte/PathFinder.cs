@@ -13,7 +13,7 @@ internal sealed class PathFinder
     private readonly PositionChecker _positionChecker;
     private int _debugCount = 0;
 
-    private const int MAX_NODE_COUNT = 1000;
+    private const int MAX_NODE_COUNT = 300;
 
     public PathFinder(Game game, PositionChecker positionChecker)
     {

@@ -396,6 +396,12 @@ internal class Game
                 continue;
             }
 
+            // Don't bother trying if we've already climbed this ledge
+            if (snakeBot.HasAttemptedClimbLedge(ledge))
+            {
+                continue;
+            }
+
             // Don't bother trying if it's further away than maxDistance
             int manhattanDistance = CalculationUtil.GetManhattanDistance(snakeBot.Body[0], ledge);
             if (manhattanDistance >= maxDistance)
@@ -787,6 +793,10 @@ internal class Game
         else if (diff == 0 && snakeBot.Body.Count > clashingEnemyBodySizes.Min())
         {
             score = BASE_CRITICAL_MOVE_SCORE + 4000;
+        }
+        else if (diff == 0 && powerUpOnSpot)
+        {
+            score = BASE_CRITICAL_MOVE_SCORE + 3500;
         }
         else if (diff == 0 && snakeBot.Body.Count == clashingEnemyBodySizes.Min() && GetMyScore() > GetEnemyScore())
         {
@@ -1402,7 +1412,7 @@ internal sealed class PathFinder
     private readonly PositionChecker _positionChecker;
     private int _debugCount = 0;
 
-    private const int MAX_NODE_COUNT = 1000;
+    private const int MAX_NODE_COUNT = 300;
 
     public PathFinder(Game game, PositionChecker positionChecker)
     {
@@ -2230,6 +2240,8 @@ internal class SnakeBot
     private Dictionary<Point, int> _attemptsAtPowerSources = new Dictionary<Point, int>();
     private HashSet<Point> _checkedPowerSourcesThisTurn = new HashSet<Point>();
 
+    private HashSet<Point> _attemptedToClimbLedge = new HashSet<Point>();
+
     private List<Plan> _plans = new List<Plan>();
 
     internal SnakeBot(int id)
@@ -2315,11 +2327,6 @@ internal class SnakeBot
         }
     }
 
-    internal Dictionary<Point, int> GetAttemptsAtPowerSource()
-    {
-        return _attemptsAtPowerSources;
-    }
-
     internal void AddPlan(Plan plan)
     {
         _plans.Add(plan);
@@ -2358,6 +2365,16 @@ internal class SnakeBot
     {
         return _checkedPowerSourcesThisTurn.Contains(powerSource);
     }    
+
+    internal void AddAttemptedClimbLedge(Point ledge)
+    {
+        _attemptedToClimbLedge.Add(ledge);
+    }
+
+    internal bool HasAttemptedClimbLedge(Point ledge)
+    {
+        return _attemptedToClimbLedge.Contains(ledge);
+    }
 }
 
 

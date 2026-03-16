@@ -86,7 +86,7 @@ internal sealed class PathFinder
                 pointsToCheck.Add(new Point(currentNode.Position.X - 1, currentNode.Position.Y));
             }
 
-            if (currentNode.Position.Y + 1 <= _game.Height)
+            if (currentNode.Position.Y + 1 < _game.Height)
             {
                 pointsToCheck.Add(new Point(currentNode.Position.X, currentNode.Position.Y + 1));
             }
@@ -379,6 +379,7 @@ internal sealed class PathFinder
             {
                 Console.Error.WriteLine($"ERROR: Gravity count exceeded max of 20");
                 Console.Error.WriteLine($"ERROR: Snake body: {string.Join(";", snakeBody.Select(p => $"({p.X},{p.Y})"))}");
+                break;
             }
         }
 

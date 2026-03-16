@@ -360,7 +360,7 @@ internal class Game
 
             List<Point> path = _pathFinder.GetShortestPath(snakeBot.Body.First(), ledge, snakeBot, excludePoints.ToList());
 
-            Logger.Message($"Checked path to climbable ledge {ledge.X}, {ledge.Y}. Path length: {(path != null ? path.Count : -1)}");
+            Logger.LogTime($"Checked path to climbable ledge {ledge.X}, {ledge.Y}. Path length: {(path != null ? path.Count : -1)}");
 
             if (path?.Count > 0)
             {

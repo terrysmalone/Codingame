@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 
@@ -15,6 +16,8 @@ internal class SnakeBot
 
     private Dictionary<Point, int> _attemptsAtPowerSources = new Dictionary<Point, int>();
     private HashSet<Point> _checkedPowerSourcesThisTurn = new HashSet<Point>();
+
+    private HashSet<Point> _attemptedToClimbLedge = new HashSet<Point>();
 
     private List<Plan> _plans = new List<Plan>();
 
@@ -101,14 +104,14 @@ internal class SnakeBot
         }
     }
 
-    internal Dictionary<Point, int> GetAttemptsAtPowerSource()
-    {
-        return _attemptsAtPowerSources;
-    }
-
     internal void AddPlan(Plan plan)
     {
         _plans.Add(plan);
+    }
+
+    internal void AddPlans(List<Plan> plans)
+    {
+        _plans.AddRange(plans);
     }
 
     internal void ClearAllPlans()
@@ -138,6 +141,16 @@ internal class SnakeBot
     internal bool HasCheckedPowerSource(Point powerSource)
     {
         return _checkedPowerSourcesThisTurn.Contains(powerSource);
+    }    
+
+    internal void AddAttemptedClimbLedge(Point ledge)
+    {
+        _attemptedToClimbLedge.Add(ledge);
+    }
+
+    internal bool HasAttemptedClimbLedge(Point ledge)
+    {
+        return _attemptedToClimbLedge.Contains(ledge);
     }
 }
 

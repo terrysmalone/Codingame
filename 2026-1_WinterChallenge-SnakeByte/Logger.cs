@@ -7,7 +7,7 @@ namespace _2026_1_WinterChallenge_SnakeByte;
 
 internal static class Logger    
 {
-    private static bool DISABLE_LOGGING = true;
+    private static bool DISABLE_LOGGING = false;
     private static bool DISABLE_TIMES = false;
 
     private static long _roundStartTime;
@@ -174,6 +174,31 @@ internal static class Logger
         }
     }
 
+    internal static void Plans(string message, List<Plan> plans)
+    {
+        if (DISABLE_LOGGING)
+        {
+            return;
+        }
+
+        Console.Error.WriteLine(message);
+
+        foreach (var plan in plans)
+        {
+            Console.Error.WriteLine($"Plan Type: {plan.PlanType}, Score: {plan.Score}, Turns to Fruition: {plan.TurnsToFruition}, Moves: {string.Join(";", plan.Moves.Select(p => $"{p.X},{p.Y}"))}");
+        }
+    }
+
+    internal static void DisableLogging() 
+    {
+        DISABLE_LOGGING = true;
+    }
+
+    internal static void EnableLogging()
+    {
+        DISABLE_LOGGING = false;
+    }
+
     internal static void StartRoundStopwatch()
     {
         if (DISABLE_TIMES)
@@ -194,5 +219,26 @@ internal static class Logger
         TimeSpan elapsedSinceLastLog = Stopwatch.GetElapsedTime(_lastTimedLog);
         Console.Error.WriteLine($"{elapsedTime.TotalMilliseconds}({elapsedSinceLastLog.TotalMilliseconds}): {message}");
         _lastTimedLog = Stopwatch.GetTimestamp();
+    }
+
+    internal static void PlanCombinations(Dictionary<List<Plan>, int> planCombinations, int showTop)
+    {
+        if (DISABLE_LOGGING || planCombinations == null) 
+        {
+            return;
+        }
+
+        Console.Error.WriteLine("Plan Combinations:");
+        for (int i = 0; i < Math.Min(showTop, planCombinations.Count); i++)
+        {
+            var kvp = planCombinations.ElementAt(i);
+            var plans = kvp.Key;
+            var score = kvp.Value;
+            Console.Error.WriteLine($"Score: {score}");
+            foreach (var plan in plans)
+            {
+                Console.Error.WriteLine($"  Plan Type: {plan.PlanType}, Score: {plan.Score}, Turns to Fruition: {plan.TurnsToFruition}, Moves: {string.Join(";", plan.Moves.Select(p => $"{p.X},{p.Y}"))}");
+            }
+        }
     }
 }

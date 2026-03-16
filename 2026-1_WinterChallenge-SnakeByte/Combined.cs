@@ -7,14 +7,17 @@ using System.Drawing;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
+using System.Numerics;
 using System.Reflection.Metadata.Ecma335;
 using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
 using System.Xml.Linq;
+using System.Xml.Schema;
 using System.Diagnostics;
+using System.Text;
 using System.Collections;
 using System.IO;
-using System.Text;
 using System.Threading;
 
 internal static class CalculationUtil
@@ -78,9 +81,13 @@ internal class Game
 
     private PathFinder _pathFinder;
     private PositionChecker _positionChecker;
-    
-    private List<Point> _movesThisTurn;
-    private List<Point> _powerUpsThisTurn;
+
+    private Dictionary<Point, int> _closestSnakeToPowerSourceMap = new Dictionary<Point, int>();
+
+    private const int BASE_POWER_SCORE = 10000;
+    private const int BASE_CLIMBABLE_LEDGE_SCORE = 2000;
+    private const int BASE_WANDER_SCORE = 500;
+    private const int BASE_CRITICAL_MOVE_SCORE = 100000;
 
     public Game(int width, int height, bool[,] platforms)
     {
@@ -121,7 +128,6 @@ internal class Game
 
     internal void RemoveMarkedSnakes()
     {
-
         // Iterate through the snakes backwards to safely remove any where Remove == true
         for (int i = MySnakeBots.Count - 1; i >= 0; --i)
         {
@@ -157,6 +163,12 @@ internal class Game
 
     internal List<string> GetActions()
     {
+        _closestSnakeToPowerSourceMap = _positionChecker.GetClosestPowerSourceToOpponentSnakeMap();
+
+        foreach (var snakeBot in MySnakeBots)
+        {
+            snakeBot.ClearAllPlans();
+        }
         // BIG MAD REFACTOR PLAN
         // 
         // GENERAL
@@ -185,8 +197,6 @@ internal class Game
         // If there are no clashes just picj the highest from each. 
         // Otherwise get the highest combination I can get from each without a clash
 
-        _movesThisTurn = new List<Point>();
-        _powerUpsThisTurn = new List<Point>();
         // Logger.EntireGame(_level.Platforms, MySnakeBots, OpponentSnakeBots, _level.PowerSources);
 
         List<string> actions = new List<string>();
@@ -195,8 +205,6 @@ internal class Game
         {
             // We track power sources we've tried to get to so that we don't keep trying at different depths
             snakeBot.ClearCheckedPowerSources();
-
-            var foundMove = false;
 
             Logger.LogTime($"STARTING FOR SNAKEBOT {snakeBot.Id}. Position:{snakeBot.Body[0].X},{snakeBot.Body[0].Y}");
             // TODO: CHeck for chance toi destroy an opponent snake and do that if possible
@@ -212,26 +220,20 @@ internal class Game
                 new Point(snakeBot.Body[0].X, snakeBot.Body[0].Y - 1)
             };
 
+            var goldenMovesAdded = 0;
+
             foreach (var possibleMove in possibleMoves)
             {
-                // exclude a move if it seems to be in danger of being attacked by an enemy snake on their next turn
-                (bool useMove, bool excludeMove) = CheckForHeadClash(possibleMove, snakeBot);
-                
-                if (useMove)
+                (Plan? goldenMove, bool excludeMove) = GetGoldenMove(possibleMove, snakeBot);
+
+                if (goldenMove != null)
                 {
-                    actions.Add($"{snakeBot.Id} {DirectionHelper.GetDirection(snakeBot.Body[0], possibleMove)} attack");
-                    snakeBot.AddMove(possibleMove);
-
-                    if (!_positionChecker.IsOutOfMapBounds(possibleMove))
-                    {
-                        actions.Add($"MARK {possibleMove.X} {possibleMove.Y}");
-                    }
-
-                    _movesThisTurn.Add(possibleMove);
-                    foundMove = true;
+                    snakeBot.AddPlan(goldenMove);
+                    goldenMovesAdded++;
                     continue;
                 }
-
+                
+                // TODO: We'll want to add this back in at some point
                 if (excludeMove)
                 {
                     excludePoints.Add(possibleMove);
@@ -243,55 +245,238 @@ internal class Game
                 }
             }
 
-            Logger.LogTime("Checked for head clash");
-
-            if (foundMove)
-            {
-                continue;
-            }
+            Logger.LogTime($"Checked for head clash. Added {goldenMovesAdded} plans");
 
             if (snakeBot.IsStuck())
             {
                 excludePoints.Add(snakeBot.GetLastMove());
             }
 
-            List<Point> bestPathToPower = GetBestPathToPowerSource(snakeBot, excludePoints);
-
+            // TODO: We'll want to return more than one here at some point
+            List<Plan> bestPlansToPowerSources = GetBestPlansToPowerSources(snakeBot, excludePoints);
+            snakeBot.AddPlans(bestPlansToPowerSources);
             Logger.LogTime("Finished path finding");
-            if (bestPathToPower.Count != 0)
-            {
-                string direction = DirectionHelper.GetDirection(snakeBot.Body[0], bestPathToPower[0]);
+            
+            // Before wandering randomly, try to get some paths to nearby platforms that are above me
+            List<Plan> climbableLedgePlans = GetClimbableLedgePlans(snakeBot, excludePoints);
+            snakeBot.AddPlans(climbableLedgePlans);
 
-                actions.Add($"{snakeBot.Id} {direction} power");
-
-                if (!_positionChecker.IsOutOfMapBounds(bestPathToPower[bestPathToPower.Count - 1]))
-                {
-                    actions.Add($"MARK {bestPathToPower[bestPathToPower.Count - 1].X} {bestPathToPower[bestPathToPower.Count - 1].Y}");
-                }
+            List<Plan> validPlans = GetValidDirectionPointPlans(snakeBot);
+            snakeBot.AddPlans(validPlans);
                
-                snakeBot.AddMove(bestPathToPower[0]);
-                _movesThisTurn.Add(bestPathToPower[0]);
-                _powerUpsThisTurn.Add(bestPathToPower[bestPathToPower.Count-1]);
-            }
-            else
-            {
-                string direction = GetValidDirection(snakeBot);
-                Logger.LogTime("Found valid direction");
+            Logger.LogTime($"Finished checking valid directions. Added {validPlans.Count} plans");             
+        }
 
-                actions.Add($"{snakeBot.Id} {direction} wander");
-                snakeBot.AddMove(DirectionHelper.GetNewPosition(snakeBot.Body[0], direction));
-                _movesThisTurn.Add(DirectionHelper.GetNewPosition(snakeBot.Body[0], direction));
+        // If any snake has a terrible move (usually meaning it would lower my score)
+        // give the same score to any other moves for that snake that has the same first position
+        foreach (var snakeBot in MySnakeBots)
+        {
+            var terribleMoves = snakeBot.GetPlans().Where(p => p.Score < -BASE_CRITICAL_MOVE_SCORE + 10000).ToList();
+
+            foreach (Plan terribleMove in terribleMoves)
+            {
+                foreach (Plan plan in snakeBot.GetPlans())
+                {
+                    if (plan.Moves[0] == terribleMove.Moves[0])
+                    {
+                        plan.Score = terribleMove.Score;
+                        Logger.Message($"Made move with first position {plan.Moves[0].X},{plan.Moves[0].Y} just as bad as terrible move with score {plan.Score}");
+                    }
+                }
+            }
+
+            Logger.Plans($"After...Plans for snake {snakeBot.Id}", snakeBot.GetPlans());
+        }
+
+        // Get all combinations of all plans. Score them by adding the scores together. Pick the highest scoring combination that doesn't have any clashes.
+        Dictionary<List<Plan>, int> planCombinations = GetAllPlanCombinations();
+        
+        // Logger.PlanCombinations(planCombinations);
+
+        Logger.LogTime($"Got all plan combinations: {planCombinations.Count}");
+
+        // Get the first combination that doesn't have any clashes for the next move
+        // TODO: We should check for clashes for the target too, because we don't want
+        // snakes going for the same source. Wait until we return multiple power source 
+        // plans to do this though.
+
+        foreach (var planCombination in planCombinations.OrderByDescending(pc => pc.Value))
+        {
+            HashSet<Point> plannedStartMoves = new HashSet<Point>();
+            HashSet<Point> plannedEndMoves = new HashSet<Point>();
+            bool clash = false;
+
+            foreach (var plan in planCombination.Key)
+            {
+                if (plannedStartMoves.Contains(plan.Moves[0])
+                    || plannedEndMoves.Contains(plan.Moves[plan.Moves.Count - 1]))
+                {
+                    clash = true;
+                    break;
+                }
+                else
+                {
+                    plannedStartMoves.Add(plan.Moves[0]);
+                    plannedEndMoves.Add(plan.Moves[plan.Moves.Count - 1]);
+                }
+            }
+
+            if (!clash)
+            {
+                Logger.LogTime($"Chose plan combination with score {planCombination.Value}");
+                foreach (Plan? plan in planCombination.Key)
+                {
+                    var snakeBot = MySnakeBots.First(s => s.Id == plan.SnakeID);
+
+                    string direction = DirectionHelper.GetDirection(snakeBot.Body[0], plan.Moves[0]);
+                    
+                    actions.Add($"{snakeBot.Id} {direction} {plan.PlanType}");
+
+                    snakeBot.AddMove(plan.Moves[0]);
+
+                    Point planTarget = plan.Moves[plan.Moves.Count - 1];
+                    if (!_positionChecker.IsOutOfMapBounds(planTarget))
+                    {
+                        actions.Add($"MARK {planTarget.X} {planTarget.Y}");
+                    }
+
+                    Logger.Message($"Chose plan {plan.PlanType} with score {plan.Score} and direction {direction}");
+
+                }
+                break;
             }
         }
 
-        // TODO: After we've come up with moves check for clashes and try to resolve them
+        if (actions.Count == 0)
+        {
+            actions.Add("WAIT");
+        }
 
         return actions;
     }
 
-    private List<Point> GetBestPathToPowerSource(SnakeBot snakeBot, HashSet<Point> excludePoints)
+    private List<Plan> GetClimbableLedgePlans(SnakeBot snakeBot, HashSet<Point> excludePoints)
     {
-        int shortestPathCount = int.MaxValue;
+        List<Plan> plans = new List<Plan>();
+        var shortestPathPoints = new List<Point>();
+
+        //bool stopLooking = false;
+        int maxDistance = 5;
+
+        //while (stopLooking == false)
+        //{
+        plans = GetShortestPathToClimbableLedgePlans(snakeBot, maxDistance, excludePoints);
+
+        //    if (plans.Count > 0)
+        //    {
+        //        stopLooking = true;
+        //    }
+
+        //    maxDistance += 5;
+        //    if (maxDistance > 10)
+        //    {
+        //        stopLooking = true;
+        //    }
+        //}
+
+        return plans;
+    }
+
+    private List<Plan> GetShortestPathToClimbableLedgePlans(SnakeBot snakeBot, int maxDistance, HashSet<Point> excludePoints)
+    {
+        List<Plan> plans = new List<Plan>();
+
+        // Get lowest point on SnakeBot body
+        var lowestSnakePoint = snakeBot.Body.OrderByDescending(p => p.Y).First();
+
+        foreach (Point ledge in _level.GetWalkableLedges())
+        {
+            if(ledge.Y >= lowestSnakePoint.Y)
+            {
+                continue;
+            }
+
+            // Don't bother trying if we've already climbed this ledge
+            if (snakeBot.HasAttemptedClimbLedge(ledge))
+            {
+                continue;
+            }
+
+            // Don't bother trying if it's further away than maxDistance
+            int manhattanDistance = CalculationUtil.GetManhattanDistance(snakeBot.Body[0], ledge);
+            if (manhattanDistance >= maxDistance)
+            {
+                continue;
+            }
+
+            // Don't try if something is on the ledge
+            if(_positionChecker.IsPointInAnySnake(ledge, countTails: false))
+            {
+                continue;
+            }
+
+            List<Point> path = _pathFinder.GetShortestPath(snakeBot.Body.First(), ledge, snakeBot, excludePoints.ToList());
+
+            Logger.Message($"Checked path to climbable ledge {ledge.X}, {ledge.Y}. Path length: {(path != null ? path.Count : -1)}");
+
+            if (path?.Count > 0)
+            {
+                // Create a plan for this path
+                int score = BASE_CLIMBABLE_LEDGE_SCORE - (path.Count * 10); // Small penalty for longer paths
+
+                plans.Add(new Plan(path, score, "climbing", turnsToFruition: path.Count, snakeBot.Id));
+                Logger.LogTime($"Added path to climbable ledge {ledge.X}, {ledge.Y}. Path: {string.Join(", ", path.Select(p => $"({p.X},{p.Y})"))}");
+
+                if (maxDistance >= 10)
+                {
+                    // Exit early. Paths of 10 can be expensive
+                    break;
+                }
+            }
+        }
+
+        Logger.LogTime($"Finished looking for ledges with max distance {maxDistance}");
+
+        return plans;
+    }
+
+    private Dictionary<List<Plan>, int> GetAllPlanCombinations()
+    {
+        var allSnakePlans = MySnakeBots.Select(s => s.GetPlans())
+                                       .Where(plans => plans.Count > 0)
+                                       .ToList();
+
+        var planCombinations = new Dictionary<List<Plan>, int>();
+
+        if (allSnakePlans.Count == 0)
+        {
+            return planCombinations;
+        }
+
+        GetAllPlanCombinationsRecursive(allSnakePlans, 0, new List<Plan>(), planCombinations);
+
+        return planCombinations;
+    }
+
+    private void GetAllPlanCombinationsRecursive(List<List<Plan>> allSnakePlans, int snakeIndex, List<Plan> plans, Dictionary<List<Plan>, int> planCombinations)
+    {
+        if (snakeIndex == allSnakePlans.Count)
+        {
+            int score = plans.Sum(p => p.Score);
+            planCombinations.Add(plans.ToList(), score);
+            return;
+        }
+        foreach (var plan in allSnakePlans[snakeIndex])
+        {
+            plans.Add(plan);
+            GetAllPlanCombinationsRecursive(allSnakePlans, snakeIndex + 1, plans, planCombinations);
+            plans.RemoveAt(plans.Count - 1);
+        }
+    }
+
+    private List<Plan> GetBestPlansToPowerSources(SnakeBot snakeBot, HashSet<Point> excludePoints)
+    {
+        List<Plan> plans = new List<Plan>();
         var shortestPathPoints = new List<Point>();
 
         // Use an iterative deepening approach to finding targets
@@ -300,14 +485,11 @@ internal class Game
 
         while (stopLooking == false)
         {
-            List<Point> path = GetShortestPath(snakeBot, Math.Min(shortestPathCount - 1, maxDistance), excludePoints);
+            plans = GetShortestPathToPowerSourcePlans(snakeBot, maxDistance, excludePoints);
 
-            if (path.Count > 0)
+            if (plans.Count > 0)
             {
                 stopLooking = true;
-
-                shortestPathCount = path.Count;
-                shortestPathPoints = path.ToList();
             }
 
             maxDistance += 5;
@@ -317,83 +499,53 @@ internal class Game
             }
         }
 
-        return shortestPathPoints;
+        return plans;
     }
 
-    private string GetValidDirection(SnakeBot snakeBot)
-    {
+    private List<Plan> GetValidDirectionPointPlans(SnakeBot snakeBot)
+    {        
         // Prioritise moving towards the nearest powersource
         // TODO: We should also prioritise climbing. For example, if I'm below a platform and I can get up there,
         // I should prioritise that as it opens up the map and gives more options.
         Point nearestPowerSource = GetNearestPowerSource(snakeBot);
 
-
         List<string> possibleDirections = nearestPowerSource.X > snakeBot.Body[0].X ? new List<string>() { "RIGHT", "UP", "DOWN", "LEFT" } 
                                                                                     : new List<string>() { "LEFT", "UP", "DOWN", "RIGHT" };
 
-        // First, remove the hard no's
-        RemoveAllHardNos(possibleDirections, snakeBot);
+        Dictionary<Point, int> directionScores = new Dictionary<Point, int>();
+
+        foreach (string direction in possibleDirections)
+        {
+            Point checkPoint = DirectionHelper.GetNewPosition(snakeBot.Body[0], direction);
+            directionScores.Add(checkPoint, 0);
+        }
+
+        RemoveAllHardNos(directionScores, snakeBot);
+
+        if (directionScores.Count == 0)
+        {
+            return new List<Plan>();
+        }
         
-        if (possibleDirections.Count == 0)
-        {
-            // No valid moves, just stay there and hope for the best
-            return "LEFT";
-        }
-
-        // Store the first just in case we need it
-        var bestSoFar = possibleDirections[0];
-
-        RemoveOtherSnakeBodyPositions(possibleDirections, snakeBot);
-
-        string direction;
-
-        if (!string.IsNullOrEmpty(direction = GetEarlyReturn(possibleDirections, bestSoFar)))
-        {
-            return direction;
-        }
-
-        RemoveBlockingDirections(possibleDirections, snakeBot);
-
-        if (!string.IsNullOrEmpty(direction = GetEarlyReturn(possibleDirections, bestSoFar)))
-        {
-            return direction;
-        }
-
-        RemoveHeadDangerPositions(possibleDirections, snakeBot);
-
-        if (!string.IsNullOrEmpty(direction = GetEarlyReturn(possibleDirections, bestSoFar)))
-        {
-            return direction;
-        }
-
-        RemoveStuckDirections(possibleDirections, snakeBot);
-
-        if (possibleDirections.Count == 0)
-        {
-            // No valid moves, just stay there and hope for the best
-            return bestSoFar;
-        }
-
-        if (possibleDirections.Count == 1)
-        {
-            return possibleDirections[0];
-        }
-
+        UpdateForOtherSnakeBodyPositions(directionScores, snakeBot);
+         
+        UpdateForHeadDangerPositions(directionScores, snakeBot);
+        
+        UpdateForStuckDirections(directionScores, snakeBot);
+        
         // Use flood fill to either move to a more open space, or to give the opponent less space
         // Score the current position:
         // For every direction score all my snake flood fills minus all opponent square flood fills.
         // The highest one wins.
-        Logger.Message("Space Scores");
-
-        Dictionary<string, int> directionScores = new Dictionary<string, int>();
-
-        foreach (var possibleDirection in possibleDirections)
+        // TODO: At some point check for all opponent moves here too. 
+        // For example, If I go left, give a score for all opponent moves. Count the worse one for me as the score. 
+        foreach (var directionScore in directionScores)
         {
-            int score = 0;
+            int score = BASE_WANDER_SCORE;
 
-            // Simulate the movement (just adding a head and removing a tail. At some point we might want to think about
+            // TODO: Simulate the movement (just adding a head and removing a tail. At some point we might want to think about
             // simulating gravity but not yet
-            List<Point> newSnakeBody = new List<Point>() { DirectionHelper.GetNewPosition(snakeBot.Body[0], possibleDirection) };
+            List<Point> newSnakeBody = new List<Point>() { directionScore.Key };
             newSnakeBody.AddRange(snakeBot.Body.Take(snakeBot.Body.Count - 1));
             
             // For the flood fill I want to exclude this snake ID, but include newSnakeBody
@@ -414,114 +566,278 @@ internal class Game
                 score -= _positionChecker.FloodFillCount(opponentSnake.Body[0], snakeBot.Id, newSnakeBody, 20);
             }
 
-            directionScores.Add(possibleDirection, score);
+            directionScores[directionScore.Key] = directionScores[directionScore.Key] += score;
         }
 
-        return directionScores.OrderByDescending(d => d.Value).First().Key;
+        // Add small position bonuses
+        // At the start of the game move towards the centre and up. When there are hardly any 
+        // power sources left, head towards the nearest one
+        // TODO: Add bonus for heading towards the most power sources
+        foreach (var directionScore in directionScores)
+        {
+            if (_level.PowerSources.Count > 2)
+            {
+                // If the head is out of bounds, and this move will bring it back in, give it a stronger bonus
+ 
+                if (_positionChecker.IsOutOfMapBounds(snakeBot.Body[0]) && !_positionChecker.IsOutOfMapBounds(directionScore.Key))
+                {
+                    directionScores[directionScore.Key] = directionScores[directionScore.Key] + 10;
+                }
+
+                int distanceFromCentre = CalculationUtil.GetManhattanDistance(directionScore.Key, new Point(Width / 2, Height / 2));
+                directionScores[directionScore.Key] = directionScores[directionScore.Key] - distanceFromCentre;
+
+                // Add a small bomus for moving towards the top of the map
+                int distanceFromTop = directionScore.Key.Y;
+                directionScores[directionScore.Key] = directionScores[directionScore.Key] - distanceFromTop;
+            }
+            else
+            {
+                // Bonus for moving nearer to the nearest powersource
+                int distanceToPowerSource = CalculationUtil.GetManhattanDistance(
+                    directionScore.Key, 
+                    GetNearestPowerSource(directionScore.Key));
+                directionScores[directionScore.Key] = directionScores[directionScore.Key] - distanceToPowerSource;
+
+            }
+        }
+
+
+        // Make plans from the direction scores
+
+        List<Plan> plans = new List<Plan>();
+
+        foreach (var directionScore in directionScores)
+        {
+            plans.Add(new Plan(new List<Point> { directionScore.Key }, directionScore.Value, "wander", turnsToFruition: 1, snakeBot.Id));
+        }
+
+        return plans;
     }
 
-    private string GetEarlyReturn(List<string> possibleDirections, string bestSoFar)
+    private void RemoveAllHardNos(Dictionary<Point, int> directionScores, SnakeBot snakeBot)
     {
-        if (possibleDirections.Count == 0)
-        {
-            // No valid moves, just stay there and hope for the best
-            return bestSoFar;
-        }
+        HashSet<Point> pointsToRemove = new HashSet<Point>();
 
-        if (possibleDirections.Count == 1)
+        foreach (var directionScore in directionScores)
         {
-            return possibleDirections[0];
-        }
-
-        return string.Empty;
-    }
-
-    private void RemoveAllHardNos(List<string> possibleDirections, SnakeBot snakeBot)
-    {
-        for (int i = possibleDirections.Count - 1; i >= 0; i--)
-        {
-            Point newHeadPosition = DirectionHelper.GetNewPosition(snakeBot.Body[0], possibleDirections[i]);
+            Point newHeadPosition = directionScore.Key;
 
             if (newHeadPosition.X < -1
-                || newHeadPosition.X >= Width
+                || newHeadPosition.X > Width
                 || newHeadPosition.Y < -1
-                || newHeadPosition.Y >= Height
+                || newHeadPosition.Y > Height
                 || _positionChecker.IsPlatform(newHeadPosition)
                 || _positionChecker.IsPointInAnySnake(newHeadPosition, countTails: false))
             {
-                possibleDirections.Remove(possibleDirections[i]);
+                pointsToRemove.Add(newHeadPosition);
             }
-        }
-    }
 
-    private void RemoveOtherSnakeBodyPositions(List<string> possibleDirections, SnakeBot snakeBot)
-    {
-        if (possibleDirections.Count > 1)
-        {
-            for (int i = possibleDirections.Count - 1; i >= 0; i--)
+            // If the new position is out of bounds, And the tail is the only one in bounds, hard no the move.
+            if (_positionChecker.IsOutOfMapBounds(newHeadPosition))
             {
-                Point newHeadPosition = DirectionHelper.GetNewPosition(snakeBot.Body[0], possibleDirections[i]);
+                int inBoundsCount = 0;
 
-                if (_positionChecker.IsPointInAnySnake(newHeadPosition, countTails: true))
+                foreach (var bodyPart in snakeBot.Body)
                 {
-                    possibleDirections.Remove(possibleDirections[i]);
+                    if (!_positionChecker.IsOutOfMapBounds(bodyPart))
+                    {
+                        inBoundsCount++;
+                    }
+                }
+
+                if (inBoundsCount <= 1)
+                {
+                    pointsToRemove.Add(newHeadPosition);
                 }
             }
         }
-    }
 
-    private void RemoveBlockingDirections(List<string> possibleDirections, SnakeBot snakeBot)
-    {
-        // Exclude in priority order until we only have one left
-        if (possibleDirections.Count > 1)
+       
+          
+
+        foreach (var point in pointsToRemove)
         {
-
-            for (int i = possibleDirections.Count - 1; i >= 0; i--)
-            {
-                Point newHeadPosition = DirectionHelper.GetNewPosition(snakeBot.Body[0], possibleDirections[i]);
-                if (_positionChecker.IsBlocking(newHeadPosition, snakeBot))
-                {
-                    possibleDirections.Remove(possibleDirections[i]);
-                }
-            }
+            directionScores.Remove(point);
         }
     }
 
-    private void RemoveHeadDangerPositions(List<string> possibleDirections, SnakeBot snakeBot)
+    private void UpdateForOtherSnakeBodyPositions(Dictionary<Point, int> possibleDirections, SnakeBot snakeBot)
     {
-        if (possibleDirections.Count > 1)
+        foreach (var direction in possibleDirections)
         {
+            Point newHeadPosition = direction.Key;
 
-            for (int i = possibleDirections.Count - 1; i >= 0; i--)
+            if (_positionChecker.IsPointInAnySnake(newHeadPosition, countTails: true, snakeBot.Id)
+                || _positionChecker.IsPointInGivenSnake(snakeBot.Body, newHeadPosition, countTails: false))
             {
-                Point newHeadPosition = DirectionHelper.GetNewPosition(snakeBot.Body[0], possibleDirections[i]);
-                
-                // We don't have to worry about using the move here, since we check it as part
-                // of the pathfinding move
-                (_, var excludeMove) = CheckForHeadClash(newHeadPosition, snakeBot);
-                
-                if (excludeMove)
-                {
-                    possibleDirections.Remove(possibleDirections[i]);
-                }
+                // We never want to do this unless it's the only choice. Give it a preposterously low score
+                possibleDirections[direction.Key] = possibleDirections[direction.Key] - BASE_CRITICAL_MOVE_SCORE;
             }
+        }        
+    }
+
+    private void UpdateForHeadDangerPositions(Dictionary<Point, int> possibleDirections, SnakeBot snakeBot)
+    {
+        foreach (var direction in possibleDirections)
+        {
+            Point newHeadPosition = direction.Key;
+
+            // We don't have to worry about using the move here, since we check it as part
+            // of the pathfinding move
+            (_, var excludeMove) = CheckForHeadClash(newHeadPosition, snakeBot);
+
+            if (excludeMove)
+            {
+                possibleDirections[direction.Key] = possibleDirections[direction.Key] - BASE_CRITICAL_MOVE_SCORE;
+            }
+        }        
+    }
+
+    private void UpdateForStuckDirections(Dictionary<Point, int> possibleDirections, SnakeBot snakeBot)
+    {
+        foreach (var direction in possibleDirections)
+        {
+            Point newHeadPosition = direction.Key;
+
+            if (_positionChecker.IsStuckMove(newHeadPosition, snakeBot))
+            {
+                possibleDirections[direction.Key] = possibleDirections[direction.Key] - 50;
+            }
+            
         }
     }
 
-    private void RemoveStuckDirections(List<string> possibleDirections, SnakeBot snakeBot)
+    // Create plans for any clashing moves that would result in a positive headclash
+    // For example, if I can move into a position where an enemy snake could move into
+    // on their next turn but they are smaller than me, then it's worth it
+    private (Plan?, bool) GetGoldenMove(Point newHeadPosition, SnakeBot snakeBot)
     {
-        if (possibleDirections.Count > 1)
-        {
-            for (int i = possibleDirections.Count - 1; i >= 0; i--)
-            {
-                Point newHeadPosition = DirectionHelper.GetNewPosition(snakeBot.Body[0], possibleDirections[i]);
+        var excludeMove = false;
 
-                if (_positionChecker.IsStuckMove(newHeadPosition, snakeBot) || _movesThisTurn.Contains(newHeadPosition))
+        List<int> clashingEnemyBodySizes = new List<int>();
+
+        bool powerUpOnSpot = _level.PowerSources.Contains(newHeadPosition);
+
+        foreach (var opponentSnake in OpponentSnakeBots)
+        {
+            var possibleHeadMoves = new List<Point>()
+            {
+                new Point(opponentSnake.Body[0].X + 1, opponentSnake.Body[0].Y),
+                new Point(opponentSnake.Body[0].X - 1, opponentSnake.Body[0].Y),
+                new Point(opponentSnake.Body[0].X, opponentSnake.Body[0].Y + 1),
+                new Point(opponentSnake.Body[0].X, opponentSnake.Body[0].Y - 1)
+            };
+
+            foreach (Point possibleMove in possibleHeadMoves)
+            {
+               // Don't check invalid moves
+                if (possibleMove.X < -1
+                    || possibleMove.X > Width
+                    || possibleMove.Y < -1
+                    || possibleMove.Y > Height
+                    || _positionChecker.IsPlatform(possibleMove)
+                    || _positionChecker.IsPointInAnySnake(possibleMove, countTails: powerUpOnSpot))
                 {
-                    possibleDirections.Remove(possibleDirections[i]);
+                    continue;
+                }
+
+                if (possibleMove == newHeadPosition)
+                {
+                    clashingEnemyBodySizes.Add(opponentSnake.Body.Count);
                 }
             }
         }
+
+        if (clashingEnemyBodySizes.Count == 0)
+        {
+            return (null, false);
+        }
+
+        int myLossOnImpact = 0;
+        int enemyLossOnImpact = 0;
+
+        if (powerUpOnSpot)
+        {
+            myLossOnImpact = 1;
+
+            foreach (var enemyBodySize in clashingEnemyBodySizes)
+            {
+                enemyLossOnImpact += 1;
+            }
+        }
+        else
+        {
+            myLossOnImpact = snakeBot.Body.Count <= 3 ? 3 : 1;
+
+            foreach (var enemyBodySize in clashingEnemyBodySizes)
+            {
+                enemyLossOnImpact += enemyBodySize <= 3 ? 3 : 1;
+            }
+        }
+
+        // If I win overall, it's a golden move (highest score)
+        // If it's neutral, and I'm bigger than the enemy snake, it's a golden move (mid score)
+        // If it's 100% neutral, it's only a golden move if I have the highest score (the game ending 
+        // is in my favour.
+
+        int diff = enemyLossOnImpact - myLossOnImpact;
+
+        Console.Error.WriteLine($"Checking for head clash at {newHeadPosition.X},{newHeadPosition.Y}. My loss: {myLossOnImpact}, Enemy loss: {enemyLossOnImpact}, Diff: {diff}");
+        int score = 0;
+
+        if (diff > 0)
+        {
+            score = BASE_CRITICAL_MOVE_SCORE + 5000;           
+        }
+        else if (diff == 0 && snakeBot.Body.Count > clashingEnemyBodySizes.Min())
+        {
+            score = BASE_CRITICAL_MOVE_SCORE + 4000;
+        }
+        else if (diff == 0 && powerUpOnSpot)
+        {
+            score = BASE_CRITICAL_MOVE_SCORE + 3500;
+        }
+        else if (diff == 0 && snakeBot.Body.Count == clashingEnemyBodySizes.Min() && GetMyScore() > GetEnemyScore())
+        {
+            score = BASE_CRITICAL_MOVE_SCORE + 3000;
+        }
+        else if (diff < 0)
+        {
+            excludeMove = true;
+        }
+
+        Plan? plan = null;
+        
+        if (score > 0)
+        {
+            score += _positionChecker.FloodFillCount(newHeadPosition, snakeBot.Id, snakeBot.Body, 20);
+            plan = new Plan(new List<Point> { newHeadPosition }, score, "attack", turnsToFruition: 1, snakeBot.Id);
+        }
+
+        return (plan, excludeMove);
+    }
+
+    private int GetEnemyScore()
+    {
+        return GetTotalBodyCount(OpponentSnakeBots);
+    }
+
+    private int GetMyScore()
+    {
+        return GetTotalBodyCount(MySnakeBots);
+    }
+
+    private static int GetTotalBodyCount(List<SnakeBot> snakes)
+    {
+        int bodyCount = 0;
+
+        foreach (var snake in snakes)
+        {
+            bodyCount += snake.Body.Count;
+        }
+
+        return bodyCount;
     }
 
     private (bool useMove, bool excludeMove) CheckForHeadClash(Point newHeadPosition, SnakeBot snakeBot)
@@ -618,12 +934,17 @@ internal class Game
 
     private Point GetNearestPowerSource(SnakeBot snakeBot)
     {
+        return GetNearestPowerSource(snakeBot.Body[0]);
+    }
+
+    private Point GetNearestPowerSource(Point point)
+    {
         int nearestDistance = int.MaxValue;
         Point nearestPowerSource = new Point(-1, -1);
 
         foreach (var powerSource in _level.PowerSources)
         {
-            int distance = CalculationUtil.GetManhattanDistance(snakeBot.Body[0], powerSource);
+            int distance = CalculationUtil.GetManhattanDistance(point, powerSource);
             if (distance < nearestDistance)
             {
                 nearestDistance = distance;
@@ -634,30 +955,20 @@ internal class Game
         return nearestPowerSource;
     }
 
-    private List<Point> GetShortestPath(SnakeBot snakeBot, int maxDistance, HashSet<Point> excludePoints)
+    private List<Plan> GetShortestPathToPowerSourcePlans(SnakeBot snakeBot, int maxDistance, HashSet<Point> excludePoints)
     {
-        int shortestPathCount = int.MaxValue;
-        int shortestManhattanDistanceCount = int.MaxValue;
-        var shortestPathPoints = new List<Point>();
+        List<Plan> plans = new List<Plan>();
 
-        var checkedSources = 0;
         foreach (Point powerSource in _level.PowerSources)
-        {            
-            if (_powerUpsThisTurn.Contains(powerSource))
+        {
+            if (snakeBot.HasCheckedPowerSource(powerSource))
             {
                 continue;
             }
 
-            if(snakeBot.HasCheckedPowerSource(powerSource))
-            {
-                continue;
-            }
-
-            // Don't bother trying if it's further away than the shortest one we've found
+            // Don't bother trying if it's further away than maxDistance
             int manhattanDistance = CalculationUtil.GetManhattanDistance(snakeBot.Body[0], powerSource);
-            if (manhattanDistance >= maxDistance 
-                || manhattanDistance >= shortestPathCount)
-                //|| manhattanDistance >= shortestManhattanDistanceCount)
+            if (manhattanDistance >= maxDistance)
             {
                 continue;
             }
@@ -676,24 +987,58 @@ internal class Game
 
             snakeBot.AddAttemptAtPowerSource(powerSource);
 
-            List<Point> path = _pathFinder.GetShortestPath(snakeBot.Body.First(), powerSource, snakeBot, excludePoints.Concat(_movesThisTurn).ToList());
-            snakeBot.AddCheckedPowerSource(powerSource);
-            checkedSources++;
+            List<Point> path = _pathFinder.GetShortestPath(snakeBot.Body.First(), powerSource, snakeBot, excludePoints.ToList());
 
-            if (path != null && path.Count > 0 && path.Count < shortestPathCount)
+            Logger.Message($"Checked path to power source {powerSource.X}, {powerSource.Y}. Path length: {(path != null ? path.Count : -1)}. Attempts: {snakeBot.GetAttemptsAtPowerSource(powerSource)}");
+            snakeBot.AddCheckedPowerSource(powerSource);
+
+            if (path?.Count > 0)
             {
-                shortestManhattanDistanceCount = manhattanDistance;
-                shortestPathCount = path.Count;
-                shortestPathPoints = path.ToList();
+                // Create a plan for this path
+                int score = BASE_POWER_SCORE - (path.Count * 10); // Small penalty for longer paths
+
+                // If it's a small path and doing this blocks an opponent from getting to a power source
+                // give bonus points
+                if (path.Count < 3)
+                {
+                    int numberOfCloseSnakes;
+
+                    _closestSnakeToPowerSourceMap.TryGetValue(powerSource, out numberOfCloseSnakes);
+
+                    foreach (var c in _closestSnakeToPowerSourceMap)
+                    {
+                        Logger.Message($"Power source {c.Key.X},{c.Key.Y} has closest snake count {c.Value}");
+                    }
+
+                    if (numberOfCloseSnakes > 0)
+                    {
+                        score += numberOfCloseSnakes * 5;
+                        Logger.LogTime($"Added bonus for blocking {numberOfCloseSnakes} snakes from power source {powerSource.X}, {powerSource.Y}.");
+                    }
+                }
+
+                plans.Add(new Plan(path, score, "power", turnsToFruition: path.Count, snakeBot.Id));
+                Logger.LogTime($"Added path to power source {powerSource.X}, {powerSource.Y}. Path: {string.Join(", ", path.Select(p => $"({p.X},{p.Y})"))}");
+
+
+                if (maxDistance >= 10)
+                {
+                    // Exit early. Paths of 10 can be expensive
+                    break;
+                }
+            }
+            else
+            {
+                Logger.LogTime($"No path to power source {powerSource.X}, {powerSource.Y}.");
             }
         }
 
-        Logger.LogTime($"Finished looking with max distance {maxDistance}. Checked {checkedSources} power sources.");
+        Logger.LogTime($"Finished looking for power sources with max distance {maxDistance}");
 
-        return shortestPathPoints;
+        return plans;
     }
 
-    internal List<Point> GetPowerUps()
+    internal List<Point> GetPowerSources()
     {
         return _level.PowerSources;
     }
@@ -711,6 +1056,9 @@ internal class Level
 
     internal bool[,] Platforms { get; private set; }
 
+    private HashSet<Point> _allPlatformPositions = new HashSet<Point>();
+    private HashSet<Point> _walkableLedges = new HashSet<Point>();
+
     internal List<Point> PowerSources { get; private set; } = new List<Point>();
 
     public Level(int width, int height, bool[,] platforms)
@@ -719,6 +1067,47 @@ internal class Level
         this.height = height;
 
         Platforms = platforms;
+
+        CalculateAllPlatformPositions();
+        CalculateWalkableLedges();
+    }
+
+    private void CalculateAllPlatformPositions()
+    {
+        for (int y = 0; y < height; y++)
+        {
+            for (int x = 0; x < width; x++)
+            {
+                if (Platforms[y, x])
+                {
+                    _allPlatformPositions.Add(new Point(x, y));
+                }
+            }
+        }
+    }
+
+    private void CalculateWalkableLedges()
+    {
+        // Only go to height minus 1 because we'll never want to check the ground for
+        // climbing to
+        for (int y = 1; y < height-1; y++)
+        {
+            for (int x = 0; x < width; x++)
+            {
+                if (Platforms[y, x])
+                {
+                    if(!Platforms[y-1, x])
+                    {
+                        _walkableLedges.Add(new Point(x, y-1));
+                    }
+                }
+            }
+        }
+    }
+
+    internal HashSet<Point> GetWalkableLedges()
+    {
+        return _walkableLedges;
     }
 
     internal bool IsPlatform(Point pointToCheck)
@@ -728,27 +1117,14 @@ internal class Level
 
     internal HashSet<Point> GetAllPlatformPositions()
     {
-        var platformPositions = new HashSet<Point>();
-
-        for (int y = 0; y < height; y++)
-        {
-            for (int x = 0; x < width; x++)
-            {
-                if (Platforms[y, x])
-                {
-                    platformPositions.Add(new Point(x, y));
-                }
-            }
-        }
-
-        return platformPositions;
+        return _allPlatformPositions;
     }
 }
 
 
 internal static class Logger    
 {
-    private static bool DISABLE_LOGGING = true;
+    private static bool DISABLE_LOGGING = false;
     private static bool DISABLE_TIMES = false;
 
     private static long _roundStartTime;
@@ -915,6 +1291,31 @@ internal static class Logger
         }
     }
 
+    internal static void Plans(string message, List<Plan> plans)
+    {
+        if (DISABLE_LOGGING)
+        {
+            return;
+        }
+
+        Console.Error.WriteLine(message);
+
+        foreach (var plan in plans)
+        {
+            Console.Error.WriteLine($"Plan Type: {plan.PlanType}, Score: {plan.Score}, Turns to Fruition: {plan.TurnsToFruition}, Moves: {string.Join(";", plan.Moves.Select(p => $"{p.X},{p.Y}"))}");
+        }
+    }
+
+    internal static void DisableLogging() 
+    {
+        DISABLE_LOGGING = true;
+    }
+
+    internal static void EnableLogging()
+    {
+        DISABLE_LOGGING = false;
+    }
+
     internal static void StartRoundStopwatch()
     {
         if (DISABLE_TIMES)
@@ -936,7 +1337,52 @@ internal static class Logger
         Console.Error.WriteLine($"{elapsedTime.TotalMilliseconds}({elapsedSinceLastLog.TotalMilliseconds}): {message}");
         _lastTimedLog = Stopwatch.GetTimestamp();
     }
+
+    internal static void PlanCombinations(Dictionary<List<Plan>, int> planCombinations, int showTop)
+    {
+        if (DISABLE_LOGGING || planCombinations == null) 
+        {
+            return;
+        }
+
+        Console.Error.WriteLine("Plan Combinations:");
+        for (int i = 0; i < Math.Min(showTop, planCombinations.Count); i++)
+        {
+            var kvp = planCombinations.ElementAt(i);
+            var plans = kvp.Key;
+            var score = kvp.Value;
+            Console.Error.WriteLine($"Score: {score}");
+            foreach (var plan in plans)
+            {
+                Console.Error.WriteLine($"  Plan Type: {plan.PlanType}, Score: {plan.Score}, Turns to Fruition: {plan.TurnsToFruition}, Moves: {string.Join(";", plan.Moves.Select(p => $"{p.X},{p.Y}"))}");
+            }
+        }
+    }
 }
+
+internal record Move
+{    
+    internal int SnakeId { get; init; }
+    internal string Direction { get; init; }
+    internal Move(int snakeId, string direction)
+    {
+        SnakeId = snakeId;
+        Direction = direction;
+    }
+}
+
+
+
+internal record MoveSet
+{
+    internal List<Move> Moves { get; init; }
+    internal MoveSet(List<Move> moves)
+    {
+        Moves = moves;
+    }
+}
+
+
 
 internal sealed class Node
 {
@@ -966,7 +1412,7 @@ internal sealed class PathFinder
     private readonly PositionChecker _positionChecker;
     private int _debugCount = 0;
 
-    private const int MAX_NODE_COUNT = 1000;
+    private const int MAX_NODE_COUNT = 300;
 
     public PathFinder(Game game, PositionChecker positionChecker)
     {
@@ -978,10 +1424,12 @@ internal sealed class PathFinder
     {
         // Calculate points we use for collision detection and gravity, then we can use it for every search
         // Note: This doesn't include the current snake body since that will be moving as we simulate movement
-        HashSet<Point> collisionPoints = BuildCollisionPoints(snake.Id);
-        HashSet<Point> powerUpPoints = _game.GetPowerUps().ToHashSet();
+
+        HashSet<Point> powerUpPoints = _game.GetPowerSources().ToHashSet(); 
+        HashSet<Point> collisionPoints = BuildCollisionPoints(snake.Id, powerUpPoints);
         HashSet<Point> platformPoints = BuildPlatformPoints(snake.Id, powerUpPoints);
-        
+        // TODO: collisionPoints and platformPoints might be the same now. Consolidate
+
         _debugCount = 0;
 
         Dictionary<SnakeState, Node> nodesByState = new Dictionary<SnakeState, Node>();
@@ -1245,7 +1693,7 @@ internal sealed class PathFinder
         return collisionPoints;
     }
 
-    private HashSet<Point> BuildCollisionPoints(int excludeSnakeId)
+    private HashSet<Point> BuildCollisionPoints(int excludeSnakeId, HashSet<Point> powerUpPoints)
     {
         HashSet<Point> collisionPoints = new HashSet<Point>();
 
@@ -1273,7 +1721,12 @@ internal sealed class PathFinder
         {
             collisionPoints.Add(platform);
         }
-        
+
+        foreach (var powerUp in powerUpPoints)
+        {
+            collisionPoints.Add(powerUp);
+        }
+
         return collisionPoints;
     }
 
@@ -1352,13 +1805,19 @@ internal sealed class PathFinder
 
 internal record Plan
 {
-    private readonly List<Point> _moves;
-    private readonly int _score;
+    internal int SnakeID { get; private set; }
+    internal List<Point> Moves { get; private set; }
+    internal int Score { get; set; }
+    internal string PlanType { get; private set; }
+    internal int TurnsToFruition { get; private set; }
 
-    public Plan(List<Point> moves, int score)
+    public Plan(List<Point> moves, int score, string planType, int turnsToFruition, int snakeId)
     {
-        _moves = moves;
-        _score = score;
+        Moves = moves;
+        Score = score;
+        PlanType = planType;
+        TurnsToFruition = turnsToFruition;
+        SnakeID = snakeId;
     }
 }
 
@@ -1600,7 +2059,7 @@ internal sealed class PositionChecker
     {
         foreach (var snakeBot in _game.MySnakeBots)
         {
-            if (excludeSnakeId > 0 && snakeBot.Id == excludeSnakeId)
+            if (excludeSnakeId >= 0 && snakeBot.Id == excludeSnakeId)
             {
                 continue;
             }
@@ -1672,7 +2131,7 @@ internal sealed class PositionChecker
             {
                 if (_level.IsPlatform(new Point(x, y)))
                 {
-                    int distance = GetNearestDistance(pointToCheck, new Point(x, y));
+                    int distance = GetNearestPowerSourceDistance(pointToCheck, new Point(x, y));
                     
                     if (distance < nearestPlatformDistance)
                     {
@@ -1692,7 +2151,7 @@ internal sealed class PositionChecker
 
             foreach (var bodyPart in snakeBot.Body)
             {               
-                int distance = GetNearestDistance(pointToCheck, bodyPart);
+                int distance = GetNearestPowerSourceDistance(pointToCheck, bodyPart);
                     
                 if (distance < nearestPlatformDistance)
                 {
@@ -1705,7 +2164,7 @@ internal sealed class PositionChecker
         {
             foreach (var bodyPart in snakeBot.Body)
             {
-                int distance = GetNearestDistance(pointToCheck, bodyPart);
+                int distance = GetNearestPowerSourceDistance(pointToCheck, bodyPart);
                         
                 if (distance < nearestPlatformDistance)
                 {
@@ -1717,21 +2176,54 @@ internal sealed class PositionChecker
         return nearestPlatformDistance;
     }
 
-    private int GetNearestDistance(Point pointToCheck, Point point)
+    private int GetNearestPowerSourceDistance(Point powerSourcePoint, Point checkPoint, bool excludeGravity = true)
     {
         int distance = int.MaxValue;
         // If the power up is lower than the platform we don't need to count vertical distance because gravity
         // can do some of the work
-        if (pointToCheck.Y >= point.Y)
+        if (excludeGravity && powerSourcePoint.Y >= checkPoint.Y)
         {
-            distance = Math.Abs(pointToCheck.X - point.X);
+            distance = Math.Abs(powerSourcePoint.X - checkPoint.X);
         }
         else
         {
-            distance = Math.Abs(pointToCheck.X - point.X) + Math.Abs(pointToCheck.Y - point.Y);
+            distance = Math.Abs(powerSourcePoint.X - checkPoint.X) + Math.Abs(powerSourcePoint.Y - checkPoint.Y);
         }
 
         return distance;
+    }
+
+    internal Dictionary<Point, int> GetClosestPowerSourceToOpponentSnakeMap()
+    {
+        Dictionary<Point, int> closestPowerSourceToOpponentSnakeMap = new Dictionary<Point, int>();
+
+        foreach (var snakeBot in _game.OpponentSnakeBots)
+        {
+            int closestPowerSourceDistance = int.MaxValue;
+            Point closestPowerSource = new Point(-1, -1);
+
+            foreach (var powerSource in _game.GetPowerSources())
+            {
+                int distance = GetNearestPowerSourceDistance(powerSource, snakeBot.Body[0], excludeGravity: false);
+                if (distance < closestPowerSourceDistance)
+                {
+                    closestPowerSourceDistance = distance;
+                    closestPowerSource = powerSource;
+                }
+            }
+
+            int num;
+            if (closestPowerSourceToOpponentSnakeMap.TryGetValue(closestPowerSource, out num))
+            {
+                closestPowerSourceToOpponentSnakeMap[closestPowerSource]++;
+            }
+            else
+            { 
+                closestPowerSourceToOpponentSnakeMap[closestPowerSource] = 1;
+            }
+        }
+
+        return closestPowerSourceToOpponentSnakeMap;
     }
 }
 
@@ -1747,6 +2239,8 @@ internal class SnakeBot
 
     private Dictionary<Point, int> _attemptsAtPowerSources = new Dictionary<Point, int>();
     private HashSet<Point> _checkedPowerSourcesThisTurn = new HashSet<Point>();
+
+    private HashSet<Point> _attemptedToClimbLedge = new HashSet<Point>();
 
     private List<Plan> _plans = new List<Plan>();
 
@@ -1833,14 +2327,14 @@ internal class SnakeBot
         }
     }
 
-    internal Dictionary<Point, int> GetAttemptsAtPowerSource()
-    {
-        return _attemptsAtPowerSources;
-    }
-
     internal void AddPlan(Plan plan)
     {
         _plans.Add(plan);
+    }
+
+    internal void AddPlans(List<Plan> plans)
+    {
+        _plans.AddRange(plans);
     }
 
     internal void ClearAllPlans()
@@ -1870,6 +2364,16 @@ internal class SnakeBot
     internal bool HasCheckedPowerSource(Point powerSource)
     {
         return _checkedPowerSourcesThisTurn.Contains(powerSource);
+    }    
+
+    internal void AddAttemptedClimbLedge(Point ledge)
+    {
+        _attemptedToClimbLedge.Add(ledge);
+    }
+
+    internal bool HasAttemptedClimbLedge(Point ledge)
+    {
+        return _attemptedToClimbLedge.Contains(ledge);
     }
 }
 

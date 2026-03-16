@@ -18,9 +18,15 @@
 
 ## General
 
-- Take more care not to get blocked
-- How can I attack better
-- How can I be more aware of my own snakes positions
+1. Take more care not to get blocked
+2. How can I attack better
+3. How can I be more aware of my own snakes positions
+
+Example of 1 and 3
+Example 
+- seed=-1417240227969381000
+- Me player 1, boss player 2
+- Move 87 I get tangled and a snake starts dying
 
 ------------------------------------------------------------
 

@@ -934,7 +934,6 @@ internal class Game
 
             List<Point> path = _pathFinder.GetShortestPath(snakeBot.Body.First(), powerSource, snakeBot, excludePoints.ToList());
 
-            Logger.Message($"Checked path to power source {powerSource.X}, {powerSource.Y}. Path length: {(path != null ? path.Count : -1)}. Attempts: {snakeBot.GetAttemptsAtPowerSource(powerSource)}");
             snakeBot.AddCheckedPowerSource(powerSource);
 
             if (path?.Count > 0)
@@ -949,11 +948,6 @@ internal class Game
                     int numberOfCloseSnakes;
 
                     _closestSnakeToPowerSourceMap.TryGetValue(powerSource, out numberOfCloseSnakes);
-
-                    foreach (var c in _closestSnakeToPowerSourceMap)
-                    {
-                        Logger.Message($"Power source {c.Key.X},{c.Key.Y} has closest snake count {c.Value}");
-                    }
 
                     if (numberOfCloseSnakes > 0)
                     {

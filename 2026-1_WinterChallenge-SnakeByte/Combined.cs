@@ -1468,10 +1468,17 @@ internal sealed class PathFinder
             }
             else
             {
-                expansionsWithoutHImprovement++;
-                if (expansionsWithoutHImprovement >= MAX_EXPANSIONS_WITHOUT_H_IMPROVEMENT)
+                // Only count stagnation when gravity is holding the snake in place
+                bool gravityHeldPosition = currentNode.Parent != null
+                    && currentNode.Position == currentNode.Parent.Position;
+
+                if (gravityHeldPosition)
                 {
-                    return new List<Point>();
+                    expansionsWithoutHImprovement++;
+                    if (expansionsWithoutHImprovement >= MAX_EXPANSIONS_WITHOUT_H_IMPROVEMENT)
+                    {
+                        return new List<Point>();
+                    }
                 }
             }
 

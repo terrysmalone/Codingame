@@ -7,6 +7,8 @@
 ## Changes since last Test in Arena
 
 - Add max expansion node cut off in pathfinder
+- Don't check ground in pathfinder
+- Fix to max exansion node to only count stationary moves as stagnant
 
 # TO DO
 

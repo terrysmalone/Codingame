@@ -680,6 +680,8 @@ internal class Game
     // Create plans for any clashing moves that would result in a positive headclash
     // For example, if I can move into a position where an enemy snake could move into
     // on their next turn but they are smaller than me, then it's worth it
+    // TODO: Only make it a critical move if it's guaranteed. If the opponent can avoid it just make it a good
+    // // move
     private (Plan?, bool) GetCriticalHeadClashMove(Point newHeadPosition, SnakeBot snakeBot)
     {
         var excludeMove = false;

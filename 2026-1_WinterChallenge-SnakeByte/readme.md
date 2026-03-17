@@ -2,12 +2,9 @@
 
 ## Commit in Arena
 
-73e3335a5c859a3fc62e9bcd23c1a6bc360c137a
+7f6d3ddd0aba97f41f72bc18439d36b7971778a6 - Rank 70
 
 ## Changes since last Test in Arena
-- Don't take last power up if i@m losing
-- Scale scoring so to stop better moves losing
-- Bonus/penalty if opponents closest power source is the one we're going for
 
 # TO DO
 

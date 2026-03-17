@@ -1047,6 +1047,15 @@ internal class Game
             {
                 Logger.LogTime($"No path to power source {powerSource.X}, {powerSource.Y}.");
             }
+
+            if (maxDistance == 10)
+            {
+                if (plans.Count > 0)
+                {
+                    Logger.Message("We found at least one power source at max distance 10. Don't try any more.");
+                    break;
+                }
+            }
         }
 
         Logger.LogTime($"Finished looking for power sources with max distance {maxDistance}");

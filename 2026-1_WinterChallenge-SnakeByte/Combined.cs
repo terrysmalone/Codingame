@@ -84,11 +84,12 @@ internal class Game
 
     private Dictionary<Point, int> _closestSnakeToPowerSourceMap = new Dictionary<Point, int>();
 
-    private const int BASE_POWER_SCORE = 10000;
-    private const int BASE_CLIMBABLE_LEDGE_SCORE = 2000;
-    private const int BASE_WANDER_SCORE = 500;
-    private const int BASE_CRITICAL_MOVE_SCORE = 100000;
-
+    private const int BASE_POWER_SCORE = 100000;
+    private const int PATH_LENGTH_PENALTY = 100;
+    private const int BASE_CLIMBABLE_LEDGE_SCORE = 20000;
+    private const int BASE_WANDER_SCORE = 5000;
+    private const int BASE_CRITICAL_MOVE_SCORE = 1000000;
+    
     public Game(int width, int height, bool[,] platforms)
     {
         Width = width;
@@ -309,7 +310,7 @@ internal class Game
             // For example, if there are 2  power ups, we shouldn't go for both this turn
             Point? lastPowerSource = null;
 
-            if (_level.PowerSources.Count == 1)
+            if (_level.PowerSources.Count == 1 && GetMyScore() - GetEnemyScore() < 0)
             {
                 lastPowerSource = _level.PowerSources[0];
             }
@@ -555,10 +556,17 @@ internal class Game
         {
             Point newHeadPosition = plan.Moves[0];
 
+            Logger.Message($"Scoring {snakeBot.Id} with move to {newHeadPosition.X},{newHeadPosition.Y}");
+            Logger.Message($"Base score: {plan.Score}");
+
             scoreChange += ScoreChangeForOtherSnakeBodyPositions(newHeadPosition, snakeBot);
+            Logger.Message($"1: {plan.Score + scoreChange}");
             scoreChange += ScoreChangeForSpaceCreated(newHeadPosition, snakeBot);
+            Logger.Message($"2: {plan.Score + scoreChange}");
             scoreChange += ScoreChangeForStuckDirections(newHeadPosition, snakeBot);
+            Logger.Message($"3: {plan.Score + scoreChange}");
             scoreChange += ScoreChangeForPosition(newHeadPosition, snakeBot);
+            Logger.Message($"4: {plan.Score + scoreChange}");
 
             plan.Score = plan.Score += scoreChange;
         }
@@ -1066,7 +1074,7 @@ internal class Game
             if (path?.Count > 0)
             {
                 // Create a plan for this path
-                int score = BASE_POWER_SCORE - (path.Count * 10); // Small penalty for longer paths
+                int score = BASE_POWER_SCORE - (path.Count * PATH_LENGTH_PENALTY); // Small penalty for longer paths
 
                 // If it's a small path and doing this blocks an opponent from getting to a power source
                 // give bonus points
@@ -1084,7 +1092,7 @@ internal class Game
                 }
 
                 plans.Add(new Plan(path, score, "power", turnsToFruition: path.Count, snakeBot.Id));
-                Logger.LogTime($"Added path to power source {powerSource.X}, {powerSource.Y}. Path: {string.Join(", ", path.Select(p => $"({p.X},{p.Y})"))}");
+                // Logger.LogTime($"Added path to power source {powerSource.X}, {powerSource.Y}. Path: {string.Join(", ", path.Select(p => $"({p.X},{p.Y})"))}. Score:{score}");
 
 
                 if (maxDistance >= 10)
@@ -1190,8 +1198,8 @@ internal class Level
 
 internal static class Logger    
 {
-    private static bool DISABLE_LOGGING = true;
-    private static bool DISABLE_TIMES = true;
+    private static bool DISABLE_LOGGING = false;
+    private static bool DISABLE_TIMES = false;
 
     private static long _roundStartTime;
     private static long _lastTimedLog;

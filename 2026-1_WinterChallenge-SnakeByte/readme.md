@@ -5,8 +5,9 @@
 73e3335a5c859a3fc62e9bcd23c1a6bc360c137a
 
 ## Changes since last Test in Arena
-
-
+- Don't take last power up if i@m losing
+- Scale scoring so to stop better moves losing
+- Bonus/penalty if opponents closest power source is the one we're going for
 
 # TO DO
 

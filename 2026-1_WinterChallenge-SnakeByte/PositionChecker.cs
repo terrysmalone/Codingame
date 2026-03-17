@@ -279,7 +279,7 @@ internal sealed class PositionChecker
     {
         Dictionary<Point, int> closestPowerSourceToOpponentSnakeMap = new Dictionary<Point, int>();
 
-        foreach (var snakeBot in _game.OpponentSnakeBots)
+        foreach (SnakeBot snakeBot in _game.OpponentSnakeBots)
         {
             int closestPowerSourceDistance = int.MaxValue;
             Point closestPowerSource = new Point(-1, -1);
@@ -293,15 +293,11 @@ internal sealed class PositionChecker
                     closestPowerSource = powerSource;
                 }
             }
-
-            int num;
-            if (closestPowerSourceToOpponentSnakeMap.TryGetValue(closestPowerSource, out num))
+            
+            if (closestPowerSource != new Point(-1, -1))
             {
-                closestPowerSourceToOpponentSnakeMap[closestPowerSource]++;
-            }
-            else
-            { 
-                closestPowerSourceToOpponentSnakeMap[closestPowerSource] = 1;
+                Logger.Message($"Closest power source to opponent snake {snakeBot.Id} is {closestPowerSource} at distance {closestPowerSourceDistance}");
+                closestPowerSourceToOpponentSnakeMap[closestPowerSource] = snakeBot.Id;
             }
         }
 

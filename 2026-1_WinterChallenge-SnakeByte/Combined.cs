@@ -89,7 +89,8 @@ internal class Game
     private const int BASE_CLIMBABLE_LEDGE_SCORE = 20000;
     private const int BASE_WANDER_SCORE = 5000;
     private const int BASE_CRITICAL_MOVE_SCORE = 1000000;
-    
+    private const int CLOSER_TO_POWER_SCORE = 500;
+
     public Game(int width, int height, bool[,] platforms)
     {
         Width = width;
@@ -225,17 +226,16 @@ internal class Game
 
             foreach (var possibleMove in possibleMoves)
             {
-                (Plan? goldenMove, bool excludeMove) = GetGoldenMove(possibleMove, snakeBot);
+                (Plan? headClashMove, bool excludeMove) = GetCriticalHeadClashMove(possibleMove, snakeBot);
 
-                if (goldenMove != null)
+                if (headClashMove != null)
                 {
-                    Logger.Plans("Added golden move", new List<Plan> { goldenMove });
-                    snakeBot.AddPlan(goldenMove);
+                    Logger.Plans("Added head clash move", new List<Plan> { headClashMove });
+                    snakeBot.AddPlan(headClashMove);
                     goldenMovesAdded++;
                     continue;
                 }
                 
-                // TODO: We'll want to add this back in at some point
                 if (excludeMove)
                 {
                     excludePoints.Add(possibleMove);
@@ -245,6 +245,10 @@ internal class Game
                 {
                     excludePoints.Add(possibleMove);
                 }
+
+                // Add sensible exclude moves here
+                // 1. If move is blocking it should be critical exclude path
+                // 2. If any opponent snake move can trap me it's an excludeMove
             }
 
             Logger.LogTime($"Checked for head clash. Added {goldenMovesAdded} plans");            
@@ -556,18 +560,11 @@ internal class Game
         {
             Point newHeadPosition = plan.Moves[0];
 
-            Logger.Message($"Scoring {snakeBot.Id} with move to {newHeadPosition.X},{newHeadPosition.Y}");
-            Logger.Message($"Base score: {plan.Score}");
-
             scoreChange += ScoreChangeForOtherSnakeBodyPositions(newHeadPosition, snakeBot);
-            Logger.Message($"1: {plan.Score + scoreChange}");
             scoreChange += ScoreChangeForSpaceCreated(newHeadPosition, snakeBot);
-            Logger.Message($"2: {plan.Score + scoreChange}");
             scoreChange += ScoreChangeForStuckDirections(newHeadPosition, snakeBot);
-            Logger.Message($"3: {plan.Score + scoreChange}");
             scoreChange += ScoreChangeForPosition(newHeadPosition, snakeBot);
-            Logger.Message($"4: {plan.Score + scoreChange}");
-
+            
             plan.Score = plan.Score += scoreChange;
         }
     }
@@ -740,7 +737,7 @@ internal class Game
     // Create plans for any clashing moves that would result in a positive headclash
     // For example, if I can move into a position where an enemy snake could move into
     // on their next turn but they are smaller than me, then it's worth it
-    private (Plan?, bool) GetGoldenMove(Point newHeadPosition, SnakeBot snakeBot)
+    private (Plan?, bool) GetCriticalHeadClashMove(Point newHeadPosition, SnakeBot snakeBot)
     {
         var excludeMove = false;
 
@@ -1078,21 +1075,41 @@ internal class Game
 
                 // If it's a small path and doing this blocks an opponent from getting to a power source
                 // give bonus points
-                if (path.Count < 3)
+                if (path.Count <= 5)
                 {
-                    int numberOfCloseSnakes;
-
-                    _closestSnakeToPowerSourceMap.TryGetValue(powerSource, out numberOfCloseSnakes);
-
-                    if (numberOfCloseSnakes > 0)
+                    if (_closestSnakeToPowerSourceMap.ContainsKey(powerSource))
                     {
-                        score += numberOfCloseSnakes * 5;
-                        Logger.LogTime($"Added bonus for blocking {numberOfCloseSnakes} snakes from power source {powerSource.X}, {powerSource.Y}.");
+                        int closestSnakeId;
+                        _closestSnakeToPowerSourceMap.TryGetValue(powerSource, out closestSnakeId);
+
+                        SnakeBot closestSnake = OpponentSnakeBots.First(s => s.Id == closestSnakeId);
+
+                        if (closestSnake != null)
+                        {
+                            int closestSnakeDistance = int.MaxValue;
+
+                            List<Point> closestSnakePath = _pathFinder.GetShortestPath(closestSnake.Body.First(), powerSource, closestSnake, new List<Point>());
+                            if (closestSnakePath?.Count > 0)
+                            {
+                                if (closestSnakePath.Count < path.Count)
+                                {
+                                    // Enemy is closer
+                                    score -= CLOSER_TO_POWER_SCORE;
+
+                                }
+                                else
+                                {
+                                    // I'm closer, or we'll draw
+                                    // TODO: If it's a draw we only sometimes want to go for it
+                                    score += CLOSER_TO_POWER_SCORE;
+                                }
+                            }
+                        }
                     }
                 }
 
                 plans.Add(new Plan(path, score, "power", turnsToFruition: path.Count, snakeBot.Id));
-                // Logger.LogTime($"Added path to power source {powerSource.X}, {powerSource.Y}. Path: {string.Join(", ", path.Select(p => $"({p.X},{p.Y})"))}. Score:{score}");
+                Logger.LogTime($"Added path to power source {powerSource.X}, {powerSource.Y}. Path: {string.Join(", ", path.Select(p => $"({p.X},{p.Y})"))}. Score:{score}");
 
 
                 if (maxDistance >= 10)
@@ -2296,7 +2313,7 @@ internal sealed class PositionChecker
     {
         Dictionary<Point, int> closestPowerSourceToOpponentSnakeMap = new Dictionary<Point, int>();
 
-        foreach (var snakeBot in _game.OpponentSnakeBots)
+        foreach (SnakeBot snakeBot in _game.OpponentSnakeBots)
         {
             int closestPowerSourceDistance = int.MaxValue;
             Point closestPowerSource = new Point(-1, -1);
@@ -2310,15 +2327,11 @@ internal sealed class PositionChecker
                     closestPowerSource = powerSource;
                 }
             }
-
-            int num;
-            if (closestPowerSourceToOpponentSnakeMap.TryGetValue(closestPowerSource, out num))
+            
+            if (closestPowerSource != new Point(-1, -1))
             {
-                closestPowerSourceToOpponentSnakeMap[closestPowerSource]++;
-            }
-            else
-            { 
-                closestPowerSourceToOpponentSnakeMap[closestPowerSource] = 1;
+                Logger.Message($"Closest power source to opponent snake {snakeBot.Id} is {closestPowerSource} at distance {closestPowerSourceDistance}");
+                closestPowerSourceToOpponentSnakeMap[closestPowerSource] = snakeBot.Id;
             }
         }
 

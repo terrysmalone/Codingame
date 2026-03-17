@@ -197,17 +197,21 @@ internal class Game
 
             // TODO: We'll want to return more than one here at some point
             List<Plan> bestPlansToPowerSources = GetBestPlansToPowerSources(snakeBot, excludePoints);
+            UpdateScores(bestPlansToPowerSources, snakeBot);
+
             snakeBot.AddPlans(bestPlansToPowerSources);
             Logger.LogTime("Finished path finding");
             
             // Before wandering randomly, try to get some paths to nearby platforms that are above me
             List<Plan> climbableLedgePlans = GetClimbableLedgePlans(snakeBot, excludePoints);
+            UpdateScores(climbableLedgePlans, snakeBot);
             snakeBot.AddPlans(climbableLedgePlans);
 
             List<Plan> validPlans = GetValidDirectionPointPlans(snakeBot);
             snakeBot.AddPlans(validPlans);
                
-            Logger.LogTime($"Finished checking valid directions. Added {validPlans.Count} plans");             
+            Logger.LogTime($"Finished checking valid directions. Added {validPlans.Count} plans");
+            Logger.Plans("Direction plans", validPlans);
         }
 
         // If any snake has a terrible move (usually meaning it would lower my score)
@@ -460,7 +464,7 @@ internal class Game
         foreach (string direction in possibleDirections)
         {
             Point checkPoint = DirectionHelper.GetNewPosition(snakeBot.Body[0], direction);
-            directionScores.Add(checkPoint, 0);
+            directionScores.Add(checkPoint, BASE_WANDER_SCORE);
         }
 
         RemoveAllHardNos(directionScores, snakeBot);
@@ -472,7 +476,6 @@ internal class Game
 
         UpdateScores(directionScores, snakeBot);
          
-
         // Make plans from the direction scores
 
         List<Plan> plans = new List<Plan>();
@@ -485,20 +488,58 @@ internal class Game
         return plans;
     }
 
-    private void UpdateScores(Dictionary<Point, int> directionScores, SnakeBot snakeBot)
+    private void UpdateScores(List<Plan> plans, SnakeBot snakeBot)
     {
-        UpdateForOtherSnakeBodyPositions(directionScores, snakeBot);
+        int scoreChange = 0;
+        foreach (Plan plan in plans)
+        {
+            Point newHeadPosition = plan.Moves[0];
 
-        UpdateForHeadDangerPositions(directionScores, snakeBot);
+            scoreChange += ScoreChangeForOtherSnakeBodyPositions(newHeadPosition, snakeBot);
+            scoreChange += ScoreChangeForSpaceCreated(newHeadPosition, snakeBot);
+            scoreChange += ScoreChangeForHeadDangerPositions(newHeadPosition, snakeBot);
+            scoreChange += ScoreChangeForStuckDirections(newHeadPosition, snakeBot);
+            scoreChange += ScoreChangeForPosition(newHeadPosition, snakeBot);
 
-        UpdateForStuckDirections(directionScores, snakeBot);
-
-        UpdateForSpaceCreated(directionScores, snakeBot);
-
-        UpdateForPosition(directionScores, snakeBot);
+            plan.Score = plan.Score += scoreChange;
+        }
     }
 
-    private void UpdateForSpaceCreated(Dictionary<Point, int> directionScores, SnakeBot snakeBot)
+   
+
+    private void UpdateScores(Dictionary<Point, int> directionScores, SnakeBot snakeBot)
+    {
+        int scoreChange = 0;
+        foreach (var direction in directionScores)
+        {
+            Point newHeadPosition = direction.Key;
+
+            scoreChange += ScoreChangeForOtherSnakeBodyPositions(newHeadPosition, snakeBot);
+            scoreChange +=  ScoreChangeForSpaceCreated(newHeadPosition, snakeBot);
+            scoreChange +=  ScoreChangeForHeadDangerPositions(newHeadPosition, snakeBot);
+            scoreChange += ScoreChangeForStuckDirections(newHeadPosition, snakeBot);
+            scoreChange += ScoreChangeForPosition(newHeadPosition, snakeBot);
+
+            directionScores[direction.Key] = directionScores[direction.Key] += scoreChange;
+        }
+    }
+
+    private int ScoreChangeForOtherSnakeBodyPositions(Point movePoint, SnakeBot snakeBot)
+    {
+        int scoreChange = 0;
+
+        if (_positionChecker.IsPointInAnySnake(movePoint, countTails: true, snakeBot.Id)
+            || _positionChecker.IsPointInGivenSnake(snakeBot.Body, movePoint, countTails: false))
+        {
+            // We never want to do this unless it's the only choice. Give it a preposterously low score
+            scoreChange =  -BASE_CRITICAL_MOVE_SCORE;
+        }
+
+        return scoreChange;
+        
+    }
+
+    private int ScoreChangeForSpaceCreated(Point movePoint, SnakeBot snakeBot)
     {
         // Use flood fill to either move to a more open space, or to give the opponent less space
         // Score the current position:
@@ -506,71 +547,70 @@ internal class Game
         // The highest one wins.
         // TODO: At some point check for all opponent moves here too. 
         // For example, If I go left, give a score for all opponent moves. Count the worse one for me as the score. 
-        foreach (var directionScore in directionScores)
+
+        // TODO: Simulate the movement (just adding a head and removing a tail. At some point we might want to think about
+        // simulating gravity but not yet
+        List<Point> newSnakeBody = new List<Point>() { movePoint };
+        newSnakeBody.AddRange(snakeBot.Body.Take(snakeBot.Body.Count - 1));
+
+        int scoreChange = 0;
+
+        // For the flood fill I want to exclude this snake ID, but include newSnakeBody
+        foreach (var mySnake in MySnakeBots)
         {
-            int score = BASE_WANDER_SCORE;
-
-            // TODO: Simulate the movement (just adding a head and removing a tail. At some point we might want to think about
-            // simulating gravity but not yet
-            List<Point> newSnakeBody = new List<Point>() { directionScore.Key };
-            newSnakeBody.AddRange(snakeBot.Body.Take(snakeBot.Body.Count - 1));
-
-            // For the flood fill I want to exclude this snake ID, but include newSnakeBody
-            foreach (var mySnake in MySnakeBots)
+            if (mySnake.Id == snakeBot.Id)
             {
-                if (mySnake.Id == snakeBot.Id)
-                {
-                    score += _positionChecker.FloodFillCount(newSnakeBody[0], snakeBot.Id, newSnakeBody, 20);
-                }
-                else
-                {
-                    score += _positionChecker.FloodFillCount(mySnake.Body[0], snakeBot.Id, newSnakeBody, 20);
-                }
+                scoreChange += _positionChecker.FloodFillCount(newSnakeBody[0], snakeBot.Id, newSnakeBody, 20);
             }
-
-            foreach (var opponentSnake in OpponentSnakeBots)
+            else
             {
-                score -= _positionChecker.FloodFillCount(opponentSnake.Body[0], snakeBot.Id, newSnakeBody, 20);
+                scoreChange += _positionChecker.FloodFillCount(mySnake.Body[0], snakeBot.Id, newSnakeBody, 20);
             }
-
-            directionScores[directionScore.Key] = directionScores[directionScore.Key] += score;
         }
+
+        foreach (var opponentSnake in OpponentSnakeBots)
+        {
+            scoreChange -= _positionChecker.FloodFillCount(opponentSnake.Body[0], snakeBot.Id, newSnakeBody, 20);
+        }
+
+        return scoreChange; 
     }
 
-    private void UpdateForPosition(Dictionary<Point, int> directionScores, SnakeBot snakeBot)
+    private int ScoreChangeForPosition(Point movePoint, SnakeBot snakeBot)
     {
+        int scoreChange = 0;
         // Add small position bonuses
         // At the start of the game move towards the centre and up. When there are hardly any 
         // power sources left, head towards the nearest one
         // TODO: Add bonus for heading towards the most power sources
-        foreach (var directionScore in directionScores)
+  
+        if (_level.PowerSources.Count > 2)
         {
-            if (_level.PowerSources.Count > 2)
+            // If the head is out of bounds, and this move will bring it back in, give it a stronger bonus
+
+            if (_positionChecker.IsOutOfMapBounds(snakeBot.Body[0]) && !_positionChecker.IsOutOfMapBounds(movePoint))
             {
-                // If the head is out of bounds, and this move will bring it back in, give it a stronger bonus
-
-                if (_positionChecker.IsOutOfMapBounds(snakeBot.Body[0]) && !_positionChecker.IsOutOfMapBounds(directionScore.Key))
-                {
-                    directionScores[directionScore.Key] = directionScores[directionScore.Key] + 10;
-                }
-
-                int distanceFromCentre = CalculationUtil.GetManhattanDistance(directionScore.Key, new Point(Width / 2, Height / 2));
-                directionScores[directionScore.Key] = directionScores[directionScore.Key] - distanceFromCentre;
-
-                // Add a small bomus for moving towards the top of the map
-                int distanceFromTop = directionScore.Key.Y;
-                directionScores[directionScore.Key] = directionScores[directionScore.Key] - distanceFromTop;
+                scoreChange += 10;
             }
-            else
-            {
-                // Bonus for moving nearer to the nearest powersource
-                int distanceToPowerSource = CalculationUtil.GetManhattanDistance(
-                    directionScore.Key,
-                    GetNearestPowerSource(directionScore.Key));
-                directionScores[directionScore.Key] = directionScores[directionScore.Key] - distanceToPowerSource;
 
-            }
+            int distanceFromCentre = CalculationUtil.GetManhattanDistance(movePoint, new Point(Width / 2, Height / 2));
+            scoreChange -= distanceFromCentre;
+
+            // Add a small bonus for moving towards the top of the map
+            int distanceFromTop = movePoint.Y;
+            scoreChange -= distanceFromTop;
         }
+        else
+        {
+            // Bonus for moving nearer to the nearest powersource
+            int distanceToPowerSource = CalculationUtil.GetManhattanDistance(
+                movePoint,
+                GetNearestPowerSource(movePoint));
+
+            scoreChange -= distanceToPowerSource;
+        }
+
+        return scoreChange;
     }
 
     private void RemoveAllHardNos(Dictionary<Point, int> directionScores, SnakeBot snakeBot)
@@ -611,59 +651,37 @@ internal class Game
             }
         }
 
-       
-          
-
         foreach (var point in pointsToRemove)
         {
             directionScores.Remove(point);
         }
     }
 
-    private void UpdateForOtherSnakeBodyPositions(Dictionary<Point, int> possibleDirections, SnakeBot snakeBot)
+    private int ScoreChangeForHeadDangerPositions(Point movePoint, SnakeBot snakeBot)
     {
-        foreach (var direction in possibleDirections)
+        int scoreChange = 0;
+        // We don't have to worry about using the move here, since we check it as part
+        // of the pathfinding move
+        (_, var excludeMove) = CheckForHeadClash(movePoint, snakeBot);
+
+        if (excludeMove)
         {
-            Point newHeadPosition = direction.Key;
-
-            if (_positionChecker.IsPointInAnySnake(newHeadPosition, countTails: true, snakeBot.Id)
-                || _positionChecker.IsPointInGivenSnake(snakeBot.Body, newHeadPosition, countTails: false))
-            {
-                // We never want to do this unless it's the only choice. Give it a preposterously low score
-                possibleDirections[direction.Key] = possibleDirections[direction.Key] - BASE_CRITICAL_MOVE_SCORE;
-            }
-        }        
-    }
-
-    private void UpdateForHeadDangerPositions(Dictionary<Point, int> possibleDirections, SnakeBot snakeBot)
-    {
-        foreach (var direction in possibleDirections)
-        {
-            Point newHeadPosition = direction.Key;
-
-            // We don't have to worry about using the move here, since we check it as part
-            // of the pathfinding move
-            (_, var excludeMove) = CheckForHeadClash(newHeadPosition, snakeBot);
-
-            if (excludeMove)
-            {
-                possibleDirections[direction.Key] = possibleDirections[direction.Key] - BASE_CRITICAL_MOVE_SCORE;
-            }
-        }        
-    }
-
-    private void UpdateForStuckDirections(Dictionary<Point, int> possibleDirections, SnakeBot snakeBot)
-    {
-        foreach (var direction in possibleDirections)
-        {
-            Point newHeadPosition = direction.Key;
-
-            if (_positionChecker.IsStuckMove(newHeadPosition, snakeBot))
-            {
-                possibleDirections[direction.Key] = possibleDirections[direction.Key] - 50;
-            }
-            
+            scoreChange = -BASE_CRITICAL_MOVE_SCORE;
         }
+
+        return scoreChange;
+    }
+
+    private int ScoreChangeForStuckDirections(Point movePoint, SnakeBot snakeBot)
+    {
+        int scoreChange = 0;
+
+        if (_positionChecker.IsStuckMove(movePoint, snakeBot))
+        {
+            scoreChange = -50;
+        }
+
+        return scoreChange;
     }
 
     // Create plans for any clashing moves that would result in a positive headclash

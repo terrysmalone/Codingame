@@ -15,6 +15,8 @@
 ## Specific
 
 - Don't climb a ledge if it's a blocked position
+- Don't go for a head clash if the opponent can not take it, and I'd end up trapping myself in
+- Don't count tails of opponent if they can get a powerup next move
 
 ## General
 

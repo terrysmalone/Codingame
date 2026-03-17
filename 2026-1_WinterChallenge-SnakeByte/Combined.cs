@@ -288,7 +288,7 @@ internal class Game
                 }
             }
 
-            Logger.Plans($"After...Plans for snake {snakeBot.Id}", snakeBot.GetPlans());
+            Logger.Plans($"Plans for snake {snakeBot.Id}", snakeBot.GetPlans());
         }
 
         // Get all combinations of all plans. Score them by adding the scores together. Pick the highest scoring combination that doesn't have any clashes.
@@ -423,7 +423,7 @@ internal class Game
             if (path?.Count > 0)
             {
                 // Create a plan for this path
-                int score = BASE_CLIMBABLE_LEDGE_SCORE - (path.Count * 10); // Small penalty for longer paths
+                int score = BASE_CLIMBABLE_LEDGE_SCORE;
 
                 plans.Add(new Plan(path, score, "climbing", turnsToFruition: path.Count, snakeBot.Id));
                 

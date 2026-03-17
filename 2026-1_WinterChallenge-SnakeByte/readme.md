@@ -2,13 +2,11 @@
 
 ## Commit in Arena
 
-28d41143d4627da8966daac168a49445432a3eb9
+5e7cbfd3181f3e4bdf2423359835b472c9e18f66
 
 ## Changes since last Test in Arena
 
-- Add max expansion node cut off in pathfinder
-- Don't check ground in pathfinder
-- Fix to max exansion node to only count stationary moves as stagnant
+
 
 # TO DO
 

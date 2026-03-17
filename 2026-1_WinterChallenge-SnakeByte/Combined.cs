@@ -228,6 +228,7 @@ internal class Game
 
                 if (goldenMove != null)
                 {
+                    Logger.Plans("Added golden move", new List<Plan> { goldenMove });
                     snakeBot.AddPlan(goldenMove);
                     goldenMovesAdded++;
                     continue;
@@ -245,7 +246,7 @@ internal class Game
                 }
             }
 
-            Logger.LogTime($"Checked for head clash. Added {goldenMovesAdded} plans");
+            Logger.LogTime($"Checked for head clash. Added {goldenMovesAdded} plans");            
 
             if (snakeBot.IsStuck())
             {
@@ -268,7 +269,6 @@ internal class Game
             snakeBot.AddPlans(validPlans);
                
             Logger.LogTime($"Finished checking valid directions. Added {validPlans.Count} plans");
-            Logger.Plans("Direction plans", validPlans);
         }
 
         // If any snake has a terrible move (usually meaning it would lower my score)
@@ -284,7 +284,6 @@ internal class Game
                     if (plan.Moves[0] == terribleMove.Moves[0])
                     {
                         plan.Score = terribleMove.Score;
-                        Logger.Message($"Made move with first position {plan.Moves[0].X},{plan.Moves[0].Y} just as bad as terrible move with score {plan.Score}");
                     }
                 }
             }
@@ -421,16 +420,13 @@ internal class Game
 
             List<Point> path = _pathFinder.GetShortestPath(snakeBot.Body.First(), ledge, snakeBot, excludePoints.ToList());
 
-            Logger.LogTime($"Checked path to climbable ledge {ledge.X}, {ledge.Y}. Path length: {(path != null ? path.Count : -1)}");
-
             if (path?.Count > 0)
             {
                 // Create a plan for this path
                 int score = BASE_CLIMBABLE_LEDGE_SCORE - (path.Count * 10); // Small penalty for longer paths
 
                 plans.Add(new Plan(path, score, "climbing", turnsToFruition: path.Count, snakeBot.Id));
-                Logger.LogTime($"Added path to climbable ledge {ledge.X}, {ledge.Y}. Path: {string.Join(", ", path.Select(p => $"({p.X},{p.Y})"))}");
-
+                
                 if (maxDistance >= 10)
                 {
                     // Exit early. Paths of 10 can be expensive
@@ -554,7 +550,6 @@ internal class Game
 
             scoreChange += ScoreChangeForOtherSnakeBodyPositions(newHeadPosition, snakeBot);
             scoreChange += ScoreChangeForSpaceCreated(newHeadPosition, snakeBot);
-            scoreChange += ScoreChangeForHeadDangerPositions(newHeadPosition, snakeBot);
             scoreChange += ScoreChangeForStuckDirections(newHeadPosition, snakeBot);
             scoreChange += ScoreChangeForPosition(newHeadPosition, snakeBot);
 
@@ -566,14 +561,13 @@ internal class Game
 
     private void UpdateScores(Dictionary<Point, int> directionScores, SnakeBot snakeBot)
     {
-        int scoreChange = 0;
         foreach (var direction in directionScores)
         {
+            int scoreChange = 0;
             Point newHeadPosition = direction.Key;
 
             scoreChange += ScoreChangeForOtherSnakeBodyPositions(newHeadPosition, snakeBot);
             scoreChange +=  ScoreChangeForSpaceCreated(newHeadPosition, snakeBot);
-            scoreChange +=  ScoreChangeForHeadDangerPositions(newHeadPosition, snakeBot);
             scoreChange += ScoreChangeForStuckDirections(newHeadPosition, snakeBot);
             scoreChange += ScoreChangeForPosition(newHeadPosition, snakeBot);
 
@@ -714,20 +708,7 @@ internal class Game
         }
     }
 
-    private int ScoreChangeForHeadDangerPositions(Point movePoint, SnakeBot snakeBot)
-    {
-        int scoreChange = 0;
-        // We don't have to worry about using the move here, since we check it as part
-        // of the pathfinding move
-        (_, var excludeMove) = CheckForHeadClash(movePoint, snakeBot);
-
-        if (excludeMove)
-        {
-            scoreChange = -BASE_CRITICAL_MOVE_SCORE;
-        }
-
-        return scoreChange;
-    }
+    
 
     private int ScoreChangeForStuckDirections(Point movePoint, SnakeBot snakeBot)
     {
@@ -873,21 +854,8 @@ internal class Game
         return bodyCount;
     }
 
-    private (bool useMove, bool excludeMove) CheckForHeadClash(Point newHeadPosition, SnakeBot snakeBot)
+    private bool CheckForHeadClash(Point newHeadPosition, SnakeBot snakeBot)
     {
-        // If an enemy snake's head could move to the new head position decide how to deal with it
-        // 
-        // If there is a power up on that spot
-        //    If their snake is smaller than mine, it's not a problem
-        //    If the snakes are the same, it's not a problem as we would both die and take each other out
-        //    If my snake is smaller than theirs
-        //       If my snake will die, let them have it
-        //       Else go for it, we don't want to give them an extra point
-        // If there is not a power up on that spot
-        //    If their snake is smaller than mine, it's not a problem
-        //    If the snakes are the same, it's neutral but we probably want to avoid it as we could easily get unlucky and lose
-        //    If my snake is smaller than theirs, it's a problem, avoid it
-
         bool headClash = false;
 
         // Track the size of the biggest snake. That's the one that matters
@@ -933,8 +901,70 @@ internal class Game
 
         if (!headClash)
         {
-            return (useMove: false, excludeMove: false);
+            return false;
         }
+
+
+        /**
+         * 
+         * int myLossOnImpact = 0;
+        int enemyLossOnImpact = 0;
+
+        if (powerUpOnSpot)
+        {
+            myLossOnImpact = 1;
+
+            foreach (var enemyBodySize in clashingEnemyBodySizes)
+            {
+                enemyLossOnImpact += 1;
+            }
+        }
+        else
+        {
+            myLossOnImpact = snakeBot.Body.Count <= 3 ? 3 : 1;
+
+            foreach (var enemyBodySize in clashingEnemyBodySizes)
+            {
+                enemyLossOnImpact += enemyBodySize <= 3 ? 3 : 1;
+            }
+        }
+
+        // If I win overall, it's a golden move (highest score)
+        // If it's neutral, and I'm bigger than the enemy snake, it's a golden move (mid score)
+        // If it's 100% neutral, it's only a golden move if I have the highest score (the game ending 
+        // is in my favour.
+
+        int diff = enemyLossOnImpact - myLossOnImpact;
+
+        Console.Error.WriteLine($"Checking for head clash at {newHeadPosition.X},{newHeadPosition.Y}. My loss: {myLossOnImpact}, Enemy loss: {enemyLossOnImpact}, Diff: {diff}");
+        int score = 0;
+
+        if (diff > 0)
+        {
+            score = BASE_CRITICAL_MOVE_SCORE + 5000;           
+        }
+        else if (diff == 0 && snakeBot.Body.Count > clashingEnemyBodySizes.Min())
+        {
+            score = BASE_CRITICAL_MOVE_SCORE + 4000;
+        }
+        else if (diff == 0 && powerUpOnSpot)
+        {
+            score = BASE_CRITICAL_MOVE_SCORE + 3500;
+        }
+        else if (diff == 0 && snakeBot.Body.Count == clashingEnemyBodySizes.Min() && GetMyScore() > GetEnemyScore())
+        {
+            score = BASE_CRITICAL_MOVE_SCORE + 3000;
+        }
+        else if (diff < 0)
+        {
+            excludeMove = true;
+        }
+         * 
+         * 
+         * 
+         * 
+         * 
+         */
 
         bool powerUpOnSpot = _level.PowerSources.Contains(newHeadPosition);
 
@@ -943,11 +973,11 @@ internal class Game
          // and they can destroy me on their next turn. 
             if (snakeBot.Body.Count < clashingSnakeSize && snakeBot.Body.Count <= 3)
             {
-                return (useMove: false, excludeMove: true);
+                return true;
             }
             else
             {
-                return (useMove: true, excludeMove: true);
+                return true;
             }
         }
         else
@@ -956,11 +986,11 @@ internal class Game
             // should score way higher
             if (snakeBot.Body.Count >= clashingSnakeSize)
             {
-                return (useMove: true, excludeMove: false);
+                return false;
             }
             else
             {
-                return (useMove: false, excludeMove: true);
+                return false;
             }
         }
     }

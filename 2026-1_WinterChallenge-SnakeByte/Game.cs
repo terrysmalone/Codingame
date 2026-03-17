@@ -242,20 +242,27 @@ internal class Game
         Logger.LogTime($"Got all plan combinations: {planCombinations.Count}");
 
         // Get the first combination that doesn't have any clashes for the next move
-        // TODO: We should check for clashes for the target too, because we don't want
-        // snakes going for the same source. Wait until we return multiple power source 
-        // plans to do this though.
-
         foreach (var planCombination in planCombinations.OrderByDescending(pc => pc.Value))
         {
             HashSet<Point> plannedStartMoves = new HashSet<Point>();
             HashSet<Point> plannedEndMoves = new HashSet<Point>();
             bool clash = false;
 
+            // TODO: At some point we might want to consider amount
+            // For example, if there are 2  power ups, we shouldn't go for both this turn
+            Point? lastPowerSource = null;
+
+            if (_level.PowerSources.Count == 1 && GetMyScore() - GetEnemyScore() < 0)
+            {
+                lastPowerSource = _level.PowerSources[0];
+            }
+
+
             foreach (var plan in planCombination.Key)
             {
                 if (plannedStartMoves.Contains(plan.Moves[0])
-                    || plannedEndMoves.Contains(plan.Moves[plan.Moves.Count - 1]))
+                    || plannedEndMoves.Contains(plan.Moves[plan.Moves.Count - 1])
+                    || lastPowerSource == plan.Moves[0])
                 {
                     clash = true;
                     break;

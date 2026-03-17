@@ -1111,6 +1111,7 @@ internal class Game
                 if (plans.Count > 0)
                 {
                     Logger.Message("We found at least one power source at max distance 10. Don't try any more.");
+                    break;
                 }
             }
         }

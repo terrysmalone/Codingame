@@ -478,9 +478,10 @@ internal class Game
 
     private void UpdateScores(List<Plan> plans, SnakeBot snakeBot)
     {
-        int scoreChange = 0;
+        
         foreach (Plan plan in plans)
         {
+            int scoreChange = 0;
             Point newHeadPosition = plan.Moves[0];
 
             scoreChange += ScoreChangeForOtherSnakeBodyPositions(newHeadPosition, snakeBot);

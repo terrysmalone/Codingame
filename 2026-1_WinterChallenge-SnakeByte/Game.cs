@@ -321,21 +321,7 @@ internal class Game
         //bool stopLooking = false;
         int maxDistance = 5;
 
-        //while (stopLooking == false)
-        //{
         plans = GetShortestPathToClimbableLedgePlans(snakeBot, maxDistance, excludePoints);
-
-        //    if (plans.Count > 0)
-        //    {
-        //        stopLooking = true;
-        //    }
-
-        //    maxDistance += 5;
-        //    if (maxDistance > 10)
-        //    {
-        //        stopLooking = true;
-        //    }
-        //}
 
         return plans;
     }

@@ -378,21 +378,7 @@ internal class Game
         //bool stopLooking = false;
         int maxDistance = 5;
 
-        //while (stopLooking == false)
-        //{
         plans = GetShortestPathToClimbableLedgePlans(snakeBot, maxDistance, excludePoints);
-
-        //    if (plans.Count > 0)
-        //    {
-        //        stopLooking = true;
-        //    }
-
-        //    maxDistance += 5;
-        //    if (maxDistance > 10)
-        //    {
-        //        stopLooking = true;
-        //    }
-        //}
 
         return plans;
     }
@@ -407,12 +393,6 @@ internal class Game
         foreach (Point ledge in _level.GetWalkableLedges())
         {
             if(ledge.Y >= lowestSnakePoint.Y)
-            {
-                continue;
-            }
-
-            // Don't bother trying if we've already climbed this ledge
-            if (snakeBot.HasAttemptedClimbLedge(ledge))
             {
                 continue;
             }
@@ -555,9 +535,10 @@ internal class Game
 
     private void UpdateScores(List<Plan> plans, SnakeBot snakeBot)
     {
-        int scoreChange = 0;
+        
         foreach (Plan plan in plans)
         {
+            int scoreChange = 0;
             Point newHeadPosition = plan.Moves[0];
 
             scoreChange += ScoreChangeForOtherSnakeBodyPositions(newHeadPosition, snakeBot);
@@ -1123,6 +1104,14 @@ internal class Game
             else
             {
                 Logger.LogTime($"No path to power source {powerSource.X}, {powerSource.Y}.");
+            }
+
+            if (maxDistance == 10)
+            {
+                if (plans.Count > 0)
+                {
+                    Logger.Message("We found at least one power source at max distance 10. Don't try any more.");
+                }
             }
         }
 
@@ -2478,17 +2467,7 @@ internal class SnakeBot
     internal bool HasCheckedPowerSource(Point powerSource)
     {
         return _checkedPowerSourcesThisTurn.Contains(powerSource);
-    }    
-
-    internal void AddAttemptedClimbLedge(Point ledge)
-    {
-        _attemptedToClimbLedge.Add(ledge);
-    }
-
-    internal bool HasAttemptedClimbLedge(Point ledge)
-    {
-        return _attemptedToClimbLedge.Contains(ledge);
-    }
+    }   
 }
 
 

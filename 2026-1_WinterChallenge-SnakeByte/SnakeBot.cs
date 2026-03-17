@@ -141,16 +141,6 @@ internal class SnakeBot
     internal bool HasCheckedPowerSource(Point powerSource)
     {
         return _checkedPowerSourcesThisTurn.Contains(powerSource);
-    }    
-
-    internal void AddAttemptedClimbLedge(Point ledge)
-    {
-        _attemptedToClimbLedge.Add(ledge);
-    }
-
-    internal bool HasAttemptedClimbLedge(Point ledge)
-    {
-        return _attemptedToClimbLedge.Contains(ledge);
-    }
+    }   
 }
 

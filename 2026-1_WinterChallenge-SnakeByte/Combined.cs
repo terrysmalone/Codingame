@@ -72,6 +72,8 @@ internal static class DirectionHelper
 
 internal class Game
 {
+    private bool FEATURE_POWER_CLUSTERING_ON = true;
+    private bool FEATURE_BULLYING_ON = true;
     internal int Width { get; private set; }
     internal int Height { get; private set; }   
 
@@ -242,13 +244,16 @@ internal class Game
 
             Logger.LogTime($"Added {goldenMovesAdded} head clash plans");
 
-            List<Plan> bullyPlans = GetBullyPlans(snakeBot, bullyMode, excludePoints);
-            snakeBot.AddPlans(bullyPlans);
-
-            // If bully mode is on and we found a plan don't bother looking for more
-            if (bullyMode && bullyPlans.Count > 0)
+            if (FEATURE_BULLYING_ON)
             {
-                continue;
+                List<Plan> bullyPlans = GetBullyPlans(snakeBot, bullyMode, excludePoints);
+                snakeBot.AddPlans(bullyPlans);
+
+                // If bully mode is on and we found a plan don't bother looking for more
+                if (bullyMode && bullyPlans.Count > 0)
+                {
+                    continue;
+                }
             }
 
             if (snakeBot.IsStuck())
@@ -704,7 +709,11 @@ internal class Game
             scoreChange += ScoreChangeForSpaceCreated(newHeadPosition, snakeBot);
             scoreChange += ScoreChangeForStuckDirections(newHeadPosition, snakeBot);
             scoreChange += ScoreChangeForPosition(newHeadPosition, snakeBot);
-            scoreChange += ScoreChangeForPowerSourceClustering(targetPoint);
+
+            if (FEATURE_POWER_CLUSTERING_ON)
+            {
+                scoreChange += ScoreChangeForPowerSourceClustering(targetPoint);
+            }
 
             plan.Score = plan.Score += scoreChange;
         }

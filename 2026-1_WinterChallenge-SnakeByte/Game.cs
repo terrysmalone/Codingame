@@ -30,8 +30,10 @@ internal class Game
 
     private HashSet<Point> _powerUpPoints;
     private HashSet<Point> _solidPoints;
-
+        
     private const int BASE_POWER_SCORE = 100000;
+    private const int EMERGENCY_BASE_BULLY_SCORE = 50000;
+    private const int BASE_BULLY_SCORE = 5500;
     private const int PATH_LENGTH_PENALTY = 100;
     private const int BASE_CLIMBABLE_LEDGE_SCORE = 5500;
     private const int BASE_WANDER_SCORE = 5000;
@@ -113,6 +115,13 @@ internal class Game
 
     internal List<string> GetActions()
     {
+        var bullyMode = false;
+        if (_level.PowerSources.Count == 1 && GetMyScore() - GetEnemyScore() < -1)
+        {
+            bullyMode = true;
+        }
+
+
         _closestSnakeToPowerSourceMap = _positionChecker.GetClosestPowerSourceToOpponentSnakeMap();
 
         // Calculate points we use for collision detection and gravity, then we can use it for every search
@@ -173,7 +182,16 @@ internal class Game
                 }
             }
 
-            Logger.LogTime($"Added {goldenMovesAdded} head clash plans");            
+            Logger.LogTime($"Added {goldenMovesAdded} head clash plans");
+
+            List<Plan> bullyPlans = GetBullyPlans(snakeBot, bullyMode, excludePoints);
+            snakeBot.AddPlans(bullyPlans);
+
+            // If bully mode is on and we found a plan don't bother looking for more
+            if (bullyMode && bullyPlans.Count > 0)
+            {
+                continue;
+            }
 
             if (snakeBot.IsStuck())
             {
@@ -182,7 +200,7 @@ internal class Game
 
             // Don't go for power source if it's the last one and I'm behind
             // TODO: For now I'll accept a draw so the value is -1. When I get better at fighting I'll change it to 0  
-            if (!(_level.PowerSources.Count == 1 && GetMyScore() - GetEnemyScore() < -1))
+            if (!bullyMode)
             {
                 List<Plan> bestPlansToPowerSources = GetBestPlansToPowerSources(snakeBot, excludePoints);
                 UpdateScores(bestPlansToPowerSources, snakeBot);
@@ -239,7 +257,7 @@ internal class Game
             // For example, if there are 2  power ups, we shouldn't go for both this turn
             Point? lastPowerSource = null;
 
-            if (_level.PowerSources.Count == 1 && GetMyScore() - GetEnemyScore() < -1)
+            if (bullyMode)
             {
                 lastPowerSource = _level.PowerSources.First();
             }
@@ -316,6 +334,44 @@ internal class Game
         }
 
         return actions;
+    }
+
+    private List<Plan> GetBullyPlans(SnakeBot snakeBot, bool bullyMode, HashSet<Point> excludePoints)
+    {
+        int bullyScore = bullyMode ? EMERGENCY_BASE_BULLY_SCORE : BASE_BULLY_SCORE;
+        List<Plan> bullyPlans = new List<Plan>();
+
+        List<SnakeBot> smallerEnemySnakes = OpponentSnakeBots.Where(s => s.Body.Count < snakeBot.Body.Count).ToList();
+
+        // Order smallerEnemySnakes by closest to snakeBot
+        smallerEnemySnakes = smallerEnemySnakes.OrderBy(s => CalculationUtil.GetManhattanDistance(s.Body[0], snakeBot.Body[0])).ToList();
+
+        int foundBullyMoves = 0;
+        foreach (var smallerEnemySnake in smallerEnemySnakes)
+        {
+            List<Point> path = _pathFinder.GetShortestPath(snakeBot.Body[0], smallerEnemySnake.Body[0], snakeBot, excludePoints.ToList(), _solidPoints, _powerUpPoints);
+
+            if (path.Count > 0)
+            {
+                // They'll have moved, it's suicide
+                if (path.Count == 1)
+                {
+                    continue;
+                }
+
+                var score = bullyScore;
+                if (path.Count < 5)
+                {
+                    score = bullyScore * 3;
+                }
+
+                Plan bullyPlan = new Plan(path, score - (path.Count * PATH_LENGTH_PENALTY), "bully", turnsToFruition: path.Count, snakeBot.Id);
+                bullyPlans.Add(bullyPlan);
+                foundBullyMoves++;
+            }
+        } 
+        
+        return bullyPlans;
     }
 
     private HashSet<Point> BuildSolidPoints(int excludeSnakeId, HashSet<Point> powerUpPoints)

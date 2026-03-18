@@ -5,7 +5,8 @@
 4a2aabfbaa2e391b28d9cc1b6fa0a6dd2b30ccf7
 
 ## Changes since last Test in Arena
-- Accept a draw
+- Accept a draw (78385e2cc30529a9436ae7b41261c40763ef1959)
+- Encourage moving towards clusters of power sources (8a51583a88283bbce8c8114b34d68bfdebf50695)
 
 - Implement bullying ( On new branch)
 

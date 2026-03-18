@@ -201,9 +201,11 @@ internal class Game
                 excludePoints.Add(snakeBot.GetLastMove());
             }
 
-            // TODO: We'll want to return more than one here at some point
-            List<Plan> bestPlansToPowerSources = GetBestPlansToPowerSources(snakeBot, excludePoints);
-            UpdateScores(bestPlansToPowerSources, snakeBot);
+            // Don't go for power source if it's the last one and I'm behind
+            if (!(_level.PowerSources.Count == 1 && GetMyScore() - GetEnemyScore() < 0))
+            {
+                List<Plan> bestPlansToPowerSources = GetBestPlansToPowerSources(snakeBot, excludePoints);
+                UpdateScores(bestPlansToPowerSources, snakeBot);
 
             snakeBot.AddPlans(bestPlansToPowerSources);
             Logger.LogTime("Finished path finding");

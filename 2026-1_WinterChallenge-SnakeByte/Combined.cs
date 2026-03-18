@@ -74,6 +74,9 @@ internal class Game
 {
     private bool FEATURE_POWER_CLUSTERING_ON = true;
     private bool FEATURE_BULLYING_ON = true;
+    private bool FEATURE_ENCOURAGE_SPREADING_OUT_ON = true;
+
+
     internal int Width { get; private set; }
     internal int Height { get; private set; }   
 
@@ -715,6 +718,11 @@ internal class Game
                 scoreChange += ScoreChangeForPowerSourceClustering(targetPoint);
             }
 
+            if (FEATURE_ENCOURAGE_SPREADING_OUT_ON)
+            {
+                scoreChange += ScoreChangeForSpreading(targetPoint, snakeBot);
+            }
+
             plan.Score = plan.Score += scoreChange;
         }
     }
@@ -756,8 +764,40 @@ internal class Game
             scoreChange += ScoreChangeForStuckDirections(newHeadPosition, snakeBot);
             scoreChange += ScoreChangeForPosition(newHeadPosition, snakeBot);
 
+            if (FEATURE_ENCOURAGE_SPREADING_OUT_ON)
+            {
+                scoreChange += ScoreChangeForSpreading(newHeadPosition, snakeBot);
+            }
+
             directionScores[direction.Key] = directionScores[direction.Key] += scoreChange;
         }
+    }
+
+    private int ScoreChangeForSpreading(Point newHeadPosition, SnakeBot snakeBot)
+    {
+        int currentDistanceToClosestAlly = MySnakeBots.Where(s => s.Id != snakeBot.Id)
+                                                      .Select(s => CalculationUtil.GetManhattanDistance(snakeBot.Body[0], s.Body[0]))
+                                                      .DefaultIfEmpty(0)
+                                                      .Min();
+
+        int newDistanceToClosestAlly = MySnakeBots.Where(s => s.Id != snakeBot.Id)
+                                                  .Select(s => CalculationUtil.GetManhattanDistance(newHeadPosition, s.Body[0]))
+                                                  .DefaultIfEmpty(0)
+                                                  .Min();
+
+        // TODO: At some point we should maybe score more based on the distance 
+        int scoreChange = 0;
+
+        if (newDistanceToClosestAlly > currentDistanceToClosestAlly)
+        {
+            scoreChange += 50;
+        }
+        else if (newDistanceToClosestAlly < currentDistanceToClosestAlly)
+        {
+            scoreChange -= 50;
+        }
+
+        return scoreChange;
     }
 
     private int ScoreChangeForOtherSnakeBodyPositions(Point movePoint, SnakeBot snakeBot)

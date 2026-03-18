@@ -6,8 +6,15 @@
 
 ## Changes since last Test in Arena
 - Accept a draw (78385e2cc30529a9436ae7b41261c40763ef1959)
-- Encourage moving towards clusters of power sources (8a51583a88283bbce8c8114b34d68bfdebf50695)
+- Encourage moving towards clusters of power sources (8a51583a88283bbce8c8114b34d68bfdebf50695) - 
 - Implement bullying (d75d0ca9c982f2934849e12791844ce31ba3252e)
+- Encourage spreading out 
+
+NOTE: Accept a draw should make hardly any difference.
+
+The other two have been added behind debuggin flags, so I can test having them on and off.
+
+
 
 # TO DO
 

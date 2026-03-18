@@ -296,7 +296,6 @@ internal sealed class PositionChecker
             
             if (closestPowerSource != new Point(-1, -1))
             {
-                Logger.Message($"Closest power source to opponent snake {snakeBot.Id} is {closestPowerSource} at distance {closestPowerSourceDistance}");
                 closestPowerSourceToOpponentSnakeMap[closestPowerSource] = snakeBot.Id;
             }
         }

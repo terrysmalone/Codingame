@@ -178,8 +178,9 @@ internal class Game
                 List<Plan> bestPlansToPowerSources = GetBestPlansToPowerSources(snakeBot, excludePoints);
                 UpdateScores(bestPlansToPowerSources, snakeBot);
 
-            snakeBot.AddPlans(bestPlansToPowerSources);
-            Logger.LogTime("Finished path finding");
+                snakeBot.AddPlans(bestPlansToPowerSources);
+                Logger.LogTime("Finished path finding");
+            }
             
             // Before wandering randomly, try to get some paths to nearby platforms that are above me
             List<Plan> climbableLedgePlans = GetClimbableLedgePlans(snakeBot, excludePoints);

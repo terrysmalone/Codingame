@@ -389,7 +389,7 @@ internal class Game
 
         // Use an iterative deepening approach to finding targets
         bool stopLooking = false;
-        int maxDistance = 5;
+        int maxDistance = 6;
 
         while (stopLooking == false)
         {
@@ -400,7 +400,7 @@ internal class Game
                 stopLooking = true;
             }
 
-            maxDistance += 5;
+            maxDistance += 2;
             if (maxDistance > 10)
             {
                 stopLooking = true;

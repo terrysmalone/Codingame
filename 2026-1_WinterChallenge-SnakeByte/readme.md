@@ -5,6 +5,8 @@
 4a2aabfbaa2e391b28d9cc1b6fa0a6dd2b30ccf7
 
 ## Changes since last Test in Arena
+- Accept a draw
+
 - Implement bullying ( On new branch)
 
 # TO DO

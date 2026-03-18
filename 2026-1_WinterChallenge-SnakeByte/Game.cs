@@ -181,7 +181,8 @@ internal class Game
             }
 
             // Don't go for power source if it's the last one and I'm behind
-            if (!(_level.PowerSources.Count == 1 && GetMyScore() - GetEnemyScore() < 0))
+            // TODO: For now I'll accept a draw so the value is -1. When I get better at fighting I'll change it to 0  
+            if (!(_level.PowerSources.Count == 1 && GetMyScore() - GetEnemyScore() < -1))
             {
                 List<Plan> bestPlansToPowerSources = GetBestPlansToPowerSources(snakeBot, excludePoints);
                 UpdateScores(bestPlansToPowerSources, snakeBot);
@@ -238,7 +239,7 @@ internal class Game
             // For example, if there are 2  power ups, we shouldn't go for both this turn
             Point? lastPowerSource = null;
 
-            if (_level.PowerSources.Count == 1 && GetMyScore() - GetEnemyScore() < 0)
+            if (_level.PowerSources.Count == 1 && GetMyScore() - GetEnemyScore() < -1)
             {
                 lastPowerSource = _level.PowerSources.First();
             }

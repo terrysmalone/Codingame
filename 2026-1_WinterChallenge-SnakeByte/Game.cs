@@ -584,17 +584,42 @@ internal class Game
         {
             int scoreChange = 0;
             Point newHeadPosition = plan.Moves[0];
+            Point targetPoint = plan.Moves[plan.Moves.Count-1];
 
             scoreChange += ScoreChangeForOtherSnakeBodyPositions(newHeadPosition, snakeBot);
             scoreChange += ScoreChangeForSpaceCreated(newHeadPosition, snakeBot);
             scoreChange += ScoreChangeForStuckDirections(newHeadPosition, snakeBot);
             scoreChange += ScoreChangeForPosition(newHeadPosition, snakeBot);
-            
+            scoreChange += ScoreChangeForPowerSourceClustering(targetPoint);
+
             plan.Score = plan.Score += scoreChange;
         }
     }
 
-   
+    private int ScoreChangeForPowerSourceClustering(Point targetPoint)
+    {
+        int xMin = Math.Max(0, targetPoint.X - 1);
+        int xMax = Math.Min(Width - 1, targetPoint.X + 1);
+        int yMin = Math.Max(0, targetPoint.Y - 1);
+        int yMax = Math.Min(Height - 1, targetPoint.Y + 1);
+
+        int scoreChange = 0;
+
+        for (int y = yMin; y <= yMax; y++)
+        {
+            for (int x = xMin; x <= xMax; x++)
+            {
+                if (_powerUpPoints.Contains(new Point(x, y)))
+                {
+                    scoreChange += 100;
+                }
+            }
+        }
+
+        return scoreChange;
+    }
+
+
 
     private void UpdateScores(Dictionary<Point, int> directionScores, SnakeBot snakeBot)
     {
@@ -1158,8 +1183,6 @@ internal class Game
                 }
             }
         }
-
-        Logger.LogTime($"Finished looking for power sources with max distance {maxDistance}");
 
         return plans;
     }

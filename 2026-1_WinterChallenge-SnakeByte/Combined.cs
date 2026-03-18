@@ -233,8 +233,7 @@ internal class Game
                 snakeBot.AddPlans(bestPlansToPowerSources);
                 Logger.LogTime("Finished path finding");
             }
-            
-            // Before wandering randomly, try to get some paths to nearby platforms that are above me
+
             List<Plan> climbableLedgePlans = GetClimbableLedgePlans(snakeBot, excludePoints);
             UpdateScores(climbableLedgePlans, snakeBot);
             snakeBot.AddPlans(climbableLedgePlans);
@@ -341,6 +340,24 @@ internal class Game
 
     private List<Plan> GetClimbableLedgePlans(SnakeBot snakeBot, HashSet<Point> excludePoints)
     {
+        // Exclude blocked ledges
+        var possibleHeadMoves = new List<Point>()
+            {
+                new Point(snakeBot.Body[0].X + 1, snakeBot.Body[0].Y),
+                new Point(snakeBot.Body[0].X - 1, snakeBot.Body[0].Y),
+                new Point(snakeBot.Body[0].X, snakeBot.Body[0].Y + 1),
+                new Point(snakeBot.Body[0].X, snakeBot.Body[0].Y - 1)
+            };
+
+        foreach (Point possibleMove in possibleHeadMoves)
+        {
+            // Before wandering randomly, try to get some paths to nearby platforms that are above me
+            if (_positionChecker.IsBlocking(possibleMove, snakeBot))
+            {
+                excludePoints.Add(possibleMove);
+            }
+        }
+
         List<Plan> plans = new List<Plan>();
         var shortestPathPoints = new List<Point>();
 

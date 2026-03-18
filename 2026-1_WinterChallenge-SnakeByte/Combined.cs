@@ -171,35 +171,6 @@ internal class Game
         {
             snakeBot.ClearAllPlans();
         }
-        // BIG MAD REFACTOR PLAN
-        // 
-        // GENERAL
-        // I want to be able to have a list of plans for each snake, all with their own scores. 
-        // After I have plans for them all I work out the best combination of each making sure to
-        // check for clashes.
-        //
-        // SCORING PRIORITIES
-        // A plan is scored by two things. 
-        // 1. How it affects the game score (eg. Getting a power up gains 1. Hitting an enemy will 
-        //    destroy them (so I would lose 1 but they lose 2, meaning a net gain of 2). Destroying a 
-        //    an enemy head is neutral but if I'm bigger than them it ultimately helps me, so count
-        //    it ias a small gain.
-        // 2. Multiplier based on how soon it'll happen. Next turn is guaranteed so should score 
-        //    a lot higher. After that score reduces by time to fruition. 
-        //
-        // I'll add a mechanism to check how safe a move is, which will affect scoring. For example,
-        // If no enemy is within range of a power up that I can get in 5 moves, then it's very safe.
-        // 
-        // Base scores
-        // Destroys an enemy 4
-        // Gains a power up 2
-        // Destroys an enemy head where I'm bigger than them 1
-        //
-        // DECISION MAKING
-        // If there are no clashes just picj the highest from each. 
-        // Otherwise get the highest combination I can get from each without a clash
-
-        // Logger.EntireGame(_level.Platforms, MySnakeBots, OpponentSnakeBots, _level.PowerSources);
 
         List<string> actions = new List<string>();
 
@@ -239,12 +210,7 @@ internal class Game
                 if (excludeMove)
                 {
                     excludePoints.Add(possibleMove);
-                }
-                // exclude a move if it seems immediately blocking
-                else if (_positionChecker.IsBlocking(possibleMove, snakeBot))
-                {
-                    excludePoints.Add(possibleMove);
-                }
+                }                
 
                 // Add sensible exclude moves here
                 // 1. If move is blocking it should be critical exclude path
@@ -264,8 +230,9 @@ internal class Game
                 List<Plan> bestPlansToPowerSources = GetBestPlansToPowerSources(snakeBot, excludePoints);
                 UpdateScores(bestPlansToPowerSources, snakeBot);
 
-            snakeBot.AddPlans(bestPlansToPowerSources);
-            Logger.LogTime("Finished path finding");
+                snakeBot.AddPlans(bestPlansToPowerSources);
+                Logger.LogTime("Finished path finding");
+            }
             
             // Before wandering randomly, try to get some paths to nearby platforms that are above me
             List<Plan> climbableLedgePlans = GetClimbableLedgePlans(snakeBot, excludePoints);
@@ -475,7 +442,7 @@ internal class Game
 
         // Use an iterative deepening approach to finding targets
         bool stopLooking = false;
-        int maxDistance = 5;
+        int maxDistance = 6;
 
         while (stopLooking == false)
         {
@@ -486,7 +453,7 @@ internal class Game
                 stopLooking = true;
             }
 
-            maxDistance += 5;
+            maxDistance += 2;
             if (maxDistance > 10)
             {
                 stopLooking = true;
@@ -2324,7 +2291,6 @@ internal sealed class PositionChecker
             
             if (closestPowerSource != new Point(-1, -1))
             {
-                Logger.Message($"Closest power source to opponent snake {snakeBot.Id} is {closestPowerSource} at distance {closestPowerSourceDistance}");
                 closestPowerSourceToOpponentSnakeMap[closestPowerSource] = snakeBot.Id;
             }
         }

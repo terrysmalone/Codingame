@@ -153,12 +153,7 @@ internal class Game
                 if (excludeMove)
                 {
                     excludePoints.Add(possibleMove);
-                }
-                // exclude a move if it seems immediately blocking
-                else if (_positionChecker.IsBlocking(possibleMove, snakeBot))
-                {
-                    excludePoints.Add(possibleMove);
-                }
+                }                
 
                 // Add sensible exclude moves here
                 // 1. If move is blocking it should be critical exclude path

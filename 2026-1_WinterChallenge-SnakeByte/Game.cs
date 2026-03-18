@@ -114,35 +114,6 @@ internal class Game
         {
             snakeBot.ClearAllPlans();
         }
-        // BIG MAD REFACTOR PLAN
-        // 
-        // GENERAL
-        // I want to be able to have a list of plans for each snake, all with their own scores. 
-        // After I have plans for them all I work out the best combination of each making sure to
-        // check for clashes.
-        //
-        // SCORING PRIORITIES
-        // A plan is scored by two things. 
-        // 1. How it affects the game score (eg. Getting a power up gains 1. Hitting an enemy will 
-        //    destroy them (so I would lose 1 but they lose 2, meaning a net gain of 2). Destroying a 
-        //    an enemy head is neutral but if I'm bigger than them it ultimately helps me, so count
-        //    it ias a small gain.
-        // 2. Multiplier based on how soon it'll happen. Next turn is guaranteed so should score 
-        //    a lot higher. After that score reduces by time to fruition. 
-        //
-        // I'll add a mechanism to check how safe a move is, which will affect scoring. For example,
-        // If no enemy is within range of a power up that I can get in 5 moves, then it's very safe.
-        // 
-        // Base scores
-        // Destroys an enemy 4
-        // Gains a power up 2
-        // Destroys an enemy head where I'm bigger than them 1
-        //
-        // DECISION MAKING
-        // If there are no clashes just picj the highest from each. 
-        // Otherwise get the highest combination I can get from each without a clash
-
-        // Logger.EntireGame(_level.Platforms, MySnakeBots, OpponentSnakeBots, _level.PowerSources);
 
         List<string> actions = new List<string>();
 

@@ -11,25 +11,26 @@ internal sealed class PathFinder
 {
     private Game _game;
     private readonly PositionChecker _positionChecker;
+    private readonly MovementHelper _movementHelper;
     private int _debugCount = 0;
 
     private const int MAX_NODE_COUNT = 300;
     private const int MAX_EXPANSIONS_WITHOUT_H_IMPROVEMENT = 40;
 
-    public PathFinder(Game game, PositionChecker positionChecker)
+    public PathFinder(Game game, PositionChecker positionChecker, MovementHelper movementHelper)
     {
         _game = game;
         _positionChecker = positionChecker;
+        _movementHelper = movementHelper;
     }
 
-    internal List<Point> GetShortestPath(Point startPoint, Point targetPoint, SnakeBot snake, List<Point> excludePoints)
+    internal List<Point> GetShortestPath(Point startPoint, 
+                                         Point targetPoint, 
+                                         SnakeBot snake, 
+                                         List<Point> excludePoints, 
+                                         HashSet<Point> solidPoints, 
+                                         HashSet<Point> powerUpPoints)
     {
-        // Calculate points we use for collision detection and gravity, then we can use it for every search
-        // Note: This doesn't include the current snake body since that will be moving as we simulate movement
-
-        HashSet<Point> powerUpPoints = _game.GetPowerSources().ToHashSet(); 
-        HashSet<Point> collisionPoints = BuildCollisionPoints(snake.Id, powerUpPoints);
-        HashSet<Point> platformPoints = BuildPlatformPoints(snake.Id, powerUpPoints);
         // TODO: collisionPoints and platformPoints might be the same now. Consolidate
 
         _debugCount = 0;
@@ -127,7 +128,7 @@ internal sealed class PathFinder
 
                 bool isValidMove =
                     pointToCheck == targetPoint
-                    || (!collisionPoints.Contains(pointToCheck)
+                    || (!solidPoints.Contains(pointToCheck)
                         && !IsSelfCollision(pointToCheck, currentNode.SnakeBodyAtNode, checkHead: true, checkTail: false));
 
 
@@ -139,7 +140,7 @@ internal sealed class PathFinder
                 isValidMove = true;
 
                 // Simulate snake movement to this position
-                List<Point> snakeBodyAfterMove = SimulateSnakeMovement(
+                List<Point> snakeBodyAfterMove = _movementHelper.SimulateSnakeMovement(
                     currentNode.SnakeBodyAtNode,
                     currentNode.Position,
                     pointToCheck,
@@ -163,7 +164,7 @@ internal sealed class PathFinder
                 // (reaching the target means eating a power-up, gravity doesn't apply mid-eating)
                 if (!onPowerUp)
                 {
-                    snakeBodyAfterMove = ApplyGravity(snakeBodyAfterMove, platformPoints);
+                    snakeBodyAfterMove = _movementHelper.ApplyGravity(snakeBodyAfterMove, solidPoints);
                 }
 
                 // IMPORTANT: After gravity, the head position may have changed!
@@ -281,134 +282,6 @@ internal sealed class PathFinder
         return true;
     }
 
-    private HashSet<Point> BuildPlatformPoints(int excludeSnakeId, HashSet<Point> powerUpPoints)
-    {
-        HashSet<Point> collisionPoints = new HashSet<Point>();
-
-        foreach (var snake in _game.MySnakeBots)
-        {
-            if (snake.Id == excludeSnakeId)
-            {
-                continue;
-            }
-            foreach (var bodyPart in snake.Body)
-            {
-                collisionPoints.Add(bodyPart);
-            }
-        }
-
-        foreach (var snake in _game.OpponentSnakeBots)
-        {
-            foreach (var bodyPart in snake.Body)
-            {
-                collisionPoints.Add(bodyPart);
-            }
-        }
-
-        foreach (var platform in _game.GetAllPlatformPositions())
-        {
-            collisionPoints.Add(platform);
-        }
-
-        foreach (var powerUp in powerUpPoints)
-        {
-            collisionPoints.Add(powerUp);
-        }
-
-        return collisionPoints;
-    }
-
-    private HashSet<Point> BuildCollisionPoints(int excludeSnakeId, HashSet<Point> powerUpPoints)
-    {
-        HashSet<Point> collisionPoints = new HashSet<Point>();
-
-        foreach (var snake in _game.MySnakeBots)
-        {
-            if (snake.Id == excludeSnakeId)
-            {
-                continue;
-            }
-            foreach (var bodyPart in snake.Body)
-            {
-                collisionPoints.Add(bodyPart);
-            }
-        }
-
-        foreach (var snake in _game.OpponentSnakeBots)
-        {
-            foreach (var bodyPart in snake.Body)
-            {
-                collisionPoints.Add(bodyPart);
-            }
-        }
-
-        foreach (var platform in _game.GetAllPlatformPositions())
-        {
-            collisionPoints.Add(platform);
-        }
-
-        foreach (var powerUp in powerUpPoints)
-        {
-            collisionPoints.Add(powerUp);
-        }
-
-        return collisionPoints;
-    }
-
-    private List<Point> ApplyGravity(List<Point> snakeBody, HashSet<Point> platformPoints)
-    {
-        int count = 0;
-        bool canMoveDown = true;
-        while (canMoveDown)
-        {
-            foreach (var bodyPart in snakeBody)
-            {
-                Point bodyCheckPoint = new Point(bodyPart.X, bodyPart.Y + 1);
-
-                if (platformPoints.Contains(bodyCheckPoint))
-                {
-                    canMoveDown = false;
-                    break;
-                }
-            }
-
-            if (canMoveDown)
-            {
-                // Move the snake down by one
-                for (int i = 0; i < snakeBody.Count; ++i)
-                {
-                    snakeBody[i] = new Point(snakeBody[i].X, snakeBody[i].Y + 1);
-                }
-            }
-
-            count++;
-            if (count > 20)
-            {
-                Console.Error.WriteLine($"ERROR: Gravity count exceeded max of 20");
-                Console.Error.WriteLine($"ERROR: Snake body: {string.Join(";", snakeBody.Select(p => $"({p.X},{p.Y})"))}");
-                break;
-            }
-        }
-
-        return snakeBody;
-    }
-
-    private List<Point> SimulateSnakeMovement(List<Point> currentBody, Point currentHead, Point newHead, HashSet<Point> powerUpPoints)
-    {
-        List<Point> newBody = currentBody.Select(p => new Point(p.X, p.Y)).ToList();
-        newBody.Insert(0, newHead);
-
-        if(powerUpPoints.Contains(newHead))
-        {
-            // Don't remove the tail if we are eating a power source
-            return newBody;
-        }
-
-        newBody.RemoveAt(newBody.Count - 1);
-
-        return newBody;
-    }
-
     private bool IsSelfCollision(Point pointToCheck, List<Point> snakeBodyPoints, bool checkHead, bool checkTail)
     {
         int startPoint = checkHead ? 0 : 1;
@@ -426,4 +299,5 @@ internal sealed class PathFinder
         return false;
     }
 }
+
 

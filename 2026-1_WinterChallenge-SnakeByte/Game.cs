@@ -24,12 +24,16 @@ internal class Game
 
     private PathFinder _pathFinder;
     private PositionChecker _positionChecker;
+    private MovementHelper _movementHelper;
 
     private Dictionary<Point, int> _closestSnakeToPowerSourceMap = new Dictionary<Point, int>();
 
+    private HashSet<Point> _powerUpPoints;
+    private HashSet<Point> _solidPoints;
+
     private const int BASE_POWER_SCORE = 100000;
     private const int PATH_LENGTH_PENALTY = 100;
-    private const int BASE_CLIMBABLE_LEDGE_SCORE = 20000;
+    private const int BASE_CLIMBABLE_LEDGE_SCORE = 5500;
     private const int BASE_WANDER_SCORE = 5000;
     private const int BASE_CRITICAL_MOVE_SCORE = 1000000;
     private const int CLOSER_TO_POWER_SCORE = 500;
@@ -42,7 +46,8 @@ internal class Game
         _level = new Level(width, height, platforms);
                 
         _positionChecker = new PositionChecker(this, _level);
-        _pathFinder = new PathFinder(this, _positionChecker);
+        _movementHelper = new MovementHelper();
+        _pathFinder = new PathFinder(this, _positionChecker, _movementHelper);
 
         MySnakeBots = new List<SnakeBot>();
         OpponentSnakeBots = new List<SnakeBot>();
@@ -110,6 +115,10 @@ internal class Game
     {
         _closestSnakeToPowerSourceMap = _positionChecker.GetClosestPowerSourceToOpponentSnakeMap();
 
+        // Calculate points we use for collision detection and gravity, then we can use it for every search
+        // Note: This doesn't include the current snake body since that will be moving as we simulate movement
+        _powerUpPoints = _level.PowerSources;
+
         foreach (var snakeBot in MySnakeBots)
         {
             snakeBot.ClearAllPlans();
@@ -119,14 +128,22 @@ internal class Game
 
         foreach (var snakeBot in MySnakeBots)
         {
+            _solidPoints = BuildSolidPoints(snakeBot.Id, _powerUpPoints);
             // We track power sources we've tried to get to so that we don't keep trying at different depths
             snakeBot.ClearCheckedPowerSources();
 
             Logger.LogTime($"STARTING FOR SNAKEBOT {snakeBot.Id}. Position:{snakeBot.Body[0].X},{snakeBot.Body[0].Y}");
             // TODO: CHeck for chance toi destroy an opponent snake and do that if possible
 
+            // ADD DANGER MOVES
+            // For each possible direction, make the immediate move, then do a flood fill to see if we're in immediate danger
+            // For now just check that we're not instantly blocked (i.e. Nowhere to move next turn)
+            List<Plan> blockingPlans = GetBlockingPlans(snakeBot);
+            snakeBot.AddPlans(blockingPlans);
+            Logger.LogTime($"Added {blockingPlans.Count} blocking move plans");
+
             HashSet<Point> excludePoints = new HashSet<Point>();
-            
+
             // If any surrounding points are in danger of the enemy attacking them add to exclude points
             var possibleMoves = new List<Point>()
             {
@@ -153,14 +170,10 @@ internal class Game
                 if (excludeMove)
                 {
                     excludePoints.Add(possibleMove);
-                }                
-
-                // Add sensible exclude moves here
-                // 1. If move is blocking it should be critical exclude path
-                // 2. If any opponent snake move can trap me it's an excludeMove
+                }
             }
 
-            Logger.LogTime($"Checked for head clash. Added {goldenMovesAdded} plans");            
+            Logger.LogTime($"Added {goldenMovesAdded} head clash plans");            
 
             if (snakeBot.IsStuck())
             {
@@ -227,7 +240,7 @@ internal class Game
 
             if (_level.PowerSources.Count == 1 && GetMyScore() - GetEnemyScore() < 0)
             {
-                lastPowerSource = _level.PowerSources[0];
+                lastPowerSource = _level.PowerSources.First();
             }
 
 
@@ -279,6 +292,84 @@ internal class Game
         }
 
         return actions;
+    }
+
+    private HashSet<Point> BuildSolidPoints(int excludeSnakeId, HashSet<Point> powerUpPoints)
+    {
+        HashSet<Point> collisionPoints = new HashSet<Point>();
+
+        foreach (var snake in MySnakeBots)
+        {
+            if (snake.Id == excludeSnakeId)
+            {
+                continue;
+            }
+            foreach (var bodyPart in snake.Body)
+            {
+                collisionPoints.Add(bodyPart);
+            }
+        }
+
+        foreach (var snake in OpponentSnakeBots)
+        {
+            foreach (var bodyPart in snake.Body)
+            {
+                collisionPoints.Add(bodyPart);
+            }
+        }
+
+        foreach (var platform in _level.GetAllPlatformPositions())
+        {
+            collisionPoints.Add(platform);
+        }
+
+        foreach (var powerUp in powerUpPoints)
+        {
+            collisionPoints.Add(powerUp);
+        }
+
+        return collisionPoints;
+    }
+
+    private List<Plan> GetBlockingPlans(SnakeBot snake)
+    {
+        var plans = new List<Plan>();
+
+        var possibleHeadMoves = new List<Point>()
+            {
+                new Point(snake.Body[0].X + 1, snake.Body[0].Y),
+                new Point(snake.Body[0].X - 1, snake.Body[0].Y),
+                new Point(snake.Body[0].X, snake.Body[0].Y + 1),
+                new Point(snake.Body[0].X, snake.Body[0].Y - 1)
+            };
+
+        foreach (Point possibleMove in possibleHeadMoves)
+        {
+            if (_positionChecker.IsPointInGivenSnake(snake.Body, possibleMove, countTails: false)
+                || _positionChecker.IsPlatform(possibleMove)
+                || _positionChecker.IsPointInAnySnake(possibleMove, countTails: false))
+            {
+                continue;
+            }       
+
+            // Make the move
+            List<Point> movedBody = _movementHelper.SimulateSnakeMovement(snake.Body, snake.Body[0], possibleMove, _level.PowerSources);
+
+            // Simulate gravity
+            List<Point> afterGravityBody = _movementHelper.ApplyGravity(movedBody, _solidPoints);
+
+            // Very small flood fill to check if I'm insta blocked
+            int space = _positionChecker.FloodFillCount(afterGravityBody[0], snake.Id, afterGravityBody, 5, includeSelf: false);
+
+            if (space < 2)
+            {
+                Logger.Message($"Added blocking move plan for snake {snake.Id} at position {possibleMove.X},{possibleMove.Y}");
+                Logger.Message($"After simulating the move and gravity, the snake body would be at: {string.Join(";", afterGravityBody.Select(p => $"{p.X},{p.Y}"))}");
+                plans.Add(new Plan(new List<Point> { possibleMove }, -BASE_CRITICAL_MOVE_SCORE, "blocking move", turnsToFruition: 1, snake.Id));
+            }
+        }
+
+        return plans;
     }
 
     private List<Plan> GetClimbableLedgePlans(SnakeBot snakeBot, HashSet<Point> excludePoints)
@@ -339,7 +430,7 @@ internal class Game
                 continue;
             }
 
-            List<Point> path = _pathFinder.GetShortestPath(snakeBot.Body.First(), ledge, snakeBot, excludePoints.ToList());
+            List<Point> path = _pathFinder.GetShortestPath(snakeBot.Body.First(), ledge, snakeBot, excludePoints.ToList(), _solidPoints, _powerUpPoints);
 
             if (path?.Count > 0)
             {
@@ -721,7 +812,6 @@ internal class Game
 
         int diff = enemyLossOnImpact - myLossOnImpact;
 
-        Console.Error.WriteLine($"Checking for head clash at {newHeadPosition.X},{newHeadPosition.Y}. My loss: {myLossOnImpact}, Enemy loss: {enemyLossOnImpact}, Diff: {diff}");
         int score = 0;
 
         if (diff > 0)
@@ -976,7 +1066,7 @@ internal class Game
 
             snakeBot.AddAttemptAtPowerSource(powerSource);
 
-            List<Point> path = _pathFinder.GetShortestPath(snakeBot.Body.First(), powerSource, snakeBot, excludePoints.ToList());
+            List<Point> path = _pathFinder.GetShortestPath(snakeBot.Body.First(), powerSource, snakeBot, excludePoints.ToList(), _solidPoints, _powerUpPoints);
 
             snakeBot.AddCheckedPowerSource(powerSource);
 
@@ -1000,7 +1090,7 @@ internal class Game
                         {
                             int closestSnakeDistance = int.MaxValue;
 
-                            List<Point> closestSnakePath = _pathFinder.GetShortestPath(closestSnake.Body.First(), powerSource, closestSnake, new List<Point>());
+                            List<Point> closestSnakePath = _pathFinder.GetShortestPath(closestSnake.Body.First(), powerSource, closestSnake, new List<Point>(), _solidPoints, _powerUpPoints);
                             if (closestSnakePath?.Count > 0)
                             {
                                 if (closestSnakePath.Count < path.Count)
@@ -1050,13 +1140,8 @@ internal class Game
         return plans;
     }
 
-    internal List<Point> GetPowerSources()
+    internal HashSet<Point> GetPowerSources()
     {
         return _level.PowerSources;
-    }
-
-    internal HashSet<Point> GetAllPlatformPositions()
-    {
-        return _level.GetAllPlatformPositions();
     }
 }

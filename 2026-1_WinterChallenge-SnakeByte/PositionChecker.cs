@@ -75,7 +75,7 @@ internal sealed class PositionChecker
         return false;
     }
 
-    internal int FloodFillCount(Point newHeadPosition, int excludeSnakeId, List<Point> includeBody, int cutOff)
+    internal int FloodFillCount(Point newHeadPosition, int excludeSnakeId, List<Point> includeBody, int cutOff, bool includeSelf = true)
     {
         var visited = new HashSet<Point>();
         var queue = new Queue<Point>();
@@ -97,13 +97,17 @@ internal sealed class PositionChecker
 
             foreach (var adjacentPoint in adjacentPoints)
             {
+                if(includeSelf && IsPointInGivenSnake(includeBody, adjacentPoint, countTails: true))
+                {
+                    continue;
+                }
+
                 if (adjacentPoint.X >= -1
                     && adjacentPoint.X <= _game.Width
                     && adjacentPoint.Y >= -1
                     && adjacentPoint.Y < _game.Height
                     && !IsPlatform(adjacentPoint)
                     && !IsPointInAnySnake(adjacentPoint, countTails: true, excludeSnakeId: excludeSnakeId)
-                    && !IsPointInGivenSnake(includeBody, adjacentPoint, countTails: true)
                     && !visited.Contains(adjacentPoint))
                 {
                     queue.Enqueue(adjacentPoint);

@@ -2,16 +2,15 @@
 
 ## Commit in Arena
 
-6cb4b1a2d75712ffa3af187f2a4c4d643674e9ed
+f8cab51a38f6f8505905c49c24d14afa2da2f19b
 
 ## Changes since last Test in Arena
-- Implement bullying
+- Implement bullying ( On new branch)
 
 # TO DO
 
 ## Specific
 
-- Don't climb a ledge if it's a blocked position
 - Don't go for a head clash if the opponent can not take it, and I'd end up trapping myself in
 - Don't count tails of opponent if they can get a powerup next move
 

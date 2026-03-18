@@ -1,4 +1,5 @@
-﻿using System.Drawing;
+﻿using System;
+using System.Drawing;
 
 namespace _2026_1_WinterChallenge_SnakeByte;
 
@@ -24,7 +25,8 @@ internal static class DirectionHelper
         }
         else
         {
-            throw new Exception($"Unable to determine direction from {point1} to {point2}");
+            Console.Error.WriteLine($"ERROR: Unable to determine direction from {point1} to {point2}");
+            return "ERROR";
         }
     }
 

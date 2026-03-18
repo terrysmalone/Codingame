@@ -14,7 +14,7 @@ internal class Level
     private HashSet<Point> _allPlatformPositions = new HashSet<Point>();
     private HashSet<Point> _walkableLedges = new HashSet<Point>();
 
-    internal List<Point> PowerSources { get; private set; } = new List<Point>();
+    internal HashSet<Point> PowerSources { get; private set; } = new HashSet<Point>();
 
     public Level(int width, int height, bool[,] platforms)
     {

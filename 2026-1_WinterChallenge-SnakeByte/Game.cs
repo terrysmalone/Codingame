@@ -17,6 +17,7 @@ internal class Game
     private bool FEATURE_POWER_CLUSTERING_ON = true;
     private bool FEATURE_BULLYING_ON = true;
     private bool FEATURE_ENCOURAGE_SPREADING_OUT_ON = true;
+    private bool FEATURE_INCREASE_EXCLUDE_MOVES_ON = true;
 
 
     internal int Width { get; private set; }
@@ -983,6 +984,13 @@ internal class Game
         else if (diff == 0 && snakeBot.Body.Count == clashingEnemyBodySizes.Min() && GetMyScore() > GetEnemyScore())
         {
             score = BASE_CRITICAL_MOVE_SCORE + 3000;
+        }
+        else if (diff == 0 && snakeBot.Body.Count < clashingEnemyBodySizes.Min())
+        {
+            if (FEATURE_INCREASE_EXCLUDE_MOVES_ON)
+            {
+                excludeMove = true;
+            }
         }
         else if (diff < 0)
         {

@@ -18,6 +18,7 @@ internal class Game
     private bool FEATURE_BULLYING_ON = true;
     private bool FEATURE_ENCOURAGE_SPREADING_OUT_ON = true;
     private bool FEATURE_INCREASE_EXCLUDE_MOVES_ON = true;
+    private bool FEATURE_ALLOW_DISTANT_TARGET_MOVES_ON = true;
 
 
     internal int Width { get; private set; }
@@ -272,6 +273,8 @@ internal class Game
             }
 
 
+            // Don't go for the same start moves
+            // Don't go for the same target moves if they're both close
             foreach (var plan in planCombination.Key)
             {
                 Point endMovePoint = plan.Moves[plan.Moves.Count - 1];

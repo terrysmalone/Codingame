@@ -8,7 +8,9 @@
 - Accept a draw (78385e2cc30529a9436ae7b41261c40763ef1959)
 - Encourage moving towards clusters of power sources (8a51583a88283bbce8c8114b34d68bfdebf50695) - 
 - Implement bullying (d75d0ca9c982f2934849e12791844ce31ba3252e)
-- Encourage spreading out 
+- Encourage spreading out (5d116e1ee14670dbac192ab677d0df160ff94972)
+- Increase exclude moves from head clash checks (70f0b75f598c7588493250cad8494e83e04cb659)
+- Don't exclude distant targets from plans (c9858cd5f63841a700fdc8d0d57863ee65f74117)
 
 NOTE: Accept a draw should make hardly any difference.
 

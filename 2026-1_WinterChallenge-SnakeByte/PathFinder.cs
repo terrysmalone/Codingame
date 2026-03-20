@@ -197,8 +197,7 @@ internal sealed class PathFinder
                     if (actualHeadPosition == targetPoint)
                     {
                         currentNode = node;
-                        targetFound = true;
-                        break; // Exit the foreach loop
+                        targetFound = true;                        
                     }
 
                     // Check if we've on another power up
@@ -206,7 +205,6 @@ internal sealed class PathFinder
                     {
                         currentNode = node;
                         targetFound = true;
-                        break; // Exit the foreach loop
                     }
 
                     openNodes.Enqueue(node, (node.F, node.ObstacleCost));

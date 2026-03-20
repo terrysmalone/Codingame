@@ -332,7 +332,7 @@ internal class Game
 
                     if (plannedEndMoves.ContainsKey(endMovePoint))
                     {
-                        plannedEndMoves[endMovePoint] = Math.Min(plannedEndMoves[endMovePoint], plan.Moves.Count);
+                        plannedEndMoves[endMovePoint] = Math.Max(plannedEndMoves[endMovePoint], plan.Moves.Count);
                     }
                     else
                     {
@@ -1302,8 +1302,8 @@ internal class Level
 
 internal static class Logger    
 {
-    private static bool DISABLE_LOGGING = false;
-    private static bool DISABLE_TIMES = false;
+    private static bool DISABLE_LOGGING = true;
+    private static bool DISABLE_TIMES = true;
 
     private static long _roundStartTime;
     private static long _lastTimedLog;
@@ -1835,8 +1835,7 @@ internal sealed class PathFinder
                     if (actualHeadPosition == targetPoint)
                     {
                         currentNode = node;
-                        targetFound = true;
-                        break; // Exit the foreach loop
+                        targetFound = true;                        
                     }
 
                     // Check if we've on another power up
@@ -1844,7 +1843,6 @@ internal sealed class PathFinder
                     {
                         currentNode = node;
                         targetFound = true;
-                        break; // Exit the foreach loop
                     }
 
                     openNodes.Enqueue(node, (node.F, node.ObstacleCost));

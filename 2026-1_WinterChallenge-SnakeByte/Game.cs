@@ -781,10 +781,10 @@ internal class Game
         {
             Point newHeadPosition = directionScore.Key;
 
-            if (newHeadPosition.X < -1
-                || newHeadPosition.X > Width
-                || newHeadPosition.Y < -1
-                || newHeadPosition.Y > Height
+            if (newHeadPosition.X < 0
+                || newHeadPosition.X >= Width
+                || newHeadPosition.Y < 0
+                || newHeadPosition.Y >= Height
                 || _positionChecker.IsPlatform(newHeadPosition)
                 || _positionChecker.IsPointInAnySnake(newHeadPosition, countTails: false))
             {

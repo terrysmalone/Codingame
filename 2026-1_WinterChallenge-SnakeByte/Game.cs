@@ -675,11 +675,11 @@ internal class Game
 
         if (newDistanceToClosestAlly > currentDistanceToClosestAlly)
         {
-            scoreChange += 50;
+            scoreChange += (newDistanceToClosestAlly - currentDistanceToClosestAlly) * 50;
         }
         else if (newDistanceToClosestAlly < currentDistanceToClosestAlly)
         {
-            scoreChange -= 50;
+            scoreChange -= (currentDistanceToClosestAlly - newDistanceToClosestAlly) * 50;
         }
 
         return scoreChange;

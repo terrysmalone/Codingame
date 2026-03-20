@@ -75,6 +75,7 @@ internal class Game
     private bool FEATURE_POWER_CLUSTERING_ON = true;
     private bool FEATURE_ENCOURAGE_SPREADING_OUT_ON = true;
     private bool FEATURE_INCREASE_EXCLUDE_MOVES_ON = true;
+    private bool FEATURE_BULLYING_ON = true;
 
     internal int Width { get; private set; }
     internal int Height { get; private set; }   
@@ -99,6 +100,9 @@ internal class Game
     private const int BASE_WANDER_SCORE = 5000;
     private const int BASE_CRITICAL_MOVE_SCORE = 1000000;
     private const int CLOSER_TO_POWER_SCORE = 500;
+
+    private const int EMERGENCY_BASE_BULLY_SCORE = 50000;
+    private const int BASE_BULLY_SCORE = 5500;
 
     public Game(int width, int height, bool[,] platforms)
     {
@@ -175,6 +179,12 @@ internal class Game
 
     internal List<string> GetActions()
     {
+        var bullyMode = false;
+        if (_level.PowerSources.Count == 1 && GetMyScore() - GetEnemyScore() < 0)
+        {
+            bullyMode = true;
+        }
+
         _closestSnakeToPowerSourceMap = _positionChecker.GetClosestPowerSourceToOpponentSnakeMap();
 
         // Calculate points we use for collision detection and gravity, then we can use it for every search
@@ -242,8 +252,21 @@ internal class Game
                 excludePoints.Add(snakeBot.GetLastMove());
             }
 
+            if (FEATURE_BULLYING_ON)
+            {
+                List<Plan> bullyPlans = GetBullyPlans(snakeBot, bullyMode, excludePoints);
+                UpdateScores(bullyPlans, snakeBot);
+                snakeBot.AddPlans(bullyPlans);
+
+                // If bully mode is on and we found a plan don't bother looking for more
+                if (bullyMode && bullyPlans.Count > 0)
+                {
+                    continue;
+                }
+            }
+
             // Don't go for power source if it's the last one and I'm behind
-            if (!(_level.PowerSources.Count == 1 && GetMyScore() - GetEnemyScore() < 0))
+            if (!bullyMode)
             {
                 List<Plan> bestPlansToPowerSources = GetBestPlansToPowerSources(snakeBot, excludePoints);
                 UpdateScores(bestPlansToPowerSources, snakeBot);
@@ -299,7 +322,7 @@ internal class Game
             // For example, if there are 2  power ups, we shouldn't go for both this turn
             Point? lastPowerSource = null;
 
-            if (_level.PowerSources.Count == 1 && GetMyScore() - GetEnemyScore() < 0)
+            if (bullyMode)
             {
                 lastPowerSource = _level.PowerSources.First();
             }
@@ -376,6 +399,44 @@ internal class Game
         }
 
         return actions;
+    }
+
+    private List<Plan> GetBullyPlans(SnakeBot snakeBot, bool bullyMode, HashSet<Point> excludePoints)
+    {
+        int bullyScore = bullyMode ? EMERGENCY_BASE_BULLY_SCORE : BASE_BULLY_SCORE;
+        List<Plan> bullyPlans = new List<Plan>();
+
+        List<SnakeBot> smallerEnemySnakes = OpponentSnakeBots.Where(s => s.Body.Count < snakeBot.Body.Count).ToList();
+
+        // Order smallerEnemySnakes by closest to snakeBot
+        smallerEnemySnakes = smallerEnemySnakes.OrderBy(s => CalculationUtil.GetManhattanDistance(s.Body[0], snakeBot.Body[0])).ToList();
+
+        int foundBullyMoves = 0;
+        foreach (var smallerEnemySnake in smallerEnemySnakes)
+        {
+            List<Point> path = _pathFinder.GetShortestPath(snakeBot.Body[0], smallerEnemySnake.Body[0], snakeBot, excludePoints.ToList(), _solidPoints, _powerUpPoints);
+
+            if (path.Count > 0)
+            {
+                // They'll have moved, it's suicide
+                if (path.Count == 1)
+                {
+                    continue;
+                }
+
+                var score = bullyScore;
+                if (path.Count < 5)
+                {
+                    score = bullyScore * 3;
+                }
+
+                Plan bullyPlan = new Plan(path, score - (path.Count * PATH_LENGTH_PENALTY), "bully", turnsToFruition: path.Count, snakeBot.Id);
+                bullyPlans.Add(bullyPlan);
+                foundBullyMoves++;
+            }
+        }
+
+        return bullyPlans;
     }
 
     private HashSet<Point> BuildSolidPoints(int excludeSnakeId, HashSet<Point> powerUpPoints)
@@ -839,10 +900,10 @@ internal class Game
         {
             Point newHeadPosition = directionScore.Key;
 
-            if (newHeadPosition.X < 0
-                || newHeadPosition.X >= Width
-                || newHeadPosition.Y < 0
-                || newHeadPosition.Y >= Height
+            if (newHeadPosition.X < -1
+                || newHeadPosition.X > Width
+                || newHeadPosition.Y < -1
+                || newHeadPosition.Y > Height
                 || _positionChecker.IsPlatform(newHeadPosition)
                 || _positionChecker.IsPointInAnySnake(newHeadPosition, countTails: false))
             {
@@ -1406,8 +1467,8 @@ internal class Level
 
 internal static class Logger    
 {
-    private static bool DISABLE_LOGGING = false;
-    private static bool DISABLE_TIMES = false;
+    private static bool DISABLE_LOGGING = true;
+    private static bool DISABLE_TIMES = true;
 
     private static long _roundStartTime;
     private static long _lastTimedLog;

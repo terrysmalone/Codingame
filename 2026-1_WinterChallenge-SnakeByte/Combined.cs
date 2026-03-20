@@ -289,7 +289,7 @@ internal class Game
         foreach (var planCombination in planCombinations.OrderByDescending(pc => pc.Value))
         {
             HashSet<Point> plannedStartMoves = new HashSet<Point>();
-            HashSet<Point> plannedEndMoves = new HashSet<Point>();
+            Dictionary<Point, int> plannedEndMoves = new Dictionary<Point, int>();
             bool clash = false;
 
             // TODO: At some point we might want to consider amount
@@ -304,17 +304,40 @@ internal class Game
 
             foreach (var plan in planCombination.Key)
             {
+                Point endMovePoint = plan.Moves[plan.Moves.Count - 1];
+
+                var endMoveClash = false;
+
+                foreach (var plannedEndMove in plannedEndMoves)
+                {
+                    if (plannedEndMove.Key == endMovePoint
+                        && plannedEndMove.Value < 5
+                        && plan.Moves.Count < 5)
+                    {
+                        endMoveClash = true;
+                    }
+                }
+
+
+
                 if (plannedStartMoves.Contains(plan.Moves[0])
-                    || plannedEndMoves.Contains(plan.Moves[plan.Moves.Count - 1])
+                    || endMoveClash
                     || lastPowerSource == plan.Moves[0])
                 {
                     clash = true;
-                    break;
                 }
                 else
                 {
                     plannedStartMoves.Add(plan.Moves[0]);
-                    plannedEndMoves.Add(plan.Moves[plan.Moves.Count - 1]);
+
+                    if (plannedEndMoves.ContainsKey(endMovePoint))
+                    {
+                        plannedEndMoves[endMovePoint] = Math.Min(plannedEndMoves[endMovePoint], plan.Moves.Count);
+                    }
+                    else
+                    {
+                        plannedEndMoves.Add(endMovePoint, plan.Moves.Count);
+                    }
                 }
             }
 
@@ -1279,8 +1302,8 @@ internal class Level
 
 internal static class Logger    
 {
-    private static bool DISABLE_LOGGING = true;
-    private static bool DISABLE_TIMES = true;
+    private static bool DISABLE_LOGGING = false;
+    private static bool DISABLE_TIMES = false;
 
     private static long _roundStartTime;
     private static long _lastTimedLog;

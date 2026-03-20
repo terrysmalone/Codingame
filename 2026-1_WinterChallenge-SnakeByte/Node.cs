@@ -1,4 +1,5 @@
-﻿using System.Drawing;
+﻿using System.Collections.Generic;
+using System.Drawing;
 
 namespace _2026_1_WinterChallenge_SnakeByte;
 
@@ -12,6 +13,7 @@ internal sealed class Node
     public int G { get; set; }
     public int H { get; set; }
     public int F { get; set; }
+    public int ObstacleCost { get; set; } 
 
     public bool Closed { get; set; }
 

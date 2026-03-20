@@ -31,21 +31,20 @@ internal sealed class PathFinder
                                          HashSet<Point> solidPoints, 
                                          HashSet<Point> powerUpPoints)
     {
-        // TODO: collisionPoints and platformPoints might be the same now. Consolidate
-
         _debugCount = 0;
 
         Dictionary<SnakeState, Node> nodesByState = new Dictionary<SnakeState, Node>();
-        PriorityQueue<Node, int> openNodes = new PriorityQueue<Node, int>();
+        PriorityQueue<Node, (int F, int ObstacleCost)> openNodes = new PriorityQueue<Node, (int F, int ObstacleCost)>();
 
         Node currentNode = new Node(startPoint);
         currentNode.SnakeBodyAtNode = snake.Body.Select(p => new Point(p.X, p.Y)).ToList();
         currentNode.H = CalculationUtil.GetManhattanDistance(startPoint, targetPoint);
+        currentNode.ObstacleCost = 0;
 
         SnakeState startState = new SnakeState(startPoint, currentNode.SnakeBodyAtNode);
 
         nodesByState.Add(startState, currentNode);
-        openNodes.Enqueue(currentNode, currentNode.F);
+        openNodes.Enqueue(currentNode, (currentNode.F, currentNode.ObstacleCost));
         int openNodeCount = 1;
 
         bool targetFound = false;
@@ -172,6 +171,11 @@ internal sealed class PathFinder
 
                 SnakeState newState = new SnakeState(actualHeadPosition, snakeBodyAfterMove);
 
+                // Add the number of nodes the head is touching onto the obstacle cost.
+                // This will help the snake prefer paths that keep it away from walls, other snakes, and its own body
+                int adjacentObstacles = CountAdjacentObstacles(snakeBodyAfterMove, solidPoints);
+                int newObstacleCost = currentNode.ObstacleCost + adjacentObstacles;
+
                 // Check if a node at this actual position already exists
                 nodesByState.TryGetValue(newState, out Node? existingNode);
 
@@ -184,6 +188,7 @@ internal sealed class PathFinder
                     node.G = currentNode.G + 1;
                     node.H = CalculationUtil.GetManhattanDistance(actualHeadPosition, targetPoint);
                     node.F = node.G + node.H;
+                    node.ObstacleCost = newObstacleCost;
                     node.SnakeBodyAtNode = snakeBodyAfterMove;
 
                     nodesByState.Add(newState, node);
@@ -204,7 +209,7 @@ internal sealed class PathFinder
                         break; // Exit the foreach loop
                     }
 
-                    openNodes.Enqueue(node, node.F);
+                    openNodes.Enqueue(node, (node.F, node.ObstacleCost));
                     openNodeCount++;
                 }
                 else
@@ -213,13 +218,15 @@ internal sealed class PathFinder
                     {
                         int g = currentNode.G + 1;
 
-                        if (g < existingNode.G)
+                        if (g < existingNode.G
+                            || (g == existingNode.G && newObstacleCost < existingNode.ObstacleCost))
                         {
                             existingNode.G = g;
                             existingNode.F = existingNode.G + existingNode.H;
                             existingNode.Parent = currentNode;
                             existingNode.SnakeBodyAtNode = snakeBodyAfterMove;
-                            openNodes.Enqueue(existingNode, existingNode.F);
+                            existingNode.ObstacleCost = newObstacleCost;
+                            openNodes.Enqueue(existingNode, (existingNode.F, existingNode.ObstacleCost));
                         }
                     }
                 }
@@ -268,6 +275,42 @@ internal sealed class PathFinder
         }
 
         return shortestPath;
+    }
+
+    private int CountAdjacentObstacles(List<Point> snakeBodyAfterMove, HashSet<Point> solidPoints)
+    {
+        Point head = snakeBodyAfterMove[0];
+        int count = 0;
+
+        var adjacentPoints = new List<Point>()
+            {
+                new Point(head.X + 1, head.Y),
+                new Point(head.X - 1, head.Y),
+                new Point(head.X, head.Y + 1),
+                new Point(head.X, head.Y - 1)
+            };
+
+        foreach (var point in adjacentPoints)
+        {
+            if (solidPoints.Contains(point))
+            {
+                count++;
+            }
+            else
+            {
+                // Check body while skipping the head
+                for (int i = 1; i < snakeBodyAfterMove.Count; i++)
+                {
+                    if (snakeBodyAfterMove[i] == point)
+                    {
+                        count++;
+                        break;
+                    }
+                }
+            }
+        }
+
+        return count;
     }
 
     private bool IsFullyOutOfBounds(List<Point> snakeBodyAfterMove)

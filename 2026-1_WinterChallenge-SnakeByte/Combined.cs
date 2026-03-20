@@ -249,7 +249,6 @@ internal class Game
                 UpdateScores(bestPlansToPowerSources, snakeBot);
 
                 snakeBot.AddPlans(bestPlansToPowerSources);
-                Logger.LogTime("Finished path finding");
             }
 
             List<Plan> climbableLedgePlans = GetClimbableLedgePlans(snakeBot, excludePoints);
@@ -840,10 +839,10 @@ internal class Game
         {
             Point newHeadPosition = directionScore.Key;
 
-            if (newHeadPosition.X < -1
-                || newHeadPosition.X > Width
-                || newHeadPosition.Y < -1
-                || newHeadPosition.Y > Height
+            if (newHeadPosition.X < 0
+                || newHeadPosition.X >= Width
+                || newHeadPosition.Y < 0
+                || newHeadPosition.Y >= Height
                 || _positionChecker.IsPlatform(newHeadPosition)
                 || _positionChecker.IsPointInAnySnake(newHeadPosition, countTails: false))
             {
@@ -1242,24 +1241,48 @@ internal class Game
                 if (path.Count <= 5)
                 {
                     if (_closestSnakeToPowerSourceMap.ContainsKey(powerSource))
-                    {
+                    {                        
                         int closestSnakeId;
                         _closestSnakeToPowerSourceMap.TryGetValue(powerSource, out closestSnakeId);
+
+                        Logger.Message($"Checking if going for power source at {powerSource.X},{powerSource.Y} would block opponent snake {closestSnakeId} from getting it.");
 
                         SnakeBot closestSnake = OpponentSnakeBots.First(s => s.Id == closestSnakeId);
 
                         if (closestSnake != null)
                         {
-                            int closestSnakeDistance = int.MaxValue;
-
                             List<Point> closestSnakePath = _pathFinder.GetShortestPath(closestSnake.Body.First(), powerSource, closestSnake, new List<Point>(), _solidPoints, _powerUpPoints);
+                            
+                            Logger.Message($"Closest snake {closestSnakeId} path to power source at {powerSource.X},{powerSource.Y}: {(closestSnakePath == null ? "null" : string.Join(", ", closestSnakePath.Select(p => $"({p.X},{p.Y})")))}. Path length: {(closestSnakePath == null ? "null" : closestSnakePath.Count.ToString())}");
+
+
                             if (closestSnakePath?.Count > 0)
                             {
+                                // EMERGENCY DUCK OUT IF IT'S COMPLETELY UNWINNABLE
+                                if (path.Count > 1 && closestSnakePath.Count == 1)
+                                {
+                                    continue;
+                                }
+
+                                if (path.Count > 2 && closestSnakePath.Count == 2)
+                                {
+                                    continue;
+                                }
+
+                                if (path.Count > 3 && closestSnakePath.Count == 3)
+                                {
+                                    continue;
+                                }
+
+                                if (path.Count > 4 && closestSnakePath.Count == 4)
+                                {
+                                    continue;
+                                }
+
                                 if (closestSnakePath.Count < path.Count)
                                 {
                                     // Enemy is closer
-                                    score -= CLOSER_TO_POWER_SCORE;
-
+                                    score -= CLOSER_TO_POWER_SCORE;                                    
                                 }
                                 else
                                 {
@@ -1273,7 +1296,7 @@ internal class Game
                 }
 
                 plans.Add(new Plan(path, score, "power", turnsToFruition: path.Count, snakeBot.Id));
-                Logger.LogTime($"Added path to power source {powerSource.X}, {powerSource.Y}. Path: {string.Join(", ", path.Select(p => $"({p.X},{p.Y})"))}. Score:{score}");
+                // Logger.LogTime($"Added path to power source {powerSource.X}, {powerSource.Y}. Path: {string.Join(", ", path.Select(p => $"({p.X},{p.Y})"))}. Score:{score}");
 
 
                 if (maxDistance >= 10)
@@ -1383,8 +1406,8 @@ internal class Level
 
 internal static class Logger    
 {
-    private static bool DISABLE_LOGGING = true;
-    private static bool DISABLE_TIMES = true;
+    private static bool DISABLE_LOGGING = false;
+    private static bool DISABLE_TIMES = false;
 
     private static long _roundStartTime;
     private static long _lastTimedLog;

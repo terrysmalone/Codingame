@@ -14,6 +14,10 @@ namespace _2026_1_WinterChallenge_SnakeByte;
 
 internal class Game
 {
+    private bool FEATURE_POWER_CLUSTERING_ON = true;
+    private bool FEATURE_ENCOURAGE_SPREADING_OUT_ON = true;
+    private bool FEATURE_INCREASE_EXCLUDE_MOVES_ON = true;
+
     internal int Width { get; private set; }
     internal int Height { get; private set; }   
 
@@ -583,17 +587,49 @@ internal class Game
         {
             int scoreChange = 0;
             Point newHeadPosition = plan.Moves[0];
+            Point targetPoint = plan.Moves[plan.Moves.Count - 1];
 
             scoreChange += ScoreChangeForOtherSnakeBodyPositions(newHeadPosition, snakeBot);
             scoreChange += ScoreChangeForSpaceCreated(newHeadPosition, snakeBot);
             scoreChange += ScoreChangeForStuckDirections(newHeadPosition, snakeBot);
             scoreChange += ScoreChangeForPosition(newHeadPosition, snakeBot);
-            
+
+            if (FEATURE_POWER_CLUSTERING_ON)
+            {
+                scoreChange += ScoreChangeForPowerSourceClustering(targetPoint);
+            }
+
+            if (FEATURE_ENCOURAGE_SPREADING_OUT_ON)
+            {
+                scoreChange += ScoreChangeForSpreading(targetPoint, snakeBot);
+            }
+
             plan.Score = plan.Score += scoreChange;
         }
     }
 
-   
+    private int ScoreChangeForPowerSourceClustering(Point targetPoint)
+    {
+        int xMin = Math.Max(0, targetPoint.X - 1);
+        int xMax = Math.Min(Width - 1, targetPoint.X + 1);
+        int yMin = Math.Max(0, targetPoint.Y - 1);
+        int yMax = Math.Min(Height - 1, targetPoint.Y + 1);
+
+        int scoreChange = 0;
+
+        for (int y = yMin; y <= yMax; y++)
+        {
+            for (int x = xMin; x <= xMax; x++)
+            {
+                if (_powerUpPoints.Contains(new Point(x, y)))
+                {
+                    scoreChange += 100;
+                }
+            }
+        }
+
+        return scoreChange;
+    }
 
     private void UpdateScores(Dictionary<Point, int> directionScores, SnakeBot snakeBot)
     {
@@ -607,8 +643,40 @@ internal class Game
             scoreChange += ScoreChangeForStuckDirections(newHeadPosition, snakeBot);
             scoreChange += ScoreChangeForPosition(newHeadPosition, snakeBot);
 
+            if (FEATURE_ENCOURAGE_SPREADING_OUT_ON)
+            {
+                scoreChange += ScoreChangeForSpreading(newHeadPosition, snakeBot);
+            }
+
             directionScores[direction.Key] = directionScores[direction.Key] += scoreChange;
         }
+    }
+
+    private int ScoreChangeForSpreading(Point newHeadPosition, SnakeBot snakeBot)
+    {
+        int currentDistanceToClosestAlly = MySnakeBots.Where(s => s.Id != snakeBot.Id)
+                                                      .Select(s => CalculationUtil.GetManhattanDistance(snakeBot.Body[0], s.Body[0]))
+                                                      .DefaultIfEmpty(0)
+                                                      .Min();
+
+        int newDistanceToClosestAlly = MySnakeBots.Where(s => s.Id != snakeBot.Id)
+                                                  .Select(s => CalculationUtil.GetManhattanDistance(newHeadPosition, s.Body[0]))
+                                                  .DefaultIfEmpty(0)
+                                                  .Min();
+
+        // TODO: At some point we should maybe score more based on the distance 
+        int scoreChange = 0;
+
+        if (newDistanceToClosestAlly > currentDistanceToClosestAlly)
+        {
+            scoreChange += 50;
+        }
+        else if (newDistanceToClosestAlly < currentDistanceToClosestAlly)
+        {
+            scoreChange -= 50;
+        }
+
+        return scoreChange;
     }
 
     private int ScoreChangeForOtherSnakeBodyPositions(Point movePoint, SnakeBot snakeBot)
@@ -852,6 +920,13 @@ internal class Game
         else if (diff == 0 && snakeBot.Body.Count == clashingEnemyBodySizes.Min() && GetMyScore() > GetEnemyScore())
         {
             score = BASE_CRITICAL_MOVE_SCORE + 3000;
+        }
+        else if (diff == 0 && snakeBot.Body.Count < clashingEnemyBodySizes.Min())
+        {
+            if (FEATURE_INCREASE_EXCLUDE_MOVES_ON)
+            {
+                excludeMove = true;
+            }
         }
         else if (diff < 0)
         {

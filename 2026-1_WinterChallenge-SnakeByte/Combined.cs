@@ -712,6 +712,12 @@ internal class Game
 
     private int ScoreChangeForSpreading(Point newHeadPosition, SnakeBot snakeBot)
     {
+        // We don't want to encourage spreading out of the map
+        if (_positionChecker.IsOutOfMapBounds(newHeadPosition))
+        {
+            return 0;
+        }
+
         int currentDistanceToClosestAlly = MySnakeBots.Where(s => s.Id != snakeBot.Id)
                                                       .Select(s => CalculationUtil.GetManhattanDistance(snakeBot.Body[0], s.Body[0]))
                                                       .DefaultIfEmpty(0)

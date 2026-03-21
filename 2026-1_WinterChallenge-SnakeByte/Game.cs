@@ -30,6 +30,7 @@ internal class Game
     private PathFinder _pathFinder;
     private PositionChecker _positionChecker;
     private MovementHelper _movementHelper;
+    private MinimaxSearch _minimax;
 
     private Dictionary<Point, int> _closestSnakeToPowerSourceMap = new Dictionary<Point, int>();
 
@@ -56,6 +57,7 @@ internal class Game
         _positionChecker = new PositionChecker(this, _level);
         _movementHelper = new MovementHelper();
         _pathFinder = new PathFinder(this, _positionChecker, _movementHelper);
+        _minimax = new MinimaxSearch(width, height, _level.GetAllPlatformPositions());
 
         MySnakeBots = new List<SnakeBot>();
         OpponentSnakeBots = new List<SnakeBot>();
@@ -121,6 +123,38 @@ internal class Game
 
     internal List<string> GetActions()
     {
+        int minimaxDepth = 2;
+
+        List<SnakeBot> mine = new List<SnakeBot>();
+        mine.Add(MySnakeBots[1]);
+        mine.Add(MySnakeBots[2]);
+
+        var minimaxResult = _minimax.GetBestMoves(
+            mine, new List<SnakeBot>(), _level.PowerSources, minimaxDepth);
+
+        if (minimaxResult.BestMoves.Count > 0)
+        {
+            List<string> minimaxActions = new List<string>();
+
+            foreach (var kvp in minimaxResult.BestMoves)
+            {
+                var snakeBot = MySnakeBots.FirstOrDefault(s => s.Id == kvp.Key);
+                if (snakeBot == null) continue;
+
+                string direction = DirectionHelper.GetDirection(snakeBot.Body[0], kvp.Value);
+                minimaxActions.Add($"{snakeBot.Id} {direction} minimax({minimaxResult.Score})");
+                snakeBot.AddMove(kvp.Value);
+            }
+
+            if (minimaxActions.Count > 0)
+            {
+                Logger.LogTime($"Minimax chose moves with score {minimaxResult.Score}");
+                return minimaxActions;
+            }
+        }
+
+
+
         var bullyMode = false;
         if (_level.PowerSources.Count == 1 && GetMyScore() - GetEnemyScore() < 0)
         {
@@ -147,8 +181,7 @@ internal class Game
             snakeBot.ClearCheckedPowerSources();
 
             Logger.LogTime($"STARTING FOR SNAKEBOT {snakeBot.Id}. Position:{snakeBot.Body[0].X},{snakeBot.Body[0].Y}");
-            // TODO: CHeck for chance toi destroy an opponent snake and do that if possible
-
+            
             // ADD DANGER MOVES
             // For each possible direction, make the immediate move, then do a flood fill to see if we're in immediate danger
             // For now just check that we're not instantly blocked (i.e. Nowhere to move next turn)
@@ -1032,147 +1065,6 @@ internal class Game
         return bodyCount;
     }
 
-    private bool CheckForHeadClash(Point newHeadPosition, SnakeBot snakeBot)
-    {
-        bool headClash = false;
-
-        // Track the size of the biggest snake. That's the one that matters
-        // TODO: Technically, there's can be more advantage in clashing with
-        // multiple snakes, since I can theoretically destroy multiple snakes
-        // at once if I'm bigger than them
-        int clashingSnakeSize = 0;
-
-        foreach (var opponentSnake in OpponentSnakeBots)
-        {
-            var possibleHeadMoves = new List<Point>()
-            {
-                new Point(opponentSnake.Body[0].X + 1, opponentSnake.Body[0].Y),
-                new Point(opponentSnake.Body[0].X - 1, opponentSnake.Body[0].Y),
-                new Point(opponentSnake.Body[0].X, opponentSnake.Body[0].Y + 1),
-                new Point(opponentSnake.Body[0].X, opponentSnake.Body[0].Y - 1)
-            };
-
-            // Exclude any points that are not valid moves. I don't want to count them as head clashes
-            for (int i = 3; i >= 0; i--)
-            {
-                Point possibleMove = possibleHeadMoves[i];
-                if (possibleMove.X < -1
-                    || possibleMove.X > Width
-                    || possibleMove.Y < -1
-                    || possibleMove.Y > Height
-                    || _positionChecker.IsPlatform(possibleMove)
-                    || _positionChecker.IsPointInAnySnake(possibleMove, countTails: false))
-                {
-                    possibleHeadMoves.RemoveAt(i);
-                }
-            }
-
-            if (possibleHeadMoves.Contains(newHeadPosition))
-            {
-                headClash = true;
-                if (opponentSnake.Body.Count > clashingSnakeSize)
-                {
-                    clashingSnakeSize = opponentSnake.Body.Count;
-                }
-            }
-        }
-
-        if (!headClash)
-        {
-            return false;
-        }
-
-
-        /**
-         * 
-         * int myLossOnImpact = 0;
-        int enemyLossOnImpact = 0;
-
-        if (powerUpOnSpot)
-        {
-            myLossOnImpact = 1;
-
-            foreach (var enemyBodySize in clashingEnemyBodySizes)
-            {
-                enemyLossOnImpact += 1;
-            }
-        }
-        else
-        {
-            myLossOnImpact = snakeBot.Body.Count <= 3 ? 3 : 1;
-
-            foreach (var enemyBodySize in clashingEnemyBodySizes)
-            {
-                enemyLossOnImpact += enemyBodySize <= 3 ? 3 : 1;
-            }
-        }
-
-        // If I win overall, it's a golden move (highest score)
-        // If it's neutral, and I'm bigger than the enemy snake, it's a golden move (mid score)
-        // If it's 100% neutral, it's only a golden move if I have the highest score (the game ending 
-        // is in my favour.
-
-        int diff = enemyLossOnImpact - myLossOnImpact;
-
-        Console.Error.WriteLine($"Checking for head clash at {newHeadPosition.X},{newHeadPosition.Y}. My loss: {myLossOnImpact}, Enemy loss: {enemyLossOnImpact}, Diff: {diff}");
-        int score = 0;
-
-        if (diff > 0)
-        {
-            score = BASE_CRITICAL_MOVE_SCORE + 5000;           
-        }
-        else if (diff == 0 && snakeBot.Body.Count > clashingEnemyBodySizes.Min())
-        {
-            score = BASE_CRITICAL_MOVE_SCORE + 4000;
-        }
-        else if (diff == 0 && powerUpOnSpot)
-        {
-            score = BASE_CRITICAL_MOVE_SCORE + 3500;
-        }
-        else if (diff == 0 && snakeBot.Body.Count == clashingEnemyBodySizes.Min() && GetMyScore() > GetEnemyScore())
-        {
-            score = BASE_CRITICAL_MOVE_SCORE + 3000;
-        }
-        else if (diff < 0)
-        {
-            excludeMove = true;
-        }
-         * 
-         * 
-         * 
-         * 
-         * 
-         */
-
-        bool powerUpOnSpot = _level.PowerSources.Contains(newHeadPosition);
-
-        if (powerUpOnSpot)
-        {// If there is a power up the only reason not to take it is if the enemy snake is bigger
-         // and they can destroy me on their next turn. 
-            if (snakeBot.Body.Count < clashingSnakeSize && snakeBot.Body.Count <= 3)
-            {
-                return true;
-            }
-            else
-            {
-                return true;
-            }
-        }
-        else
-        {
-            // TODO: At some point we'll want to split out more than and equal to, since more than
-            // should score way higher
-            if (snakeBot.Body.Count >= clashingSnakeSize)
-            {
-                return false;
-            }
-            else
-            {
-                return false;
-            }
-        }
-    }
-
     private Point GetNearestPowerSource(SnakeBot snakeBot)
     {
         return GetNearestPowerSource(snakeBot.Body[0]);
@@ -1215,8 +1107,6 @@ internal class Game
             }
 
             // If the snake can't reach the power source from a platform don't even bother trying
-            // TODO: We should really check more than just power to the nearest platform. We need to check if an entire path can be made.
-            //       For exaample. Power to ledge1, ledge1 to ledge2, ledge 2 to ledge that snake is already on.
             if (snakeBot.Body.Count < _positionChecker.GetNearestPlatformDistance(powerSource, snakeBot.Id) - 1)
             {
                 continue;
@@ -1284,13 +1174,10 @@ internal class Game
 
                                 if (closestSnakePath.Count < path.Count)
                                 {
-                                    // Enemy is closer
                                     score -= CLOSER_TO_POWER_SCORE;                                    
                                 }
                                 else
                                 {
-                                    // I'm closer, or we'll draw
-                                    // TODO: If it's a draw we only sometimes want to go for it
                                     score += CLOSER_TO_POWER_SCORE;
                                 }
                             }
@@ -1299,7 +1186,6 @@ internal class Game
                 }
 
                 plans.Add(new Plan(path, score, "power", turnsToFruition: path.Count, snakeBot.Id));
-                // Logger.LogTime($"Added path to power source {powerSource.X}, {powerSource.Y}. Path: {string.Join(", ", path.Select(p => $"({p.X},{p.Y})"))}. Score:{score}");
 
 
                 if (maxDistance >= 10)

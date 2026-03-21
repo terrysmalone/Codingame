@@ -54,7 +54,6 @@ internal sealed class PathFinder
 
         while (!targetFound)
         {
-            // TODO: I need to experiment with this number.
             if (openNodeCount == 0 || nodesByState.Count > MAX_NODE_COUNT)
             {
                 return new List<Point>();
@@ -67,7 +66,6 @@ internal sealed class PathFinder
             }
             else
             {
-                // Only count stagnation when gravity is holding the snake in place
                 bool gravityHeldPosition = currentNode.Parent != null
                     && currentNode.Position == currentNode.Parent.Position;
 
@@ -145,8 +143,6 @@ internal sealed class PathFinder
                     pointToCheck,
                     powerUpPoints);
 
-                // TODO: We can check most of the below before simulating snake movement. 
-                // We can opt out before it on everything except current snake checks.
                 // Check if the move is valid. If it's not we don't want to continue
                 isValidMove =
                     !IsSelfCollision(pointToCheck, snakeBodyAfterMove, checkHead: false, checkTail: true)
@@ -166,13 +162,12 @@ internal sealed class PathFinder
                     snakeBodyAfterMove = _movementHelper.ApplyGravity(snakeBodyAfterMove, solidPoints);
                 }
 
-                // IMPORTANT: After gravity, the head position may have changed!
+                // After gravity, the head position may have changed!
                 Point actualHeadPosition = snakeBodyAfterMove[0];
 
                 SnakeState newState = new SnakeState(actualHeadPosition, snakeBodyAfterMove);
 
-                // Add the number of nodes the head is touching onto the obstacle cost.
-                // This will help the snake prefer paths that keep it away from walls, other snakes, and its own body
+                // Add the number of nodes the head is touching onto the obstacle cost to keep snake away from walls
                 int adjacentObstacles = CountAdjacentObstacles(snakeBodyAfterMove, solidPoints);
                 int newObstacleCost = currentNode.ObstacleCost + adjacentObstacles;
 
@@ -266,8 +261,6 @@ internal sealed class PathFinder
 
         while (pathNode?.Parent != null)
         {
-            // The move is the direction from parent's ACTUAL position to the intermediate position
-            // before gravity was applied in pathNode
             shortestPath.Insert(0, pathNode.IntendedMove);
             pathNode = pathNode.Parent;
         }

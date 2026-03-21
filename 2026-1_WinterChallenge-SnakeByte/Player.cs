@@ -47,7 +47,6 @@ internal class Player
             game.AddOpponentSnake(new SnakeBot(oppSnakebotId));
         }
 
-        // game loop
         while (true)
         { 
             game.MarkAllSnakesForRemoval();
@@ -93,12 +92,6 @@ internal class Player
             Logger.LogTime("PARSED ALL INPUT");
 
             game.RemoveMarkedSnakes();
-
-            // Write an action using Console.WriteLine()
-            // To debug: Console.Error.WriteLine("Debug messages...");
-
-            // Logger.Snakes("My snake Bots", mySnakeBots);
-            // Logger.Snakes("My snake Bots", mySnakeBots);
 
             List<string> actions = game.GetActions();
 

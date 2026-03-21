@@ -3,8 +3,8 @@
   It combined all classes in the project to work in Codingame.
 ***************************************************************/
 
-using System.Drawing;
 using System;
+using System.Drawing;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
@@ -15,9 +15,9 @@ using System.Runtime.ExceptionServices;
 using System.Xml.Linq;
 using System.Xml.Schema;
 using System.Diagnostics;
-using System.Text;
 using System.Collections;
 using System.IO;
+using System.Text;
 using System.Threading;
 
 internal static class CalculationUtil
@@ -88,6 +88,7 @@ internal class Game
     private PathFinder _pathFinder;
     private PositionChecker _positionChecker;
     private MovementHelper _movementHelper;
+    private MinimaxSearch _minimax;
 
     private Dictionary<Point, int> _closestSnakeToPowerSourceMap = new Dictionary<Point, int>();
 
@@ -114,6 +115,7 @@ internal class Game
         _positionChecker = new PositionChecker(this, _level);
         _movementHelper = new MovementHelper();
         _pathFinder = new PathFinder(this, _positionChecker, _movementHelper);
+        _minimax = new MinimaxSearch(width, height, _level.GetAllPlatformPositions());
 
         MySnakeBots = new List<SnakeBot>();
         OpponentSnakeBots = new List<SnakeBot>();
@@ -144,7 +146,7 @@ internal class Game
 
     internal void RemoveMarkedSnakes()
     {
-        // Iterate through the snakes backwards to safely remove any where Remove == true
+        
         for (int i = MySnakeBots.Count - 1; i >= 0; --i)
         {
             if (MySnakeBots[i].Remove)
@@ -179,6 +181,38 @@ internal class Game
 
     internal List<string> GetActions()
     {
+        int minimaxDepth = 2;
+
+        List<SnakeBot> mine = new List<SnakeBot>();
+        mine.Add(MySnakeBots[1]);
+        mine.Add(MySnakeBots[2]);
+
+        var minimaxResult = _minimax.GetBestMoves(
+            mine, new List<SnakeBot>(), _level.PowerSources, minimaxDepth);
+
+        if (minimaxResult.BestMoves.Count > 0)
+        {
+            List<string> minimaxActions = new List<string>();
+
+            foreach (var kvp in minimaxResult.BestMoves)
+            {
+                var snakeBot = MySnakeBots.FirstOrDefault(s => s.Id == kvp.Key);
+                if (snakeBot == null) continue;
+
+                string direction = DirectionHelper.GetDirection(snakeBot.Body[0], kvp.Value);
+                minimaxActions.Add($"{snakeBot.Id} {direction} minimax({minimaxResult.Score})");
+                snakeBot.AddMove(kvp.Value);
+            }
+
+            if (minimaxActions.Count > 0)
+            {
+                Logger.LogTime($"Minimax chose moves with score {minimaxResult.Score}");
+                return minimaxActions;
+            }
+        }
+
+
+
         var bullyMode = false;
         if (_level.PowerSources.Count == 1 && GetMyScore() - GetEnemyScore() < 0)
         {
@@ -187,8 +221,8 @@ internal class Game
 
         _closestSnakeToPowerSourceMap = _positionChecker.GetClosestPowerSourceToOpponentSnakeMap();
 
-        // Calculate points we use for collision detection and gravity, then we can use it for every search
-        // Note: This doesn't include the current snake body since that will be moving as we simulate movement
+        
+        
         _powerUpPoints = _level.PowerSources;
 
         foreach (var snakeBot in MySnakeBots)
@@ -201,22 +235,21 @@ internal class Game
         foreach (var snakeBot in MySnakeBots)
         {
             _solidPoints = BuildSolidPoints(snakeBot.Id, _powerUpPoints);
-            // We track power sources we've tried to get to so that we don't keep trying at different depths
+            
             snakeBot.ClearCheckedPowerSources();
 
             Logger.LogTime($"STARTING FOR SNAKEBOT {snakeBot.Id}. Position:{snakeBot.Body[0].X},{snakeBot.Body[0].Y}");
-            // TODO: CHeck for chance toi destroy an opponent snake and do that if possible
-
-            // ADD DANGER MOVES
-            // For each possible direction, make the immediate move, then do a flood fill to see if we're in immediate danger
-            // For now just check that we're not instantly blocked (i.e. Nowhere to move next turn)
+            
+            
+            
+            
             List<Plan> blockingPlans = GetBlockingPlans(snakeBot);
             snakeBot.AddPlans(blockingPlans);
             Logger.LogTime($"Added {blockingPlans.Count} blocking move plans");
 
             HashSet<Point> excludePoints = new HashSet<Point>();
 
-            // If any surrounding points are in danger of the enemy attacking them add to exclude points
+            
             var possibleMoves = new List<Point>()
             {
                 new Point(snakeBot.Body[0].X + 1, snakeBot.Body[0].Y),
@@ -258,14 +291,14 @@ internal class Game
                 UpdateScores(bullyPlans, snakeBot);
                 snakeBot.AddPlans(bullyPlans);
 
-                // If bully mode is on and we found a plan don't bother looking for more
+                
                 if (bullyMode && bullyPlans.Count > 0)
                 {
                     continue;
                 }
             }
 
-            // Don't go for power source if it's the last one and I'm behind
+            
             if (!bullyMode)
             {
                 List<Plan> bestPlansToPowerSources = GetBestPlansToPowerSources(snakeBot, excludePoints);
@@ -284,8 +317,8 @@ internal class Game
             Logger.LogTime($"Finished checking valid directions. Added {validPlans.Count} plans");
         }
 
-        // If any snake has a terrible move (usually meaning it would lower my score)
-        // give the same score to any other moves for that snake that has the same first position
+        
+        
         foreach (var snakeBot in MySnakeBots)
         {
             var terribleMoves = snakeBot.GetPlans().Where(p => p.Score < -BASE_CRITICAL_MOVE_SCORE + 10000).ToList();
@@ -304,22 +337,22 @@ internal class Game
             Logger.Plans($"Plans for snake {snakeBot.Id}", snakeBot.GetPlans());
         }
 
-        // Get all combinations of all plans. Score them by adding the scores together. Pick the highest scoring combination that doesn't have any clashes.
+        
         Dictionary<List<Plan>, int> planCombinations = GetAllPlanCombinations();
         
-        // Logger.PlanCombinations(planCombinations);
+        
 
         Logger.LogTime($"Got all plan combinations: {planCombinations.Count}");
 
-        // Get the first combination that doesn't have any clashes for the next move
+        
         foreach (var planCombination in planCombinations.OrderByDescending(pc => pc.Value))
         {
             HashSet<Point> plannedStartMoves = new HashSet<Point>();
             Dictionary<Point, int> plannedEndMoves = new Dictionary<Point, int>();
             bool clash = false;
 
-            // TODO: At some point we might want to consider amount
-            // For example, if there are 2  power ups, we shouldn't go for both this turn
+            
+            
             Point? lastPowerSource = null;
 
             if (bullyMode)
@@ -408,7 +441,7 @@ internal class Game
 
         List<SnakeBot> smallerEnemySnakes = OpponentSnakeBots.Where(s => s.Body.Count < snakeBot.Body.Count).ToList();
 
-        // Order smallerEnemySnakes by closest to snakeBot
+        
         smallerEnemySnakes = smallerEnemySnakes.OrderBy(s => CalculationUtil.GetManhattanDistance(s.Body[0], snakeBot.Body[0])).ToList();
 
         int foundBullyMoves = 0;
@@ -418,7 +451,7 @@ internal class Game
 
             if (path.Count > 0)
             {
-                // They'll have moved, it's suicide
+                
                 if (path.Count == 1)
                 {
                     continue;
@@ -497,13 +530,13 @@ internal class Game
                 continue;
             }       
 
-            // Make the move
+            
             List<Point> movedBody = _movementHelper.SimulateSnakeMovement(snake.Body, snake.Body[0], possibleMove, _level.PowerSources);
 
-            // Simulate gravity
+            
             List<Point> afterGravityBody = _movementHelper.ApplyGravity(movedBody, _solidPoints);
 
-            // Very small flood fill to check if I'm insta blocked
+            
             int space = _positionChecker.FloodFillCount(afterGravityBody[0], snake.Id, afterGravityBody, 5, includeSelf: false);
 
             if (space < 2)
@@ -519,7 +552,7 @@ internal class Game
 
     private List<Plan> GetClimbableLedgePlans(SnakeBot snakeBot, HashSet<Point> excludePoints)
     {
-        // Exclude blocked ledges
+        
         var possibleHeadMoves = new List<Point>()
             {
                 new Point(snakeBot.Body[0].X + 1, snakeBot.Body[0].Y),
@@ -530,7 +563,7 @@ internal class Game
 
         foreach (Point possibleMove in possibleHeadMoves)
         {
-            // Before wandering randomly, try to get some paths to nearby platforms that are above me
+            
             if (_positionChecker.IsBlocking(possibleMove, snakeBot))
             {
                 excludePoints.Add(possibleMove);
@@ -540,7 +573,7 @@ internal class Game
         List<Plan> plans = new List<Plan>();
         var shortestPathPoints = new List<Point>();
 
-        //bool stopLooking = false;
+        
         int maxDistance = 5;
 
         plans = GetShortestPathToClimbableLedgePlans(snakeBot, maxDistance, excludePoints);
@@ -552,7 +585,7 @@ internal class Game
     {
         List<Plan> plans = new List<Plan>();
 
-        // Get lowest point on SnakeBot body
+        
         var lowestSnakePoint = snakeBot.Body.OrderByDescending(p => p.Y).First();
 
         foreach (Point ledge in _level.GetWalkableLedges())
@@ -562,14 +595,14 @@ internal class Game
                 continue;
             }
 
-            // Don't bother trying if it's further away than maxDistance
+            
             int manhattanDistance = CalculationUtil.GetManhattanDistance(snakeBot.Body[0], ledge);
             if (manhattanDistance >= maxDistance)
             {
                 continue;
             }
 
-            // Don't try if something is on the ledge
+            
             if(_positionChecker.IsPointInAnySnake(ledge, countTails: false))
             {
                 continue;
@@ -579,14 +612,14 @@ internal class Game
 
             if (path?.Count > 0)
             {
-                // Create a plan for this path
+                
                 int score = BASE_CLIMBABLE_LEDGE_SCORE;
 
                 plans.Add(new Plan(path, score, "climbing", turnsToFruition: path.Count, snakeBot.Id));
                 
                 if (maxDistance >= 10)
                 {
-                    // Exit early. Paths of 10 can be expensive
+                    
                     break;
                 }
             }
@@ -636,7 +669,7 @@ internal class Game
         List<Plan> plans = new List<Plan>();
         var shortestPathPoints = new List<Point>();
 
-        // Use an iterative deepening approach to finding targets
+        
         bool stopLooking = false;
         int maxDistance = 6;
 
@@ -661,9 +694,9 @@ internal class Game
 
     private List<Plan> GetValidDirectionPointPlans(SnakeBot snakeBot)
     {        
-        // Prioritise moving towards the nearest powersource
-        // TODO: We should also prioritise climbing. For example, if I'm below a platform and I can get up there,
-        // I should prioritise that as it opens up the map and gives more options.
+        
+        
+        
         Point nearestPowerSource = GetNearestPowerSource(snakeBot);
 
         List<string> possibleDirections = nearestPowerSource.X > snakeBot.Body[0].X ? new List<string>() { "RIGHT", "UP", "DOWN", "LEFT" } 
@@ -686,7 +719,7 @@ internal class Game
 
         UpdateScores(directionScores, snakeBot);
          
-        // Make plans from the direction scores
+        
 
         List<Plan> plans = new List<Plan>();
 
@@ -772,7 +805,7 @@ internal class Game
 
     private int ScoreChangeForSpreading(Point newHeadPosition, SnakeBot snakeBot)
     {
-        // We don't want to encourage spreading out of the map
+        
         if (_positionChecker.IsOutOfMapBounds(newHeadPosition))
         {
             return 0;
@@ -788,7 +821,7 @@ internal class Game
                                                   .DefaultIfEmpty(0)
                                                   .Min();
 
-        // TODO: At some point we should maybe score more based on the distance 
+        
         int scoreChange = 0;
 
         if (newDistanceToClosestAlly > currentDistanceToClosestAlly)
@@ -810,7 +843,7 @@ internal class Game
         if (_positionChecker.IsPointInAnySnake(movePoint, countTails: true, snakeBot.Id)
             || _positionChecker.IsPointInGivenSnake(snakeBot.Body, movePoint, countTails: false))
         {
-            // We never want to do this unless it's the only choice. Give it a preposterously low score
+            
             scoreChange =  -BASE_CRITICAL_MOVE_SCORE;
         }
 
@@ -820,21 +853,21 @@ internal class Game
 
     private int ScoreChangeForSpaceCreated(Point movePoint, SnakeBot snakeBot)
     {
-        // Use flood fill to either move to a more open space, or to give the opponent less space
-        // Score the current position:
-        // For every direction score all my snake flood fills minus all opponent square flood fills.
-        // The highest one wins.
-        // TODO: At some point check for all opponent moves here too. 
-        // For example, If I go left, give a score for all opponent moves. Count the worse one for me as the score. 
+        
+        
+        
+        
+        
+        
 
-        // TODO: Simulate the movement (just adding a head and removing a tail. At some point we might want to think about
-        // simulating gravity but not yet
+        
+        
         List<Point> newSnakeBody = new List<Point>() { movePoint };
         newSnakeBody.AddRange(snakeBot.Body.Take(snakeBot.Body.Count - 1));
 
         int scoreChange = 0;
 
-        // For the flood fill I want to exclude this snake ID, but include newSnakeBody
+        
         foreach (var mySnake in MySnakeBots)
         {
             if (mySnake.Id == snakeBot.Id)
@@ -858,14 +891,14 @@ internal class Game
     private int ScoreChangeForPosition(Point movePoint, SnakeBot snakeBot)
     {
         int scoreChange = 0;
-        // Add small position bonuses
-        // At the start of the game move towards the centre and up. When there are hardly any 
-        // power sources left, head towards the nearest one
-        // TODO: Add bonus for heading towards the most power sources
+        
+        
+        
+        
   
         if (_level.PowerSources.Count > 2)
         {
-            // If the head is out of bounds, and this move will bring it back in, give it a stronger bonus
+            
 
             if (_positionChecker.IsOutOfMapBounds(snakeBot.Body[0]) && !_positionChecker.IsOutOfMapBounds(movePoint))
             {
@@ -875,13 +908,13 @@ internal class Game
             int distanceFromCentre = CalculationUtil.GetManhattanDistance(movePoint, new Point(Width / 2, Height / 2));
             scoreChange -= distanceFromCentre;
 
-            // Add a small bonus for moving towards the top of the map
+            
             int distanceFromTop = movePoint.Y;
             scoreChange -= distanceFromTop;
         }
         else
         {
-            // Bonus for moving nearer to the nearest powersource
+            
             int distanceToPowerSource = CalculationUtil.GetManhattanDistance(
                 movePoint,
                 GetNearestPowerSource(movePoint));
@@ -910,7 +943,7 @@ internal class Game
                 pointsToRemove.Add(newHeadPosition);
             }
 
-            // If the new position is out of bounds, And the tail is the only one in bounds, hard no the move.
+            
             if (_positionChecker.IsOutOfMapBounds(newHeadPosition))
             {
                 int inBoundsCount = 0;
@@ -950,11 +983,11 @@ internal class Game
         return scoreChange;
     }
 
-    // Create plans for any clashing moves that would result in a positive headclash
-    // For example, if I can move into a position where an enemy snake could move into
-    // on their next turn but they are smaller than me, then it's worth it
-    // TODO: Only make it a critical move if it's guaranteed. If the opponent can avoid it just make it a good
-    // // move
+    
+    
+    
+    
+    
     private (Plan?, bool) GetCriticalHeadClashMove(Point newHeadPosition, SnakeBot snakeBot)
     {
         var excludeMove = false;
@@ -975,7 +1008,7 @@ internal class Game
 
             foreach (Point possibleMove in possibleHeadMoves)
             {
-               // Don't check invalid moves
+               
                 if (possibleMove.X < -1
                     || possibleMove.X > Width
                     || possibleMove.Y < -1
@@ -1020,10 +1053,10 @@ internal class Game
             }
         }
 
-        // If I win overall, it's a golden move (highest score)
-        // If it's neutral, and I'm bigger than the enemy snake, it's a golden move (mid score)
-        // If it's 100% neutral, it's only a golden move if I have the highest score (the game ending 
-        // is in my favour.
+        
+        
+        
+        
 
         int diff = enemyLossOnImpact - myLossOnImpact;
 
@@ -1090,147 +1123,6 @@ internal class Game
         return bodyCount;
     }
 
-    private bool CheckForHeadClash(Point newHeadPosition, SnakeBot snakeBot)
-    {
-        bool headClash = false;
-
-        // Track the size of the biggest snake. That's the one that matters
-        // TODO: Technically, there's can be more advantage in clashing with
-        // multiple snakes, since I can theoretically destroy multiple snakes
-        // at once if I'm bigger than them
-        int clashingSnakeSize = 0;
-
-        foreach (var opponentSnake in OpponentSnakeBots)
-        {
-            var possibleHeadMoves = new List<Point>()
-            {
-                new Point(opponentSnake.Body[0].X + 1, opponentSnake.Body[0].Y),
-                new Point(opponentSnake.Body[0].X - 1, opponentSnake.Body[0].Y),
-                new Point(opponentSnake.Body[0].X, opponentSnake.Body[0].Y + 1),
-                new Point(opponentSnake.Body[0].X, opponentSnake.Body[0].Y - 1)
-            };
-
-            // Exclude any points that are not valid moves. I don't want to count them as head clashes
-            for (int i = 3; i >= 0; i--)
-            {
-                Point possibleMove = possibleHeadMoves[i];
-                if (possibleMove.X < -1
-                    || possibleMove.X > Width
-                    || possibleMove.Y < -1
-                    || possibleMove.Y > Height
-                    || _positionChecker.IsPlatform(possibleMove)
-                    || _positionChecker.IsPointInAnySnake(possibleMove, countTails: false))
-                {
-                    possibleHeadMoves.RemoveAt(i);
-                }
-            }
-
-            if (possibleHeadMoves.Contains(newHeadPosition))
-            {
-                headClash = true;
-                if (opponentSnake.Body.Count > clashingSnakeSize)
-                {
-                    clashingSnakeSize = opponentSnake.Body.Count;
-                }
-            }
-        }
-
-        if (!headClash)
-        {
-            return false;
-        }
-
-
-        /**
-         * 
-         * int myLossOnImpact = 0;
-        int enemyLossOnImpact = 0;
-
-        if (powerUpOnSpot)
-        {
-            myLossOnImpact = 1;
-
-            foreach (var enemyBodySize in clashingEnemyBodySizes)
-            {
-                enemyLossOnImpact += 1;
-            }
-        }
-        else
-        {
-            myLossOnImpact = snakeBot.Body.Count <= 3 ? 3 : 1;
-
-            foreach (var enemyBodySize in clashingEnemyBodySizes)
-            {
-                enemyLossOnImpact += enemyBodySize <= 3 ? 3 : 1;
-            }
-        }
-
-        // If I win overall, it's a golden move (highest score)
-        // If it's neutral, and I'm bigger than the enemy snake, it's a golden move (mid score)
-        // If it's 100% neutral, it's only a golden move if I have the highest score (the game ending 
-        // is in my favour.
-
-        int diff = enemyLossOnImpact - myLossOnImpact;
-
-        Console.Error.WriteLine($"Checking for head clash at {newHeadPosition.X},{newHeadPosition.Y}. My loss: {myLossOnImpact}, Enemy loss: {enemyLossOnImpact}, Diff: {diff}");
-        int score = 0;
-
-        if (diff > 0)
-        {
-            score = BASE_CRITICAL_MOVE_SCORE + 5000;           
-        }
-        else if (diff == 0 && snakeBot.Body.Count > clashingEnemyBodySizes.Min())
-        {
-            score = BASE_CRITICAL_MOVE_SCORE + 4000;
-        }
-        else if (diff == 0 && powerUpOnSpot)
-        {
-            score = BASE_CRITICAL_MOVE_SCORE + 3500;
-        }
-        else if (diff == 0 && snakeBot.Body.Count == clashingEnemyBodySizes.Min() && GetMyScore() > GetEnemyScore())
-        {
-            score = BASE_CRITICAL_MOVE_SCORE + 3000;
-        }
-        else if (diff < 0)
-        {
-            excludeMove = true;
-        }
-         * 
-         * 
-         * 
-         * 
-         * 
-         */
-
-        bool powerUpOnSpot = _level.PowerSources.Contains(newHeadPosition);
-
-        if (powerUpOnSpot)
-        {// If there is a power up the only reason not to take it is if the enemy snake is bigger
-         // and they can destroy me on their next turn. 
-            if (snakeBot.Body.Count < clashingSnakeSize && snakeBot.Body.Count <= 3)
-            {
-                return true;
-            }
-            else
-            {
-                return true;
-            }
-        }
-        else
-        {
-            // TODO: At some point we'll want to split out more than and equal to, since more than
-            // should score way higher
-            if (snakeBot.Body.Count >= clashingSnakeSize)
-            {
-                return false;
-            }
-            else
-            {
-                return false;
-            }
-        }
-    }
-
     private Point GetNearestPowerSource(SnakeBot snakeBot)
     {
         return GetNearestPowerSource(snakeBot.Body[0]);
@@ -1265,16 +1157,14 @@ internal class Game
                 continue;
             }
 
-            // Don't bother trying if it's further away than maxDistance
+            
             int manhattanDistance = CalculationUtil.GetManhattanDistance(snakeBot.Body[0], powerSource);
             if (manhattanDistance >= maxDistance)
             {
                 continue;
             }
 
-            // If the snake can't reach the power source from a platform don't even bother trying
-            // TODO: We should really check more than just power to the nearest platform. We need to check if an entire path can be made.
-            //       For exaample. Power to ledge1, ledge1 to ledge2, ledge 2 to ledge that snake is already on.
+            
             if (snakeBot.Body.Count < _positionChecker.GetNearestPlatformDistance(powerSource, snakeBot.Id) - 1)
             {
                 continue;
@@ -1294,11 +1184,11 @@ internal class Game
 
             if (path?.Count > 0)
             {
-                // Create a plan for this path
-                int score = BASE_POWER_SCORE - (path.Count * PATH_LENGTH_PENALTY); // Small penalty for longer paths
+                
+                int score = BASE_POWER_SCORE - (path.Count * PATH_LENGTH_PENALTY); 
 
-                // If it's a small path and doing this blocks an opponent from getting to a power source
-                // give bonus points
+                
+                
                 if (path.Count <= 5)
                 {
                     if (_closestSnakeToPowerSourceMap.ContainsKey(powerSource))
@@ -1319,7 +1209,7 @@ internal class Game
 
                             if (closestSnakePath?.Count > 0)
                             {
-                                // EMERGENCY DUCK OUT IF IT'S COMPLETELY UNWINNABLE
+                                
                                 if (path.Count > 1 && closestSnakePath.Count == 1)
                                 {
                                     continue;
@@ -1342,13 +1232,10 @@ internal class Game
 
                                 if (closestSnakePath.Count < path.Count)
                                 {
-                                    // Enemy is closer
                                     score -= CLOSER_TO_POWER_SCORE;                                    
                                 }
                                 else
                                 {
-                                    // I'm closer, or we'll draw
-                                    // TODO: If it's a draw we only sometimes want to go for it
                                     score += CLOSER_TO_POWER_SCORE;
                                 }
                             }
@@ -1357,12 +1244,11 @@ internal class Game
                 }
 
                 plans.Add(new Plan(path, score, "power", turnsToFruition: path.Count, snakeBot.Id));
-                // Logger.LogTime($"Added path to power source {powerSource.X}, {powerSource.Y}. Path: {string.Join(", ", path.Select(p => $"({p.X},{p.Y})"))}. Score:{score}");
 
 
                 if (maxDistance >= 10)
                 {
-                    // Exit early. Paths of 10 can be expensive
+                    
                     break;
                 }
             }
@@ -1431,8 +1317,8 @@ internal class Level
 
     private void CalculateWalkableLedges()
     {
-        // Only go to height minus 1 because we'll never want to check the ground for
-        // climbing to
+        
+        
         for (int y = 1; y < height-1; y++)
         {
             for (int x = 0; x < width; x++)
@@ -1561,7 +1447,7 @@ internal static class Logger
                 else
                 {
                     bool charPlaced = false;
-                    // check if a snake is in this position
+                    
                     foreach (var bot in mySnakeBots)
                     {
                         if (bot.Body.Any(p => p.X == x && p.Y == y))
@@ -1703,17 +1589,570 @@ internal static class Logger
     }
 }
 
-internal record Move
-{    
-    internal int SnakeId { get; init; }
-    internal string Direction { get; init; }
-    internal Move(int snakeId, string direction)
+internal sealed class MinimaxSearch
+{
+    private readonly int _width;
+    private readonly int _height;
+    private readonly HashSet<Point> _platformPoints;
+
+    private static readonly Point[] MoveOffsets =
     {
-        SnakeId = snakeId;
-        Direction = direction;
+        new(1, 0),   
+        new(-1, 0), 
+        new(0, -1), 
+        new(0, 1)   
+    };
+
+    internal MinimaxSearch(int width, int height, HashSet<Point> platformPoints)
+    {
+        _width = width;
+        _height = height;
+        _platformPoints = platformPoints;
+    }
+
+    internal MinimaxResult GetBestMoves(
+        List<SnakeBot> mySnakes,
+        List<SnakeBot> opponentSnakes,
+        HashSet<Point> powerSources,
+        int maxDepth)
+    {
+        var state = new MinimaxGameState(mySnakes, opponentSnakes, powerSources);
+
+        int bestScore = int.MinValue;
+        Dictionary<int, Point>? bestMyMoves = null;
+
+        var myMoveCombinations = GenerateAllMoveCombinations(state.MySnakes, state);
+
+        if (myMoveCombinations.Count == 0)
+        {
+            return new MinimaxResult(new Dictionary<int, Point>(), 0);
+        }
+
+        int alpha = int.MinValue + 1;
+        int beta = int.MaxValue - 1;
+
+        foreach (var myMoves in myMoveCombinations)
+        {
+            int score = MinimaxMin(state, myMoves, maxDepth, alpha, beta);
+
+            if (score > bestScore)
+            {
+                bestScore = score;
+                bestMyMoves = myMoves;
+            }
+
+            alpha = Math.Max(alpha, bestScore);
+        }
+
+        return new MinimaxResult(bestMyMoves ?? new Dictionary<int, Point>(), bestScore);
+    }
+
+    private int MinimaxMin(MinimaxGameState state, Dictionary<int, Point> myMoves,
+        int depth, int alpha, int beta)
+    {
+        var oppMoveCombinations = GenerateAllMoveCombinations(state.OpponentSnakes, state);
+
+        if (oppMoveCombinations.Count == 0)
+        {
+            var nextState = ApplyMoves(state, myMoves, new Dictionary<int, Point>());
+            if (depth <= 1) return Evaluate(nextState);
+            return MinimaxMax(nextState, depth - 1, alpha, beta);
+        }
+
+        int worstScore = int.MaxValue;
+
+        foreach (var oppMoves in oppMoveCombinations)
+        {
+            var nextState = ApplyMoves(state, myMoves, oppMoves);
+
+            int score;
+            if (depth <= 1)
+            {
+                score = Evaluate(nextState);
+            }
+            else
+            {
+                score = MinimaxMax(nextState, depth - 1, alpha, beta);
+            }
+
+            if (score < worstScore)
+                worstScore = score;
+
+            beta = Math.Min(beta, worstScore);
+            if (beta <= alpha)
+                break;
+        }
+
+        return worstScore;
+    }
+
+    private int MinimaxMax(MinimaxGameState state, int depth, int alpha, int beta)
+    {
+        var myMoveCombinations = GenerateAllMoveCombinations(state.MySnakes, state);
+
+        if (myMoveCombinations.Count == 0)
+            return Evaluate(state);
+
+        int bestScore = int.MinValue;
+
+        foreach (var myMoves in myMoveCombinations)
+        {
+            int score = MinimaxMin(state, myMoves, depth, alpha, beta);
+
+            if (score > bestScore)
+                bestScore = score;
+
+            alpha = Math.Max(alpha, bestScore);
+            if (beta <= alpha)
+                break;
+        }
+
+        return bestScore;
+    }
+
+    private List<Dictionary<int, Point>> GenerateAllMoveCombinations(List<MinimaxSnake> snakes, MinimaxGameState state)
+    {
+        var movesPerSnake = new List<(int Id, List<Point> Moves)>();
+
+        foreach (var snake in snakes)
+        {
+            if (snake.Body.Count == 0) continue;
+
+            var validMoves = GetValidMoves(snake, state);
+            if (validMoves.Count > 0)
+                movesPerSnake.Add((snake.Id, validMoves));
+        }
+
+        if (movesPerSnake.Count == 0)
+            return new List<Dictionary<int, Point>>();
+
+        var combinations = new List<Dictionary<int, Point>>();
+        BuildCombinations(movesPerSnake, 0, new Dictionary<int, Point>(), combinations);
+
+        
+        if (movesPerSnake.Count > 1)
+        {
+            combinations.RemoveAll(combo =>
+            {
+                var positions = combo.Values;
+                var seen = new HashSet<Point>();
+                foreach (var p in positions)
+                {
+                    if (!seen.Add(p)) return true;
+                }
+                return false;
+            });
+        }
+
+        return combinations;
+    }
+
+    private void BuildCombinations(
+        List<(int Id, List<Point> Moves)> movesPerSnake,
+        int index,
+        Dictionary<int, Point> current,
+        List<Dictionary<int, Point>> results)
+    {
+        if (index == movesPerSnake.Count)
+        {
+            results.Add(new Dictionary<int, Point>(current));
+            return;
+        }
+
+        var (id, moves) = movesPerSnake[index];
+        foreach (var move in moves)
+        {
+            current[id] = move;
+            BuildCombinations(movesPerSnake, index + 1, current, results);
+        }
+        current.Remove(id);
+    }
+
+    private List<Point> GetValidMoves(MinimaxSnake snake, MinimaxGameState state)
+    {
+        var validMoves = new List<Point>(4);
+        Point head = snake.Body[0];
+
+        foreach (var offset in MoveOffsets)
+        {
+            Point newHead = new Point(head.X + offset.X, head.Y + offset.Y);
+
+            if (newHead.X < -1 || newHead.X > _width || newHead.Y < -1 || newHead.Y > _height)
+                continue;
+
+            if (IsInMapBounds(newHead) && _platformPoints.Contains(newHead))
+                continue;
+
+            if (IsBlockedBySnake(newHead, snake.Id, state))
+                continue;
+
+            if (IsSelfCollision(newHead, snake.Body))
+                continue;
+
+            validMoves.Add(newHead);
+        }
+
+        return validMoves;
+    }
+
+    private bool IsInMapBounds(Point p)
+    {
+        return p.X >= 0 && p.X < _width && p.Y >= 0 && p.Y < _height;
+    }
+
+    private bool IsBlockedBySnake(Point newHead, int excludeId, MinimaxGameState state)
+    {
+        foreach (var snake in state.MySnakes)
+        {
+            if (snake.Id == excludeId || snake.Body.Count == 0) continue;
+            for (int i = 0; i < snake.Body.Count - 1; i++)
+            {
+                if (snake.Body[i] == newHead) return true;
+            }
+        }
+
+        foreach (var snake in state.OpponentSnakes)
+        {
+            if (snake.Id == excludeId || snake.Body.Count == 0) continue;
+            for (int i = 0; i < snake.Body.Count - 1; i++)
+            {
+                if (snake.Body[i] == newHead) return true;
+            }
+        }
+
+        return false;
+    }
+
+    private bool IsSelfCollision(Point newHead, List<Point> body)
+    {
+        for (int i = 1; i < body.Count - 1; i++)
+        {
+            if (body[i] == newHead) return true;
+        }
+        return false;
+    }
+
+    private MinimaxGameState ApplyMoves(MinimaxGameState state,
+        Dictionary<int, Point> myMoves, Dictionary<int, Point> oppMoves)
+    {
+        var newState = state.Clone();
+        var originalPowerSources = new HashSet<Point>(state.PowerSources);
+        var eatenPowerUps = new HashSet<Point>();
+
+        
+        foreach (var snake in newState.MySnakes)
+        {
+            if (myMoves.TryGetValue(snake.Id, out Point newHead))
+                MoveSnake(snake, newHead, newState.PowerSources, eatenPowerUps);
+        }
+
+        foreach (var snake in newState.OpponentSnakes)
+        {
+            if (oppMoves.TryGetValue(snake.Id, out Point newHead))
+                MoveSnake(snake, newHead, newState.PowerSources, eatenPowerUps);
+        }
+
+        
+        foreach (var eaten in eatenPowerUps)
+            newState.PowerSources.Remove(eaten);
+
+        
+        HandleCollisions(newState, originalPowerSources);
+
+        
+        ApplyGravityToAll(newState);
+
+        
+        RemoveOutOfBoundsSnakes(newState);
+
+        return newState;
+    }
+
+    private void MoveSnake(MinimaxSnake snake, Point newHead,
+        HashSet<Point> powerSources, HashSet<Point> eatenPowerUps)
+    {
+        if (snake.Body.Count == 0) return;
+
+        snake.Body.Insert(0, newHead);
+
+        if (powerSources.Contains(newHead))
+        {
+            eatenPowerUps.Add(newHead);
+            
+        }
+        else
+        {
+            snake.Body.RemoveAt(snake.Body.Count - 1);
+        }
+    }
+
+    private void HandleCollisions(MinimaxGameState state, HashSet<Point> originalPowerSources)
+    {
+        
+        foreach (var mySnake in state.MySnakes)
+        {
+            if (mySnake.Body.Count == 0) continue;
+
+            foreach (var oppSnake in state.OpponentSnakes)
+            {
+                if (oppSnake.Body.Count == 0) continue;
+
+                if (mySnake.Body[0] == oppSnake.Body[0])
+                {
+                    bool powerUpOnSpot = originalPowerSources.Contains(mySnake.Body[0]);
+
+                    int myLoss;
+                    int oppLoss;
+
+                    if (powerUpOnSpot)
+                    {
+                        myLoss = 1;
+                        oppLoss = 1;
+                    }
+                    else
+                    {
+                        myLoss = mySnake.Body.Count <= 3 ? mySnake.Body.Count : 1;
+                        oppLoss = oppSnake.Body.Count <= 3 ? oppSnake.Body.Count : 1;
+                    }
+
+                    RemoveSegments(mySnake, myLoss);
+                    RemoveSegments(oppSnake, oppLoss);
+                }
+            }
+        }
+
+        
+        var allSnakes = new List<MinimaxSnake>(state.MySnakes.Count + state.OpponentSnakes.Count);
+        allSnakes.AddRange(state.MySnakes);
+        allSnakes.AddRange(state.OpponentSnakes);
+
+        foreach (var snake in allSnakes)
+        {
+            if (snake.Body.Count == 0) continue;
+
+            foreach (var other in allSnakes)
+            {
+                if (other.Id == snake.Id || other.Body.Count == 0) continue;
+
+                
+                for (int i = 1; i < other.Body.Count; i++)
+                {
+                    if (snake.Body[0] == other.Body[i])
+                    {
+                        int loss = snake.Body.Count <= 3 ? snake.Body.Count : 1;
+                        RemoveSegments(snake, loss);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    private void RemoveSegments(MinimaxSnake snake, int count)
+    {
+        for (int i = 0; i < count && snake.Body.Count > 0; i++)
+            snake.Body.RemoveAt(snake.Body.Count - 1);
+    }
+
+    private void ApplyGravityToAll(MinimaxGameState state)
+    {
+        var allSnakes = new List<MinimaxSnake>(state.MySnakes.Count + state.OpponentSnakes.Count);
+        allSnakes.AddRange(state.MySnakes);
+        allSnakes.AddRange(state.OpponentSnakes);
+
+        foreach (var snake in allSnakes)
+        {
+            if (snake.Body.Count == 0) continue;
+
+            
+            var gravityPoints = new HashSet<Point>(_platformPoints);
+
+            foreach (var other in allSnakes)
+            {
+                if (other.Id == snake.Id || other.Body.Count == 0) continue;
+                foreach (var bp in other.Body)
+                    gravityPoints.Add(bp);
+            }
+
+            foreach (var ps in state.PowerSources)
+                gravityPoints.Add(ps);
+
+            ApplyGravity(snake, gravityPoints);
+        }
+    }
+
+    private void ApplyGravity(MinimaxSnake snake, HashSet<Point> solidPoints)
+    {
+        for (int fall = 0; fall < 20; fall++)
+        {
+            bool canFall = true;
+            foreach (var bp in snake.Body)
+            {
+                if (solidPoints.Contains(new Point(bp.X, bp.Y + 1)))
+                {
+                    canFall = false;
+                    break;
+                }
+            }
+
+            if (!canFall) break;
+
+            for (int i = 0; i < snake.Body.Count; i++)
+                snake.Body[i] = new Point(snake.Body[i].X, snake.Body[i].Y + 1);
+        }
+    }
+
+    private void RemoveOutOfBoundsSnakes(MinimaxGameState state)
+    {
+        foreach (var snake in state.MySnakes)
+        {
+            if (snake.Body.Count > 0 && IsFullyOutOfBounds(snake.Body))
+                snake.Body.Clear();
+        }
+
+        foreach (var snake in state.OpponentSnakes)
+        {
+            if (snake.Body.Count > 0 && IsFullyOutOfBounds(snake.Body))
+                snake.Body.Clear();
+        }
+    }
+
+    private bool IsFullyOutOfBounds(List<Point> body)
+    {
+        foreach (var p in body)
+        {
+            if (IsInMapBounds(p)) return false;
+        }
+        return true;
+    }
+
+    private int Evaluate(MinimaxGameState state)
+    {
+        int myBodyTotal = 0;
+        int oppBodyTotal = 0;
+        int myAliveCount = 0;
+        int oppAliveCount = 0;
+
+        foreach (var s in state.MySnakes)
+        {
+            myBodyTotal += s.Body.Count;
+            if (s.Body.Count > 0) myAliveCount++;
+        }
+
+        foreach (var s in state.OpponentSnakes)
+        {
+            oppBodyTotal += s.Body.Count;
+            if (s.Body.Count > 0) oppAliveCount++;
+        }
+
+        
+        int score = (myBodyTotal - oppBodyTotal) * 1000;
+
+        
+        score += (myAliveCount - oppAliveCount) * 500;
+
+        
+        if (state.PowerSources.Count > 0)
+        {
+            foreach (var snake in state.MySnakes)
+            {
+                if (snake.Body.Count == 0) continue;
+                int minDist = MinDistanceToPowerSource(snake.Body[0], state.PowerSources);
+                if (minDist < int.MaxValue)
+                    score += Math.Max(0, 20 - minDist) * 10;
+            }
+
+            foreach (var snake in state.OpponentSnakes)
+            {
+                if (snake.Body.Count == 0) continue;
+                int minDist = MinDistanceToPowerSource(snake.Body[0], state.PowerSources);
+                if (minDist < int.MaxValue)
+                    score -= Math.Max(0, 20 - minDist) * 10;
+            }
+        }
+
+        
+        foreach (var snake in state.MySnakes)
+        {
+            if (snake.Body.Count == 0) continue;
+            score -= snake.Body[0].Y;
+        }
+
+        foreach (var snake in state.OpponentSnakes)
+        {
+            if (snake.Body.Count == 0) continue;
+            score += snake.Body[0].Y;
+        }
+
+        return score;
+    }
+
+    private int MinDistanceToPowerSource(Point head, HashSet<Point> powerSources)
+    {
+        int minDist = int.MaxValue;
+        foreach (var ps in powerSources)
+        {
+            int dist = Math.Abs(head.X - ps.X) + Math.Abs(head.Y - ps.Y);
+            if (dist < minDist) minDist = dist;
+        }
+        return minDist;
     }
 }
 
+internal sealed class MinimaxGameState
+{
+    internal List<MinimaxSnake> MySnakes { get; set; } = new();
+    internal List<MinimaxSnake> OpponentSnakes { get; set; } = new();
+    internal HashSet<Point> PowerSources { get; set; } = new();
+
+    internal MinimaxGameState(List<SnakeBot> mySnakes, List<SnakeBot> oppSnakes, HashSet<Point> powerSources)
+    {
+        MySnakes = mySnakes.Select(s => new MinimaxSnake(s.Id, s.Body)).ToList();
+        OpponentSnakes = oppSnakes.Select(s => new MinimaxSnake(s.Id, s.Body)).ToList();
+        PowerSources = new HashSet<Point>(powerSources);
+    }
+
+    private MinimaxGameState() { }
+
+    internal MinimaxGameState Clone()
+    {
+        return new MinimaxGameState
+        {
+            MySnakes = MySnakes.Select(s => s.Clone()).ToList(),
+            OpponentSnakes = OpponentSnakes.Select(s => s.Clone()).ToList(),
+            PowerSources = new HashSet<Point>(PowerSources)
+        };
+    }
+}
+
+internal sealed class MinimaxSnake
+{
+    internal int Id { get; }
+    internal List<Point> Body { get; set; }
+
+    internal MinimaxSnake(int id, List<Point> body)
+    {
+        Id = id;
+        Body = body.Select(p => new Point(p.X, p.Y)).ToList();
+    }
+
+    internal MinimaxSnake Clone()
+    {
+        return new MinimaxSnake(Id, Body);
+    }
+}
+
+internal sealed class MinimaxResult
+{
+    internal Dictionary<int, Point> BestMoves { get; }
+    internal int Score { get; }
+
+    internal MinimaxResult(Dictionary<int, Point> bestMoves, int score)
+    {
+        BestMoves = bestMoves;
+        Score = score;
+    }
+}
 
 
 internal class MovementHelper
@@ -1725,7 +2164,7 @@ internal class MovementHelper
 
         if (powerUpPoints.Contains(newHead))
         {
-            // Don't remove the tail if we are eating a power source
+            
             return newBody;
         }
 
@@ -1753,7 +2192,7 @@ internal class MovementHelper
 
             if (canMoveDown)
             {
-                // Move the snake down by one
+                
                 for (int i = 0; i < snakeBody.Count; ++i)
                 {
                     snakeBody[i] = new Point(snakeBody[i].X, snakeBody[i].Y + 1);
@@ -1773,17 +2212,6 @@ internal class MovementHelper
     }
 }
 
-
-
-
-internal record MoveSet
-{
-    internal List<Move> Moves { get; init; }
-    internal MoveSet(List<Move> moves)
-    {
-        Moves = moves;
-    }
-}
 
 
 
@@ -1857,7 +2285,6 @@ internal sealed class PathFinder
 
         while (!targetFound)
         {
-            // TODO: I need to experiment with this number.
             if (openNodeCount == 0 || nodesByState.Count > MAX_NODE_COUNT)
             {
                 return new List<Point>();
@@ -1870,7 +2297,6 @@ internal sealed class PathFinder
             }
             else
             {
-                // Only count stagnation when gravity is holding the snake in place
                 bool gravityHeldPosition = currentNode.Parent != null
                     && currentNode.Position == currentNode.Parent.Position;
 
@@ -1913,20 +2339,20 @@ internal sealed class PathFinder
 
             foreach (Point pointToCheck in pointsToCheck)
             {
-                // If pointToCheck is the same as the current point skip it
+                
                 if (pointToCheck == currentNode.Position)
                 {
                     continue;
                 }
 
-                // If we are expanding the start node, ignore the excludePoints
+                
                 if (currentNode.Parent == null && excludePoints.Contains(pointToCheck))
                 {
                     continue;
                 }
 
-                // We can check the majority of collisions before simulating snake movement, which is expensive.
-                // We only need to simulate the movement if the point is not an immediate collision.
+                
+                
 
                 bool isValidMove =
                     pointToCheck == targetPoint
@@ -1941,16 +2367,14 @@ internal sealed class PathFinder
 
                 isValidMove = true;
 
-                // Simulate snake movement to this position
+                
                 List<Point> snakeBodyAfterMove = _movementHelper.SimulateSnakeMovement(
                     currentNode.SnakeBodyAtNode,
                     currentNode.Position,
                     pointToCheck,
                     powerUpPoints);
 
-                // TODO: We can check most of the below before simulating snake movement. 
-                // We can opt out before it on everything except current snake checks.
-                // Check if the move is valid. If it's not we don't want to continue
+                
                 isValidMove =
                     !IsSelfCollision(pointToCheck, snakeBodyAfterMove, checkHead: false, checkTail: true)
                     && !IsFullyOutOfBounds(snakeBodyAfterMove);
@@ -1962,29 +2386,28 @@ internal sealed class PathFinder
 
                 bool onPowerUp = powerUpPoints.Contains(pointToCheck);
 
-                // Apply gravity to the simulated body UNLESS we're on any power up (including the target)
-                // (reaching the target means eating a power-up, gravity doesn't apply mid-eating)
+                
+                
                 if (!onPowerUp)
                 {
                     snakeBodyAfterMove = _movementHelper.ApplyGravity(snakeBodyAfterMove, solidPoints);
                 }
 
-                // IMPORTANT: After gravity, the head position may have changed!
+                
                 Point actualHeadPosition = snakeBodyAfterMove[0];
 
                 SnakeState newState = new SnakeState(actualHeadPosition, snakeBodyAfterMove);
 
-                // Add the number of nodes the head is touching onto the obstacle cost.
-                // This will help the snake prefer paths that keep it away from walls, other snakes, and its own body
+                
                 int adjacentObstacles = CountAdjacentObstacles(snakeBodyAfterMove, solidPoints);
                 int newObstacleCost = currentNode.ObstacleCost + adjacentObstacles;
 
-                // Check if a node at this actual position already exists
+                
                 nodesByState.TryGetValue(newState, out Node? existingNode);
 
                 if (existingNode == null)
                 {
-                    // Create node at the ACTUAL position after gravity
+                    
                     Node node = new Node(actualHeadPosition);
                     node.IntendedMove = pointToCheck;
                     node.Parent = currentNode;
@@ -1996,14 +2419,14 @@ internal sealed class PathFinder
 
                     nodesByState.Add(newState, node);
 
-                    // Check if we've reached the target immediately
+                    
                     if (actualHeadPosition == targetPoint)
                     {
                         currentNode = node;
                         targetFound = true;                        
                     }
 
-                    // Check if we've on another power up
+                    
                     if (onPowerUp)
                     {
                         currentNode = node;
@@ -2063,14 +2486,12 @@ internal sealed class PathFinder
             _debugCount++;
         }
 
-        // Build the path
+        
         List<Point> shortestPath = new List<Point>();
         Node pathNode = currentNode;
 
         while (pathNode?.Parent != null)
         {
-            // The move is the direction from parent's ACTUAL position to the intermediate position
-            // before gravity was applied in pathNode
             shortestPath.Insert(0, pathNode.IntendedMove);
             pathNode = pathNode.Parent;
         }
@@ -2099,7 +2520,7 @@ internal sealed class PathFinder
             }
             else
             {
-                // Check body while skipping the head
+                
                 for (int i = 1; i < snakeBodyAfterMove.Count; i++)
                 {
                     if (snakeBodyAfterMove[i] == point)
@@ -2131,7 +2552,7 @@ internal sealed class PathFinder
         int startPoint = checkHead ? 0 : 1;
         int endPoint = checkTail ? snakeBodyPoints.Count - 1  : snakeBodyPoints.Count - 2;
 
-        // Check the current snake body, skipping the head and tail
+        
         for (int i = startPoint; i <= endPoint; i++)
         {
             if (snakeBodyPoints[i] == pointToCheck)
@@ -2204,7 +2625,6 @@ internal class Player
             game.AddOpponentSnake(new SnakeBot(oppSnakebotId));
         }
 
-        // game loop
         while (true)
         { 
             game.MarkAllSnakesForRemoval();
@@ -2251,12 +2671,6 @@ internal class Player
 
             game.RemoveMarkedSnakes();
 
-            // Write an action using Console.WriteLine()
-            // To debug: Console.Error.WriteLine("Debug messages...");
-
-            // Logger.Snakes("My snake Bots", mySnakeBots);
-            // Logger.Snakes("My snake Bots", mySnakeBots);
-
             List<string> actions = game.GetActions();
 
             Logger.LogTime("END OF TURN");
@@ -2288,7 +2702,7 @@ internal sealed class PositionChecker
 
     internal bool IsBlocking(Point newHeadPosition, SnakeBot snakeBot)
     {
-        // Flood fill algorithm to check if the new position would block the snake in
+        
         var visited = new HashSet<Point>();
         var queue = new Queue<Point>();
 
@@ -2489,7 +2903,7 @@ internal sealed class PositionChecker
             }
         }
 
-        // Now check snakes
+        
         foreach (var snakeBot in _game.MySnakeBots)
         {
             if (excludeSnakeId == snakeBot.Id)
@@ -2527,8 +2941,8 @@ internal sealed class PositionChecker
     private int GetNearestPowerSourceDistance(Point powerSourcePoint, Point checkPoint, bool excludeGravity = true)
     {
         int distance = int.MaxValue;
-        // If the power up is lower than the platform we don't need to count vertical distance because gravity
-        // can do some of the work
+        
+        
         if (excludeGravity && powerSourcePoint.Y >= checkPoint.Y)
         {
             distance = Math.Abs(powerSourcePoint.X - checkPoint.X);

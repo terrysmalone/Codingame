@@ -11,6 +11,8 @@ internal sealed class MinimaxSearch
     private readonly int _height;
     private readonly HashSet<Point> _platformPoints;
 
+    private int _maxDepth = 0;
+
     private static readonly Point[] MoveOffsets =
     {
         new(1, 0),   
@@ -32,6 +34,8 @@ internal sealed class MinimaxSearch
         HashSet<Point> powerSources,
         int maxDepth)
     {
+        _maxDepth = maxDepth;
+
         var state = new MinimaxGameState(mySnakes, opponentSnakes, powerSources);
 
         int bestScore = int.MinValue;
@@ -49,7 +53,7 @@ internal sealed class MinimaxSearch
 
         foreach (var myMoves in myMoveCombinations)
         {
-            int score = MinimaxMin(state, myMoves, maxDepth, alpha, beta);
+            int score = MinimaxMin(state, myMoves, _maxDepth, alpha, beta, 0);
 
             if (score > bestScore)
             {
@@ -63,16 +67,20 @@ internal sealed class MinimaxSearch
         return new MinimaxResult(bestMyMoves ?? new Dictionary<int, Point>(), bestScore);
     }
 
-    private int MinimaxMin(MinimaxGameState state, Dictionary<int, Point> myMoves,
-        int depth, int alpha, int beta)
+    private int MinimaxMin(MinimaxGameState state, Dictionary<int, Point> myMoves, int depth, int alpha, int beta, int movesFromStart)
     {
         var oppMoveCombinations = GenerateAllMoveCombinations(state.OpponentSnakes, state);
 
         if (oppMoveCombinations.Count == 0)
         {
             var nextState = ApplyMoves(state, myMoves, new Dictionary<int, Point>());
-            if (depth <= 1) return Evaluate(nextState);
-            return MinimaxMax(nextState, depth - 1, alpha, beta);
+
+            if (depth <= 1)
+            {
+                return Evaluate(nextState, movesFromStart + 1);
+            }
+            
+            return MinimaxMax(nextState, depth - 1, alpha, beta, movesFromStart + 1);
         }
 
         int worstScore = int.MaxValue;
@@ -84,11 +92,11 @@ internal sealed class MinimaxSearch
             int score;
             if (depth <= 1)
             {
-                score = Evaluate(nextState);
+                score = Evaluate(nextState, movesFromStart + 1);
             }
             else
             {
-                score = MinimaxMax(nextState, depth - 1, alpha, beta);
+                score = MinimaxMax(nextState, depth - 1, alpha, beta, movesFromStart + 1);
             }
 
             if (score < worstScore)
@@ -102,18 +110,18 @@ internal sealed class MinimaxSearch
         return worstScore;
     }
 
-    private int MinimaxMax(MinimaxGameState state, int depth, int alpha, int beta)
+    private int MinimaxMax(MinimaxGameState state, int depth, int alpha, int beta, int movesFromStart)
     {
         var myMoveCombinations = GenerateAllMoveCombinations(state.MySnakes, state);
 
         if (myMoveCombinations.Count == 0)
-            return Evaluate(state);
+            return Evaluate(state, movesFromStart);
 
         int bestScore = int.MinValue;
 
         foreach (var myMoves in myMoveCombinations)
         {
-            int score = MinimaxMin(state, myMoves, depth, alpha, beta);
+            int score = MinimaxMin(state, myMoves, depth, alpha, beta, movesFromStart);
 
             if (score > bestScore)
                 bestScore = score;
@@ -249,7 +257,7 @@ internal sealed class MinimaxSearch
     }
 
     private MinimaxGameState ApplyMoves(MinimaxGameState state,
-        Dictionary<int, Point> myMoves, Dictionary<int, Point> oppMoves)
+    Dictionary<int, Point> myMoves, Dictionary<int, Point> oppMoves)
     {
         var newState = state.Clone();
         var originalPowerSources = new HashSet<Point>(state.PowerSources);
@@ -272,17 +280,17 @@ internal sealed class MinimaxSearch
         foreach (var eaten in eatenPowerUps)
             newState.PowerSources.Remove(eaten);
 
-        // 2. Handle collisions (head-to-head between opponents, head-to-body for all)
+        // Store information about power sources eaten this turn
+        newState.PowerSourcesEatenThisTurn = eatenPowerUps.Count;
+
+        // 2. Handle collisions, gravity, etc...
         HandleCollisions(newState, originalPowerSources);
-
-        // 3. Apply gravity to every surviving snake
         ApplyGravityToAll(newState);
-
-        // 4. Remove snakes that are entirely out of bounds
         RemoveOutOfBoundsSnakes(newState);
 
         return newState;
     }
+
 
     private void MoveSnake(MinimaxSnake snake, Point newHead,
         HashSet<Point> powerSources, HashSet<Point> eatenPowerUps)
@@ -294,7 +302,6 @@ internal sealed class MinimaxSearch
         if (powerSources.Contains(newHead))
         {
             eatenPowerUps.Add(newHead);
-            // Snake grows – tail stays
         }
         else
         {
@@ -304,7 +311,6 @@ internal sealed class MinimaxSearch
 
     private void HandleCollisions(MinimaxGameState state, HashSet<Point> originalPowerSources)
     {
-        // --- Head-to-head between opposing snakes ---
         foreach (var mySnake in state.MySnakes)
         {
             if (mySnake.Body.Count == 0) continue;
@@ -337,7 +343,6 @@ internal sealed class MinimaxSearch
             }
         }
 
-        // --- Head-to-body (any snake hitting another snake's body segment) ---
         var allSnakes = new List<MinimaxSnake>(state.MySnakes.Count + state.OpponentSnakes.Count);
         allSnakes.AddRange(state.MySnakes);
         allSnakes.AddRange(state.OpponentSnakes);
@@ -442,7 +447,7 @@ internal sealed class MinimaxSearch
         return true;
     }
 
-    private int Evaluate(MinimaxGameState state)
+    private int Evaluate(MinimaxGameState state, int movesFromStart)
     {
         int myBodyTotal = 0;
         int oppBodyTotal = 0;
@@ -461,13 +466,9 @@ internal sealed class MinimaxSearch
             if (s.Body.Count > 0) oppAliveCount++;
         }
 
-        // Primary: body-count difference (this IS the game score)
         int score = (myBodyTotal - oppBodyTotal) * 1000;
 
-        // Bonus for having more alive snakes
-        score += (myAliveCount - oppAliveCount) * 500;
-
-        // Proximity to power sources
+        // Proximity to power sources - this naturally prefers being closer
         if (state.PowerSources.Count > 0)
         {
             foreach (var snake in state.MySnakes)
@@ -477,27 +478,6 @@ internal sealed class MinimaxSearch
                 if (minDist < int.MaxValue)
                     score += Math.Max(0, 20 - minDist) * 10;
             }
-
-            foreach (var snake in state.OpponentSnakes)
-            {
-                if (snake.Body.Count == 0) continue;
-                int minDist = MinDistanceToPowerSource(snake.Body[0], state.PowerSources);
-                if (minDist < int.MaxValue)
-                    score -= Math.Max(0, 20 - minDist) * 10;
-            }
-        }
-
-        // Small bonus for vertical position (higher = better, lower Y = higher on screen)
-        foreach (var snake in state.MySnakes)
-        {
-            if (snake.Body.Count == 0) continue;
-            score -= snake.Body[0].Y;
-        }
-
-        foreach (var snake in state.OpponentSnakes)
-        {
-            if (snake.Body.Count == 0) continue;
-            score += snake.Body[0].Y;
         }
 
         return score;
@@ -521,6 +501,8 @@ internal sealed class MinimaxGameState
     internal List<MinimaxSnake> OpponentSnakes { get; set; } = new();
     internal HashSet<Point> PowerSources { get; set; } = new();
 
+    internal int PowerSourcesEatenThisTurn { get; set; } = 0;
+
     internal MinimaxGameState(List<SnakeBot> mySnakes, List<SnakeBot> oppSnakes, HashSet<Point> powerSources)
     {
         MySnakes = mySnakes.Select(s => new MinimaxSnake(s.Id, s.Body)).ToList();
@@ -536,7 +518,8 @@ internal sealed class MinimaxGameState
         {
             MySnakes = MySnakes.Select(s => s.Clone()).ToList(),
             OpponentSnakes = OpponentSnakes.Select(s => s.Clone()).ToList(),
-            PowerSources = new HashSet<Point>(PowerSources)
+            PowerSources = new HashSet<Point>(PowerSources),
+            PowerSourcesEatenThisTurn = PowerSourcesEatenThisTurn
         };
     }
 }

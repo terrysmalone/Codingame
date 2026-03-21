@@ -9,6 +9,11 @@ cd1e4b0bca5646b3d4cc8b1f865924d2d0b49e1b
 
 # TO DO
 
+seed=4974165599098673000
+
+
+
+
 ## Specific
 
 - Don't go for a head clash if the opponent can not take it, and I'd end up trapping myself in

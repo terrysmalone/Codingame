@@ -123,36 +123,15 @@ internal class Game
 
     internal List<string> GetActions()
     {
+        var actions = new List<string>();
         int minimaxDepth = 2;
 
-        List<SnakeBot> mine = new List<SnakeBot>();
-        mine.Add(MySnakeBots[1]);
-        mine.Add(MySnakeBots[2]);
+        // Group snakes by proximity
+        actions.AddRange(GetMinimaxMoves(new List<SnakeBot>() { MySnakeBots[0] }, new List<SnakeBot>() { OpponentSnakeBots[3] }, _level.PowerSources, minimaxDepth));
 
-        var minimaxResult = _minimax.GetBestMoves(
-            mine, new List<SnakeBot>(), _level.PowerSources, minimaxDepth);
+        actions.AddRange(GetMinimaxMoves(new List<SnakeBot>() { MySnakeBots[1], MySnakeBots[2] }, new List<SnakeBot>(), _level.PowerSources, minimaxDepth));
 
-        if (minimaxResult.BestMoves.Count > 0)
-        {
-            List<string> minimaxActions = new List<string>();
-
-            foreach (var kvp in minimaxResult.BestMoves)
-            {
-                var snakeBot = MySnakeBots.FirstOrDefault(s => s.Id == kvp.Key);
-                if (snakeBot == null) continue;
-
-                string direction = DirectionHelper.GetDirection(snakeBot.Body[0], kvp.Value);
-                minimaxActions.Add($"{snakeBot.Id} {direction} minimax({minimaxResult.Score})");
-                snakeBot.AddMove(kvp.Value);
-            }
-
-            if (minimaxActions.Count > 0)
-            {
-                Logger.LogTime($"Minimax chose moves with score {minimaxResult.Score}");
-                return minimaxActions;
-            }
-        }
-
+        return actions;
 
 
         var bullyMode = false;
@@ -171,8 +150,6 @@ internal class Game
         {
             snakeBot.ClearAllPlans();
         }
-
-        List<string> actions = new List<string>();
 
         foreach (var snakeBot in MySnakeBots)
         {
@@ -374,6 +351,35 @@ internal class Game
         }
 
         return actions;
+    }
+
+    private List<string> GetMinimaxMoves(List<SnakeBot> mine, List<SnakeBot> opponents, HashSet<Point> powerSources, int minimaxDepth)
+    {
+        var minimaxResult = _minimax.GetBestMoves(
+            mine, opponents, _level.PowerSources, minimaxDepth);
+
+        if (minimaxResult.BestMoves.Count > 0)
+        {
+            List<string> minimaxActions = new List<string>();
+
+            foreach (var kvp in minimaxResult.BestMoves)
+            {
+                var snakeBot = MySnakeBots.FirstOrDefault(s => s.Id == kvp.Key);
+                if (snakeBot == null) continue;
+
+                string direction = DirectionHelper.GetDirection(snakeBot.Body[0], kvp.Value);
+                minimaxActions.Add($"{snakeBot.Id} {direction} minimax({minimaxResult.Score})");
+                snakeBot.AddMove(kvp.Value);
+            }
+
+            if (minimaxActions.Count > 0)
+            {
+                Logger.LogTime($"Minimax chose moves with score {minimaxResult.Score}");
+                return minimaxActions;
+            }
+        }
+
+        return new List<string>();
     }
 
     private List<Plan> GetBullyPlans(SnakeBot snakeBot, bool bullyMode, HashSet<Point> excludePoints)

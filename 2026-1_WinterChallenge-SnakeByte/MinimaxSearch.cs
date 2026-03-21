@@ -266,17 +266,23 @@ internal sealed class MinimaxSearch
         foreach (var snake in newState.MySnakes)
         {
             if (myMoves.TryGetValue(snake.Id, out Point newHead))
+            {
                 MoveSnake(snake, newHead, newState.PowerSources, eatenPowerUps);
+            }
         }
 
         foreach (var snake in newState.OpponentSnakes)
         {
             if (oppMoves.TryGetValue(snake.Id, out Point newHead))
+            {
                 MoveSnake(snake, newHead, newState.PowerSources, eatenPowerUps);
+            }
         }
 
         foreach (var eaten in eatenPowerUps)
+        { 
             newState.PowerSources.Remove(eaten);
+        }
 
         HandleCollisions(newState, originalPowerSources);
         ApplyGravityToAll(newState);
@@ -306,7 +312,10 @@ internal sealed class MinimaxSearch
     {
         foreach (var mySnake in state.MySnakes)
         {
-            if (mySnake.Body.Count == 0) continue;
+            if (mySnake.Body.Count == 0)
+            {
+                continue;
+            }
 
             foreach (var oppSnake in state.OpponentSnakes)
             {
@@ -448,10 +457,14 @@ internal sealed class MinimaxSearch
         int oppBodyTotal = 0;
 
         foreach (var s in state.MySnakes)
+        {
             myBodyTotal += s.Body.Count;
+        }
 
         foreach (var s in state.OpponentSnakes)
+        {
             oppBodyTotal += s.Body.Count;
+        }
 
         int score = (myBodyTotal - oppBodyTotal) * 1000;
 
@@ -460,9 +473,13 @@ internal sealed class MinimaxSearch
             foreach (var snake in state.MySnakes)
             {
                 if (snake.Body.Count == 0) continue;
+
                 int minDist = MinDistanceToPowerSource(snake.Body[0], state.PowerSources);
+
                 if (minDist < int.MaxValue)
+                {
                     score += Math.Max(0, 20 - minDist) * 10;
+                }
             }
         }
 
@@ -475,7 +492,11 @@ internal sealed class MinimaxSearch
         foreach (var ps in powerSources)
         {
             int dist = Math.Abs(head.X - ps.X) + Math.Abs(head.Y - ps.Y);
-            if (dist < minDist) minDist = dist;
+
+            if (dist < minDist)
+            {
+                minDist = dist; 
+            }
         }
         return minDist;
     }

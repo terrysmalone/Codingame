@@ -241,4 +241,19 @@ internal static class Logger
             }
         }
     }
+
+    internal static void AssignedMinimaxGroups(List<HashSet<int>> minimaxGroups)
+    {
+        if (DISABLE_LOGGING)
+        {
+            return;
+        }
+
+        int index = 0;
+
+        foreach (HashSet<int> group in minimaxGroups)
+        {
+            Console.Error.WriteLine($"Minimax Group {index}: {string.Join(";", group)}");
+        }
+    }
 }

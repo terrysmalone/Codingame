@@ -123,30 +123,30 @@ internal class Game
 
     internal List<string> GetActions()
     {
-        var actions = new List<string>();
-        int minimaxDepth = 2;
+        List<Plan> plans = new List<Plan>();
 
-        var snake7 = MySnakeBots.FirstOrDefault(s => s.Id == 7);
-        actions.AddRange(GetMinimaxMoves(new List<SnakeBot>() { snake7 }, new List<SnakeBot>(), _level.PowerSources, minimaxDepth));
+        // Create groupings
+        List<HashSet<int>> minimaxGroups = CreateMinimaxGroupings();
+        Logger.AssignedMinimaxGroups(minimaxGroups);
 
+        foreach (HashSet<int> group in minimaxGroups)
+        {
+            var mine = MySnakeBots.Where(s => group.Contains(s.Id)).ToList();
+            var opponents = OpponentSnakeBots.Where(s => group.Contains(s.Id)).ToList();
 
-        var snake6 = MySnakeBots.FirstOrDefault(s => s.Id == 6);
+            // TODO: We'll want to set the depth depending on how many snakes are being checked
+            int minimaxDepth = 2;
 
-        var snake0 = OpponentSnakeBots.FirstOrDefault(s => s.Id == 0);
-        var snake1 = OpponentSnakeBots.FirstOrDefault(s => s.Id == 1);
+            plans.AddRange(GetMinimaxMoves(mine, opponents, _level.PowerSources, minimaxDepth));
+        }
 
-        Logger.Snake(snake0);        
-        Logger.Snake(snake1);
-        actions.AddRange(GetMinimaxMoves(new List<SnakeBot>() { snake6 }, new List<SnakeBot>() { snake0 , snake1 }, _level.PowerSources, minimaxDepth));
-        // Group snakes by proximity
-        // actions.AddRange(GetMinimaxMoves(new List<SnakeBot>() { MySnakeBots[0] }, new List<SnakeBot>() {}, _level.PowerSources, minimaxDepth));
-        // actions.AddRange(GetMinimaxMoves(new List<SnakeBot>() { MySnakeBots[1] }, new List<SnakeBot>(), _level.PowerSources, minimaxDepth));
-
-
-
-
-
+        List<string> actions = new List<string>();
+        actions.AddRange(ConvertToActions(plans));
         return actions;
+
+
+
+
 
 
         var bullyMode = false;
@@ -337,6 +337,7 @@ internal class Game
             if (!clash)
             {
                 Logger.LogTime($"Chose plan combination with score {planCombination.Value}");
+
                 foreach (Plan? plan in planCombination.Key)
                 {
                     var snakeBot = MySnakeBots.First(s => s.Id == plan.SnakeID);
@@ -368,33 +369,102 @@ internal class Game
         return actions;
     }
 
-    private List<string> GetMinimaxMoves(List<SnakeBot> mine, List<SnakeBot> opponents, HashSet<Point> powerSources, int minimaxDepth)
+    private List<HashSet<int>> CreateMinimaxGroupings()
+    {
+        int minimumDistance = 3;
+
+        List<HashSet<int>> minimaxGroups = new List<HashSet<int>>();
+
+        HashSet<int> assignedSnakeIds = new HashSet<int>();
+
+        foreach (SnakeBot snake in MySnakeBots)
+        {
+            if (assignedSnakeIds.Contains(snake.Id))
+            {
+                continue;
+            }
+
+            HashSet<int> group = new HashSet<int>();
+            group.Add(snake.Id);
+            assignedSnakeIds.Add(snake.Id);
+
+            foreach (SnakeBot otherSnake in MySnakeBots)
+            {
+                // If it's assigned or is the main snake skip it
+                if (snake.Id == otherSnake.Id || assignedSnakeIds.Contains(otherSnake.Id))
+                {
+                    continue;
+                }
+
+                // TODO: At some point we'll want to consider closeness as the closest point
+                // of any body points
+                int distance = CalculationUtil.GetManhattanDistance(snake.Body[0], otherSnake.Body[0]);
+
+                if (distance <= minimumDistance)
+                {
+                    group.Add(otherSnake.Id);
+                    assignedSnakeIds.Add(otherSnake.Id);
+                }
+            }
+
+            foreach (SnakeBot opponentSnake in OpponentSnakeBots)
+            {
+                // TODO: An opponent snake can be assigned to multiple groups if it's close to multiple snakes.
+                // We might want to change this at some point, but for now it should be fine as it means we consider
+                // the opponent snake in multiple minimax searches which is safer.
+                int distance = CalculationUtil.GetManhattanDistance(snake.Body[0], opponentSnake.Body[0]);
+                if (distance <= minimumDistance)
+                {
+                    group.Add(opponentSnake.Id);
+                    assignedSnakeIds.Add(opponentSnake.Id);
+                }
+            }
+
+            minimaxGroups.Add(group);
+        }
+
+        return minimaxGroups;
+    }
+
+    private IEnumerable<string> ConvertToActions(List<Plan> plans)
+    {
+        List<string> actions = new List<string>();
+
+        foreach (Plan plan in plans)
+        {
+            actions.Add($"{plan.SnakeID} {DirectionHelper.GetDirection(GetSnake(plan.SnakeID).Body[0], plan.Moves[plan.Moves.Count-1])} {plan.PlanType}");
+            actions.Add($"MARK {plan.Moves[plan.Moves.Count-1].X} {plan.Moves[plan.Moves.Count-1].Y}");
+        }
+
+        return actions;
+    }
+
+    private List<Plan> GetMinimaxMoves(List<SnakeBot> mine, List<SnakeBot> opponents, HashSet<Point> powerSources, int minimaxDepth)
     {
         var minimaxResult = _minimax.GetBestMoves(
             mine, opponents, _level.PowerSources, minimaxDepth);
 
         if (minimaxResult.BestMoves.Count > 0)
         {
-            List<string> minimaxActions = new List<string>();
+            List<Plan> minimaxPlans = new List<Plan>();
 
             foreach (var kvp in minimaxResult.BestMoves)
             {
                 var snakeBot = MySnakeBots.FirstOrDefault(s => s.Id == kvp.Key);
                 if (snakeBot == null) continue;
 
-                string direction = DirectionHelper.GetDirection(snakeBot.Body[0], kvp.Value);
-                minimaxActions.Add($"{snakeBot.Id} {direction} minimax({minimaxResult.Score})");
+                minimaxPlans.Add(new Plan(new List<Point> { kvp.Value }, minimaxResult.Score, "minimax", turnsToFruition: 1, snakeBot.Id));
                 snakeBot.AddMove(kvp.Value);
             }
 
-            if (minimaxActions.Count > 0)
+            if (minimaxPlans.Count > 0)
             {
                 Logger.LogTime($"Minimax chose moves with score {minimaxResult.Score}");
-                return minimaxActions;
+                return minimaxPlans;
             }
         }
 
-        return new List<string>();
+        return new List<Plan>();
     }
 
     private List<Plan> GetBullyPlans(SnakeBot snakeBot, bool bullyMode, HashSet<Point> excludePoints)

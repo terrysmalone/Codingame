@@ -126,16 +126,13 @@ internal class Game
         var actions = new List<string>();
         int minimaxDepth = 3;
 
-
-
-
+        var snake7 = MySnakeBots.FirstOrDefault(s => s.Id == 7);
 
         // Group snakes by proximity
         // actions.AddRange(GetMinimaxMoves(new List<SnakeBot>() { MySnakeBots[0] }, new List<SnakeBot>() {}, _level.PowerSources, minimaxDepth));
-
         // actions.AddRange(GetMinimaxMoves(new List<SnakeBot>() { MySnakeBots[1] }, new List<SnakeBot>(), _level.PowerSources, minimaxDepth));
 
-        actions.AddRange(GetMinimaxMoves(new List<SnakeBot>() { MySnakeBots[3] }, new List<SnakeBot>(), _level.PowerSources, minimaxDepth));
+        actions.AddRange(GetMinimaxMoves(new List<SnakeBot>() { snake7 }, new List<SnakeBot>(), _level.PowerSources, minimaxDepth));
 
         return actions;
 

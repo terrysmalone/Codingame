@@ -182,15 +182,27 @@ internal class Game
     internal List<string> GetActions()
     {
         var actions = new List<string>();
-        int minimaxDepth = 3;
+        int minimaxDepth = 2;
 
         var snake7 = MySnakeBots.FirstOrDefault(s => s.Id == 7);
-
-        
-        
-        
-
         actions.AddRange(GetMinimaxMoves(new List<SnakeBot>() { snake7 }, new List<SnakeBot>(), _level.PowerSources, minimaxDepth));
+
+
+        var snake6 = MySnakeBots.FirstOrDefault(s => s.Id == 6);
+
+        var snake0 = OpponentSnakeBots.FirstOrDefault(s => s.Id == 0);
+        var snake1 = OpponentSnakeBots.FirstOrDefault(s => s.Id == 1);
+
+        Logger.Snake(snake0);        
+        Logger.Snake(snake1);
+        actions.AddRange(GetMinimaxMoves(new List<SnakeBot>() { snake6 }, new List<SnakeBot>() { snake0 , snake1 }, _level.PowerSources, minimaxDepth));
+        
+        
+        
+
+
+
+
 
         return actions;
 
@@ -1627,6 +1639,8 @@ internal sealed class MinimaxSearch
     {
         var state = new MinimaxGameState(mySnakes, opponentSnakes, powerSources);
 
+        int baselineScore = Evaluate(state);
+
         int bestScore = int.MinValue;
         Dictionary<int, Point>? bestMyMoves = null;
 
@@ -1653,7 +1667,9 @@ internal sealed class MinimaxSearch
             alpha = Math.Max(alpha, bestScore);
         }
 
-        return new MinimaxResult(bestMyMoves ?? new Dictionary<int, Point>(), bestScore);
+        int relativeScore = bestScore - baselineScore;
+
+        return new MinimaxResult(bestMyMoves ?? new Dictionary<int, Point>(), relativeScore);
     }
 
     private int MinimaxMin(MinimaxGameState state, Dictionary<int, Point> myMoves, int depth, int alpha, int beta)
@@ -1921,6 +1937,8 @@ internal sealed class MinimaxSearch
 
                     RemoveSegments(mySnake, myLoss);
                     RemoveSegments(oppSnake, oppLoss);
+
+                    if (mySnake.Body.Count == 0) break;
                 }
             }
         }
@@ -1946,6 +1964,8 @@ internal sealed class MinimaxSearch
                         break;
                     }
                 }
+
+                if (snake.Body.Count == 0) break;
             }
         }
     }

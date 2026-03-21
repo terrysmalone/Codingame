@@ -124,15 +124,27 @@ internal class Game
     internal List<string> GetActions()
     {
         var actions = new List<string>();
-        int minimaxDepth = 3;
+        int minimaxDepth = 2;
 
         var snake7 = MySnakeBots.FirstOrDefault(s => s.Id == 7);
+        actions.AddRange(GetMinimaxMoves(new List<SnakeBot>() { snake7 }, new List<SnakeBot>(), _level.PowerSources, minimaxDepth));
 
+
+        var snake6 = MySnakeBots.FirstOrDefault(s => s.Id == 6);
+
+        var snake0 = OpponentSnakeBots.FirstOrDefault(s => s.Id == 0);
+        var snake1 = OpponentSnakeBots.FirstOrDefault(s => s.Id == 1);
+
+        Logger.Snake(snake0);        
+        Logger.Snake(snake1);
+        actions.AddRange(GetMinimaxMoves(new List<SnakeBot>() { snake6 }, new List<SnakeBot>() { snake0 , snake1 }, _level.PowerSources, minimaxDepth));
         // Group snakes by proximity
         // actions.AddRange(GetMinimaxMoves(new List<SnakeBot>() { MySnakeBots[0] }, new List<SnakeBot>() {}, _level.PowerSources, minimaxDepth));
         // actions.AddRange(GetMinimaxMoves(new List<SnakeBot>() { MySnakeBots[1] }, new List<SnakeBot>(), _level.PowerSources, minimaxDepth));
 
-        actions.AddRange(GetMinimaxMoves(new List<SnakeBot>() { snake7 }, new List<SnakeBot>(), _level.PowerSources, minimaxDepth));
+
+
+
 
         return actions;
 

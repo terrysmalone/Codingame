@@ -34,6 +34,8 @@ internal sealed class MinimaxSearch
     {
         var state = new MinimaxGameState(mySnakes, opponentSnakes, powerSources);
 
+        int baselineScore = Evaluate(state);
+
         int bestScore = int.MinValue;
         Dictionary<int, Point>? bestMyMoves = null;
 
@@ -60,7 +62,9 @@ internal sealed class MinimaxSearch
             alpha = Math.Max(alpha, bestScore);
         }
 
-        return new MinimaxResult(bestMyMoves ?? new Dictionary<int, Point>(), bestScore);
+        int relativeScore = bestScore - baselineScore;
+
+        return new MinimaxResult(bestMyMoves ?? new Dictionary<int, Point>(), relativeScore);
     }
 
     private int MinimaxMin(MinimaxGameState state, Dictionary<int, Point> myMoves, int depth, int alpha, int beta)
@@ -328,6 +332,8 @@ internal sealed class MinimaxSearch
 
                     RemoveSegments(mySnake, myLoss);
                     RemoveSegments(oppSnake, oppLoss);
+
+                    if (mySnake.Body.Count == 0) break;
                 }
             }
         }
@@ -353,6 +359,8 @@ internal sealed class MinimaxSearch
                         break;
                     }
                 }
+
+                if (snake.Body.Count == 0) break;
             }
         }
     }

@@ -70,38 +70,36 @@ internal sealed class MinimaxSearch
 
         if (oppMoveCombinations.Count == 0)
         {
-            var nextState = ApplyMoves(state, myMoves, new Dictionary<int, Point>());
+            UndoMove undo = ApplyMoves(state, myMoves, new Dictionary<int, Point>());
 
-            if (depth <= 1)
-            {
-                return Evaluate(nextState);
-            }
+            int score = depth <= 1 ? Evaluate(state) : MinimaxMax(state, depth - 1, alpha, beta);
 
-            return MinimaxMax(nextState, depth - 1, alpha, beta);
+            UndoMoves(state, undo);
+
+            return score;
         }
 
         int worstScore = int.MaxValue;
 
         foreach (var oppMoves in oppMoveCombinations)
         {
-            var nextState = ApplyMoves(state, myMoves, oppMoves);
+            UndoMove undo = ApplyMoves(state, myMoves, oppMoves);
 
-            int score;
-            if (depth <= 1)
-            {
-                score = Evaluate(nextState);
-            }
-            else
-            {
-                score = MinimaxMax(nextState, depth - 1, alpha, beta);
-            }
+            int score = depth <= 1 ? Evaluate(state) : MinimaxMax(state, depth - 1, alpha, beta);
+
+            UndoMoves(state, undo);
 
             if (score < worstScore)
+            {
                 worstScore = score;
+            }
 
             beta = Math.Min(beta, worstScore);
+
             if (beta <= alpha)
+            {
                 break;
+            }
         }
 
         return worstScore;
@@ -253,38 +251,71 @@ internal sealed class MinimaxSearch
         return false;
     }
 
-    private MinimaxGameState ApplyMoves(MinimaxGameState state, Dictionary<int, Point> myMoves, Dictionary<int, Point> oppMoves)
+    private UndoMove ApplyMoves(MinimaxGameState state, Dictionary<int, Point> myMoves, Dictionary<int, Point> oppMoves)
     {
-        var newState = state.Clone();
+        var undo = new UndoMove
+        {
+            SnakeBodies = new List<(int, List<Point>)>(),
+            EatenPowerUps = new HashSet<Point>()
+        };
+
+        // Save snake bodies for undo
+        foreach (var s in state.MySnakes)
+        {
+            undo.SnakeBodies.Add((s.Id, s.Body.ToList()));
+        }
+
+        foreach (var s in state.OpponentSnakes)
+        {
+            undo.SnakeBodies.Add((s.Id, s.Body.ToList()));
+        }
+
         var originalPowerSources = new HashSet<Point>(state.PowerSources);
-        var eatenPowerUps = new HashSet<Point>();
 
-        foreach (var snake in newState.MySnakes)
+        foreach (var snake in state.MySnakes)
         {
-            if (myMoves.TryGetValue(snake.Id, out Point newHead))
+            if (myMoves.TryGetValue(snake.Id, out Point h))
             {
-                MoveSnake(snake, newHead, newState.PowerSources, eatenPowerUps);
+                MoveSnake(snake, h, state.PowerSources, undo.EatenPowerUps);
             }
         }
 
-        foreach (var snake in newState.OpponentSnakes)
+        foreach (var snake in state.OpponentSnakes)
         {
-            if (oppMoves.TryGetValue(snake.Id, out Point newHead))
+            if (oppMoves.TryGetValue(snake.Id, out Point h))
             {
-                MoveSnake(snake, newHead, newState.PowerSources, eatenPowerUps);
+                MoveSnake(snake, h, state.PowerSources, undo.EatenPowerUps);
             }
         }
 
-        foreach (var eaten in eatenPowerUps)
-        { 
-            newState.PowerSources.Remove(eaten);
+        foreach (var eaten in undo.EatenPowerUps)
+        {
+            state.PowerSources.Remove(eaten);
         }
 
-        HandleCollisions(newState, originalPowerSources);
-        ApplyGravityToAll(newState);
-        RemoveOutOfBoundsSnakes(newState);
+        HandleCollisions(state, originalPowerSources);
+        ApplyGravityToAll(state);
+        RemoveOutOfBoundsSnakes(state);
 
-        return newState;
+        return undo;
+    }
+
+    private void UndoMoves(MinimaxGameState state, UndoMove undo)
+    {
+        // Restore power sources
+        foreach (var ps in undo.EatenPowerUps)
+        {
+            state.PowerSources.Add(ps);
+        }
+
+        // Restore all snake bodies
+        foreach (var (id, oldBody) in undo.SnakeBodies)
+        {
+            var snake = state.MySnakes.FirstOrDefault(s => s.Id == id)
+                        ?? state.OpponentSnakes.First(s => s.Id == id);
+                  
+            snake.Body = oldBody;
+        }
     }
 
     private void MoveSnake(MinimaxSnake snake, Point newHead,
@@ -547,60 +578,5 @@ internal sealed class MinimaxSearch
             }
         }
         return minDist;
-    }
-}
-
-internal sealed class MinimaxGameState
-{
-    internal List<MinimaxSnake> MySnakes { get; set; } = new();
-    internal List<MinimaxSnake> OpponentSnakes { get; set; } = new();
-    internal HashSet<Point> PowerSources { get; set; } = new();
-
-    internal MinimaxGameState(List<SnakeBot> mySnakes, List<SnakeBot> oppSnakes, HashSet<Point> powerSources)
-    {
-        MySnakes = mySnakes.Select(s => new MinimaxSnake(s.Id, s.Body)).ToList();
-        OpponentSnakes = oppSnakes.Select(s => new MinimaxSnake(s.Id, s.Body)).ToList();
-        PowerSources = new HashSet<Point>(powerSources);
-    }
-
-    private MinimaxGameState() { }
-
-    internal MinimaxGameState Clone()
-    {
-        return new MinimaxGameState
-        {
-            MySnakes = MySnakes.Select(s => s.Clone()).ToList(),
-            OpponentSnakes = OpponentSnakes.Select(s => s.Clone()).ToList(),
-            PowerSources = new HashSet<Point>(PowerSources)
-        };
-    }
-}
-
-internal sealed class MinimaxSnake
-{
-    internal int Id { get; }
-    internal List<Point> Body { get; set; }
-
-    internal MinimaxSnake(int id, List<Point> body)
-    {
-        Id = id;
-        Body = body.Select(p => new Point(p.X, p.Y)).ToList();
-    }
-
-    internal MinimaxSnake Clone()
-    {
-        return new MinimaxSnake(Id, Body);
-    }
-}
-
-internal sealed class MinimaxResult
-{
-    internal Dictionary<int, Point> BestMoves { get; }
-    internal int Score { get; }
-
-    internal MinimaxResult(Dictionary<int, Point> bestMoves, int score)
-    {
-        BestMoves = bestMoves;
-        Score = score;
     }
 }

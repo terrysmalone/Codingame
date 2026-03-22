@@ -193,7 +193,7 @@ internal class Game
             var opponents = OpponentSnakeBots.Where(s => group.Contains(s.Id)).ToList();
 
             
-            int minimaxDepth = 2;
+            int minimaxDepth = 3;
 
             plans.AddRange(GetMinimaxMoves(mine, opponents, _level.PowerSources, minimaxDepth));
         }
@@ -433,55 +433,81 @@ internal class Game
 
         List<HashSet<int>> minimaxGroups = new List<HashSet<int>>();
 
-        HashSet<int> assignedSnakeIds = new HashSet<int>();
-
+        
         foreach (SnakeBot snake in MySnakeBots)
         {
-            if (assignedSnakeIds.Contains(snake.Id))
-            {
-                continue;
-            }
-
             HashSet<int> group = new HashSet<int>();
             group.Add(snake.Id);
-            assignedSnakeIds.Add(snake.Id);
 
             foreach (SnakeBot otherSnake in MySnakeBots)
             {
-                
-                if (snake.Id == otherSnake.Id || assignedSnakeIds.Contains(otherSnake.Id))
+                if (snake.Id == otherSnake.Id)
                 {
                     continue;
                 }
 
-                
-                
-                int distance = CalculationUtil.GetManhattanDistance(snake.Body[0], otherSnake.Body[0]);
+                int distance = GetClosestBodyPointDistance(snake, otherSnake);
 
                 if (distance <= minimumDistance)
                 {
                     group.Add(otherSnake.Id);
-                    assignedSnakeIds.Add(otherSnake.Id);
                 }
-            }
-
-            foreach (SnakeBot opponentSnake in OpponentSnakeBots)
-            {
-                
-                
-                
-                int distance = CalculationUtil.GetManhattanDistance(snake.Body[0], opponentSnake.Body[0]);
-                if (distance <= minimumDistance)
-                {
-                    group.Add(opponentSnake.Id);
-                    assignedSnakeIds.Add(opponentSnake.Id);
-                }
-            }
+            }        
 
             minimaxGroups.Add(group);
         }
 
+        
+        for (int i = 0; i < minimaxGroups.Count; i++)
+        {
+            for (int j = i + 1; j < minimaxGroups.Count; j++)
+            {
+                if (minimaxGroups[i].Overlaps(minimaxGroups[j]))
+                {
+                    minimaxGroups[i].UnionWith(minimaxGroups[j]);
+                    minimaxGroups.RemoveAt(j);
+                    j--;
+                }
+            }
+        }
+
+        
+        foreach (HashSet<int> group in minimaxGroups)
+        {
+            foreach (int snakeId in group.ToList())
+            {
+                SnakeBot snake = GetSnake(snakeId);
+                foreach (SnakeBot opponentSnake in OpponentSnakeBots)
+                {
+                    int distance = GetClosestBodyPointDistance(snake, opponentSnake);
+                    if (distance <= minimumDistance)
+                    {
+                        group.Add(opponentSnake.Id);
+                    }
+                }
+            }
+        }
+
         return minimaxGroups;
+    }
+
+    private int GetClosestBodyPointDistance(SnakeBot snake, SnakeBot otherSnake)
+    {
+        int minDistance = int.MaxValue;
+
+        foreach (Point bodyPoint in snake.Body)
+        {
+            foreach (Point otherBodyPoint in otherSnake.Body)
+            {
+                int distance = CalculationUtil.GetManhattanDistance(bodyPoint, otherBodyPoint);
+                if (distance < minDistance)
+                {
+                    minDistance = distance;
+                }
+            }
+        }
+
+        return minDistance;
     }
 
     private IEnumerable<string> ConvertToActions(List<Plan> plans)
@@ -499,8 +525,7 @@ internal class Game
 
     private List<Plan> GetMinimaxMoves(List<SnakeBot> mine, List<SnakeBot> opponents, HashSet<Point> powerSources, int minimaxDepth)
     {
-        var minimaxResult = _minimax.GetBestMoves(
-            mine, opponents, _level.PowerSources, minimaxDepth);
+        var minimaxResult = _minimax.GetBestMoves(mine, opponents, _level.PowerSources, minimaxDepth);
 
         if (minimaxResult.BestMoves.Count > 0)
         {
@@ -511,7 +536,7 @@ internal class Game
                 var snakeBot = MySnakeBots.FirstOrDefault(s => s.Id == kvp.Key);
                 if (snakeBot == null) continue;
 
-                minimaxPlans.Add(new Plan(new List<Point> { kvp.Value }, minimaxResult.Score, "minimax", turnsToFruition: 1, snakeBot.Id));
+                minimaxPlans.Add(new Plan(new List<Point> { kvp.Value }, minimaxResult.Score, minimaxResult.Score.ToString(), turnsToFruition: 1, snakeBot.Id));
                 snakeBot.AddMove(kvp.Value);
             }
 
@@ -1691,6 +1716,7 @@ internal static class Logger
         foreach (HashSet<int> group in minimaxGroups)
         {
             Console.Error.WriteLine($"Minimax Group {index}: {string.Join(";", group)}");
+            index++;
         }
     }
 }
@@ -1716,11 +1742,7 @@ internal sealed class MinimaxSearch
         _platformPoints = platformPoints;
     }
 
-    internal MinimaxResult GetBestMoves(
-        List<SnakeBot> mySnakes,
-        List<SnakeBot> opponentSnakes,
-        HashSet<Point> powerSources,
-        int maxDepth)
+    internal MinimaxResult GetBestMoves(List<SnakeBot> mySnakes, List<SnakeBot> opponentSnakes, HashSet<Point> powerSources, int maxDepth)
     {
         var state = new MinimaxGameState(mySnakes, opponentSnakes, powerSources);
 
@@ -1946,8 +1968,7 @@ internal sealed class MinimaxSearch
         return false;
     }
 
-    private MinimaxGameState ApplyMoves(MinimaxGameState state,
-        Dictionary<int, Point> myMoves, Dictionary<int, Point> oppMoves)
+    private MinimaxGameState ApplyMoves(MinimaxGameState state, Dictionary<int, Point> myMoves, Dictionary<int, Point> oppMoves)
     {
         var newState = state.Clone();
         var originalPowerSources = new HashSet<Point>(state.PowerSources);
@@ -2000,68 +2021,97 @@ internal sealed class MinimaxSearch
 
     private void HandleCollisions(MinimaxGameState state, HashSet<Point> originalPowerSources)
     {
-        foreach (var mySnake in state.MySnakes)
+        
+        
+        
+        HashSet<int> collidingSnakeIds = new HashSet<int>();
+
+        foreach (var snake in state.MySnakes)
         {
-            if (mySnake.Body.Count == 0)
+            if (snake.Body.Count == 0)
             {
                 continue;
             }
 
-            foreach (var oppSnake in state.OpponentSnakes)
+            
+            
+
+            if (CollidesWithOtherSnake(state, snake))
             {
-                if (oppSnake.Body.Count == 0) continue;
-
-                if (mySnake.Body[0] == oppSnake.Body[0])
-                {
-                    bool powerUpOnSpot = originalPowerSources.Contains(mySnake.Body[0]);
-
-                    int myLoss;
-                    int oppLoss;
-
-                    if (powerUpOnSpot)
-                    {
-                        myLoss = 1;
-                        oppLoss = 1;
-                    }
-                    else
-                    {
-                        myLoss = mySnake.Body.Count <= 3 ? mySnake.Body.Count : 1;
-                        oppLoss = oppSnake.Body.Count <= 3 ? oppSnake.Body.Count : 1;
-                    }
-
-                    RemoveSegments(mySnake, myLoss);
-                    RemoveSegments(oppSnake, oppLoss);
-
-                    if (mySnake.Body.Count == 0) break;
-                }
+                collidingSnakeIds.Add(snake.Id);                
             }
         }
 
+        foreach (var snake in state.OpponentSnakes)
+        {
+            if (snake.Body.Count == 0)
+            {
+                continue;
+            }
+            if (CollidesWithOtherSnake(state, snake))
+            {
+                collidingSnakeIds.Add(snake.Id);                
+            }
+        }
+
+        foreach (var collidingSnake in collidingSnakeIds)
+        {
+            var mySnake = state.MySnakes.FirstOrDefault(s => s.Id == collidingSnake);
+            if (mySnake != null)
+            {
+                if (mySnake.Body.Count <= 3)
+                {
+                    mySnake.Body.Clear();
+                }
+                else
+                {
+                    RemoveSegments(mySnake, 1);
+                }
+            }
+
+            var oppSnake = state.OpponentSnakes.FirstOrDefault(s => s.Id == collidingSnake);
+            if (oppSnake != null)
+            {
+                if (oppSnake.Body.Count <= 3)
+                {
+                    oppSnake.Body.Clear();
+                }
+                else
+                {
+                    RemoveSegments(oppSnake, 1);
+                }
+            }
+        }
+    }
+
+    private bool CollidesWithOtherSnake(MinimaxGameState state, MinimaxSnake snake)
+    {
         var allSnakes = new List<MinimaxSnake>(state.MySnakes.Count + state.OpponentSnakes.Count);
         allSnakes.AddRange(state.MySnakes);
         allSnakes.AddRange(state.OpponentSnakes);
 
-        foreach (var snake in allSnakes)
+        foreach (var other in allSnakes)
         {
-            if (snake.Body.Count == 0) continue;
-
-            foreach (var other in allSnakes)
+            if (other.Id == snake.Id || other.Body.Count == 0)
             {
-                if (other.Id == snake.Id || other.Body.Count == 0) continue;
+                continue;
+            }
 
-                for (int i = 1; i < other.Body.Count; i++)
+            if (snake.Body[0] == other.Body[0])
+            {
+                return true;
+            }
+
+            for (int i = 0; i < other.Body.Count; i++)
+            {
+                if (snake.Body[0] == other.Body[i])
                 {
-                    if (snake.Body[0] == other.Body[i])
-                    {
-                        int loss = snake.Body.Count <= 3 ? snake.Body.Count : 1;
-                        RemoveSegments(snake, loss);
-                        break;
-                    }
+                    return true;
                 }
-
-                if (snake.Body.Count == 0) break;
             }
         }
+
+        return false;
     }
 
     private void RemoveSegments(MinimaxSnake snake, int count)

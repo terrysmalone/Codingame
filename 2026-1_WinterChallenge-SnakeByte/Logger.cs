@@ -254,6 +254,7 @@ internal static class Logger
         foreach (HashSet<int> group in minimaxGroups)
         {
             Console.Error.WriteLine($"Minimax Group {index}: {string.Join(";", group)}");
+            index++;
         }
     }
 }

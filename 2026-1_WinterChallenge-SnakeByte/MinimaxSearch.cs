@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Xml.Linq;
 
 namespace _2026_1_WinterChallenge_SnakeByte;
 
@@ -26,11 +27,7 @@ internal sealed class MinimaxSearch
         _platformPoints = platformPoints;
     }
 
-    internal MinimaxResult GetBestMoves(
-        List<SnakeBot> mySnakes,
-        List<SnakeBot> opponentSnakes,
-        HashSet<Point> powerSources,
-        int maxDepth)
+    internal MinimaxResult GetBestMoves(List<SnakeBot> mySnakes, List<SnakeBot> opponentSnakes, HashSet<Point> powerSources, int maxDepth)
     {
         var state = new MinimaxGameState(mySnakes, opponentSnakes, powerSources);
 
@@ -256,8 +253,7 @@ internal sealed class MinimaxSearch
         return false;
     }
 
-    private MinimaxGameState ApplyMoves(MinimaxGameState state,
-        Dictionary<int, Point> myMoves, Dictionary<int, Point> oppMoves)
+    private MinimaxGameState ApplyMoves(MinimaxGameState state, Dictionary<int, Point> myMoves, Dictionary<int, Point> oppMoves)
     {
         var newState = state.Clone();
         var originalPowerSources = new HashSet<Point>(state.PowerSources);
@@ -310,68 +306,97 @@ internal sealed class MinimaxSearch
 
     private void HandleCollisions(MinimaxGameState state, HashSet<Point> originalPowerSources)
     {
-        foreach (var mySnake in state.MySnakes)
+        // Collision types
+        // Any snakes head collides with any other snakes head.
+        // Any snake head collides with any other snake body (including its own).
+        HashSet<int> collidingSnakeIds = new HashSet<int>();
+
+        foreach (var snake in state.MySnakes)
         {
-            if (mySnake.Body.Count == 0)
+            if (snake.Body.Count == 0)
             {
                 continue;
             }
 
-            foreach (var oppSnake in state.OpponentSnakes)
+            // MoveSnake already updated the head position and handled power-up eating and growing,
+            // so we don't need to do that here
+
+            if (CollidesWithOtherSnake(state, snake))
             {
-                if (oppSnake.Body.Count == 0) continue;
-
-                if (mySnake.Body[0] == oppSnake.Body[0])
-                {
-                    bool powerUpOnSpot = originalPowerSources.Contains(mySnake.Body[0]);
-
-                    int myLoss;
-                    int oppLoss;
-
-                    if (powerUpOnSpot)
-                    {
-                        myLoss = 1;
-                        oppLoss = 1;
-                    }
-                    else
-                    {
-                        myLoss = mySnake.Body.Count <= 3 ? mySnake.Body.Count : 1;
-                        oppLoss = oppSnake.Body.Count <= 3 ? oppSnake.Body.Count : 1;
-                    }
-
-                    RemoveSegments(mySnake, myLoss);
-                    RemoveSegments(oppSnake, oppLoss);
-
-                    if (mySnake.Body.Count == 0) break;
-                }
+                collidingSnakeIds.Add(snake.Id);                
             }
         }
 
+        foreach (var snake in state.OpponentSnakes)
+        {
+            if (snake.Body.Count == 0)
+            {
+                continue;
+            }
+            if (CollidesWithOtherSnake(state, snake))
+            {
+                collidingSnakeIds.Add(snake.Id);                
+            }
+        }
+
+        foreach (var collidingSnake in collidingSnakeIds)
+        {
+            var mySnake = state.MySnakes.FirstOrDefault(s => s.Id == collidingSnake);
+            if (mySnake != null)
+            {
+                if (mySnake.Body.Count <= 3)
+                {
+                    mySnake.Body.Clear();
+                }
+                else
+                {
+                    RemoveSegments(mySnake, 1);
+                }
+            }
+
+            var oppSnake = state.OpponentSnakes.FirstOrDefault(s => s.Id == collidingSnake);
+            if (oppSnake != null)
+            {
+                if (oppSnake.Body.Count <= 3)
+                {
+                    oppSnake.Body.Clear();
+                }
+                else
+                {
+                    RemoveSegments(oppSnake, 1);
+                }
+            }
+        }
+    }
+
+    private bool CollidesWithOtherSnake(MinimaxGameState state, MinimaxSnake snake)
+    {
         var allSnakes = new List<MinimaxSnake>(state.MySnakes.Count + state.OpponentSnakes.Count);
         allSnakes.AddRange(state.MySnakes);
         allSnakes.AddRange(state.OpponentSnakes);
 
-        foreach (var snake in allSnakes)
+        foreach (var other in allSnakes)
         {
-            if (snake.Body.Count == 0) continue;
-
-            foreach (var other in allSnakes)
+            if (other.Id == snake.Id || other.Body.Count == 0)
             {
-                if (other.Id == snake.Id || other.Body.Count == 0) continue;
+                continue;
+            }
 
-                for (int i = 1; i < other.Body.Count; i++)
+            if (snake.Body[0] == other.Body[0])
+            {
+                return true;
+            }
+
+            for (int i = 0; i < other.Body.Count; i++)
+            {
+                if (snake.Body[0] == other.Body[i])
                 {
-                    if (snake.Body[0] == other.Body[i])
-                    {
-                        int loss = snake.Body.Count <= 3 ? snake.Body.Count : 1;
-                        RemoveSegments(snake, loss);
-                        break;
-                    }
+                    return true;
                 }
-
-                if (snake.Body.Count == 0) break;
             }
         }
+
+        return false;
     }
 
     private void RemoveSegments(MinimaxSnake snake, int count)

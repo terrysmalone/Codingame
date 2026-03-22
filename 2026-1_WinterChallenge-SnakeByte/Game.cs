@@ -135,7 +135,7 @@ internal class Game
             var opponents = OpponentSnakeBots.Where(s => group.Contains(s.Id)).ToList();
 
             // TODO: We'll want to set the depth depending on how many snakes are being checked
-            int minimaxDepth = 2;
+            int minimaxDepth = 3;
 
             plans.AddRange(GetMinimaxMoves(mine, opponents, _level.PowerSources, minimaxDepth));
         }
@@ -375,55 +375,81 @@ internal class Game
 
         List<HashSet<int>> minimaxGroups = new List<HashSet<int>>();
 
-        HashSet<int> assignedSnakeIds = new HashSet<int>();
-
+        // First make groupings of just my snakes that are close to each other
         foreach (SnakeBot snake in MySnakeBots)
         {
-            if (assignedSnakeIds.Contains(snake.Id))
-            {
-                continue;
-            }
-
             HashSet<int> group = new HashSet<int>();
             group.Add(snake.Id);
-            assignedSnakeIds.Add(snake.Id);
 
             foreach (SnakeBot otherSnake in MySnakeBots)
             {
-                // If it's assigned or is the main snake skip it
-                if (snake.Id == otherSnake.Id || assignedSnakeIds.Contains(otherSnake.Id))
+                if (snake.Id == otherSnake.Id)
                 {
                     continue;
                 }
 
-                // TODO: At some point we'll want to consider closeness as the closest point
-                // of any body points
-                int distance = CalculationUtil.GetManhattanDistance(snake.Body[0], otherSnake.Body[0]);
+                int distance = GetClosestBodyPointDistance(snake, otherSnake);
 
                 if (distance <= minimumDistance)
                 {
                     group.Add(otherSnake.Id);
-                    assignedSnakeIds.Add(otherSnake.Id);
                 }
-            }
-
-            foreach (SnakeBot opponentSnake in OpponentSnakeBots)
-            {
-                // TODO: An opponent snake can be assigned to multiple groups if it's close to multiple snakes.
-                // We might want to change this at some point, but for now it should be fine as it means we consider
-                // the opponent snake in multiple minimax searches which is safer.
-                int distance = CalculationUtil.GetManhattanDistance(snake.Body[0], opponentSnake.Body[0]);
-                if (distance <= minimumDistance)
-                {
-                    group.Add(opponentSnake.Id);
-                    assignedSnakeIds.Add(opponentSnake.Id);
-                }
-            }
+            }        
 
             minimaxGroups.Add(group);
         }
 
+        // Merge groups that have the same ids in them
+        for (int i = 0; i < minimaxGroups.Count; i++)
+        {
+            for (int j = i + 1; j < minimaxGroups.Count; j++)
+            {
+                if (minimaxGroups[i].Overlaps(minimaxGroups[j]))
+                {
+                    minimaxGroups[i].UnionWith(minimaxGroups[j]);
+                    minimaxGroups.RemoveAt(j);
+                    j--;
+                }
+            }
+        }
+
+        // Add any opponent snakes that are close to any of my snakes in the groups
+        foreach (HashSet<int> group in minimaxGroups)
+        {
+            foreach (int snakeId in group.ToList())
+            {
+                SnakeBot snake = GetSnake(snakeId);
+                foreach (SnakeBot opponentSnake in OpponentSnakeBots)
+                {
+                    int distance = GetClosestBodyPointDistance(snake, opponentSnake);
+                    if (distance <= minimumDistance)
+                    {
+                        group.Add(opponentSnake.Id);
+                    }
+                }
+            }
+        }
+
         return minimaxGroups;
+    }
+
+    private int GetClosestBodyPointDistance(SnakeBot snake, SnakeBot otherSnake)
+    {
+        int minDistance = int.MaxValue;
+
+        foreach (Point bodyPoint in snake.Body)
+        {
+            foreach (Point otherBodyPoint in otherSnake.Body)
+            {
+                int distance = CalculationUtil.GetManhattanDistance(bodyPoint, otherBodyPoint);
+                if (distance < minDistance)
+                {
+                    minDistance = distance;
+                }
+            }
+        }
+
+        return minDistance;
     }
 
     private IEnumerable<string> ConvertToActions(List<Plan> plans)
@@ -441,8 +467,7 @@ internal class Game
 
     private List<Plan> GetMinimaxMoves(List<SnakeBot> mine, List<SnakeBot> opponents, HashSet<Point> powerSources, int minimaxDepth)
     {
-        var minimaxResult = _minimax.GetBestMoves(
-            mine, opponents, _level.PowerSources, minimaxDepth);
+        var minimaxResult = _minimax.GetBestMoves(mine, opponents, _level.PowerSources, minimaxDepth);
 
         if (minimaxResult.BestMoves.Count > 0)
         {
@@ -453,7 +478,7 @@ internal class Game
                 var snakeBot = MySnakeBots.FirstOrDefault(s => s.Id == kvp.Key);
                 if (snakeBot == null) continue;
 
-                minimaxPlans.Add(new Plan(new List<Point> { kvp.Value }, minimaxResult.Score, "minimax", turnsToFruition: 1, snakeBot.Id));
+                minimaxPlans.Add(new Plan(new List<Point> { kvp.Value }, minimaxResult.Score, minimaxResult.Score.ToString(), turnsToFruition: 1, snakeBot.Id));
                 snakeBot.AddMove(kvp.Value);
             }
 

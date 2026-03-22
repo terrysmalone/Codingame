@@ -14,8 +14,6 @@ namespace _2026_1_WinterChallenge_SnakeByte;
 
 internal class Game
 {
-    private bool FEATURE_POWER_CLUSTERING_ON = true;
-    private bool FEATURE_ENCOURAGE_SPREADING_OUT_ON = true;
     private bool FEATURE_INCREASE_EXCLUDE_MOVES_ON = true;
     private bool FEATURE_BULLYING_ON = true;
 
@@ -136,8 +134,12 @@ internal class Game
             var mine = MySnakeBots.Where(s => group.Contains(s.Id)).ToList();
             var opponents = OpponentSnakeBots.Where(s => group.Contains(s.Id)).ToList();
 
-            // TODO: We'll want to set the depth depending on how many snakes are being checked
             int minimaxDepth = 2;
+
+            if (group.Count > 4)
+            {
+                minimaxDepth = 1;
+            }
 
             plans.AddRange(GetMinimaxMoves(mine, opponents, _level.PowerSources, minimaxDepth));
             Logger.LogTime($"Finished minimax for group with snakes {string.Join(",", group)}");
@@ -146,11 +148,6 @@ internal class Game
         List<string> actions = new List<string>();
         actions.AddRange(ConvertToActions(plans));
         return actions;
-
-
-
-
-
 
         var bullyMode = false;
         if (_level.PowerSources.Count == 1 && GetMyScore() - GetEnemyScore() < 0)
@@ -463,7 +460,7 @@ internal class Game
         {
             actions.Add($"{plan.SnakeID} {DirectionHelper.GetDirection(GetSnake(plan.SnakeID).Body[0], plan.Moves[plan.Moves.Count - 1])} {plan.PlanType}");
 
-            if (Logger.IsLoggingEnabled())
+            if (Logger.IsLoggingEnabled() && !_positionChecker.IsOutOfMapBounds(new Point(plan.Moves[plan.Moves.Count - 1].X, plan.Moves[plan.Moves.Count - 1].Y)))
             { 
                 actions.Add($"MARK {plan.Moves[plan.Moves.Count - 1].X} {plan.Moves[plan.Moves.Count - 1].Y}");
             }
@@ -810,42 +807,11 @@ internal class Game
             scoreChange += ScoreChangeForStuckDirections(newHeadPosition, snakeBot);
             scoreChange += ScoreChangeForPosition(newHeadPosition, snakeBot);
 
-            if (FEATURE_POWER_CLUSTERING_ON)
-            {
-                scoreChange += ScoreChangeForPowerSourceClustering(targetPoint);
-            }
-
-            if (FEATURE_ENCOURAGE_SPREADING_OUT_ON)
-            {
-                scoreChange += ScoreChangeForSpreading(targetPoint, snakeBot);
-            }
-
             plan.Score = plan.Score += scoreChange;
         }
     }
 
-    private int ScoreChangeForPowerSourceClustering(Point targetPoint)
-    {
-        int xMin = Math.Max(0, targetPoint.X - 1);
-        int xMax = Math.Min(Width - 1, targetPoint.X + 1);
-        int yMin = Math.Max(0, targetPoint.Y - 1);
-        int yMax = Math.Min(Height - 1, targetPoint.Y + 1);
-
-        int scoreChange = 0;
-
-        for (int y = yMin; y <= yMax; y++)
-        {
-            for (int x = xMin; x <= xMax; x++)
-            {
-                if (_powerUpPoints.Contains(new Point(x, y)))
-                {
-                    scoreChange += 100;
-                }
-            }
-        }
-
-        return scoreChange;
-    }
+    
 
     private void UpdateScores(Dictionary<Point, int> directionScores, SnakeBot snakeBot)
     {
@@ -859,46 +825,8 @@ internal class Game
             scoreChange += ScoreChangeForStuckDirections(newHeadPosition, snakeBot);
             scoreChange += ScoreChangeForPosition(newHeadPosition, snakeBot);
 
-            if (FEATURE_ENCOURAGE_SPREADING_OUT_ON)
-            {
-                scoreChange += ScoreChangeForSpreading(newHeadPosition, snakeBot);
-            }
-
             directionScores[direction.Key] = directionScores[direction.Key] += scoreChange;
         }
-    }
-
-    private int ScoreChangeForSpreading(Point newHeadPosition, SnakeBot snakeBot)
-    {
-        // We don't want to encourage spreading out of the map
-        if (_positionChecker.IsOutOfMapBounds(newHeadPosition))
-        {
-            return 0;
-        }
-
-        int currentDistanceToClosestAlly = MySnakeBots.Where(s => s.Id != snakeBot.Id)
-                                                      .Select(s => CalculationUtil.GetManhattanDistance(snakeBot.Body[0], s.Body[0]))
-                                                      .DefaultIfEmpty(0)
-                                                      .Min();
-
-        int newDistanceToClosestAlly = MySnakeBots.Where(s => s.Id != snakeBot.Id)
-                                                  .Select(s => CalculationUtil.GetManhattanDistance(newHeadPosition, s.Body[0]))
-                                                  .DefaultIfEmpty(0)
-                                                  .Min();
-
-        // TODO: At some point we should maybe score more based on the distance 
-        int scoreChange = 0;
-
-        if (newDistanceToClosestAlly > currentDistanceToClosestAlly)
-        {
-            scoreChange += (newDistanceToClosestAlly - currentDistanceToClosestAlly) * 50;
-        }
-        else if (newDistanceToClosestAlly < currentDistanceToClosestAlly)
-        {
-            scoreChange -= (currentDistanceToClosestAlly - newDistanceToClosestAlly) * 50;
-        }
-
-        return scoreChange;
     }
 
     private int ScoreChangeForOtherSnakeBodyPositions(Point movePoint, SnakeBot snakeBot)

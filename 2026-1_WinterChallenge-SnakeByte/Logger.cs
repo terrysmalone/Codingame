@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
 using System.Linq;
 
 namespace _2026_1_WinterChallenge_SnakeByte;
@@ -261,5 +262,20 @@ internal static class Logger
     internal static bool IsLoggingEnabled()
     {
         return !DISABLE_LOGGING;
+    }
+
+    internal static void MinimaxScores(string message, List<(int Score, Dictionary<int, Point> Moves)> scoredMoves, int baselineScore)
+    {
+        if (DISABLE_LOGGING)
+        {
+            return;
+        }
+
+        Console.Error.WriteLine(message);
+        for (int i = 0; i < scoredMoves.Count; i++)
+        {
+            var moveDesc = string.Join(", ", scoredMoves[i].Moves.Select(kv => $"Snake {kv.Key} -> ({kv.Value.X},{kv.Value.Y})"));
+            Logger.Message($"Move {i + 1}/{scoredMoves.Count}: Score {scoredMoves[i].Score} (relative {scoredMoves[i].Score - baselineScore}) | Moves: {moveDesc}");
+        }
     }
 }

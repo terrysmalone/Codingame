@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Threading;
 using System.Xml.Linq;
 
 namespace _2026_1_WinterChallenge_SnakeByte;
@@ -33,9 +34,6 @@ internal sealed class MinimaxSearch
 
         int baselineScore = Evaluate(state);
 
-        int bestScore = int.MinValue;
-        Dictionary<int, Point>? bestMyMoves = null;
-
         var myMoveCombinations = GenerateAllMoveCombinations(state.MySnakes, state);
 
         if (myMoveCombinations.Count == 0)
@@ -43,25 +41,50 @@ internal sealed class MinimaxSearch
             return new MinimaxResult(new Dictionary<int, Point>(), 0);
         }
 
-        int alpha = int.MinValue + 1;
-        int beta = int.MaxValue - 1;
+        var scoredMoves = myMoveCombinations.Select(m => (Score: 0, Moves: m)).ToList();
 
-        foreach (var myMoves in myMoveCombinations)
+        Dictionary<int, Point>? bestMoves = null;
+
+        int bestScore = int.MinValue;
+        long startTime = System.Diagnostics.Stopwatch.GetTimestamp();
+
+        for (int depth = 0; depth <= maxDepth; depth++)
         {
-            int score = MinimaxMin(state, myMoves, maxDepth, alpha, beta);
+            int depthBestScore = int.MinValue;
 
-            if (score > bestScore)
+            Dictionary<int, Point>? depthBestMoves = null;
+
+            int alpha = int.MinValue + 1;
+            int beta = int.MaxValue - 1;
+
+            for (int i = 0; i < scoredMoves.Count; i++)
             {
-                bestScore = score;
-                bestMyMoves = myMoves;
+                int score = MinimaxMin(state, scoredMoves[i].Moves, depth, alpha, beta);
+                scoredMoves[i] = (score, scoredMoves[i].Moves);
+
+                if (score > depthBestScore)
+                {
+                    depthBestScore = score;
+                    depthBestMoves = scoredMoves[i].Moves;
+                }
+
+                alpha = Math.Max(alpha, bestScore);
             }
 
-            alpha = Math.Max(alpha, bestScore);
+            bestScore = depthBestScore;
+            bestMoves = depthBestMoves;
+
+            scoredMoves.Sort((a, b) => b.Score.CompareTo(a.Score));
+
+            Logger.Message($"Depth {depth}");
+            // Log all move combinations and scores at this depth
+            //Logger.MinimaxScores($"Depth {depth}", scoredMoves, baselineScore);            
+
+            Logger.LogTime($"Completed depth {depth} with best score {bestScore} (relative {bestScore - baselineScore})");
         }
 
         int relativeScore = bestScore - baselineScore;
-
-        return new MinimaxResult(bestMyMoves ?? new Dictionary<int, Point>(), relativeScore);
+        return new MinimaxResult(bestMoves ?? new Dictionary<int, Point>(), relativeScore);
     }
 
     private int MinimaxMin(MinimaxGameState state, Dictionary<int, Point> myMoves, int depth, int alpha, int beta)
@@ -547,11 +570,18 @@ internal sealed class MinimaxSearch
 
         int score = (myBodyTotal - oppBodyTotal) * 1000;
 
+        // TODO: Add score to encourage attacking enemy snake heads when it benefits mine
+        // i.e. my snake is longer than the opponent or it's on a power source
+
+        // Add score for closeness to power sources
         if (state.PowerSources.Count > 0)
         {
             foreach (var snake in state.MySnakes)
             {
-                if (snake.Body.Count == 0) continue;
+                if (snake.Body.Count == 0)
+                {
+                    continue;
+                }
 
                 int minDist = MinDistanceToPowerSource(snake.Body[0], state.PowerSources);
 

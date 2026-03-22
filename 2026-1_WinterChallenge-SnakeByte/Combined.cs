@@ -72,8 +72,6 @@ internal static class DirectionHelper
 
 internal class Game
 {
-    private bool FEATURE_POWER_CLUSTERING_ON = true;
-    private bool FEATURE_ENCOURAGE_SPREADING_OUT_ON = true;
     private bool FEATURE_INCREASE_EXCLUDE_MOVES_ON = true;
     private bool FEATURE_BULLYING_ON = true;
 
@@ -194,8 +192,12 @@ internal class Game
             var mine = MySnakeBots.Where(s => group.Contains(s.Id)).ToList();
             var opponents = OpponentSnakeBots.Where(s => group.Contains(s.Id)).ToList();
 
-            
             int minimaxDepth = 2;
+
+            if (group.Count > 4)
+            {
+                minimaxDepth = 1;
+            }
 
             plans.AddRange(GetMinimaxMoves(mine, opponents, _level.PowerSources, minimaxDepth));
             Logger.LogTime($"Finished minimax for group with snakes {string.Join(",", group)}");
@@ -204,11 +206,6 @@ internal class Game
         List<string> actions = new List<string>();
         actions.AddRange(ConvertToActions(plans));
         return actions;
-
-
-
-
-
 
         var bullyMode = false;
         if (_level.PowerSources.Count == 1 && GetMyScore() - GetEnemyScore() < 0)
@@ -521,7 +518,7 @@ internal class Game
         {
             actions.Add($"{plan.SnakeID} {DirectionHelper.GetDirection(GetSnake(plan.SnakeID).Body[0], plan.Moves[plan.Moves.Count - 1])} {plan.PlanType}");
 
-            if (Logger.IsLoggingEnabled())
+            if (Logger.IsLoggingEnabled() && !_positionChecker.IsOutOfMapBounds(new Point(plan.Moves[plan.Moves.Count - 1].X, plan.Moves[plan.Moves.Count - 1].Y)))
             { 
                 actions.Add($"MARK {plan.Moves[plan.Moves.Count - 1].X} {plan.Moves[plan.Moves.Count - 1].Y}");
             }
@@ -868,42 +865,11 @@ internal class Game
             scoreChange += ScoreChangeForStuckDirections(newHeadPosition, snakeBot);
             scoreChange += ScoreChangeForPosition(newHeadPosition, snakeBot);
 
-            if (FEATURE_POWER_CLUSTERING_ON)
-            {
-                scoreChange += ScoreChangeForPowerSourceClustering(targetPoint);
-            }
-
-            if (FEATURE_ENCOURAGE_SPREADING_OUT_ON)
-            {
-                scoreChange += ScoreChangeForSpreading(targetPoint, snakeBot);
-            }
-
             plan.Score = plan.Score += scoreChange;
         }
     }
 
-    private int ScoreChangeForPowerSourceClustering(Point targetPoint)
-    {
-        int xMin = Math.Max(0, targetPoint.X - 1);
-        int xMax = Math.Min(Width - 1, targetPoint.X + 1);
-        int yMin = Math.Max(0, targetPoint.Y - 1);
-        int yMax = Math.Min(Height - 1, targetPoint.Y + 1);
-
-        int scoreChange = 0;
-
-        for (int y = yMin; y <= yMax; y++)
-        {
-            for (int x = xMin; x <= xMax; x++)
-            {
-                if (_powerUpPoints.Contains(new Point(x, y)))
-                {
-                    scoreChange += 100;
-                }
-            }
-        }
-
-        return scoreChange;
-    }
+    
 
     private void UpdateScores(Dictionary<Point, int> directionScores, SnakeBot snakeBot)
     {
@@ -917,46 +883,8 @@ internal class Game
             scoreChange += ScoreChangeForStuckDirections(newHeadPosition, snakeBot);
             scoreChange += ScoreChangeForPosition(newHeadPosition, snakeBot);
 
-            if (FEATURE_ENCOURAGE_SPREADING_OUT_ON)
-            {
-                scoreChange += ScoreChangeForSpreading(newHeadPosition, snakeBot);
-            }
-
             directionScores[direction.Key] = directionScores[direction.Key] += scoreChange;
         }
-    }
-
-    private int ScoreChangeForSpreading(Point newHeadPosition, SnakeBot snakeBot)
-    {
-        
-        if (_positionChecker.IsOutOfMapBounds(newHeadPosition))
-        {
-            return 0;
-        }
-
-        int currentDistanceToClosestAlly = MySnakeBots.Where(s => s.Id != snakeBot.Id)
-                                                      .Select(s => CalculationUtil.GetManhattanDistance(snakeBot.Body[0], s.Body[0]))
-                                                      .DefaultIfEmpty(0)
-                                                      .Min();
-
-        int newDistanceToClosestAlly = MySnakeBots.Where(s => s.Id != snakeBot.Id)
-                                                  .Select(s => CalculationUtil.GetManhattanDistance(newHeadPosition, s.Body[0]))
-                                                  .DefaultIfEmpty(0)
-                                                  .Min();
-
-        
-        int scoreChange = 0;
-
-        if (newDistanceToClosestAlly > currentDistanceToClosestAlly)
-        {
-            scoreChange += (newDistanceToClosestAlly - currentDistanceToClosestAlly) * 50;
-        }
-        else if (newDistanceToClosestAlly < currentDistanceToClosestAlly)
-        {
-            scoreChange -= (currentDistanceToClosestAlly - newDistanceToClosestAlly) * 50;
-        }
-
-        return scoreChange;
     }
 
     private int ScoreChangeForOtherSnakeBodyPositions(Point movePoint, SnakeBot snakeBot)
@@ -1730,6 +1658,21 @@ internal static class Logger
     internal static bool IsLoggingEnabled()
     {
         return !DISABLE_LOGGING;
+    }
+
+    internal static void MinimaxScores(string message, List<(int Score, Dictionary<int, Point> Moves)> scoredMoves, int baselineScore)
+    {
+        if (DISABLE_LOGGING)
+        {
+            return;
+        }
+
+        Console.Error.WriteLine(message);
+        for (int i = 0; i < scoredMoves.Count; i++)
+        {
+            var moveDesc = string.Join(", ", scoredMoves[i].Moves.Select(kv => $"Snake {kv.Key} -> ({kv.Value.X},{kv.Value.Y})"));
+            Logger.Message($"Move {i + 1}/{scoredMoves.Count}: Score {scoredMoves[i].Score} (relative {scoredMoves[i].Score - baselineScore}) | Moves: {moveDesc}");
+        }
     }
 }
 
@@ -2770,9 +2713,6 @@ internal sealed class MinimaxSearch
 
         int baselineScore = Evaluate(state);
 
-        int bestScore = int.MinValue;
-        Dictionary<int, Point>? bestMyMoves = null;
-
         var myMoveCombinations = GenerateAllMoveCombinations(state.MySnakes, state);
 
         if (myMoveCombinations.Count == 0)
@@ -2780,25 +2720,50 @@ internal sealed class MinimaxSearch
             return new MinimaxResult(new Dictionary<int, Point>(), 0);
         }
 
-        int alpha = int.MinValue + 1;
-        int beta = int.MaxValue - 1;
+        var scoredMoves = myMoveCombinations.Select(m => (Score: 0, Moves: m)).ToList();
 
-        foreach (var myMoves in myMoveCombinations)
+        Dictionary<int, Point>? bestMoves = null;
+
+        int bestScore = int.MinValue;
+        long startTime = System.Diagnostics.Stopwatch.GetTimestamp();
+
+        for (int depth = 0; depth <= maxDepth; depth++)
         {
-            int score = MinimaxMin(state, myMoves, maxDepth, alpha, beta);
+            int depthBestScore = int.MinValue;
 
-            if (score > bestScore)
+            Dictionary<int, Point>? depthBestMoves = null;
+
+            int alpha = int.MinValue + 1;
+            int beta = int.MaxValue - 1;
+
+            for (int i = 0; i < scoredMoves.Count; i++)
             {
-                bestScore = score;
-                bestMyMoves = myMoves;
+                int score = MinimaxMin(state, scoredMoves[i].Moves, depth, alpha, beta);
+                scoredMoves[i] = (score, scoredMoves[i].Moves);
+
+                if (score > depthBestScore)
+                {
+                    depthBestScore = score;
+                    depthBestMoves = scoredMoves[i].Moves;
+                }
+
+                alpha = Math.Max(alpha, bestScore);
             }
 
-            alpha = Math.Max(alpha, bestScore);
+            bestScore = depthBestScore;
+            bestMoves = depthBestMoves;
+
+            scoredMoves.Sort((a, b) => b.Score.CompareTo(a.Score));
+
+            Logger.Message($"Depth {depth}");
+            
+            
+
+            Logger.LogTime($"Completed depth {depth} with best score {bestScore} (relative {bestScore - baselineScore})");
         }
 
         int relativeScore = bestScore - baselineScore;
-
-        return new MinimaxResult(bestMyMoves ?? new Dictionary<int, Point>(), relativeScore);
+        return new MinimaxResult(bestMoves ?? new Dictionary<int, Point>(), relativeScore);
     }
 
     private int MinimaxMin(MinimaxGameState state, Dictionary<int, Point> myMoves, int depth, int alpha, int beta)
@@ -3284,11 +3249,18 @@ internal sealed class MinimaxSearch
 
         int score = (myBodyTotal - oppBodyTotal) * 1000;
 
+        
+        
+
+        
         if (state.PowerSources.Count > 0)
         {
             foreach (var snake in state.MySnakes)
             {
-                if (snake.Body.Count == 0) continue;
+                if (snake.Body.Count == 0)
+                {
+                    continue;
+                }
 
                 int minDist = MinDistanceToPowerSource(snake.Body[0], state.PowerSources);
 

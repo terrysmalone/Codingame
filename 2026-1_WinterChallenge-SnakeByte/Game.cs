@@ -129,15 +129,18 @@ internal class Game
         List<HashSet<int>> minimaxGroups = CreateMinimaxGroupings();
         Logger.AssignedMinimaxGroups(minimaxGroups);
 
+        Logger.LogTime("Created minimax groupings");
+
         foreach (HashSet<int> group in minimaxGroups)
         {
             var mine = MySnakeBots.Where(s => group.Contains(s.Id)).ToList();
             var opponents = OpponentSnakeBots.Where(s => group.Contains(s.Id)).ToList();
 
             // TODO: We'll want to set the depth depending on how many snakes are being checked
-            int minimaxDepth = 3;
+            int minimaxDepth = 2;
 
             plans.AddRange(GetMinimaxMoves(mine, opponents, _level.PowerSources, minimaxDepth));
+            Logger.LogTime($"Finished minimax for group with snakes {string.Join(",", group)}");
         }
 
         List<string> actions = new List<string>();
@@ -458,8 +461,12 @@ internal class Game
 
         foreach (Plan plan in plans)
         {
-            actions.Add($"{plan.SnakeID} {DirectionHelper.GetDirection(GetSnake(plan.SnakeID).Body[0], plan.Moves[plan.Moves.Count-1])} {plan.PlanType}");
-            actions.Add($"MARK {plan.Moves[plan.Moves.Count-1].X} {plan.Moves[plan.Moves.Count-1].Y}");
+            actions.Add($"{plan.SnakeID} {DirectionHelper.GetDirection(GetSnake(plan.SnakeID).Body[0], plan.Moves[plan.Moves.Count - 1])} {plan.PlanType}");
+
+            if (Logger.IsLoggingEnabled())
+            { 
+                actions.Add($"MARK {plan.Moves[plan.Moves.Count - 1].X} {plan.Moves[plan.Moves.Count - 1].Y}");
+            }
         }
 
         return actions;

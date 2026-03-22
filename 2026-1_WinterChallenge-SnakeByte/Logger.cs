@@ -257,4 +257,9 @@ internal static class Logger
             index++;
         }
     }
+
+    internal static bool IsLoggingEnabled()
+    {
+        return !DISABLE_LOGGING;
+    }
 }

@@ -411,23 +411,46 @@ internal sealed class MinimaxSearch
         allSnakes.AddRange(state.MySnakes);
         allSnakes.AddRange(state.OpponentSnakes);
 
-        foreach (var snake in allSnakes)
+        var gravityPoints = new HashSet<Point>(_platformPoints);
+
+        foreach (var ps in state.PowerSources)
         {
-            if (snake.Body.Count == 0) continue;
-
-            var gravityPoints = new HashSet<Point>(_platformPoints);
-
-            foreach (var other in allSnakes)
+            gravityPoints.Add(ps);
+        }
+        
+        foreach (MinimaxSnake snake in allSnakes)
+        {
+            if (snake.Body.Count == 0)
             {
-                if (other.Id == snake.Id || other.Body.Count == 0) continue;
-                foreach (var bp in other.Body)
-                    gravityPoints.Add(bp);
+                continue;
             }
 
-            foreach (var ps in state.PowerSources)
-                gravityPoints.Add(ps);
+            foreach (Point bodyPoint in snake.Body)
+            {
+                gravityPoints.Add(bodyPoint);
+            }
+        }
+
+        foreach (var snake in allSnakes)
+        {
+            if (snake.Body.Count == 0)
+            {
+                continue;
+            }
+
+            // Remove the snake's own body points from the gravity points
+            foreach (var bodyPoint in snake.Body)
+            {
+                gravityPoints.Remove(bodyPoint);
+            }
 
             ApplyGravity(snake, gravityPoints);
+
+            // Add the snake's body points back to the gravity points for the next snake
+            foreach (var bodyPoint in snake.Body)
+            {
+                gravityPoints.Add(bodyPoint);
+            }
         }
     }
 

@@ -872,7 +872,8 @@ internal sealed class MinimaxSearch
             }
         }
 
-        // Negative score for me getting trapped, bonus for enemy getting trapped.
+        // Flood fill: trap detection + mobility bonus
+        // Use a higher cutoff so we also measure freedom of movement beyond just survival
         BuildFloodBlockedSet(state);
 
         foreach (var snake in state.MySnakes)
@@ -882,11 +883,19 @@ internal sealed class MinimaxSearch
                 continue;
             }
 
-            int reachable = FloodFillReachable(snake.Body[0], snake.Body.Count);
+            int mobilityCutoff = snake.Body.Count + 6;
+            int reachable = FloodFillReachable(snake.Body[0], mobilityCutoff);
 
             if (reachable < snake.Body.Count)
             {
+                // Trapped: severe penalty
                 score -= (snake.Body.Count - reachable) * 1500;
+            }
+            else
+            {
+                // Mobility bonus: reward extra space beyond the minimum needed to survive
+                int extraSpace = reachable - snake.Body.Count;
+                score += extraSpace * 30;
             }
         }
 
@@ -897,11 +906,68 @@ internal sealed class MinimaxSearch
                 continue;
             }
 
-            int reachable = FloodFillReachable(snake.Body[0], snake.Body.Count);
+            int mobilityCutoff = snake.Body.Count + 6;
+            int reachable = FloodFillReachable(snake.Body[0], mobilityCutoff);
 
             if (reachable < snake.Body.Count)
             {
                 score += (snake.Body.Count - reachable) * 1500;
+            }
+            else
+            {
+                int extraSpace = reachable - snake.Body.Count;
+                score -= extraSpace * 30;
+            }
+        }
+
+        // Height advantage: prefer higher positions (lower Y) since gravity pulls down
+        foreach (var snake in state.MySnakes)
+        {
+            if (snake.Body.Count == 0)
+            {
+                continue;
+            }
+
+            score += (_height - snake.Body[0].Y) * 15;
+        }
+
+        foreach (var snake in state.OpponentSnakes)
+        {
+            if (snake.Body.Count == 0)
+            {
+                continue;
+            }
+            score -= (_height - snake.Body[0].Y) * 15;
+        }
+
+        // Opponent distance pressure: hunt when bigger, flee when smaller
+        foreach (var mySnake in state.MySnakes)
+        {
+            if (mySnake.Body.Count == 0)
+            {
+                continue;
+            }
+
+            foreach (var oppSnake in state.OpponentSnakes)
+            {
+                if (oppSnake.Body.Count == 0)
+                {
+                    continue;
+                }
+
+                int dist = Math.Abs(mySnake.Body[0].X - oppSnake.Body[0].X)
+                         + Math.Abs(mySnake.Body[0].Y - oppSnake.Body[0].Y);
+
+                if (mySnake.Body.Count > oppSnake.Body.Count)
+                {
+                    // I'm bigger: reward being closer (hunt)
+                    score += Math.Max(0, 15 - dist) * 20;
+                }
+                else if (mySnake.Body.Count < oppSnake.Body.Count)
+                {
+                    // I'm smaller: reward being farther (flee)
+                    score += Math.Min(dist, 15) * 20;
+                }
             }
         }
 

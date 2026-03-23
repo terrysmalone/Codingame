@@ -213,173 +213,6 @@ internal class Game
         List<string> actions = new List<string>();
         actions.AddRange(ConvertToActions(plans));
         return actions;
-
-        var bullyMode = false;
-        if (_level.PowerSources.Count == 1 && GetMyScore() - GetEnemyScore() < 0)
-        {
-            bullyMode = true;
-        }
-
-        _closestSnakeToPowerSourceMap = _positionChecker.GetClosestPowerSourceToOpponentSnakeMap();
-
-        
-        
-        _powerUpPoints = _level.PowerSources;
-
-        foreach (var snakeBot in MySnakeBots)
-        {
-            snakeBot.ClearAllPlans();
-        }
-
-        foreach (var snakeBot in MySnakeBots)
-        {
-            _solidPoints = BuildSolidPoints(snakeBot.Id, _powerUpPoints);
-            
-            snakeBot.ClearCheckedPowerSources();
-
-            Logger.LogTime($"STARTING FOR SNAKEBOT {snakeBot.Id}. Position:{snakeBot.Body[0].X},{snakeBot.Body[0].Y}");
-            
-            HashSet<Point> excludePoints = new HashSet<Point>();
-
-            
-            var possibleMoves = new List<Point>()
-            {
-                new Point(snakeBot.Body[0].X + 1, snakeBot.Body[0].Y),
-                new Point(snakeBot.Body[0].X - 1, snakeBot.Body[0].Y),
-                new Point(snakeBot.Body[0].X, snakeBot.Body[0].Y + 1),
-                new Point(snakeBot.Body[0].X, snakeBot.Body[0].Y - 1)
-            };       
-
-            if (snakeBot.IsStuck())
-            {
-                excludePoints.Add(snakeBot.GetLastMove());
-            }
-
-            if (FEATURE_BULLYING_ON)
-            {
-                List<Plan> bullyPlans = GetBullyPlans(snakeBot, bullyMode, excludePoints);
-                snakeBot.AddPlans(bullyPlans);
-
-                
-                if (bullyMode && bullyPlans.Count > 0)
-                {
-                    continue;
-                }
-            }
-
-            
-            if (!bullyMode)
-            {
-                List<Plan> bestPlansToPowerSources = GetBestPlansToPowerSources(snakeBot, excludePoints);
-
-                snakeBot.AddPlans(bestPlansToPowerSources);
-            }
-
-            List<Plan> climbableLedgePlans = GetClimbableLedgePlans(snakeBot, excludePoints);
-            snakeBot.AddPlans(climbableLedgePlans);
-
-            List<Plan> validPlans = GetValidDirectionPointPlans(snakeBot);
-            snakeBot.AddPlans(validPlans);
-               
-            Logger.LogTime($"Finished checking valid directions. Added {validPlans.Count} plans");
-        }
-
-        
-        Dictionary<List<Plan>, int> planCombinations = GetAllPlanCombinations();
-        
-        
-
-        Logger.LogTime($"Got all plan combinations: {planCombinations.Count}");
-
-        
-        foreach (var planCombination in planCombinations.OrderByDescending(pc => pc.Value))
-        {
-            HashSet<Point> plannedStartMoves = new HashSet<Point>();
-            Dictionary<Point, int> plannedEndMoves = new Dictionary<Point, int>();
-            bool clash = false;
-
-            
-            
-            Point? lastPowerSource = null;
-
-            if (bullyMode)
-            {
-                lastPowerSource = _level.PowerSources.First();
-            }
-
-
-            foreach (var plan in planCombination.Key)
-            {
-                Point endMovePoint = plan.Moves[plan.Moves.Count - 1];
-
-                var endMoveClash = false;
-
-                foreach (var plannedEndMove in plannedEndMoves)
-                {
-                    if (plannedEndMove.Key == endMovePoint
-                        && plannedEndMove.Value < 5
-                        && plan.Moves.Count < 5)
-                    {
-                        endMoveClash = true;
-                    }
-                }
-
-
-
-                if (plannedStartMoves.Contains(plan.Moves[0])
-                    || endMoveClash
-                    || lastPowerSource == plan.Moves[0])
-                {
-                    clash = true;
-                }
-                else
-                {
-                    plannedStartMoves.Add(plan.Moves[0]);
-
-                    if (plannedEndMoves.ContainsKey(endMovePoint))
-                    {
-                        plannedEndMoves[endMovePoint] = Math.Max(plannedEndMoves[endMovePoint], plan.Moves.Count);
-                    }
-                    else
-                    {
-                        plannedEndMoves.Add(endMovePoint, plan.Moves.Count);
-                    }
-                }
-            }
-
-            if (!clash)
-            {
-                Logger.LogTime($"Chose plan combination with score {planCombination.Value}");
-
-                foreach (Plan? plan in planCombination.Key)
-                {
-                    var snakeBot = MySnakeBots.First(s => s.Id == plan.SnakeID);
-
-                    string direction = DirectionHelper.GetDirection(snakeBot.Body[0], plan.Moves[0]);
-                    
-                    actions.Add($"{snakeBot.Id} {direction} {plan.PlanType}");
-
-                    snakeBot.AddMove(plan.Moves[0]);
-
-                    Point planTarget = plan.Moves[plan.Moves.Count - 1];
-                    if (!_positionChecker.IsOutOfMapBounds(planTarget))
-                    {
-                        actions.Add($"MARK {planTarget.X} {planTarget.Y}");
-                    }
-
-                    Logger.Message($"Chose plan {plan.PlanType} with score {plan.Score} and direction {direction}");
-
-                }
-                break;
-            }
-        }
-
-        if (actions.Count == 0)
-        {
-            actions.Add("WAIT");
-        }
-
-        return actions;
     }
 
     private List<HashSet<int>> CreateMinimaxGroupings()
@@ -1013,8 +846,8 @@ internal class Level
 
 internal static class Logger    
 {
-    private static bool DISABLE_LOGGING = false;
-    private static bool DISABLE_TIMES = false;
+    private static bool DISABLE_LOGGING = true;
+    private static bool DISABLE_TIMES = true;
 
     private static long _roundStartTime;
     private static long _lastTimedLog;
@@ -3160,6 +2993,7 @@ internal sealed class MinimaxSearch
         }
 
         
+        
         BuildFloodBlockedSet(state);
 
         foreach (var snake in state.MySnakes)
@@ -3169,23 +3003,91 @@ internal sealed class MinimaxSearch
                 continue;
             }
 
-            int reachable = FloodFillReachable(snake.Body[0], snake.Body.Count);
+            int mobilityCutoff = snake.Body.Count + 6;
+            int reachable = FloodFillReachable(snake.Body[0], mobilityCutoff);
 
             if (reachable < snake.Body.Count)
             {
+                
                 score -= (snake.Body.Count - reachable) * 1500;
+            }
+            else
+            {
+                
+                int extraSpace = reachable - snake.Body.Count;
+                score += extraSpace * 30;
             }
         }
 
         foreach (var snake in state.OpponentSnakes)
         {
-            if (snake.Body.Count == 0) continue;
+            if (snake.Body.Count == 0)
+            {
+                continue;
+            }
 
-            int reachable = FloodFillReachable(snake.Body[0], snake.Body.Count);
+            int mobilityCutoff = snake.Body.Count + 6;
+            int reachable = FloodFillReachable(snake.Body[0], mobilityCutoff);
 
             if (reachable < snake.Body.Count)
             {
                 score += (snake.Body.Count - reachable) * 1500;
+            }
+            else
+            {
+                int extraSpace = reachable - snake.Body.Count;
+                score -= extraSpace * 30;
+            }
+        }
+
+        
+        foreach (var snake in state.MySnakes)
+        {
+            if (snake.Body.Count == 0)
+            {
+                continue;
+            }
+
+            score += (_height - snake.Body[0].Y) * 15;
+        }
+
+        foreach (var snake in state.OpponentSnakes)
+        {
+            if (snake.Body.Count == 0)
+            {
+                continue;
+            }
+            score -= (_height - snake.Body[0].Y) * 15;
+        }
+
+        
+        foreach (var mySnake in state.MySnakes)
+        {
+            if (mySnake.Body.Count == 0)
+            {
+                continue;
+            }
+
+            foreach (var oppSnake in state.OpponentSnakes)
+            {
+                if (oppSnake.Body.Count == 0)
+                {
+                    continue;
+                }
+
+                int dist = Math.Abs(mySnake.Body[0].X - oppSnake.Body[0].X)
+                         + Math.Abs(mySnake.Body[0].Y - oppSnake.Body[0].Y);
+
+                if (mySnake.Body.Count > oppSnake.Body.Count)
+                {
+                    
+                    score += Math.Max(0, 15 - dist) * 20;
+                }
+                else if (mySnake.Body.Count < oppSnake.Body.Count)
+                {
+                    
+                    score += Math.Min(dist, 15) * 20;
+                }
             }
         }
 

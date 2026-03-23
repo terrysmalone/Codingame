@@ -12,6 +12,8 @@ internal sealed class MinimaxSearch
     private int _attackedBigger = 0;
     private int _attackedSmaller = 0;
 
+    private int _evaluationsThisDepth = 0;
+
     private readonly int _width;
     private readonly int _height;
     private readonly HashSet<Point> _platformPoints;
@@ -33,7 +35,7 @@ internal sealed class MinimaxSearch
 
     internal MinimaxResult GetBestMoves(List<SnakeBot> mySnakes, List<SnakeBot> opponentSnakes, HashSet<Point> powerSources, int maxDepth)
     {
-         Logger.Snakes("My snakes", mySnakes);
+        Logger.Snakes("My snakes", mySnakes);
         // Logger.Snakes("Enemy snakes", opponentSnakes);
 
         var state = new MinimaxGameState(mySnakes, opponentSnakes, powerSources);
@@ -58,6 +60,8 @@ internal sealed class MinimaxSearch
 
         for (int depth = 0; depth <= maxDepth; depth++)
         {
+            _evaluationsThisDepth = 0;
+
             int depthBestScore = int.MinValue;
 
             Dictionary<int, Point>? depthBestMoves = null;
@@ -84,8 +88,10 @@ internal sealed class MinimaxSearch
 
             scoredMoves.Sort((a, b) => b.Score.CompareTo(a.Score));
 
-            Logger.MinimaxScores($"Depth {depth}", scoredMoves, baselineScore);            
-
+            Logger.Message($"Depth {depth} evaluations: {_evaluationsThisDepth}");
+                            
+            Logger.MinimaxScores($"Depth {depth}", scoredMoves, baselineScore);
+            
             Logger.LogTime($"Completed depth {depth} with best score {bestScore} (relative {bestScore - baselineScore})");
         }
 
@@ -111,7 +117,7 @@ internal sealed class MinimaxSearch
         int worstScore = int.MaxValue;
 
         foreach (var oppMoves in oppMoveCombinations)
-        {
+        {           
             UndoMove undo = ApplyMoves(state, myMoves, oppMoves);
 
             int score = depth <= 1 ? Evaluate(state) : MinimaxMax(state, depth - 1, alpha, beta);
@@ -126,7 +132,7 @@ internal sealed class MinimaxSearch
             beta = Math.Min(beta, worstScore);
 
             if (beta <= alpha)
-            {
+            {                
                 break;
             }
         }
@@ -170,10 +176,8 @@ internal sealed class MinimaxSearch
             }
 
             var validMoves = GetValidMoves(snake, state);
-            if (validMoves.Count > 0)
-            {
-                movesPerSnake.Add((snake.Id, validMoves));
-            }
+            movesPerSnake.Add((snake.Id, validMoves));
+
         }
 
         if (movesPerSnake.Count == 0)
@@ -212,7 +216,9 @@ internal sealed class MinimaxSearch
 
     private List<Point> GetValidMoves(MinimaxSnake snake, MinimaxGameState state)
     {
-        var validMoves = new List<Point>(4);
+        var safeMoves = new List<Point>();
+        var unsafeMoves = new List<Point>();
+
         Point head = snake.Body[0];
 
         foreach (var offset in MoveOffsets)
@@ -220,21 +226,34 @@ internal sealed class MinimaxSearch
             Point newHead = new Point(head.X + offset.X, head.Y + offset.Y);
 
             if (newHead.X < -1 || newHead.X > _width || newHead.Y < -1 || newHead.Y > _height)
+            {
                 continue;
+            }
 
-            if (IsInMapBounds(newHead) && _platformPoints.Contains(newHead))
+            if(newHead == snake.Body[1])
+            {
                 continue;
+            }
 
-            if (IsBlockedBySnake(newHead, snake.Id, state))
-                continue;
 
-            if (IsSelfCollision(newHead, snake.Body))
-                continue;
-
-            validMoves.Add(newHead);
+            if ((IsInMapBounds(newHead) && _platformPoints.Contains(newHead))
+                || IsBlockedBySnake(newHead, snake.Id, state)
+                || IsSelfCollision(newHead, snake.Body))
+            {
+                unsafeMoves.Add(newHead);
+            }
+            else
+            {
+                safeMoves.Add(newHead);
+            }
         }
 
-        return validMoves;
+        if (safeMoves.Count == 0)
+        {
+            Logger.Message($"Snake {snake.Id} has no safe moves, considering unsafe moves: {string.Join(", ", unsafeMoves)}");
+        }
+
+        return safeMoves.Count > 0 ? safeMoves : unsafeMoves;
     }
 
     private bool IsInMapBounds(Point p)
@@ -276,6 +295,9 @@ internal sealed class MinimaxSearch
 
     private UndoMove ApplyMoves(MinimaxGameState state, Dictionary<int, Point> myMoves, Dictionary<int, Point> oppMoves)
     {
+        _attackedBigger = 0;
+        _attackedSmaller = 0;
+
         int myCount = state.MySnakes.Count;
         int oppCount = state.OpponentSnakes.Count;
         var changes = new SnakeChange[myCount + oppCount];
@@ -431,7 +453,8 @@ internal sealed class MinimaxSearch
 
         for (int i = 0; i < state.MySnakes.Count; i++)
         {
-            if (state.MySnakes[i].Body.Count > 0 && CollidesWithOtherSnake(state, state.MySnakes[i]))
+            if (state.MySnakes[i].Body.Count > 0 
+                && (CollidesWithOtherSnake(state, state.MySnakes[i]) || _platformPoints.Contains(state.MySnakes[i].Body[0])))
             {
                 collidingIds.Add(state.MySnakes[i].Id);
             }
@@ -439,7 +462,8 @@ internal sealed class MinimaxSearch
 
         for (int i = 0; i < state.OpponentSnakes.Count; i++)
         {
-            if (state.OpponentSnakes[i].Body.Count > 0 && CollidesWithOtherSnake(state, state.OpponentSnakes[i]))
+            if (state.OpponentSnakes[i].Body.Count > 0 
+                && (CollidesWithOtherSnake(state, state.OpponentSnakes[i]) || _platformPoints.Contains(state.OpponentSnakes[i].Body[0])))
             {
                 collidingIds.Add(state.OpponentSnakes[i].Id);
             }
@@ -467,7 +491,7 @@ internal sealed class MinimaxSearch
 
     private bool CollidesWithOtherSnake(MinimaxGameState state, MinimaxSnake snake)
     {
-        bool mySnake = state.MySnakes.Any(s => s.Id == snake.Id);
+        bool checkingMySnake = state.MySnakes.Any(s => s.Id == snake.Id);
         
         var allSnakes = new List<MinimaxSnake>(state.MySnakes.Count + state.OpponentSnakes.Count);
         allSnakes.AddRange(state.MySnakes);
@@ -480,12 +504,12 @@ internal sealed class MinimaxSearch
                 continue;
             }
 
-            bool enemySnake = state.OpponentSnakes.Any(s => s.Id == other.Id);
+            bool isEnemySnake = state.OpponentSnakes.Any(s => s.Id == other.Id);
 
 
             if (other.Id != snake.Id && snake.Body[0] == other.Body[0])
             {
-                if (mySnake && enemySnake)
+                if (checkingMySnake && isEnemySnake)
                 {
                     if (snake.Body.Count > other.Body.Count)
                     {
@@ -611,6 +635,7 @@ internal sealed class MinimaxSearch
 
     private int Evaluate(MinimaxGameState state)
     {
+        _evaluationsThisDepth++;
         int myBodyTotal = 0;
         int oppBodyTotal = 0;
 
@@ -626,14 +651,9 @@ internal sealed class MinimaxSearch
 
         int score = (myBodyTotal - oppBodyTotal) * 1000;
 
+        // Encourage attacking snakes when I'm longer than them, and discourage it when I'm shorter than them
         score += _attackedBigger * 500;
         score -= _attackedSmaller * 500;
-
-        // Encourage destroying snakes when I'm longer than them, and discourage it when I'm shorter than them
-
-
-        // TODO: Add score to encourage attacking enemy snake heads when it benefits mine
-        // i.e. my snake is longer than the opponent or it's on a power source
 
         // Add score for closeness to power sources
         if (state.PowerSources.Count > 0)

@@ -140,11 +140,12 @@ internal class Game
             {
                 minimaxDepth = 1;
             }
-
-            if (group.Count == 1)
+            else if (group.Count == 1)
             {
                 minimaxDepth = 5;
             }
+
+            
 
             plans.AddRange(GetMinimaxMoves(mine, opponents, _level.PowerSources, minimaxDepth));
             Logger.LogTime($"Finished minimax for group with snakes {string.Join(",", group)}");

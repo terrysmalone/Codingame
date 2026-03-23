@@ -8,7 +8,7 @@ namespace _2026_1_WinterChallenge_SnakeByte;
 
 internal static class Logger    
 {
-    private static bool DISABLE_LOGGING = false;
+    private static bool DISABLE_LOGGING = true;
     private static bool DISABLE_TIMES = false;
 
     private static long _roundStartTime;

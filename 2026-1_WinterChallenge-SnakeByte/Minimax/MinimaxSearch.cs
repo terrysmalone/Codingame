@@ -233,12 +233,6 @@ internal sealed class MinimaxSearch
         var (id, moves) = movesPerSnake[index];
         foreach (var move in moves)
         {
-            // Don't generate combinations where two snakes move to the same point
-            if (current.Values.Contains(move))
-            {
-                continue;
-            }
-
             current[id] = move;
             BuildCombinations(movesPerSnake, index + 1, current, results);
         }

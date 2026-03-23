@@ -2728,12 +2728,6 @@ internal sealed class MinimaxSearch
         var (id, moves) = movesPerSnake[index];
         foreach (var move in moves)
         {
-            
-            if (current.Values.Contains(move))
-            {
-                continue;
-            }
-
             current[id] = move;
             BuildCombinations(movesPerSnake, index + 1, current, results);
         }

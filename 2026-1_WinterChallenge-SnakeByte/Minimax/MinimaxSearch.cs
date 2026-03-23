@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
 using System.Threading;
@@ -14,6 +15,10 @@ internal sealed class MinimaxSearch
 
     private int _evaluationsThisDepth = 0;
     private int _ttHits = 0;
+
+    private long _searchStartTime;
+    private double _timeLimitMs;
+    private bool _searchAborted;
 
     private readonly TranspositionTable _transpositionTable = new TranspositionTable();
 
@@ -41,18 +46,23 @@ internal sealed class MinimaxSearch
         _platformPoints = platformPoints;
     }
 
-    internal MinimaxResult GetBestMoves(List<SnakeBot> mySnakes, List<SnakeBot> opponentSnakes, HashSet<Point> powerSources, int maxDepth)
+    private bool IsTimeUp() =>
+        Stopwatch.GetElapsedTime(_searchStartTime).TotalMilliseconds >= _timeLimitMs;
+
+    internal MinimaxResult GetBestMoves(List<SnakeBot> mySnakes, List<SnakeBot> opponentSnakes, HashSet<Point> powerSources, int maxDepth, double timeLimitMs)
     {
         Logger.Snakes("My snakes", mySnakes);
         // Logger.Snakes("Enemy snakes", opponentSnakes);
+
+        _searchStartTime = Stopwatch.GetTimestamp();
+        _timeLimitMs = timeLimitMs;
+        _searchAborted = false;
 
         var state = new MinimaxGameState(mySnakes, opponentSnakes, powerSources);
 
         int baselineScore = Evaluate(state);
 
         var myMoveCombinations = GenerateAllMoveCombinations(state.MySnakes, state);
-
-        // Logger.Message($"Generated {myMoveCombinations.Count} move combinations for my snakes");
 
         if (myMoveCombinations.Count == 0)
         {
@@ -62,9 +72,7 @@ internal sealed class MinimaxSearch
         var scoredMoves = myMoveCombinations.Select(m => (Score: 0, Moves: m)).ToList();
 
         Dictionary<int, Point>? bestMoves = null;
-
         int bestScore = int.MinValue;
-        long startTime = System.Diagnostics.Stopwatch.GetTimestamp();
 
         _transpositionTable.Clear();
 
@@ -72,9 +80,9 @@ internal sealed class MinimaxSearch
         {
             _evaluationsThisDepth = 0;
             _ttHits = 0;
+            _searchAborted = false;
 
             int depthBestScore = int.MinValue;
-
             Dictionary<int, Point>? depthBestMoves = null;
 
             int alpha = int.MinValue + 1;
@@ -83,6 +91,12 @@ internal sealed class MinimaxSearch
             for (int i = 0; i < scoredMoves.Count; i++)
             {
                 int score = MinimaxMin(state, scoredMoves[i].Moves, depth, alpha, beta);
+
+                if (_searchAborted)
+                {
+                    break;
+                }
+
                 scoredMoves[i] = (score, scoredMoves[i].Moves);
 
                 if (score > depthBestScore)
@@ -94,16 +108,25 @@ internal sealed class MinimaxSearch
                 alpha = Math.Max(alpha, depthBestScore);
             }
 
+            if (_searchAborted)
+            {
+                Logger.LogTime($"Depth {depth} aborted due to time limit ({_evaluationsThisDepth} evals)");
+                break;
+            }
+
             bestScore = depthBestScore;
             bestMoves = depthBestMoves;
 
             scoredMoves.Sort((a, b) => b.Score.CompareTo(a.Score));
 
             Logger.Message($"Depth {depth} evaluations: {_evaluationsThisDepth}, TT hits: {_ttHits}");
-                            
-            // Logger.MinimaxScores($"Depth {depth}", scoredMoves, baselineScore);
-            
             Logger.LogTime($"Completed depth {depth} with best score {bestScore} (relative {bestScore - baselineScore})");
+
+            if (IsTimeUp())
+            {
+                Logger.LogTime($"Time limit reached after completing depth {depth}");
+                break;
+            }
         }
 
         int relativeScore = bestScore - baselineScore;
@@ -112,6 +135,11 @@ internal sealed class MinimaxSearch
 
     private int MinimaxMin(MinimaxGameState state, Dictionary<int, Point> myMoves, int depth, int alpha, int beta)
     {
+        if (_searchAborted)
+        {
+            return 0;
+        }
+
         var oppMoveCombinations = GenerateAllMoveCombinations(state.OpponentSnakes, state);
 
         if (oppMoveCombinations.Count == 0)
@@ -132,12 +160,17 @@ internal sealed class MinimaxSearch
         int worstScore = int.MaxValue;
 
         foreach (var oppMoves in oppMoveCombinations)
-        {           
+        {
             UndoMove undo = ApplyMoves(state, myMoves, oppMoves);
 
             int score = depth <= 1 ? Evaluate(state) : MinimaxMax(state, depth - 1, alpha, beta);
 
             UndoMoves(state, undo);
+
+            if (_searchAborted)
+            { 
+                return 0;
+            }
 
             if (score < worstScore)
             {
@@ -179,6 +212,17 @@ internal sealed class MinimaxSearch
 
     private int MinimaxMax(MinimaxGameState state, int depth, int alpha, int beta)
     {
+        if (_searchAborted)
+        {
+            return 0;
+        }
+
+        if (IsTimeUp())
+        {
+            _searchAborted = true;
+            return 0;
+        }
+
         ulong hash = ComputeStateHash(state);
         int origAlpha = alpha;
 
@@ -222,6 +266,11 @@ internal sealed class MinimaxSearch
         foreach (var myMoves in myMoveCombinations)
         {
             int score = MinimaxMin(state, myMoves, depth, alpha, beta);
+
+            if (_searchAborted)
+            {
+                return 0;
+            }
 
             if (score > bestScore)
                 bestScore = score;
@@ -326,11 +375,6 @@ internal sealed class MinimaxSearch
             {
                 safeMoves.Add(newHead);
             }
-        }
-
-        if (safeMoves.Count == 0)
-        {
-            Logger.Message($"Snake {snake.Id} has no safe moves, considering unsafe moves: {string.Join(", ", unsafeMoves)}");
         }
 
         return safeMoves.Count > 0 ? safeMoves : unsafeMoves;
@@ -583,7 +627,6 @@ internal sealed class MinimaxSearch
 
         Point snakeHead = snake.Body[0];
 
-        // Check against my snakes (no attack tracking � friendly collision)
         for (int i = 0; i < state.MySnakes.Count; i++)
         {
             var other = state.MySnakes[i];

@@ -128,6 +128,11 @@ internal class Game
 
         Logger.LogTime("Created minimax groupings");
 
+        // TODO: Have a more sensible time budget
+        // Start with the easiest ones, if they finish fast then give the more difficult ones extra time
+        double totalTimeBudgetMs = 40.0;
+        double perGroupTimeLimitMs = totalTimeBudgetMs / Math.Max(1, minimaxGroups.Count);
+
         foreach (HashSet<int> group in minimaxGroups)
         {
             var mine = MySnakeBots.Where(s => group.Contains(s.Id)).ToList();
@@ -135,18 +140,15 @@ internal class Game
 
             int minimaxDepth = 3;
 
-            if (group.Count > 4)
-            {
-                minimaxDepth = 1;
-            }
-            else if (group.Count == 1)
+
+            if (group.Count == 1)
             {
                 minimaxDepth = 5;
             }
 
-            
 
-            plans.AddRange(GetMinimaxMoves(mine, opponents, _level.PowerSources, minimaxDepth));
+
+            plans.AddRange(GetMinimaxMoves(mine, opponents, _level.PowerSources, minimaxDepth, perGroupTimeLimitMs));
             Logger.LogTime($"Finished minimax for group with snakes {string.Join(",", group)}");
         }
 
@@ -422,9 +424,9 @@ internal class Game
         return actions;
     }
 
-    private List<Plan> GetMinimaxMoves(List<SnakeBot> mine, List<SnakeBot> opponents, HashSet<Point> powerSources, int minimaxDepth)
+    private List<Plan> GetMinimaxMoves(List<SnakeBot> mine, List<SnakeBot> opponents, HashSet<Point> powerSources, int minimaxDepth, double timeLimitMs)
     {
-        var minimaxResult = _minimax.GetBestMoves(mine, opponents, _level.PowerSources, minimaxDepth);
+        var minimaxResult = _minimax.GetBestMoves(mine, opponents, _level.PowerSources, minimaxDepth, timeLimitMs);
 
         if (minimaxResult.BestMoves.Count > 0)
         {

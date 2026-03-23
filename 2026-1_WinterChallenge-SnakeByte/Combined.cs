@@ -2301,11 +2301,16 @@ internal sealed class MinimaxSearch
     private int _evaluationsThisDepth = 0;
     private int _ttHits = 0;
 
-    private readonly TranspositionTable _transpositionTable = new();
+    private readonly TranspositionTable _transpositionTable = new TranspositionTable();
 
     private readonly int _width;
     private readonly int _height;
     private readonly HashSet<Point> _platformPoints;
+
+    
+    private readonly HashSet<Point> _dynamicPointsBuffer = new();
+
+    private static readonly Dictionary<int, Point> EmptyMoves = new();
 
     private static readonly Point[] MoveOffsets =
     {
@@ -2397,7 +2402,7 @@ internal sealed class MinimaxSearch
 
         if (oppMoveCombinations.Count == 0)
         {
-            UndoMove undo = ApplyMoves(state, myMoves, new Dictionary<int, Point>());
+            UndoMove undo = ApplyMoves(state, myMoves, EmptyMoves);
 
             int score = depth <= 1 ? Evaluate(state) : MinimaxMax(state, depth - 1, alpha, beta);
 
@@ -2408,7 +2413,7 @@ internal sealed class MinimaxSearch
 
         
         
-        oppMoveCombinations = OrderMoves(oppMoveCombinations);
+        OrderMoves(oppMoveCombinations);
 
         int worstScore = int.MaxValue;
 
@@ -2436,26 +2441,26 @@ internal sealed class MinimaxSearch
         return worstScore;
     }
 
-    private List<Dictionary<int, Point>> OrderMoves(List<Dictionary<int, Point>> oppMoveCombinations)
+    private void OrderMoves(List<Dictionary<int, Point>> moveCombinations)
     {
-        var ordered = oppMoveCombinations.OrderBy(moves =>
-        {
-            int score = 0;
-            foreach (var move in moves.Values)
-            {
-                if (IsInMapBounds(move))
-                {
-                    score -= 10; 
-                }
-                if (_platformPoints.Contains(move))
-                {
-                    score -= 20; 
-                }
-            }
-            return score;
-        }).ToList();
+        moveCombinations.Sort((a, b) => ScoreMoveCombination(a).CompareTo(ScoreMoveCombination(b)));
+    }
 
-        return ordered;
+    private int ScoreMoveCombination(Dictionary<int, Point> moves)
+    {
+        int score = 0;
+        foreach (var move in moves.Values)
+        {
+            if (IsInMapBounds(move))
+            {
+                score -= 10; 
+            }
+            if (_platformPoints.Contains(move))
+            {
+                score -= 20; 
+            }
+        }
+        return score;
     }
 
     private int MinimaxMax(MinimaxGameState state, int depth, int alpha, int beta)
@@ -2467,11 +2472,11 @@ internal sealed class MinimaxSearch
         {
             _ttHits++;
 
-            if (ttEntry.Flag == TTFlag.Exact)
+            if (ttEntry.Flag == TransFlag.Exact)
                 return ttEntry.Score;
-            if (ttEntry.Flag == TTFlag.LowerBound)
+            if (ttEntry.Flag == TransFlag.LowerBound)
                 alpha = Math.Max(alpha, ttEntry.Score);
-            else if (ttEntry.Flag == TTFlag.UpperBound)
+            else if (ttEntry.Flag == TransFlag.UpperBound)
                 beta = Math.Min(beta, ttEntry.Score);
 
             if (alpha >= beta)
@@ -2483,12 +2488,12 @@ internal sealed class MinimaxSearch
         if (myMoveCombinations.Count == 0)
         {
             int evalScore = Evaluate(state);
-            _transpositionTable.Store(hash, evalScore, depth, TTFlag.Exact);
+            _transpositionTable.Store(hash, evalScore, depth, TransFlag.Exact);
             return evalScore;
         }
 
         
-        myMoveCombinations = OrderMoves(myMoveCombinations);
+        OrderMoves(myMoveCombinations);
 
         int bestScore = int.MinValue;
 
@@ -2504,13 +2509,13 @@ internal sealed class MinimaxSearch
                 break;
         }
 
-        TTFlag flag;
+        TransFlag flag;
         if (bestScore <= origAlpha)
-            flag = TTFlag.UpperBound;
+            flag = TransFlag.UpperBound;
         else if (bestScore >= beta)
-            flag = TTFlag.LowerBound;
+            flag = TransFlag.LowerBound;
         else
-            flag = TTFlag.Exact;
+            flag = TransFlag.Exact;
 
         _transpositionTable.Store(hash, bestScore, depth, flag);
 
@@ -2649,9 +2654,7 @@ internal sealed class MinimaxSearch
         int oppCount = state.OpponentSnakes.Count;
         var changes = new SnakeChange[myCount + oppCount];
 
-        var eatenPowerUps = new HashSet<Point>();
-
-        var originalPowerSources = new HashSet<Point>(state.PowerSources);
+        var eatenPowerUps = new HashSet<Point>();               
 
         for (int i = 0; i < myCount; i++)
         {
@@ -2680,7 +2683,7 @@ internal sealed class MinimaxSearch
             state.PowerSources.Remove(eaten);
         }
 
-        HandleCollisionsChange(state, originalPowerSources, changes);
+        HandleCollisionsChange(state, changes);
         ApplyGravityChange(state, changes);
         RemoveOutOfBoundsChange(state, changes);
 
@@ -2717,44 +2720,47 @@ internal sealed class MinimaxSearch
             state.PowerSources.Add(ps);
         }
 
-        foreach (var snake in state.MySnakes.Concat(state.OpponentSnakes))
+        for (int s = 0; s < state.MySnakes.Count; s++)
+            UndoSnakeChange(state.MySnakes[s], undo.Changes);
+
+        for (int s = 0; s < state.OpponentSnakes.Count; s++)
+            UndoSnakeChange(state.OpponentSnakes[s], undo.Changes);
+    }
+
+    private static void UndoSnakeChange(MinimaxSnake snake, SnakeChange[] changes)
+    {
+        int index = FindChangeIndex(changes, snake.Id);
+        if (index < 0) return;
+
+        ref var change = ref changes[index];
+
+        if (change.Killed)
         {
-            int index = FindChangeIndex(undo.Changes, snake.Id);
-            if (index < 0)
+            snake.Body = change.KilledBody!;
+        }
+
+        
+        if (change.GravityFall > 0)
+        {
+            for (int i = 0; i < snake.Body.Count; i++)
             {
-                continue;
+                snake.Body[i] = new Point(snake.Body[i].X, snake.Body[i].Y - change.GravityFall);
             }
+        }
 
-            ref var change = ref undo.Changes[index];
+        
+        if (change.LostCollisionSegment)
+        {
+            snake.Body.Insert(0, change.CollisionHead);
+        }
 
-            if (change.Killed)
+        
+        if (change.Moved)
+        {
+            snake.Body.RemoveAt(0);
+            if (!change.Grew)
             {
-                snake.Body = change.KilledBody!;
-            }
-
-            
-            if (change.GravityFall > 0)
-            {
-                for (int i = 0; i < snake.Body.Count; i++)
-                {
-                    snake.Body[i] = new Point(snake.Body[i].X, snake.Body[i].Y - change.GravityFall);
-                }
-            }
-
-            
-            if (change.LostCollisionSegment)
-            {
-                snake.Body.Insert(0, change.CollisionHead);
-            }
-
-            
-            if (change.Moved)
-            {
-                snake.Body.RemoveAt(0);
-                if (!change.Grew)
-                {
-                    snake.Body.Add(change.RemovedTail);
-                }
+                snake.Body.Add(change.RemovedTail);
             }
         }
     }
@@ -2794,16 +2800,18 @@ internal sealed class MinimaxSearch
         throw new InvalidOperationException($"Snake {id} not found");
     }
 
-    private void HandleCollisionsChange(MinimaxGameState state, HashSet<Point> originalPowerSources, SnakeChange[] changes)
+    private void HandleCollisionsChange(MinimaxGameState state, SnakeChange[] changes)
     {
-        var collidingIds = new HashSet<int>();
+        int totalSnakes = state.MySnakes.Count + state.OpponentSnakes.Count;
+        Span<int> collidingIds = stackalloc int[totalSnakes];
+        int collidingCount = 0;
 
         for (int i = 0; i < state.MySnakes.Count; i++)
         {
             if (state.MySnakes[i].Body.Count > 0 
                 && (CollidesWithOtherSnake(state, state.MySnakes[i]) || _platformPoints.Contains(state.MySnakes[i].Body[0])))
             {
-                collidingIds.Add(state.MySnakes[i].Id);
+                collidingIds[collidingCount++] = state.MySnakes[i].Id;
             }
         }
 
@@ -2812,12 +2820,13 @@ internal sealed class MinimaxSearch
             if (state.OpponentSnakes[i].Body.Count > 0 
                 && (CollidesWithOtherSnake(state, state.OpponentSnakes[i]) || _platformPoints.Contains(state.OpponentSnakes[i].Body[0])))
             {
-                collidingIds.Add(state.OpponentSnakes[i].Id);
+                collidingIds[collidingCount++] = state.OpponentSnakes[i].Id;
             }
         }
 
-        foreach (int id in collidingIds)
+        for (int i = 0; i < collidingCount; i++)
         {
+            int id = collidingIds[i];
             int index = FindChangeIndex(changes, id);
             var snake = FindSnake(state, id);
 
@@ -2838,45 +2847,50 @@ internal sealed class MinimaxSearch
 
     private bool CollidesWithOtherSnake(MinimaxGameState state, MinimaxSnake snake)
     {
-        bool checkingMySnake = state.MySnakes.Any(s => s.Id == snake.Id);
-        
-        var allSnakes = new List<MinimaxSnake>(state.MySnakes.Count + state.OpponentSnakes.Count);
-        allSnakes.AddRange(state.MySnakes);
-        allSnakes.AddRange(state.OpponentSnakes);
-
-        foreach (var other in allSnakes)
+        bool checkingMySnake = false;
+        for (int i = 0; i < state.MySnakes.Count; i++)
         {
-            if (other.Body.Count == 0)
+            if (state.MySnakes[i].Id == snake.Id) { checkingMySnake = true; break; }
+        }
+
+        Point snakeHead = snake.Body[0];
+
+        
+        for (int i = 0; i < state.MySnakes.Count; i++)
+        {
+            var other = state.MySnakes[i];
+            if (other.Body.Count == 0 || other.Id == snake.Id) continue;
+
+            if (snakeHead == other.Body[0])
+                return true;
+
+            for (int j = 1; j < other.Body.Count; j++)
             {
-                continue;
+                if (snakeHead == other.Body[j]) return true;
             }
+        }
 
-            bool isEnemySnake = state.OpponentSnakes.Any(s => s.Id == other.Id);
+        
+        for (int i = 0; i < state.OpponentSnakes.Count; i++)
+        {
+            var other = state.OpponentSnakes[i];
+            if (other.Body.Count == 0 || other.Id == snake.Id) continue;
 
-
-            if (other.Id != snake.Id && snake.Body[0] == other.Body[0])
+            if (snakeHead == other.Body[0])
             {
-                if (checkingMySnake && isEnemySnake)
+                if (checkingMySnake)
                 {
                     if (snake.Body.Count > other.Body.Count)
-                    {
-                       _attackedBigger++;
-                    }
+                        _attackedBigger++;
                     else if (snake.Body.Count < other.Body.Count)
-                    {
                         _attackedSmaller++;
-                    }
                 }
-
                 return true;
             }
 
-            for (int i = 1; i < other.Body.Count; i++)
+            for (int j = 1; j < other.Body.Count; j++)
             {
-                if (snake.Body[0] == other.Body[i])
-                {
-                    return true;
-                }
+                if (snakeHead == other.Body[j]) return true;
             }
         }
 
@@ -2885,65 +2899,56 @@ internal sealed class MinimaxSearch
 
     private void ApplyGravityChange(MinimaxGameState state, SnakeChange[] changes)
     {
-        var allSnakes = new List<MinimaxSnake>(state.MySnakes.Count + state.OpponentSnakes.Count);
-        allSnakes.AddRange(state.MySnakes);
-        allSnakes.AddRange(state.OpponentSnakes);
+        _dynamicPointsBuffer.Clear();
+        foreach (var ps in state.PowerSources)
+            _dynamicPointsBuffer.Add(ps);
 
-        var dynamicPoints = new HashSet<Point>(state.PowerSources);
-                
-        foreach (MinimaxSnake snake in allSnakes)
+        for (int i = 0; i < state.MySnakes.Count; i++)
+            foreach (var bp in state.MySnakes[i].Body)
+                _dynamicPointsBuffer.Add(bp);
+
+        for (int i = 0; i < state.OpponentSnakes.Count; i++)
+            foreach (var bp in state.OpponentSnakes[i].Body)
+                _dynamicPointsBuffer.Add(bp);
+
+        for (int i = 0; i < state.MySnakes.Count; i++)
+            ApplyGravityToSnake(state.MySnakes[i], changes);
+
+        for (int i = 0; i < state.OpponentSnakes.Count; i++)
+            ApplyGravityToSnake(state.OpponentSnakes[i], changes);
+    }
+
+    private void ApplyGravityToSnake(MinimaxSnake snake, SnakeChange[] changes)
+    {
+        if (snake.Body.Count == 0) return;
+
+        foreach (var bp in snake.Body)
+            _dynamicPointsBuffer.Remove(bp);
+
+        int fall = 0;
+        for (int f = 0; f < 20; f++)
         {
-            foreach (Point bodyPoint in snake.Body)
-            {
-                dynamicPoints.Add(bodyPoint);
-            }
-        }
-
-        for (int i = 0; i < allSnakes.Count; i++)
-        {
-            var snake = allSnakes[i];
-            if (snake.Body.Count == 0)
-            {
-                continue;
-            }
-
-            foreach (var bp in snake.Body)
-            {
-                dynamicPoints.Remove(bp);
-            }
-
-            int fall = 0;
-            for (int f = 0; f < 20; f++)
-            {
-                bool canFall = true;
-                foreach (var bodyPoint in snake.Body)
-                {
-                    var oneDown = new Point(bodyPoint.X, bodyPoint.Y + 1);
-                    if (dynamicPoints.Contains(oneDown) || _platformPoints.Contains(oneDown)) 
-                    { 
-                        canFall = false; break; 
-                    }
-                }
-
-                if (!canFall)
-                {
-                    break;
-                }
-
-                for (int j = 0; j < snake.Body.Count; j++)
-                {
-                    snake.Body[j] = new Point(snake.Body[j].X, snake.Body[j].Y + 1);
-                }
-                fall++;
-            }
-
-            changes[FindChangeIndex(changes, snake.Id)].GravityFall = fall;
-
+            bool canFall = true;
             foreach (var bodyPoint in snake.Body)
             {
-                dynamicPoints.Add(bodyPoint);
+                var oneDown = new Point(bodyPoint.X, bodyPoint.Y + 1);
+                if (_dynamicPointsBuffer.Contains(oneDown) || _platformPoints.Contains(oneDown)) 
+                { 
+                    canFall = false; break; 
+                }
             }
+
+            if (!canFall) break;
+
+            for (int j = 0; j < snake.Body.Count; j++)
+                snake.Body[j] = new Point(snake.Body[j].X, snake.Body[j].Y + 1);
+            fall++;
         }
+
+        changes[FindChangeIndex(changes, snake.Id)].GravityFall = fall;
+
+        foreach (var bodyPoint in snake.Body)
+            _dynamicPointsBuffer.Add(bodyPoint);
     }
 
     private void RemoveOutOfBoundsChange(MinimaxGameState state, SnakeChange[] changes)
@@ -3167,12 +3172,21 @@ internal sealed class SnakeState : IEquatable<SnakeState>
     }
 }
 
+internal enum TransFlag : byte
+{
+    None,
+    Exact,
+    LowerBound,
+    UpperBound
+}
+
+
 internal struct TranspositionEntry
 {
     internal ulong Hash;
     internal int Score;
     internal int Depth;
-    internal TTFlag Flag;
+    internal TransFlag Flag;
 }
 
 
@@ -3192,14 +3206,14 @@ internal sealed class TranspositionTable
     {
         ref var slot = ref _entries[(int)(hash & TableMask)];
         entry = slot;
-        return slot.Flag != TTFlag.None && slot.Hash == hash && slot.Depth >= depth;
+        return slot.Flag != TransFlag.None && slot.Hash == hash && slot.Depth >= depth;
     }
 
-    internal void Store(ulong hash, int score, int depth, TTFlag flag)
+    internal void Store(ulong hash, int score, int depth, TransFlag flag)
     {
         ref var slot = ref _entries[(int)(hash & TableMask)];
 
-        if (slot.Flag == TTFlag.None || depth >= slot.Depth)
+        if (slot.Flag == TransFlag.None || depth >= slot.Depth)
         {
             slot.Hash = hash;
             slot.Score = score;
@@ -3207,15 +3221,6 @@ internal sealed class TranspositionTable
             slot.Flag = flag;
         }
     }
-}
-
-
-internal enum TTFlag : byte
-{
-    None,
-    Exact,
-    LowerBound,
-    UpperBound
 }
 
 

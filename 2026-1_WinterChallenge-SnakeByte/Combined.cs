@@ -2503,6 +2503,9 @@ internal sealed class MinimaxResult
 
 internal sealed class MinimaxSearch
 {
+    private int _attackedBigger = 0;
+    private int _attackedSmaller = 0;
+
     private readonly int _width;
     private readonly int _height;
     private readonly HashSet<Point> _platformPoints;
@@ -2958,6 +2961,8 @@ internal sealed class MinimaxSearch
 
     private bool CollidesWithOtherSnake(MinimaxGameState state, MinimaxSnake snake)
     {
+        bool mySnake = state.MySnakes.Any(s => s.Id == snake.Id);
+        
         var allSnakes = new List<MinimaxSnake>(state.MySnakes.Count + state.OpponentSnakes.Count);
         allSnakes.AddRange(state.MySnakes);
         allSnakes.AddRange(state.OpponentSnakes);
@@ -2969,8 +2974,23 @@ internal sealed class MinimaxSearch
                 continue;
             }
 
+            bool enemySnake = state.OpponentSnakes.Any(s => s.Id == other.Id);
+
+
             if (other.Id != snake.Id && snake.Body[0] == other.Body[0])
             {
+                if (mySnake && enemySnake)
+                {
+                    if (snake.Body.Count > other.Body.Count)
+                    {
+                       _attackedBigger++;
+                    }
+                    else if (snake.Body.Count < other.Body.Count)
+                    {
+                        _attackedSmaller++;
+                    }
+                }
+
                 return true;
             }
 
@@ -3099,7 +3119,17 @@ internal sealed class MinimaxSearch
         }
 
         int score = (myBodyTotal - oppBodyTotal) * 1000;
-                
+
+        score += _attackedBigger * 500;
+        score -= _attackedSmaller * 500;
+
+        
+
+
+        
+        
+
+        
         if (state.PowerSources.Count > 0)
         {
             foreach (var snake in state.MySnakes)

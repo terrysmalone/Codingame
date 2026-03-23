@@ -13,6 +13,9 @@ internal sealed class MinimaxSearch
     private int _attackedSmaller = 0;
 
     private int _evaluationsThisDepth = 0;
+    private int _ttHits = 0;
+
+    private readonly TranspositionTable _transpositionTable = new TranspositionTable();
 
     private readonly int _width;
     private readonly int _height;
@@ -58,9 +61,12 @@ internal sealed class MinimaxSearch
         int bestScore = int.MinValue;
         long startTime = System.Diagnostics.Stopwatch.GetTimestamp();
 
+        //_transpositionTable.Clear();
+
         for (int depth = 0; depth <= maxDepth; depth++)
         {
             _evaluationsThisDepth = 0;
+            _ttHits = 0;
 
             int depthBestScore = int.MinValue;
 
@@ -88,9 +94,9 @@ internal sealed class MinimaxSearch
 
             scoredMoves.Sort((a, b) => b.Score.CompareTo(a.Score));
 
-            Logger.Message($"Depth {depth} evaluations: {_evaluationsThisDepth}");
+            Logger.Message($"Depth {depth} evaluations: {_evaluationsThisDepth}, TT hits: {_ttHits}");
                             
-            Logger.MinimaxScores($"Depth {depth}", scoredMoves, baselineScore);
+            // Logger.MinimaxScores($"Depth {depth}", scoredMoves, baselineScore);
             
             Logger.LogTime($"Completed depth {depth} with best score {bestScore} (relative {bestScore - baselineScore})");
         }
@@ -168,11 +174,39 @@ internal sealed class MinimaxSearch
 
     private int MinimaxMax(MinimaxGameState state, int depth, int alpha, int beta)
     {
+        ulong hash = ComputeStateHash(state);
+        int origAlpha = alpha;
+
+        if (_transpositionTable.TryGet(hash, depth, out var ttEntry))
+        {
+            _ttHits++;
+
+            if (ttEntry.Flag == TransFlag.Exact)
+            {
+                return ttEntry.Score;
+            }
+            if (ttEntry.Flag == TransFlag.LowerBound)
+            {
+                alpha = Math.Max(alpha, ttEntry.Score);
+            }
+            else if (ttEntry.Flag == TransFlag.UpperBound)
+            {
+                beta = Math.Min(beta, ttEntry.Score);
+            }
+
+            if (alpha >= beta)
+            {
+                return ttEntry.Score;
+            }
+        }
+
         var myMoveCombinations = GenerateAllMoveCombinations(state.MySnakes, state);
 
         if (myMoveCombinations.Count == 0)
         {
-            return Evaluate(state);
+            int evalScore = Evaluate(state);
+            _transpositionTable.Store(hash, evalScore, depth, TransFlag.Exact);
+            return evalScore;
         }
 
         // TODO: Sort moves to improve alpha-beta pruning efficiency
@@ -191,6 +225,22 @@ internal sealed class MinimaxSearch
             if (beta <= alpha)
                 break;
         }
+
+        TransFlag flag;
+        if (bestScore <= origAlpha)
+        {
+            flag = TransFlag.UpperBound;
+        }
+        else if (bestScore >= beta)
+        {
+            flag = TransFlag.LowerBound;
+        }
+        else
+        {
+            flag = TransFlag.Exact;
+        }
+
+        _transpositionTable.Store(hash, bestScore, depth, flag);
 
         return bestScore;
     }
@@ -715,5 +765,51 @@ internal sealed class MinimaxSearch
             }
         }
         return minDist;
+    }
+
+    private static ulong ComputeStateHash(MinimaxGameState state)
+    {
+        ulong hash = 0xCBF29CE484222325UL;
+
+        foreach (var snake in state.MySnakes)
+        {
+            hash = FnvMix(hash, (ulong)(uint)snake.Id);
+            hash = FnvMix(hash, (ulong)(uint)snake.Body.Count);
+            foreach (var p in snake.Body)
+            {
+                hash = FnvMix(hash, ((ulong)(uint)p.X << 32) | (ulong)(uint)p.Y);
+            }
+        }
+
+        hash = FnvMix(hash, 0xAAAAAAAAAAAAAAAAUL);
+
+        foreach (var snake in state.OpponentSnakes)
+        {
+            hash = FnvMix(hash, (ulong)(uint)snake.Id);
+            hash = FnvMix(hash, (ulong)(uint)snake.Body.Count);
+            foreach (var p in snake.Body)
+            {
+                hash = FnvMix(hash, ((ulong)(uint)p.X << 32) | (ulong)(uint)p.Y);
+            }
+        }
+
+        ulong psHash = 0;
+        foreach (var ps in state.PowerSources)
+        {
+            ulong ph = ((ulong)(uint)ps.X << 32) | (ulong)(uint)ps.Y;
+            ph *= 0x9E3779B97F4A7C15UL;
+            ph ^= ph >> 30;
+            psHash ^= ph;
+        }
+        hash = FnvMix(hash, psHash);
+
+        return hash;
+    }
+
+    private static ulong FnvMix(ulong hash, ulong value)
+    {
+        hash ^= value;
+        hash *= 0x100000001B3UL;
+        return hash;
     }
 }

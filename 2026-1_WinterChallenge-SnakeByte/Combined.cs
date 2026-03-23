@@ -97,7 +97,6 @@ internal class Game
     private const int PATH_LENGTH_PENALTY = 100;
     private const int BASE_CLIMBABLE_LEDGE_SCORE = 5500;
     private const int BASE_WANDER_SCORE = 5000;
-    private const int BASE_CRITICAL_MOVE_SCORE = 1000000;
     private const int CLOSER_TO_POWER_SCORE = 500;
 
     private const int EMERGENCY_BASE_BULLY_SCORE = 50000;
@@ -238,13 +237,6 @@ internal class Game
 
             Logger.LogTime($"STARTING FOR SNAKEBOT {snakeBot.Id}. Position:{snakeBot.Body[0].X},{snakeBot.Body[0].Y}");
             
-            
-            
-            
-            List<Plan> blockingPlans = GetBlockingPlans(snakeBot);
-            snakeBot.AddPlans(blockingPlans);
-            Logger.LogTime($"Added {blockingPlans.Count} blocking move plans");
-
             HashSet<Point> excludePoints = new HashSet<Point>();
 
             
@@ -254,29 +246,7 @@ internal class Game
                 new Point(snakeBot.Body[0].X - 1, snakeBot.Body[0].Y),
                 new Point(snakeBot.Body[0].X, snakeBot.Body[0].Y + 1),
                 new Point(snakeBot.Body[0].X, snakeBot.Body[0].Y - 1)
-            };
-
-            var goldenMovesAdded = 0;
-
-            foreach (var possibleMove in possibleMoves)
-            {
-                (Plan? headClashMove, bool excludeMove) = GetCriticalHeadClashMove(possibleMove, snakeBot);
-
-                if (headClashMove != null)
-                {
-                    Logger.Plans("Added head clash move", new List<Plan> { headClashMove });
-                    snakeBot.AddPlan(headClashMove);
-                    goldenMovesAdded++;
-                    continue;
-                }
-                
-                if (excludeMove)
-                {
-                    excludePoints.Add(possibleMove);
-                }
-            }
-
-            Logger.LogTime($"Added {goldenMovesAdded} head clash plans");            
+            };       
 
             if (snakeBot.IsStuck())
             {
@@ -310,26 +280,6 @@ internal class Game
             snakeBot.AddPlans(validPlans);
                
             Logger.LogTime($"Finished checking valid directions. Added {validPlans.Count} plans");
-        }
-
-        
-        
-        foreach (var snakeBot in MySnakeBots)
-        {
-            var terribleMoves = snakeBot.GetPlans().Where(p => p.Score < -BASE_CRITICAL_MOVE_SCORE + 10000).ToList();
-
-            foreach (Plan terribleMove in terribleMoves)
-            {
-                foreach (Plan plan in snakeBot.GetPlans())
-                {
-                    if (plan.Moves[0] == terribleMove.Moves[0])
-                    {
-                        plan.Score = terribleMove.Score;
-                    }
-                }
-            }
-
-            Logger.Plans($"Plans for snake {snakeBot.Id}", snakeBot.GetPlans());
         }
 
         
@@ -630,48 +580,7 @@ internal class Game
         }
 
         return collisionPoints;
-    }
-
-    private List<Plan> GetBlockingPlans(SnakeBot snake)
-    {
-        var plans = new List<Plan>();
-
-        var possibleHeadMoves = new List<Point>()
-            {
-                new Point(snake.Body[0].X + 1, snake.Body[0].Y),
-                new Point(snake.Body[0].X - 1, snake.Body[0].Y),
-                new Point(snake.Body[0].X, snake.Body[0].Y + 1),
-                new Point(snake.Body[0].X, snake.Body[0].Y - 1)
-            };
-
-        foreach (Point possibleMove in possibleHeadMoves)
-        {
-            if (_positionChecker.IsPointInGivenSnake(snake.Body, possibleMove, countTails: false)
-                || _positionChecker.IsPlatform(possibleMove)
-                || _positionChecker.IsPointInAnySnake(possibleMove, countTails: false))
-            {
-                continue;
-            }       
-
-            
-            List<Point> movedBody = _movementHelper.SimulateSnakeMovement(snake.Body, snake.Body[0], possibleMove, _level.PowerSources);
-
-            
-            List<Point> afterGravityBody = _movementHelper.ApplyGravity(movedBody, _solidPoints);
-
-            
-            int space = _positionChecker.FloodFillCount(afterGravityBody[0], snake.Id, afterGravityBody, 5, includeSelf: false);
-
-            if (space < 2)
-            {
-                Logger.Message($"Added blocking move plan for snake {snake.Id} at position {possibleMove.X},{possibleMove.Y}");
-                Logger.Message($"After simulating the move and gravity, the snake body would be at: {string.Join(";", afterGravityBody.Select(p => $"{p.X},{p.Y}"))}");
-                plans.Add(new Plan(new List<Point> { possibleMove }, -BASE_CRITICAL_MOVE_SCORE, "blocking move", turnsToFruition: 1, snake.Id));
-            }
-        }
-
-        return plans;
-    }
+    }    
 
     private List<Plan> GetClimbableLedgePlans(SnakeBot snakeBot, HashSet<Point> excludePoints)
     {
@@ -848,124 +757,6 @@ internal class Game
         }
 
         return plans;
-    }
-
-    
-    
-    
-    
-    
-    private (Plan?, bool) GetCriticalHeadClashMove(Point newHeadPosition, SnakeBot snakeBot)
-    {
-        var excludeMove = false;
-
-        List<int> clashingEnemyBodySizes = new List<int>();
-
-        bool powerUpOnSpot = _level.PowerSources.Contains(newHeadPosition);
-
-        foreach (var opponentSnake in OpponentSnakeBots)
-        {
-            var possibleHeadMoves = new List<Point>()
-            {
-                new Point(opponentSnake.Body[0].X + 1, opponentSnake.Body[0].Y),
-                new Point(opponentSnake.Body[0].X - 1, opponentSnake.Body[0].Y),
-                new Point(opponentSnake.Body[0].X, opponentSnake.Body[0].Y + 1),
-                new Point(opponentSnake.Body[0].X, opponentSnake.Body[0].Y - 1)
-            };
-
-            foreach (Point possibleMove in possibleHeadMoves)
-            {
-               
-                if (possibleMove.X < -1
-                    || possibleMove.X > Width
-                    || possibleMove.Y < -1
-                    || possibleMove.Y > Height
-                    || _positionChecker.IsPlatform(possibleMove)
-                    || _positionChecker.IsPointInAnySnake(possibleMove, countTails: powerUpOnSpot))
-                {
-                    continue;
-                }
-
-                if (possibleMove == newHeadPosition)
-                {
-                    clashingEnemyBodySizes.Add(opponentSnake.Body.Count);
-                }
-            }
-        }
-
-        if (clashingEnemyBodySizes.Count == 0)
-        {
-            return (null, false);
-        }
-
-        int myLossOnImpact = 0;
-        int enemyLossOnImpact = 0;
-
-        if (powerUpOnSpot)
-        {
-            myLossOnImpact = 1;
-
-            foreach (var enemyBodySize in clashingEnemyBodySizes)
-            {
-                enemyLossOnImpact += 1;
-            }
-        }
-        else
-        {
-            myLossOnImpact = snakeBot.Body.Count <= 3 ? 3 : 1;
-
-            foreach (var enemyBodySize in clashingEnemyBodySizes)
-            {
-                enemyLossOnImpact += enemyBodySize <= 3 ? 3 : 1;
-            }
-        }
-
-        
-        
-        
-        
-
-        int diff = enemyLossOnImpact - myLossOnImpact;
-
-        int score = 0;
-
-        if (diff > 0)
-        {
-            score = BASE_CRITICAL_MOVE_SCORE + 5000;           
-        }
-        else if (diff == 0 && snakeBot.Body.Count > clashingEnemyBodySizes.Min())
-        {
-            score = BASE_CRITICAL_MOVE_SCORE + 4000;
-        }
-        else if (diff == 0 && powerUpOnSpot)
-        {
-            score = BASE_CRITICAL_MOVE_SCORE + 3500;
-        }
-        else if (diff == 0 && snakeBot.Body.Count == clashingEnemyBodySizes.Min() && GetMyScore() > GetEnemyScore())
-        {
-            score = BASE_CRITICAL_MOVE_SCORE + 3000;
-        }
-        else if (diff == 0 && snakeBot.Body.Count < clashingEnemyBodySizes.Min())
-        {
-            if (FEATURE_INCREASE_EXCLUDE_MOVES_ON)
-            {
-                excludeMove = true;
-            }
-        }
-        else if (diff < 0)
-        {
-            excludeMove = true;
-        }
-
-        Plan? plan = null;
-        
-        if (score > 0)
-        {
-            score += _positionChecker.FloodFillCount(newHeadPosition, snakeBot.Id, snakeBot.Body, 20);
-            plan = new Plan(new List<Point> { newHeadPosition }, score, "attack", turnsToFruition: 1, snakeBot.Id);
-        }
-
-        return (plan, excludeMove);
     }
 
     private int GetEnemyScore()
@@ -2508,6 +2299,9 @@ internal sealed class MinimaxSearch
     private int _attackedSmaller = 0;
 
     private int _evaluationsThisDepth = 0;
+    private int _ttHits = 0;
+
+    private readonly TranspositionTable _transpositionTable = new();
 
     private readonly int _width;
     private readonly int _height;
@@ -2553,9 +2347,12 @@ internal sealed class MinimaxSearch
         int bestScore = int.MinValue;
         long startTime = System.Diagnostics.Stopwatch.GetTimestamp();
 
+        
+
         for (int depth = 0; depth <= maxDepth; depth++)
         {
             _evaluationsThisDepth = 0;
+            _ttHits = 0;
 
             int depthBestScore = int.MinValue;
 
@@ -2583,9 +2380,9 @@ internal sealed class MinimaxSearch
 
             scoredMoves.Sort((a, b) => b.Score.CompareTo(a.Score));
 
-            Logger.Message($"Depth {depth} evaluations: {_evaluationsThisDepth}");
+            Logger.Message($"Depth {depth} evaluations: {_evaluationsThisDepth}, TT hits: {_ttHits}");
                             
-            Logger.MinimaxScores($"Depth {depth}", scoredMoves, baselineScore);
+            
             
             Logger.LogTime($"Completed depth {depth} with best score {bestScore} (relative {bestScore - baselineScore})");
         }
@@ -2663,11 +2460,31 @@ internal sealed class MinimaxSearch
 
     private int MinimaxMax(MinimaxGameState state, int depth, int alpha, int beta)
     {
+        ulong hash = ComputeStateHash(state);
+        int origAlpha = alpha;
+
+        if (_transpositionTable.TryGet(hash, depth, out var ttEntry))
+        {
+            _ttHits++;
+
+            if (ttEntry.Flag == TTFlag.Exact)
+                return ttEntry.Score;
+            if (ttEntry.Flag == TTFlag.LowerBound)
+                alpha = Math.Max(alpha, ttEntry.Score);
+            else if (ttEntry.Flag == TTFlag.UpperBound)
+                beta = Math.Min(beta, ttEntry.Score);
+
+            if (alpha >= beta)
+                return ttEntry.Score;
+        }
+
         var myMoveCombinations = GenerateAllMoveCombinations(state.MySnakes, state);
 
         if (myMoveCombinations.Count == 0)
         {
-            return Evaluate(state);
+            int evalScore = Evaluate(state);
+            _transpositionTable.Store(hash, evalScore, depth, TTFlag.Exact);
+            return evalScore;
         }
 
         
@@ -2686,6 +2503,16 @@ internal sealed class MinimaxSearch
             if (beta <= alpha)
                 break;
         }
+
+        TTFlag flag;
+        if (bestScore <= origAlpha)
+            flag = TTFlag.UpperBound;
+        else if (bestScore >= beta)
+            flag = TTFlag.LowerBound;
+        else
+            flag = TTFlag.Exact;
+
+        _transpositionTable.Store(hash, bestScore, depth, flag);
 
         return bestScore;
     }
@@ -3211,6 +3038,52 @@ internal sealed class MinimaxSearch
         }
         return minDist;
     }
+
+    private static ulong ComputeStateHash(MinimaxGameState state)
+    {
+        ulong hash = 0xCBF29CE484222325UL;
+
+        foreach (var snake in state.MySnakes)
+        {
+            hash = FnvMix(hash, (ulong)(uint)snake.Id);
+            hash = FnvMix(hash, (ulong)(uint)snake.Body.Count);
+            foreach (var p in snake.Body)
+            {
+                hash = FnvMix(hash, ((ulong)(uint)p.X << 32) | (ulong)(uint)p.Y);
+            }
+        }
+
+        hash = FnvMix(hash, 0xAAAAAAAAAAAAAAAAUL);
+
+        foreach (var snake in state.OpponentSnakes)
+        {
+            hash = FnvMix(hash, (ulong)(uint)snake.Id);
+            hash = FnvMix(hash, (ulong)(uint)snake.Body.Count);
+            foreach (var p in snake.Body)
+            {
+                hash = FnvMix(hash, ((ulong)(uint)p.X << 32) | (ulong)(uint)p.Y);
+            }
+        }
+
+        ulong psHash = 0;
+        foreach (var ps in state.PowerSources)
+        {
+            ulong ph = ((ulong)(uint)ps.X << 32) | (ulong)(uint)ps.Y;
+            ph *= 0x9E3779B97F4A7C15UL;
+            ph ^= ph >> 30;
+            psHash ^= ph;
+        }
+        hash = FnvMix(hash, psHash);
+
+        return hash;
+    }
+
+    private static ulong FnvMix(ulong hash, ulong value)
+    {
+        hash ^= value;
+        hash *= 0x100000001B3UL;
+        return hash;
+    }
 }
 
 
@@ -3293,6 +3166,58 @@ internal sealed class SnakeState : IEquatable<SnakeState>
         return true;
     }
 }
+
+internal struct TranspositionEntry
+{
+    internal ulong Hash;
+    internal int Score;
+    internal int Depth;
+    internal TTFlag Flag;
+}
+
+
+internal sealed class TranspositionTable
+{
+    private const int TableSize = 1 << 20;
+    private const ulong TableMask = TableSize - 1;
+
+    private readonly TranspositionEntry[] _entries = new TranspositionEntry[TableSize];
+
+    internal void Clear()
+    {
+        Array.Clear(_entries);
+    }
+
+    internal bool TryGet(ulong hash, int depth, out TranspositionEntry entry)
+    {
+        ref var slot = ref _entries[(int)(hash & TableMask)];
+        entry = slot;
+        return slot.Flag != TTFlag.None && slot.Hash == hash && slot.Depth >= depth;
+    }
+
+    internal void Store(ulong hash, int score, int depth, TTFlag flag)
+    {
+        ref var slot = ref _entries[(int)(hash & TableMask)];
+
+        if (slot.Flag == TTFlag.None || depth >= slot.Depth)
+        {
+            slot.Hash = hash;
+            slot.Score = score;
+            slot.Depth = depth;
+            slot.Flag = flag;
+        }
+    }
+}
+
+
+internal enum TTFlag : byte
+{
+    None,
+    Exact,
+    LowerBound,
+    UpperBound
+}
+
 
 internal struct UndoMove
 {

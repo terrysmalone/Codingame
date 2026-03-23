@@ -29,6 +29,11 @@ internal sealed class MinimaxSearch
     // Reusable buffer to avoid allocations in gravity computation
     private readonly HashSet<Point> _dynamicPointsBuffer = new();
 
+    // Reusable buffers for flood fill in evaluation
+    private readonly HashSet<Point> _floodVisited = new();
+    private readonly Queue<Point> _floodQueue = new();
+    private readonly HashSet<Point> _floodBlocked = new();
+
     private static readonly Dictionary<int, Point> EmptyMoves = new();
 
     private static readonly Point[] MoveOffsets =
@@ -756,6 +761,76 @@ internal sealed class MinimaxSearch
         return true;
     }
 
+    private void BuildFloodBlockedSet(MinimaxGameState state)
+    {
+        _floodBlocked.Clear();
+
+        foreach (var snake in state.MySnakes)
+        {
+            if (snake.Body.Count == 0)
+            {
+                continue;
+            }
+
+            for (int i = 0; i < snake.Body.Count - 1; i++)
+            {
+                _floodBlocked.Add(snake.Body[i]);
+            }
+        }
+
+        foreach (var snake in state.OpponentSnakes)
+        {
+            if (snake.Body.Count == 0)
+            {
+                continue;
+            }
+
+            for (int i = 0; i < snake.Body.Count - 1; i++)
+            { 
+                _floodBlocked.Add(snake.Body[i]);
+            }
+        }
+    }
+
+    private int FloodFillReachable(Point head, int cutOff)
+    {
+        _floodVisited.Clear();
+        _floodQueue.Clear();
+
+        _floodQueue.Enqueue(head);
+        _floodVisited.Add(head);
+
+        while (_floodQueue.Count > 0)
+        {
+            if (_floodVisited.Count >= cutOff)
+            { 
+                return cutOff;
+            }
+
+            Point current = _floodQueue.Dequeue();
+
+            for (int d = 0; d < MoveOffsets.Length; d++)
+            {
+                Point neighbor = new Point(current.X + MoveOffsets[d].X, current.Y + MoveOffsets[d].Y);
+
+                if (neighbor.X < -1 || neighbor.X > _width || neighbor.Y < -1 || neighbor.Y > _height)
+                {
+                    continue;
+                }
+
+                if (_platformPoints.Contains(neighbor) || _floodBlocked.Contains(neighbor) || _floodVisited.Contains(neighbor))
+                {
+                    continue;
+                }
+
+                _floodVisited.Add(neighbor);
+                _floodQueue.Enqueue(neighbor);
+            }
+        }
+
+        return _floodVisited.Count;
+    }
+
     private int Evaluate(MinimaxGameState state)
     {
         _evaluationsThisDepth++;
@@ -794,6 +869,39 @@ internal sealed class MinimaxSearch
                 {
                     score += Math.Max(0, 20 - minDist) * 10;
                 }
+            }
+        }
+
+        // Negative score for me getting trapped, bonus for enemy getting trapped.
+        BuildFloodBlockedSet(state);
+
+        foreach (var snake in state.MySnakes)
+        {
+            if (snake.Body.Count == 0)
+            {
+                continue;
+            }
+
+            int reachable = FloodFillReachable(snake.Body[0], snake.Body.Count);
+
+            if (reachable < snake.Body.Count)
+            {
+                score -= (snake.Body.Count - reachable) * 1500;
+            }
+        }
+
+        foreach (var snake in state.OpponentSnakes)
+        {
+            if (snake.Body.Count == 0)
+            {
+                continue;
+            }
+
+            int reachable = FloodFillReachable(snake.Body[0], snake.Body.Count);
+
+            if (reachable < snake.Body.Count)
+            {
+                score += (snake.Body.Count - reachable) * 1500;
             }
         }
 

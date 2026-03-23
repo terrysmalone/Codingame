@@ -192,7 +192,7 @@ internal class Game
             var mine = MySnakeBots.Where(s => group.Contains(s.Id)).ToList();
             var opponents = OpponentSnakeBots.Where(s => group.Contains(s.Id)).ToList();
 
-            int minimaxDepth = 2;
+            int minimaxDepth = 3;
 
             if (group.Count > 4)
             {
@@ -1220,7 +1220,7 @@ internal class Level
 
 internal static class Logger    
 {
-    private static bool DISABLE_LOGGING = true;
+    private static bool DISABLE_LOGGING = false;
     private static bool DISABLE_TIMES = false;
 
     private static long _roundStartTime;
@@ -2609,6 +2609,10 @@ internal sealed class MinimaxSearch
             return score;
         }
 
+        
+        
+        oppMoveCombinations = OrderMoves(oppMoveCombinations);
+
         int worstScore = int.MaxValue;
 
         foreach (var oppMoves in oppMoveCombinations)
@@ -2635,12 +2639,39 @@ internal sealed class MinimaxSearch
         return worstScore;
     }
 
+    private List<Dictionary<int, Point>> OrderMoves(List<Dictionary<int, Point>> oppMoveCombinations)
+    {
+        var ordered = oppMoveCombinations.OrderBy(moves =>
+        {
+            int score = 0;
+            foreach (var move in moves.Values)
+            {
+                if (IsInMapBounds(move))
+                {
+                    score -= 10; 
+                }
+                if (_platformPoints.Contains(move))
+                {
+                    score -= 20; 
+                }
+            }
+            return score;
+        }).ToList();
+
+        return ordered;
+    }
+
     private int MinimaxMax(MinimaxGameState state, int depth, int alpha, int beta)
     {
         var myMoveCombinations = GenerateAllMoveCombinations(state.MySnakes, state);
 
         if (myMoveCombinations.Count == 0)
+        {
             return Evaluate(state);
+        }
+
+        
+        myMoveCombinations = OrderMoves(myMoveCombinations);
 
         int bestScore = int.MinValue;
 

@@ -114,6 +114,10 @@ internal sealed class MinimaxSearch
             return score;
         }
 
+        // TODO: Sort moves to improve alpha-beta pruning efficiency
+        // If snakes touch walls, or snake bodies (not heads, movee them to the bottom of the list since those are less likely to be chosen by the opponent
+        oppMoveCombinations = OrderMoves(oppMoveCombinations);
+
         int worstScore = int.MaxValue;
 
         foreach (var oppMoves in oppMoveCombinations)
@@ -140,12 +144,39 @@ internal sealed class MinimaxSearch
         return worstScore;
     }
 
+    private List<Dictionary<int, Point>> OrderMoves(List<Dictionary<int, Point>> oppMoveCombinations)
+    {
+        var ordered = oppMoveCombinations.OrderBy(moves =>
+        {
+            int score = 0;
+            foreach (var move in moves.Values)
+            {
+                if (IsInMapBounds(move))
+                {
+                    score -= 10; // Prefer moves that stay in bounds
+                }
+                if (_platformPoints.Contains(move))
+                {
+                    score -= 20; // Strongly prefer moves that avoid platforms
+                }
+            }
+            return score;
+        }).ToList();
+
+        return ordered;
+    }
+
     private int MinimaxMax(MinimaxGameState state, int depth, int alpha, int beta)
     {
         var myMoveCombinations = GenerateAllMoveCombinations(state.MySnakes, state);
 
         if (myMoveCombinations.Count == 0)
+        {
             return Evaluate(state);
+        }
+
+        // TODO: Sort moves to improve alpha-beta pruning efficiency
+        myMoveCombinations = OrderMoves(myMoveCombinations);
 
         int bestScore = int.MinValue;
 

@@ -134,7 +134,7 @@ internal class Game
             var mine = MySnakeBots.Where(s => group.Contains(s.Id)).ToList();
             var opponents = OpponentSnakeBots.Where(s => group.Contains(s.Id)).ToList();
 
-            int minimaxDepth = 2;
+            int minimaxDepth = 3;
 
             if (group.Count > 4)
             {

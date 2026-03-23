@@ -141,6 +141,11 @@ internal class Game
                 minimaxDepth = 1;
             }
 
+            if (group.Count == 1)
+            {
+                minimaxDepth = 5;
+            }
+
             plans.AddRange(GetMinimaxMoves(mine, opponents, _level.PowerSources, minimaxDepth));
             Logger.LogTime($"Finished minimax for group with snakes {string.Join(",", group)}");
         }
@@ -222,7 +227,6 @@ internal class Game
             if (FEATURE_BULLYING_ON)
             {
                 List<Plan> bullyPlans = GetBullyPlans(snakeBot, bullyMode, excludePoints);
-                UpdateScores(bullyPlans, snakeBot);
                 snakeBot.AddPlans(bullyPlans);
 
                 // If bully mode is on and we found a plan don't bother looking for more
@@ -236,13 +240,11 @@ internal class Game
             if (!bullyMode)
             {
                 List<Plan> bestPlansToPowerSources = GetBestPlansToPowerSources(snakeBot, excludePoints);
-                UpdateScores(bestPlansToPowerSources, snakeBot);
 
                 snakeBot.AddPlans(bestPlansToPowerSources);
             }
 
             List<Plan> climbableLedgePlans = GetClimbableLedgePlans(snakeBot, excludePoints);
-            UpdateScores(climbableLedgePlans, snakeBot);
             snakeBot.AddPlans(climbableLedgePlans);
 
             List<Plan> validPlans = GetValidDirectionPointPlans(snakeBot);
@@ -772,14 +774,10 @@ internal class Game
             directionScores.Add(checkPoint, BASE_WANDER_SCORE);
         }
 
-        RemoveAllHardNos(directionScores, snakeBot);
-
         if (directionScores.Count == 0)
         {
             return new List<Plan>();
         }
-
-        UpdateScores(directionScores, snakeBot);
          
         // Make plans from the direction scores
 
@@ -791,189 +789,6 @@ internal class Game
         }
 
         return plans;
-    }
-
-    private void UpdateScores(List<Plan> plans, SnakeBot snakeBot)
-    {
-        
-        foreach (Plan plan in plans)
-        {
-            int scoreChange = 0;
-            Point newHeadPosition = plan.Moves[0];
-            Point targetPoint = plan.Moves[plan.Moves.Count - 1];
-
-            scoreChange += ScoreChangeForOtherSnakeBodyPositions(newHeadPosition, snakeBot);
-            scoreChange += ScoreChangeForSpaceCreated(newHeadPosition, snakeBot);
-            scoreChange += ScoreChangeForStuckDirections(newHeadPosition, snakeBot);
-            scoreChange += ScoreChangeForPosition(newHeadPosition, snakeBot);
-
-            plan.Score = plan.Score += scoreChange;
-        }
-    }
-
-    
-
-    private void UpdateScores(Dictionary<Point, int> directionScores, SnakeBot snakeBot)
-    {
-        foreach (var direction in directionScores)
-        {
-            int scoreChange = 0;
-            Point newHeadPosition = direction.Key;
-
-            scoreChange += ScoreChangeForOtherSnakeBodyPositions(newHeadPosition, snakeBot);
-            scoreChange +=  ScoreChangeForSpaceCreated(newHeadPosition, snakeBot);
-            scoreChange += ScoreChangeForStuckDirections(newHeadPosition, snakeBot);
-            scoreChange += ScoreChangeForPosition(newHeadPosition, snakeBot);
-
-            directionScores[direction.Key] = directionScores[direction.Key] += scoreChange;
-        }
-    }
-
-    private int ScoreChangeForOtherSnakeBodyPositions(Point movePoint, SnakeBot snakeBot)
-    {
-        int scoreChange = 0;
-
-        if (_positionChecker.IsPointInAnySnake(movePoint, countTails: true, snakeBot.Id)
-            || _positionChecker.IsPointInGivenSnake(snakeBot.Body, movePoint, countTails: false))
-        {
-            // We never want to do this unless it's the only choice. Give it a preposterously low score
-            scoreChange =  -BASE_CRITICAL_MOVE_SCORE;
-        }
-
-        return scoreChange;
-        
-    }
-
-    private int ScoreChangeForSpaceCreated(Point movePoint, SnakeBot snakeBot)
-    {
-        // Use flood fill to either move to a more open space, or to give the opponent less space
-        // Score the current position:
-        // For every direction score all my snake flood fills minus all opponent square flood fills.
-        // The highest one wins.
-        // TODO: At some point check for all opponent moves here too. 
-        // For example, If I go left, give a score for all opponent moves. Count the worse one for me as the score. 
-
-        // TODO: Simulate the movement (just adding a head and removing a tail. At some point we might want to think about
-        // simulating gravity but not yet
-        List<Point> newSnakeBody = new List<Point>() { movePoint };
-        newSnakeBody.AddRange(snakeBot.Body.Take(snakeBot.Body.Count - 1));
-
-        int scoreChange = 0;
-
-        // For the flood fill I want to exclude this snake ID, but include newSnakeBody
-        foreach (var mySnake in MySnakeBots)
-        {
-            if (mySnake.Id == snakeBot.Id)
-            {
-                scoreChange += _positionChecker.FloodFillCount(newSnakeBody[0], snakeBot.Id, newSnakeBody, 20);
-            }
-            else
-            {
-                scoreChange += _positionChecker.FloodFillCount(mySnake.Body[0], snakeBot.Id, newSnakeBody, 20);
-            }
-        }
-
-        foreach (var opponentSnake in OpponentSnakeBots)
-        {
-            scoreChange -= _positionChecker.FloodFillCount(opponentSnake.Body[0], snakeBot.Id, newSnakeBody, 20);
-        }
-
-        return scoreChange; 
-    }
-
-    private int ScoreChangeForPosition(Point movePoint, SnakeBot snakeBot)
-    {
-        int scoreChange = 0;
-        // Add small position bonuses
-        // At the start of the game move towards the centre and up. When there are hardly any 
-        // power sources left, head towards the nearest one
-        // TODO: Add bonus for heading towards the most power sources
-  
-        if (_level.PowerSources.Count > 2)
-        {
-            // If the head is out of bounds, and this move will bring it back in, give it a stronger bonus
-
-            if (_positionChecker.IsOutOfMapBounds(snakeBot.Body[0]) && !_positionChecker.IsOutOfMapBounds(movePoint))
-            {
-                scoreChange += 10;
-            }
-
-            int distanceFromCentre = CalculationUtil.GetManhattanDistance(movePoint, new Point(Width / 2, Height / 2));
-            scoreChange -= distanceFromCentre;
-
-            // Add a small bonus for moving towards the top of the map
-            int distanceFromTop = movePoint.Y;
-            scoreChange -= distanceFromTop;
-        }
-        else
-        {
-            // Bonus for moving nearer to the nearest powersource
-            int distanceToPowerSource = CalculationUtil.GetManhattanDistance(
-                movePoint,
-                GetNearestPowerSource(movePoint));
-
-            scoreChange -= distanceToPowerSource;
-        }
-
-        return scoreChange;
-    }
-
-    private void RemoveAllHardNos(Dictionary<Point, int> directionScores, SnakeBot snakeBot)
-    {
-        HashSet<Point> pointsToRemove = new HashSet<Point>();
-
-        foreach (var directionScore in directionScores)
-        {
-            Point newHeadPosition = directionScore.Key;
-
-            if (newHeadPosition.X < -1
-                || newHeadPosition.X > Width
-                || newHeadPosition.Y < -1
-                || newHeadPosition.Y > Height
-                || _positionChecker.IsPlatform(newHeadPosition)
-                || _positionChecker.IsPointInAnySnake(newHeadPosition, countTails: false))
-            {
-                pointsToRemove.Add(newHeadPosition);
-            }
-
-            // If the new position is out of bounds, And the tail is the only one in bounds, hard no the move.
-            if (_positionChecker.IsOutOfMapBounds(newHeadPosition))
-            {
-                int inBoundsCount = 0;
-
-                foreach (var bodyPart in snakeBot.Body)
-                {
-                    if (!_positionChecker.IsOutOfMapBounds(bodyPart))
-                    {
-                        inBoundsCount++;
-                    }
-                }
-
-                if (inBoundsCount <= 1)
-                {
-                    pointsToRemove.Add(newHeadPosition);
-                }
-            }
-        }
-
-        foreach (var point in pointsToRemove)
-        {
-            directionScores.Remove(point);
-        }
-    }
-
-    
-
-    private int ScoreChangeForStuckDirections(Point movePoint, SnakeBot snakeBot)
-    {
-        int scoreChange = 0;
-
-        if (_positionChecker.IsStuckMove(movePoint, snakeBot))
-        {
-            scoreChange = -50;
-        }
-
-        return scoreChange;
     }
 
     // Create plans for any clashing moves that would result in a positive headclash

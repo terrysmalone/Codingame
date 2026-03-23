@@ -199,6 +199,11 @@ internal class Game
                 minimaxDepth = 1;
             }
 
+            if (group.Count == 1)
+            {
+                minimaxDepth = 5;
+            }
+
             plans.AddRange(GetMinimaxMoves(mine, opponents, _level.PowerSources, minimaxDepth));
             Logger.LogTime($"Finished minimax for group with snakes {string.Join(",", group)}");
         }
@@ -280,7 +285,6 @@ internal class Game
             if (FEATURE_BULLYING_ON)
             {
                 List<Plan> bullyPlans = GetBullyPlans(snakeBot, bullyMode, excludePoints);
-                UpdateScores(bullyPlans, snakeBot);
                 snakeBot.AddPlans(bullyPlans);
 
                 
@@ -294,13 +298,11 @@ internal class Game
             if (!bullyMode)
             {
                 List<Plan> bestPlansToPowerSources = GetBestPlansToPowerSources(snakeBot, excludePoints);
-                UpdateScores(bestPlansToPowerSources, snakeBot);
 
                 snakeBot.AddPlans(bestPlansToPowerSources);
             }
 
             List<Plan> climbableLedgePlans = GetClimbableLedgePlans(snakeBot, excludePoints);
-            UpdateScores(climbableLedgePlans, snakeBot);
             snakeBot.AddPlans(climbableLedgePlans);
 
             List<Plan> validPlans = GetValidDirectionPointPlans(snakeBot);
@@ -830,14 +832,10 @@ internal class Game
             directionScores.Add(checkPoint, BASE_WANDER_SCORE);
         }
 
-        RemoveAllHardNos(directionScores, snakeBot);
-
         if (directionScores.Count == 0)
         {
             return new List<Plan>();
         }
-
-        UpdateScores(directionScores, snakeBot);
          
         
 
@@ -849,189 +847,6 @@ internal class Game
         }
 
         return plans;
-    }
-
-    private void UpdateScores(List<Plan> plans, SnakeBot snakeBot)
-    {
-        
-        foreach (Plan plan in plans)
-        {
-            int scoreChange = 0;
-            Point newHeadPosition = plan.Moves[0];
-            Point targetPoint = plan.Moves[plan.Moves.Count - 1];
-
-            scoreChange += ScoreChangeForOtherSnakeBodyPositions(newHeadPosition, snakeBot);
-            scoreChange += ScoreChangeForSpaceCreated(newHeadPosition, snakeBot);
-            scoreChange += ScoreChangeForStuckDirections(newHeadPosition, snakeBot);
-            scoreChange += ScoreChangeForPosition(newHeadPosition, snakeBot);
-
-            plan.Score = plan.Score += scoreChange;
-        }
-    }
-
-    
-
-    private void UpdateScores(Dictionary<Point, int> directionScores, SnakeBot snakeBot)
-    {
-        foreach (var direction in directionScores)
-        {
-            int scoreChange = 0;
-            Point newHeadPosition = direction.Key;
-
-            scoreChange += ScoreChangeForOtherSnakeBodyPositions(newHeadPosition, snakeBot);
-            scoreChange +=  ScoreChangeForSpaceCreated(newHeadPosition, snakeBot);
-            scoreChange += ScoreChangeForStuckDirections(newHeadPosition, snakeBot);
-            scoreChange += ScoreChangeForPosition(newHeadPosition, snakeBot);
-
-            directionScores[direction.Key] = directionScores[direction.Key] += scoreChange;
-        }
-    }
-
-    private int ScoreChangeForOtherSnakeBodyPositions(Point movePoint, SnakeBot snakeBot)
-    {
-        int scoreChange = 0;
-
-        if (_positionChecker.IsPointInAnySnake(movePoint, countTails: true, snakeBot.Id)
-            || _positionChecker.IsPointInGivenSnake(snakeBot.Body, movePoint, countTails: false))
-        {
-            
-            scoreChange =  -BASE_CRITICAL_MOVE_SCORE;
-        }
-
-        return scoreChange;
-        
-    }
-
-    private int ScoreChangeForSpaceCreated(Point movePoint, SnakeBot snakeBot)
-    {
-        
-        
-        
-        
-        
-        
-
-        
-        
-        List<Point> newSnakeBody = new List<Point>() { movePoint };
-        newSnakeBody.AddRange(snakeBot.Body.Take(snakeBot.Body.Count - 1));
-
-        int scoreChange = 0;
-
-        
-        foreach (var mySnake in MySnakeBots)
-        {
-            if (mySnake.Id == snakeBot.Id)
-            {
-                scoreChange += _positionChecker.FloodFillCount(newSnakeBody[0], snakeBot.Id, newSnakeBody, 20);
-            }
-            else
-            {
-                scoreChange += _positionChecker.FloodFillCount(mySnake.Body[0], snakeBot.Id, newSnakeBody, 20);
-            }
-        }
-
-        foreach (var opponentSnake in OpponentSnakeBots)
-        {
-            scoreChange -= _positionChecker.FloodFillCount(opponentSnake.Body[0], snakeBot.Id, newSnakeBody, 20);
-        }
-
-        return scoreChange; 
-    }
-
-    private int ScoreChangeForPosition(Point movePoint, SnakeBot snakeBot)
-    {
-        int scoreChange = 0;
-        
-        
-        
-        
-  
-        if (_level.PowerSources.Count > 2)
-        {
-            
-
-            if (_positionChecker.IsOutOfMapBounds(snakeBot.Body[0]) && !_positionChecker.IsOutOfMapBounds(movePoint))
-            {
-                scoreChange += 10;
-            }
-
-            int distanceFromCentre = CalculationUtil.GetManhattanDistance(movePoint, new Point(Width / 2, Height / 2));
-            scoreChange -= distanceFromCentre;
-
-            
-            int distanceFromTop = movePoint.Y;
-            scoreChange -= distanceFromTop;
-        }
-        else
-        {
-            
-            int distanceToPowerSource = CalculationUtil.GetManhattanDistance(
-                movePoint,
-                GetNearestPowerSource(movePoint));
-
-            scoreChange -= distanceToPowerSource;
-        }
-
-        return scoreChange;
-    }
-
-    private void RemoveAllHardNos(Dictionary<Point, int> directionScores, SnakeBot snakeBot)
-    {
-        HashSet<Point> pointsToRemove = new HashSet<Point>();
-
-        foreach (var directionScore in directionScores)
-        {
-            Point newHeadPosition = directionScore.Key;
-
-            if (newHeadPosition.X < -1
-                || newHeadPosition.X > Width
-                || newHeadPosition.Y < -1
-                || newHeadPosition.Y > Height
-                || _positionChecker.IsPlatform(newHeadPosition)
-                || _positionChecker.IsPointInAnySnake(newHeadPosition, countTails: false))
-            {
-                pointsToRemove.Add(newHeadPosition);
-            }
-
-            
-            if (_positionChecker.IsOutOfMapBounds(newHeadPosition))
-            {
-                int inBoundsCount = 0;
-
-                foreach (var bodyPart in snakeBot.Body)
-                {
-                    if (!_positionChecker.IsOutOfMapBounds(bodyPart))
-                    {
-                        inBoundsCount++;
-                    }
-                }
-
-                if (inBoundsCount <= 1)
-                {
-                    pointsToRemove.Add(newHeadPosition);
-                }
-            }
-        }
-
-        foreach (var point in pointsToRemove)
-        {
-            directionScores.Remove(point);
-        }
-    }
-
-    
-
-    private int ScoreChangeForStuckDirections(Point movePoint, SnakeBot snakeBot)
-    {
-        int scoreChange = 0;
-
-        if (_positionChecker.IsStuckMove(movePoint, snakeBot))
-        {
-            scoreChange = -50;
-        }
-
-        return scoreChange;
     }
 
     
@@ -2709,11 +2524,16 @@ internal sealed class MinimaxSearch
 
     internal MinimaxResult GetBestMoves(List<SnakeBot> mySnakes, List<SnakeBot> opponentSnakes, HashSet<Point> powerSources, int maxDepth)
     {
+         Logger.Snakes("My snakes", mySnakes);
+        
+
         var state = new MinimaxGameState(mySnakes, opponentSnakes, powerSources);
 
         int baselineScore = Evaluate(state);
 
         var myMoveCombinations = GenerateAllMoveCombinations(state.MySnakes, state);
+
+        
 
         if (myMoveCombinations.Count == 0)
         {
@@ -2747,7 +2567,7 @@ internal sealed class MinimaxSearch
                     depthBestMoves = scoredMoves[i].Moves;
                 }
 
-                alpha = Math.Max(alpha, bestScore);
+                alpha = Math.Max(alpha, depthBestScore);
             }
 
             bestScore = depthBestScore;
@@ -2755,9 +2575,7 @@ internal sealed class MinimaxSearch
 
             scoredMoves.Sort((a, b) => b.Score.CompareTo(a.Score));
 
-            Logger.Message($"Depth {depth}");
-            
-            
+            Logger.MinimaxScores($"Depth {depth}", scoredMoves, baselineScore);            
 
             Logger.LogTime($"Completed depth {depth} with best score {bestScore} (relative {bestScore - baselineScore})");
         }
@@ -2837,42 +2655,30 @@ internal sealed class MinimaxSearch
 
         foreach (var snake in snakes)
         {
-            if (snake.Body.Count == 0) continue;
+            if (snake.Body.Count == 0)
+            { 
+                continue; 
+            }
 
             var validMoves = GetValidMoves(snake, state);
             if (validMoves.Count > 0)
+            {
                 movesPerSnake.Add((snake.Id, validMoves));
+            }
         }
 
         if (movesPerSnake.Count == 0)
+        {
             return new List<Dictionary<int, Point>>();
+        }
 
         var combinations = new List<Dictionary<int, Point>>();
         BuildCombinations(movesPerSnake, 0, new Dictionary<int, Point>(), combinations);
 
-        
-        if (movesPerSnake.Count > 1)
-        {
-            combinations.RemoveAll(combo =>
-            {
-                var positions = combo.Values;
-                var seen = new HashSet<Point>();
-                foreach (var p in positions)
-                {
-                    if (!seen.Add(p)) return true;
-                }
-                return false;
-            });
-        }
-
         return combinations;
     }
 
-    private void BuildCombinations(
-        List<(int Id, List<Point> Moves)> movesPerSnake,
-        int index,
-        Dictionary<int, Point> current,
-        List<Dictionary<int, Point>> results)
+    private void BuildCombinations(List<(int Id, List<Point> Moves)> movesPerSnake, int index, Dictionary<int, Point> current, List<Dictionary<int, Point>> results)
     {
         if (index == movesPerSnake.Count)
         {
@@ -2883,6 +2689,12 @@ internal sealed class MinimaxSearch
         var (id, moves) = movesPerSnake[index];
         foreach (var move in moves)
         {
+            
+            if (current.Values.Contains(move))
+            {
+                continue;
+            }
+
             current[id] = move;
             BuildCombinations(movesPerSnake, index + 1, current, results);
         }
@@ -2955,51 +2767,68 @@ internal sealed class MinimaxSearch
 
     private UndoMove ApplyMoves(MinimaxGameState state, Dictionary<int, Point> myMoves, Dictionary<int, Point> oppMoves)
     {
-        var undo = new UndoMove
-        {
-            SnakeBodies = new List<(int, List<Point>)>(),
-            EatenPowerUps = new HashSet<Point>()
-        };
+        int myCount = state.MySnakes.Count;
+        int oppCount = state.OpponentSnakes.Count;
+        var changes = new SnakeChange[myCount + oppCount];
 
-        
-        foreach (var s in state.MySnakes)
-        {
-            undo.SnakeBodies.Add((s.Id, s.Body.ToList()));
-        }
-
-        foreach (var s in state.OpponentSnakes)
-        {
-            undo.SnakeBodies.Add((s.Id, s.Body.ToList()));
-        }
+        var eatenPowerUps = new HashSet<Point>();
 
         var originalPowerSources = new HashSet<Point>(state.PowerSources);
 
-        foreach (var snake in state.MySnakes)
+        for (int i = 0; i < myCount; i++)
         {
-            if (myMoves.TryGetValue(snake.Id, out Point h))
+            var snake = state.MySnakes[i];
+            changes[i].Id = snake.Id;
+
+            if (myMoves.TryGetValue(snake.Id, out Point move))
             {
-                MoveSnake(snake, h, state.PowerSources, undo.EatenPowerUps);
+                ApplySnakeChange(snake, move, state.PowerSources, eatenPowerUps, ref changes[i]);
             }
         }
 
-        foreach (var snake in state.OpponentSnakes)
+        for (int i = 0; i < oppCount; i++)
         {
-            if (oppMoves.TryGetValue(snake.Id, out Point h))
+            var snake = state.OpponentSnakes[i];
+            changes[myCount + i].Id = snake.Id;
+
+            if (oppMoves.TryGetValue(snake.Id, out Point move))
             {
-                MoveSnake(snake, h, state.PowerSources, undo.EatenPowerUps);
+                ApplySnakeChange(snake, move, state.PowerSources, eatenPowerUps, ref changes[myCount + i]);
             }
         }
 
-        foreach (var eaten in undo.EatenPowerUps)
+        foreach (var eaten in eatenPowerUps)
         {
             state.PowerSources.Remove(eaten);
         }
 
-        HandleCollisions(state, originalPowerSources);
-        ApplyGravityToAll(state);
-        RemoveOutOfBoundsSnakes(state);
+        HandleCollisionsChange(state, originalPowerSources, changes);
+        ApplyGravityChange(state, changes);
+        RemoveOutOfBoundsChange(state, changes);
 
-        return undo;
+        return new UndoMove { Changes = changes, EatenPowerUps = eatenPowerUps };
+    }
+
+    private void ApplySnakeChange(MinimaxSnake snake, Point newHead, HashSet<Point> powerSources, HashSet<Point> eatenPowerUps, ref SnakeChange delta)
+    {
+        if (snake.Body.Count == 0)
+        {
+            return;
+        }
+
+        delta.Moved = true;
+        snake.Body.Insert(0, newHead);
+
+        if (powerSources.Contains(newHead))
+        {
+            eatenPowerUps.Add(newHead);
+            delta.Grew = true;
+        }
+        else
+        {
+            delta.RemovedTail = snake.Body[snake.Body.Count - 1];
+            snake.Body.RemoveAt(snake.Body.Count - 1);
+        }
     }
 
     private void UndoMoves(MinimaxGameState state, UndoMove undo)
@@ -3010,94 +2839,119 @@ internal sealed class MinimaxSearch
             state.PowerSources.Add(ps);
         }
 
-        
-        foreach (var (id, oldBody) in undo.SnakeBodies)
+        foreach (var snake in state.MySnakes.Concat(state.OpponentSnakes))
         {
-            var snake = state.MySnakes.FirstOrDefault(s => s.Id == id)
-                        ?? state.OpponentSnakes.First(s => s.Id == id);
-                  
-            snake.Body = oldBody;
-        }
-    }
-
-    private void MoveSnake(MinimaxSnake snake, Point newHead,
-        HashSet<Point> powerSources, HashSet<Point> eatenPowerUps)
-    {
-        if (snake.Body.Count == 0) return;
-
-        snake.Body.Insert(0, newHead);
-
-        if (powerSources.Contains(newHead))
-        {
-            eatenPowerUps.Add(newHead);
-        }
-        else
-        {
-            snake.Body.RemoveAt(snake.Body.Count - 1);
-        }
-    }
-
-    private void HandleCollisions(MinimaxGameState state, HashSet<Point> originalPowerSources)
-    {
-        
-        
-        
-        HashSet<int> collidingSnakeIds = new HashSet<int>();
-
-        foreach (var snake in state.MySnakes)
-        {
-            if (snake.Body.Count == 0)
+            int index = FindChangeIndex(undo.Changes, snake.Id);
+            if (index < 0)
             {
                 continue;
             }
 
-            
-            
+            ref var change = ref undo.Changes[index];
 
-            if (CollidesWithOtherSnake(state, snake))
+            if (change.Killed)
             {
-                collidingSnakeIds.Add(snake.Id);                
+                snake.Body = change.KilledBody!;
+            }
+
+            
+            if (change.GravityFall > 0)
+            {
+                for (int i = 0; i < snake.Body.Count; i++)
+                {
+                    snake.Body[i] = new Point(snake.Body[i].X, snake.Body[i].Y - change.GravityFall);
+                }
+            }
+
+            
+            if (change.LostCollisionSegment)
+            {
+                snake.Body.Insert(0, change.CollisionHead);
+            }
+
+            
+            if (change.Moved)
+            {
+                snake.Body.RemoveAt(0);
+                if (!change.Grew)
+                {
+                    snake.Body.Add(change.RemovedTail);
+                }
+            }
+        }
+    }
+
+    private static int FindChangeIndex(SnakeChange[] changes, int id)
+    {
+        for (int i = 0; i < changes.Length; i++)
+        {
+            if (changes[i].Id == id)
+            {
+                return i;
+            }
+        }
+        
+        return -1;        
+    }
+
+    private static MinimaxSnake FindSnake(MinimaxGameState state, int id)
+    {
+        foreach (var s in state.MySnakes)
+        {
+            if (s.Id == id)
+            {
+                return s;
             }
         }
 
-        foreach (var snake in state.OpponentSnakes)
+        foreach (var s in state.OpponentSnakes)
         {
-            if (snake.Body.Count == 0)
+            if (s.Id == id)
             {
-                continue;
-            }
-            if (CollidesWithOtherSnake(state, snake))
-            {
-                collidingSnakeIds.Add(snake.Id);                
+                return s;
             }
         }
 
-        foreach (var collidingSnake in collidingSnakeIds)
-        {
-            var mySnake = state.MySnakes.FirstOrDefault(s => s.Id == collidingSnake);
-            if (mySnake != null)
-            {
-                if (mySnake.Body.Count <= 3)
-                {
-                    mySnake.Body.Clear();
-                }
-                else
-                {
-                    RemoveSegments(mySnake, 1);
-                }
-            }
+        Console.Error.WriteLine($"ERROR: Snake {id} not found");
+        throw new InvalidOperationException($"Snake {id} not found");
+    }
 
-            var oppSnake = state.OpponentSnakes.FirstOrDefault(s => s.Id == collidingSnake);
-            if (oppSnake != null)
+    private void HandleCollisionsChange(MinimaxGameState state, HashSet<Point> originalPowerSources, SnakeChange[] changes)
+    {
+        var collidingIds = new HashSet<int>();
+
+        for (int i = 0; i < state.MySnakes.Count; i++)
+        {
+            if (state.MySnakes[i].Body.Count > 0 && CollidesWithOtherSnake(state, state.MySnakes[i]))
             {
-                if (oppSnake.Body.Count <= 3)
-                {
-                    oppSnake.Body.Clear();
-                }
-                else
-                {
-                    RemoveSegments(oppSnake, 1);
-                }
+                collidingIds.Add(state.MySnakes[i].Id);
+            }
+        }
+
+        for (int i = 0; i < state.OpponentSnakes.Count; i++)
+        {
+            if (state.OpponentSnakes[i].Body.Count > 0 && CollidesWithOtherSnake(state, state.OpponentSnakes[i]))
+            {
+                collidingIds.Add(state.OpponentSnakes[i].Id);
+            }
+        }
+
+        foreach (int id in collidingIds)
+        {
+            int index = FindChangeIndex(changes, id);
+            var snake = FindSnake(state, id);
+
+            if (snake.Body.Count <= 3)
+            {
+                changes[index].Killed = true;
+                changes[index].KilledBody = snake.Body.ToList();
+                snake.Body.Clear();
+            }
+            else
+            {
+                changes[index].LostCollisionSegment = true;
+                changes[index].CollisionHead = snake.Body[0];
+                snake.Body.RemoveAt(0);
             }
         }
     }
@@ -3110,17 +2964,17 @@ internal sealed class MinimaxSearch
 
         foreach (var other in allSnakes)
         {
-            if (other.Id == snake.Id || other.Body.Count == 0)
+            if (other.Body.Count == 0)
             {
                 continue;
             }
 
-            if (snake.Body[0] == other.Body[0])
+            if (other.Id != snake.Id && snake.Body[0] == other.Body[0])
             {
                 return true;
             }
 
-            for (int i = 0; i < other.Body.Count; i++)
+            for (int i = 1; i < other.Body.Count; i++)
             {
                 if (snake.Body[0] == other.Body[i])
                 {
@@ -3132,94 +2986,91 @@ internal sealed class MinimaxSearch
         return false;
     }
 
-    private void RemoveSegments(MinimaxSnake snake, int count)
-    {
-        for (int i = 0; i < count && snake.Body.Count > 0; i++)
-            snake.Body.RemoveAt(snake.Body.Count - 1);
-    }
-
-    private void ApplyGravityToAll(MinimaxGameState state)
+    private void ApplyGravityChange(MinimaxGameState state, SnakeChange[] changes)
     {
         var allSnakes = new List<MinimaxSnake>(state.MySnakes.Count + state.OpponentSnakes.Count);
         allSnakes.AddRange(state.MySnakes);
         allSnakes.AddRange(state.OpponentSnakes);
 
-        var gravityPoints = new HashSet<Point>(_platformPoints);
-
-        foreach (var ps in state.PowerSources)
-        {
-            gravityPoints.Add(ps);
-        }
-        
+        var dynamicPoints = new HashSet<Point>(state.PowerSources);
+                
         foreach (MinimaxSnake snake in allSnakes)
         {
-            if (snake.Body.Count == 0)
-            {
-                continue;
-            }
-
             foreach (Point bodyPoint in snake.Body)
             {
-                gravityPoints.Add(bodyPoint);
+                dynamicPoints.Add(bodyPoint);
             }
         }
 
-        foreach (var snake in allSnakes)
+        for (int i = 0; i < allSnakes.Count; i++)
         {
+            var snake = allSnakes[i];
             if (snake.Body.Count == 0)
             {
                 continue;
             }
 
-            
-            foreach (var bodyPoint in snake.Body)
-            {
-                gravityPoints.Remove(bodyPoint);
-            }
-
-            ApplyGravity(snake, gravityPoints);
-
-            
-            foreach (var bodyPoint in snake.Body)
-            {
-                gravityPoints.Add(bodyPoint);
-            }
-        }
-    }
-
-    private void ApplyGravity(MinimaxSnake snake, HashSet<Point> solidPoints)
-    {
-        for (int fall = 0; fall < 20; fall++)
-        {
-            bool canFall = true;
             foreach (var bp in snake.Body)
             {
-                if (solidPoints.Contains(new Point(bp.X, bp.Y + 1)))
-                {
-                    canFall = false;
-                    break;
-                }
+                dynamicPoints.Remove(bp);
             }
 
-            if (!canFall) break;
+            int fall = 0;
+            for (int f = 0; f < 20; f++)
+            {
+                bool canFall = true;
+                foreach (var bodyPoint in snake.Body)
+                {
+                    var oneDown = new Point(bodyPoint.X, bodyPoint.Y + 1);
+                    if (dynamicPoints.Contains(oneDown) || _platformPoints.Contains(oneDown)) 
+                    { 
+                        canFall = false; break; 
+                    }
+                }
 
-            for (int i = 0; i < snake.Body.Count; i++)
-                snake.Body[i] = new Point(snake.Body[i].X, snake.Body[i].Y + 1);
+                if (!canFall)
+                {
+                    break;
+                }
+
+                for (int j = 0; j < snake.Body.Count; j++)
+                {
+                    snake.Body[j] = new Point(snake.Body[j].X, snake.Body[j].Y + 1);
+                }
+                fall++;
+            }
+
+            changes[FindChangeIndex(changes, snake.Id)].GravityFall = fall;
+
+            foreach (var bodyPoint in snake.Body)
+            {
+                dynamicPoints.Add(bodyPoint);
+            }
         }
     }
 
-    private void RemoveOutOfBoundsSnakes(MinimaxGameState state)
+    private void RemoveOutOfBoundsChange(MinimaxGameState state, SnakeChange[] changes)
     {
         foreach (var snake in state.MySnakes)
         {
             if (snake.Body.Count > 0 && IsFullyOutOfBounds(snake.Body))
+            {
+                int index = FindChangeIndex(changes, snake.Id);
+                changes[index].Killed = true;
+                changes[index].KilledBody = snake.Body.ToList();
                 snake.Body.Clear();
+            }
         }
 
         foreach (var snake in state.OpponentSnakes)
         {
             if (snake.Body.Count > 0 && IsFullyOutOfBounds(snake.Body))
+            {
+                int index = FindChangeIndex(changes, snake.Id);
+                changes[index].Killed = true;
+                changes[index].KilledBody = snake.Body.ToList();
                 snake.Body.Clear();
+            }
         }
     }
 
@@ -3248,11 +3099,7 @@ internal sealed class MinimaxSearch
         }
 
         int score = (myBodyTotal - oppBodyTotal) * 1000;
-
-        
-        
-
-        
+                
         if (state.PowerSources.Count > 0)
         {
             foreach (var snake in state.MySnakes)
@@ -3373,8 +3220,21 @@ internal sealed class SnakeState : IEquatable<SnakeState>
 
 internal struct UndoMove
 {
-    public List<(int Id, List<Point> OldBody)> SnakeBodies;
+    public SnakeChange[] Changes;
     public HashSet<Point> EatenPowerUps;
+}
+
+internal struct SnakeChange
+{
+    internal int Id;
+    internal bool Moved;
+    internal bool Grew;
+    internal Point RemovedTail;
+    internal int GravityFall;
+    internal bool Killed;
+    internal List<Point>? KilledBody;
+    internal Point CollisionHead;
+    internal bool LostCollisionSegment;
 }
 
 

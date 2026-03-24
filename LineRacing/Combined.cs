@@ -3,11 +3,72 @@
   It combined all classes in the project to work in Codingame.
 ***************************************************************/
 
-using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System;
 using System.Linq;
-using System.Runtime.CompilerServices;
+
+internal class CandidateMove
+{
+    internal Point Move { get; set; }
+    internal List<Point> Beam { get; set; }
+
+    internal int MySpace { get; set; }
+    internal int EnemySpace { get; set; }
+
+    internal int Score { get; set; }
+}
+
+
+internal class FloodFill
+{
+    private bool[,] _grid;
+    private MapChecker _mapChecker;
+
+    internal FloodFill(bool[,] grid)
+    {
+        _grid = grid;
+        _mapChecker = new MapChecker(grid);
+    }
+
+    internal int GetAvailableSpace(Point position)
+    {
+        return GetAvailableSpace(position, new List<List<Point>>());
+    }
+
+    internal int GetAvailableSpace(Point position, List<List<Point>> lines)
+    {
+        var visited = new HashSet<Point>();
+        var toCheck = new Queue<Point>();
+
+        if(!_mapChecker.IsInBounds(position))
+        {
+            return 0;
+        }
+
+        toCheck.Enqueue(position);
+
+        while (toCheck.Count > 0)
+        {
+            Point checkPoint = toCheck.Dequeue();
+
+            foreach (Point adjacentPoint in _mapChecker.GetAdjacentPoints(checkPoint))
+            {
+                if (!visited.Contains(adjacentPoint) 
+                    && _mapChecker.IsEmpty(adjacentPoint)
+                    && !lines.Any(line => line.Contains(adjacentPoint)))
+                {
+                    toCheck.Enqueue(adjacentPoint);
+                    visited.Add(adjacentPoint);
+                }
+            }
+        }
+
+        return visited.Count;
+    }
+}
+
+
 
 internal sealed class Game
 {
@@ -21,8 +82,11 @@ internal sealed class Game
 
     private List<Point> _myPath = new List<Point>();
 
-    private SpaceChecker _spaceChecker;
+    private FloodFill _floodFill;
     private MapChecker _mapChecker;
+
+    private bool _filling = false;
+    private bool _enemyTrapped = false;
 
     internal Game(int width, int height)
     {
@@ -31,7 +95,7 @@ internal sealed class Game
 
         _grid = new bool[height, width];
 
-        _spaceChecker = new SpaceChecker(_grid);
+        _floodFill = new FloodFill(_grid);
         _mapChecker = new MapChecker(_grid);
     }
 
@@ -50,36 +114,119 @@ internal sealed class Game
 
     internal string GetNextMove()
     {
-        // Bare minimum first pass solution
-        // Go in a straight line until we hit a wall. then choose the side with the most space.
+        var direction = "LEFT";
 
-        int straightLinePositionX = _myPosition.X - (_myPosition.X - _myPath[_myPath.Count - 1].X);
-        int straightLinePositionY = _myPosition.Y - (_myPosition.Y - _myPath[_myPath.Count - 1].Y);
-        Point straightLinePosition = new Point(straightLinePositionX, straightLinePositionY);
+        List<Point> possibleMoves = _mapChecker.GetAdjacentPoints(_myPosition).Where(p => _mapChecker.IsEmpty(p)).ToList(); 
 
-        if(_mapChecker.IsInBounds(straightLinePosition) && _mapChecker.IsEmpty(straightLinePosition))
+        List<CandidateMove> candidateMoves = new List<CandidateMove>();
+        foreach (var move in possibleMoves)
         {
-            return GetDirection(_myPosition, straightLinePosition);
-        }
-
-        Dictionary<Point, int> spaceByAdjacentPoint = new Dictionary<Point, int>();
-
-        List<Point> availableSpaces = _mapChecker.GetAdjacentPoints(_myPosition);
-
-        foreach (Point availableSpace in availableSpaces)
-        {
-            if (_mapChecker.IsEmpty(availableSpace))
+            candidateMoves.Add(new CandidateMove()
             {
-                spaceByAdjacentPoint[availableSpace] = _spaceChecker.GetAvailableSpace(availableSpace);
-
-                Console.Error.WriteLine(GetDirection(_myPosition, availableSpace) + " has " + spaceByAdjacentPoint[availableSpace] + " space");
-            }
+                Move = move
+            });
         }
 
-        Point bestAdjacentPoint = spaceByAdjacentPoint.OrderByDescending(kvp => kvp.Value).First().Key;
-        string bestDirection = GetDirection(_myPosition, bestAdjacentPoint);
-        
-        return bestDirection;
+        if (candidateMoves.Count == 0)
+        {
+            Console.Error.WriteLine("No possible moves, going left by default");
+            return "LEFT";
+        }
+
+        if (candidateMoves.Count == 1)
+        {
+            Console.Error.WriteLine("Only one possible move, going " + GetDirection(_myPosition, candidateMoves[0].Move));
+            return GetDirection(_myPosition, candidateMoves[0].Move);
+        }
+
+        int myCurrentSpace = _floodFill.GetAvailableSpace(_myPosition);
+        int opponentCurrentSpace = _floodFill.GetAvailableSpace(_enemyposition);
+
+        if (!_filling)
+        {
+            // Flood fill all possible spaces. 
+            foreach (var candidateMove in candidateMoves)
+            {
+                candidateMove.MySpace = _floodFill.GetAvailableSpace(candidateMove.Move);
+                candidateMove.EnemySpace = _floodFill.GetAvailableSpace(_enemyposition, new List<List<Point>>() { new List<Point> { candidateMove.Move } });
+            }
+
+            candidateMoves = candidateMoves.OrderByDescending(cm => cm.MySpace).ToList();
+
+            Console.Error.WriteLine($"MY SPACE: {myCurrentSpace}");
+            Logger.CandidateMoves(candidateMoves);
+
+            if (_enemyTrapped && candidateMoves[0].MySpace > candidateMoves[1].MySpace)
+            {
+                Console.Error.WriteLine("CHOOSING FREEDOM!");
+
+                // TODO: at some point use pathfinding to define this better.
+                // If we have different space and we can't touch paths, we are split
+                _filling = true;
+                return GetDirection(_myPosition, candidateMoves[0].Move);
+            }
+
+            candidateMoves = candidateMoves.OrderBy(cm => cm.EnemySpace).ToList();
+
+            Console.Error.WriteLine($"OPPONENT SPACE: {opponentCurrentSpace}");
+            Logger.CandidateMoves(candidateMoves);
+            if (candidateMoves[0].EnemySpace < candidateMoves[1].EnemySpace
+                && candidateMoves[0].EnemySpace < opponentCurrentSpace / 2)
+            {
+                Console.Error.WriteLine("TRAPPING ENEMY!");
+                _enemyTrapped = true;
+                return GetDirection(_myPosition, candidateMoves[0].Move);
+            }
+
+            foreach (var candidateMove in candidateMoves)
+            {
+                candidateMove.Beam = _mapChecker.GetBlockingLine(_myPosition, candidateMove.Move);
+            }
+
+            // 1. If I beam in any direction can I reduce my opponents space significantly. 
+            foreach (var candidateMove in candidateMoves)
+            {
+                int opponentSpaceAfterBeam = _floodFill.GetAvailableSpace(_enemyposition, new List<List<Point>>() { candidateMove.Beam });
+                candidateMove.Score = opponentCurrentSpace - opponentSpaceAfterBeam;
+            }
+
+            Logger.CandidateMoves(candidateMoves);
+
+            candidateMoves = candidateMoves.OrderByDescending(cm => cm.Score).ToList();
+
+            Console.Error.WriteLine($"BEAMING!");
+            direction = GetDirection(_myPosition, candidateMoves[0].Move);
+        }
+        else
+        {
+            int lowestValidMove = int.MaxValue;
+            int lowestIndex = 0;
+
+            for (int i = 0; i < candidateMoves.Count; i++)
+            {
+                var candidateMove = candidateMoves[i];
+
+                int validMoves = _mapChecker.GetValidMoves(candidateMove.Move);
+                if (validMoves < lowestValidMove)
+                {
+                    lowestValidMove = validMoves;
+                    lowestIndex = i;
+                }
+            }
+            
+            Console.Error.WriteLine($"FILLING!");
+            direction = GetDirection(_myPosition, candidateMoves[lowestIndex].Move);
+        }
+
+        return direction;
+
+        // 2. If I beam in two directions can I reduce my opponents space significantly.
+        //      If so pick the one thats's better and go in that direction.
+
+
+        // 3. If not pick the direction that gives me the most space and go in that direction.
+
+
     }
 
     private string GetDirection(Point myPosition, Point point)
@@ -104,9 +251,23 @@ internal sealed class Game
     }
 }
 
-
 internal static class Logger
 {
+    internal static void CandidateMoves(List<CandidateMove> candidateMoves)
+    {
+        foreach (var candidateMove in candidateMoves)
+        {
+            Console.Error.WriteLine($"Candidate move ({candidateMove.Move.X},{candidateMove.Move.Y})");
+
+            if (candidateMove.Beam != null && candidateMove.Beam.Count > 0)
+            {
+                Console.Error.WriteLine($"Candidate move:  - Path: {string.Join(";", candidateMove.Beam.Select(p => $"({p.X},{p.Y})"))}");
+            }
+
+            Console.Error.WriteLine($"My space: {candidateMove.MySpace} - Enemy space: {candidateMove.EnemySpace}");
+        }
+    }
+
     internal static void LightCyclePosition(Point position0, Point position1)
     {
         Console.Error.WriteLine($"Player position: ({position0.X},{position0.Y}) - ({position1.X},{position1.Y}) ");
@@ -172,10 +333,114 @@ internal sealed class MapChecker
     {
         return !_grid[point.Y, point.X];
     }
+
+    internal (List<Point>, List<Point>) GetHorizontalBlockingLinesFrom(Point point)
+    {
+        List<Point> leftBlockingLine = new List<Point>();
+        List<Point> rightBlockingLine = new List<Point>();
+
+        // Go left until blocked
+        for (int xPos = point.X - 1; xPos >= 0; xPos--)
+        {
+            if (!_grid[point.Y, xPos])
+            {
+                leftBlockingLine.Add(new Point(xPos, point.Y));
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        // Go right until blocked
+        for (int xPos = point.X + 1; xPos < _width; xPos++)
+        {
+            if (!_grid[point.Y, xPos])
+            {
+                rightBlockingLine.Add(new Point(xPos, point.Y));
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        return (leftBlockingLine, rightBlockingLine);
+    }
+
+    internal (List<Point>, List<Point>) GetVerticalBlockingLinesFrom(Point point)
+    {
+        List<Point> upBlockingLine = new List<Point>();
+        List<Point> downBlockingLine = new List<Point>();
+
+        // Go up until blocked
+        for (int yPos = point.Y - 1; yPos >= 0; yPos--)
+        {
+            if (!_grid[yPos, point.X])
+            {
+                upBlockingLine.Add(new Point(point.X, yPos));
+            }
+            else
+            {
+                break;
+            }
+        }
+        // Go down until blocked
+        for (int yPos = point.Y + 1; yPos < _height; yPos++)
+        {
+            if (!_grid[yPos, point.X])
+            {
+                downBlockingLine.Add(new Point(point.X, yPos));
+            }
+            else
+            {
+                break;
+            }
+        }
+        return (upBlockingLine, downBlockingLine);
+    }
+
+    internal List<Point> GetBlockingLine(Point myPosition, Point move)
+    {
+        // We assume the first move is valid because it shouldn't have been passed in otherwise
+        List<Point> beam = new List<Point>() { move };
+
+        Point direction = new Point(move.X - myPosition.X, move.Y - myPosition.Y);
+
+        bool edgeFound = false;
+        Point lastPoint = move;
+
+        while(!edgeFound)
+        {
+            Point nextPoint = new Point(lastPoint.X + direction.X, lastPoint.Y + direction.Y);
+
+            if (IsInBounds(nextPoint) && IsEmpty(nextPoint))
+            {
+                beam.Add(nextPoint);
+                lastPoint = nextPoint;
+            }
+            else
+            {
+                edgeFound = true;
+            }
+        }
+
+        return beam;
+    }
+
+    internal int GetValidMoves(Point move)
+    {
+        int validMoves = 0;
+        foreach (var adjacentPoint in GetAdjacentPoints(move))
+        {
+            if (IsEmpty(adjacentPoint))
+            {
+                validMoves++;
+            }
+        }
+        return validMoves;
+    }
 }
-
-
-
 
 public class Player
 {
@@ -189,6 +454,8 @@ public class Player
         string currentDirection = "LEFT";
 
         string[] inputs;
+
+        bool firstTurn = true;
 
         // game loop
         while (true)
@@ -206,6 +473,12 @@ public class Player
                     Point playerStartPosition = new Point(int.Parse(inputs[0]), int.Parse(inputs[1]));
                     Point playerEndPosition = new Point(int.Parse(inputs[2]), int.Parse(inputs[3]));
 
+                    if (firstTurn)
+                    {
+                        game.UpdateMyPosition(playerStartPosition);
+                        firstTurn = false;
+                    }
+
                     game.UpdateMyPosition(playerEndPosition);
                 }
                 else
@@ -213,7 +486,13 @@ public class Player
                     Point enemyStartPosition = new Point(int.Parse(inputs[0]), int.Parse(inputs[1]));
                     Point enemyEndPosition = new Point(int.Parse(inputs[2]), int.Parse(inputs[3]));
 
-                   game.UpdateEnemyPosition(enemyEndPosition);  
+                    if (firstTurn)
+                    {
+                        game.UpdateEnemyPosition(enemyStartPosition);
+                        firstTurn = false;
+                    }
+
+                    game.UpdateEnemyPosition(enemyEndPosition);
                 }
             }
             string nextMove = game.GetNextMove();
@@ -228,48 +507,4 @@ public class Player
         }
     }   
 }
-
-internal class SpaceChecker
-{
-    private bool[,] _grid;
-    private MapChecker _mapChecker;
-
-    internal SpaceChecker(bool[,] grid)
-    {
-        _grid = grid;
-        _mapChecker = new MapChecker(grid);
-    }
-
-    internal int GetAvailableSpace(Point position)
-    {
-        var visited = new HashSet<Point>();
-        var toCheck = new Queue<Point>();
-
-        if(!_mapChecker.IsInBounds(position) || !_mapChecker.IsEmpty(position))
-        {
-            return 0;
-        }
-
-        toCheck.Enqueue(position);
-
-        while (toCheck.Count > 0)
-        {
-            Point checkPoint = toCheck.Dequeue();
-
-            foreach (Point adjacentPoint in _mapChecker.GetAdjacentPoints(checkPoint))
-            {
-                if (!visited.Contains(adjacentPoint) 
-                    && _mapChecker.IsEmpty(adjacentPoint))
-                {
-                    toCheck.Enqueue(adjacentPoint);
-                    visited.Add(adjacentPoint);
-                }
-            }
-        }
-
-        return visited.Count;
-    }
-}
-
-
 

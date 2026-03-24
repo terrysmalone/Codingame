@@ -16,6 +16,8 @@ public class Player
 
         string[] inputs;
 
+        bool firstTurn = true;
+
         // game loop
         while (true)
         {
@@ -32,6 +34,12 @@ public class Player
                     Point playerStartPosition = new Point(int.Parse(inputs[0]), int.Parse(inputs[1]));
                     Point playerEndPosition = new Point(int.Parse(inputs[2]), int.Parse(inputs[3]));
 
+                    if (firstTurn)
+                    {
+                        game.UpdateMyPosition(playerStartPosition);
+                        firstTurn = false;
+                    }
+
                     game.UpdateMyPosition(playerEndPosition);
                 }
                 else
@@ -39,7 +47,13 @@ public class Player
                     Point enemyStartPosition = new Point(int.Parse(inputs[0]), int.Parse(inputs[1]));
                     Point enemyEndPosition = new Point(int.Parse(inputs[2]), int.Parse(inputs[3]));
 
-                   game.UpdateEnemyPosition(enemyEndPosition);  
+                    if (firstTurn)
+                    {
+                        game.UpdateEnemyPosition(enemyStartPosition);
+                        firstTurn = false;
+                    }
+
+                    game.UpdateEnemyPosition(enemyEndPosition);
                 }
             }
             string nextMove = game.GetNextMove();

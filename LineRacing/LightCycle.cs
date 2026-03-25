@@ -6,7 +6,7 @@ namespace LineRacing;
 internal sealed class LightCycle
 {
     internal Point StartPosition { get; set; }    
-    internal Point EndPosition { get; set; }
+    internal Point CurrentPosition { get; set; }
 
     internal List<Point> Path { get; set; } = new List<Point>();
 }

@@ -34,9 +34,9 @@ public class Player
                     Point playerStartPosition = new Point(int.Parse(inputs[0]), int.Parse(inputs[1]));
                     Point playerEndPosition = new Point(int.Parse(inputs[2]), int.Parse(inputs[3]));
 
-                    if (!firstTurn)
+                    if (firstTurn)
                     {
-                        game.UpdateMyPosition(playerStartPosition);
+                        game.InitialiseMyLightCycle(playerStartPosition);
                     }
 
                     game.UpdateMyPosition(playerEndPosition);
@@ -48,13 +48,16 @@ public class Player
 
                     if (firstTurn)
                     {
-                        Console.Error.WriteLine($"Enemy start position: {enemyStartPosition}");
-                        game.UpdateEnemyPosition(enemyStartPosition);
+                        game.InitialiseEnemyLightCycle(enemyStartPosition);
                     }
 
                     if (enemyEndPosition.X != -1 && enemyEndPosition.Y != -1)
                     {
-                        game.UpdateEnemyPosition(enemyEndPosition);
+                        game.UpdateEnemyPosition(enemyStartPosition, enemyEndPosition);
+                    }
+                    else
+                    {
+                        game.DestroyEnemy(enemyStartPosition);
                     }
                 }
             }

@@ -77,10 +77,8 @@ internal sealed class Game
 
     private bool[,] _grid;
 
-    private Point _myPosition;
-    private Point _enemyposition;
-
-    private List<Point> _myPath = new List<Point>();
+    private LightCycle _myLightCycle;
+    private List<LightCycle> _enemyLightCycles;
 
     private FloodFill _floodFill;
     private MapChecker _mapChecker;
@@ -97,26 +95,38 @@ internal sealed class Game
 
         _floodFill = new FloodFill(_grid);
         _mapChecker = new MapChecker(_grid);
+
+        _enemyLightCycles = new List<LightCycle>();
     }
 
     internal void UpdateMyPosition(Point myPosition)
     {
-        _myPosition = myPosition;
-        _myPath.Add(myPosition);
-        _grid[_myPosition.Y, _myPosition.X] = true;        
+        _myLightCycle.CurrentPosition = myPosition;
+        _myLightCycle.Path.Add(myPosition);
+
+        _grid[myPosition.Y, myPosition.X] = true;        
     }  
 
-    internal void UpdateEnemyPosition(Point enemyPosition)
+    internal void UpdateEnemyPosition(Point enemyStartPosition, Point enemyPosition)
     {
-        _enemyposition = enemyPosition;
-        _grid[_enemyposition.Y, _enemyposition.X] = true;
+        var enemy = _enemyLightCycles.FirstOrDefault(e => e.StartPosition == enemyStartPosition);
+
+        if (enemy == null)
+        {
+            Console.Error.WriteLine("ERROR: No enemy found with start position: " + enemyStartPosition);
+            return;
+        }
+
+        enemy.CurrentPosition = enemyPosition;
+        _grid[enemyPosition.Y, enemyPosition.X] = true;
     }
 
     internal string GetNextMove()
     {
+        Point currentPosition = _myLightCycle.CurrentPosition;
         var direction = "LEFT";
 
-        List<Point> possibleMoves = _mapChecker.GetAdjacentPoints(_myPosition).Where(p => _mapChecker.IsEmpty(p)).ToList(); 
+        List<Point> possibleMoves = _mapChecker.GetAdjacentPoints(currentPosition).Where(p => _mapChecker.IsEmpty(p)).ToList(); 
 
         List<CandidateMove> candidateMoves = new List<CandidateMove>();
         foreach (var move in possibleMoves)
@@ -135,12 +145,12 @@ internal sealed class Game
 
         if (candidateMoves.Count == 1)
         {
-            Console.Error.WriteLine("Only one possible move, going " + GetDirection(_myPosition, candidateMoves[0].Move));
-            return GetDirection(_myPosition, candidateMoves[0].Move);
+            Console.Error.WriteLine("Only one possible move, going " + GetDirection(currentPosition, candidateMoves[0].Move));
+            return GetDirection(currentPosition, candidateMoves[0].Move);
         }
 
-        int myCurrentSpace = _floodFill.GetAvailableSpace(_myPosition);
-        int opponentCurrentSpace = _floodFill.GetAvailableSpace(_enemyposition);
+        int myCurrentSpace = _floodFill.GetAvailableSpace(currentPosition);
+        int opponentCurrentSpace = _floodFill.GetAvailableSpace(_enemyLightCycles[0].CurrentPosition);
 
         if (!_filling)
         {
@@ -148,7 +158,7 @@ internal sealed class Game
             foreach (var candidateMove in candidateMoves)
             {
                 candidateMove.MySpace = _floodFill.GetAvailableSpace(candidateMove.Move);
-                candidateMove.EnemySpace = _floodFill.GetAvailableSpace(_enemyposition, new List<List<Point>>() { new List<Point> { candidateMove.Move } });
+                candidateMove.EnemySpace = _floodFill.GetAvailableSpace(_enemyLightCycles[0].CurrentPosition, new List<List<Point>>() { new List<Point> { candidateMove.Move } });
             }
 
             candidateMoves = candidateMoves.OrderByDescending(cm => cm.MySpace).ToList();
@@ -163,7 +173,7 @@ internal sealed class Game
                 // TODO: at some point use pathfinding to define this better.
                 // If we have different space and we can't touch paths, we are split
                 _filling = true;
-                return GetDirection(_myPosition, candidateMoves[0].Move);
+                return GetDirection(currentPosition, candidateMoves[0].Move);
             }
 
             candidateMoves = candidateMoves.OrderBy(cm => cm.EnemySpace).ToList();
@@ -175,18 +185,18 @@ internal sealed class Game
             {
                 Console.Error.WriteLine("TRAPPING ENEMY!");
                 _enemyTrapped = true;
-                return GetDirection(_myPosition, candidateMoves[0].Move);
+                return GetDirection(currentPosition, candidateMoves[0].Move);
             }
 
             foreach (var candidateMove in candidateMoves)
             {
-                candidateMove.Beam = _mapChecker.GetBlockingLine(_myPosition, candidateMove.Move);
+                candidateMove.Beam = _mapChecker.GetBlockingLine(currentPosition, candidateMove.Move);
             }
 
             // 1. If I beam in any direction can I reduce my opponents space significantly. 
             foreach (var candidateMove in candidateMoves)
             {
-                int opponentSpaceAfterBeam = _floodFill.GetAvailableSpace(_enemyposition, new List<List<Point>>() { candidateMove.Beam });
+                int opponentSpaceAfterBeam = _floodFill.GetAvailableSpace(_enemyLightCycles[0].CurrentPosition, new List<List<Point>>() { candidateMove.Beam });
                 candidateMove.Score = opponentCurrentSpace - opponentSpaceAfterBeam;
             }
 
@@ -195,7 +205,7 @@ internal sealed class Game
             candidateMoves = candidateMoves.OrderByDescending(cm => cm.Score).ToList();
 
             Console.Error.WriteLine($"BEAMING!");
-            direction = GetDirection(_myPosition, candidateMoves[0].Move);
+            direction = GetDirection(currentPosition, candidateMoves[0].Move);
         }
         else
         {
@@ -215,7 +225,7 @@ internal sealed class Game
             }
             
             Console.Error.WriteLine($"FILLING!");
-            direction = GetDirection(_myPosition, candidateMoves[lowestIndex].Move);
+            direction = GetDirection(currentPosition, candidateMoves[lowestIndex].Move);
         }
 
         return direction;
@@ -249,13 +259,47 @@ internal sealed class Game
         }
         return string.Empty;
     }
+
+    internal void InitialiseMyLightCycle(Point playerStartPosition)
+    {
+        _myLightCycle = new LightCycle()
+        {
+            StartPosition = playerStartPosition,
+        };
+
+        _myLightCycle.Path.Add(playerStartPosition);
+    }
+
+    internal void InitialiseEnemyLightCycle(Point enemyStartPosition)
+    {
+        if (_enemyLightCycles.Any(e => e.StartPosition == enemyStartPosition))
+        {
+            Console.Error.WriteLine("ERROR: Enemy already exists with start position: " + enemyStartPosition);
+        }
+        else
+        {
+            var lightCycle = new LightCycle()
+            {
+                StartPosition = enemyStartPosition
+            };
+
+            lightCycle.Path.Add(enemyStartPosition);
+
+            _enemyLightCycles.Add(lightCycle);           
+        }
+    }
+
+    internal void DestroyEnemy(Point enemyStartPosition)
+    {
+        _enemyLightCycles.Remove(_enemyLightCycles.First(e => e.StartPosition == enemyStartPosition));
+    }
 }
 
 
 internal sealed class LightCycle
 {
     internal Point StartPosition { get; set; }    
-    internal Point EndPosition { get; set; }
+    internal Point CurrentPosition { get; set; }
 
     internal List<Point> Path { get; set; } = new List<Point>();
 }
@@ -482,9 +526,9 @@ public class Player
                     Point playerStartPosition = new Point(int.Parse(inputs[0]), int.Parse(inputs[1]));
                     Point playerEndPosition = new Point(int.Parse(inputs[2]), int.Parse(inputs[3]));
 
-                    if (!firstTurn)
+                    if (firstTurn)
                     {
-                        game.UpdateMyPosition(playerStartPosition);
+                        game.InitialiseMyLightCycle(playerStartPosition);
                     }
 
                     game.UpdateMyPosition(playerEndPosition);
@@ -496,13 +540,16 @@ public class Player
 
                     if (firstTurn)
                     {
-                        Console.Error.WriteLine($"Enemy start position: {enemyStartPosition}");
-                        game.UpdateEnemyPosition(enemyStartPosition);
+                        game.InitialiseEnemyLightCycle(enemyStartPosition);
                     }
 
                     if (enemyEndPosition.X != -1 && enemyEndPosition.Y != -1)
                     {
-                        game.UpdateEnemyPosition(enemyEndPosition);
+                        game.UpdateEnemyPosition(enemyStartPosition, enemyEndPosition);
+                    }
+                    else
+                    {
+                        game.DestroyEnemy(enemyStartPosition);
                     }
                 }
             }

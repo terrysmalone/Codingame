@@ -14,6 +14,8 @@ internal sealed class Action
 
     internal GoalType GoalType;
     internal ProteinType GoalProteinType;
+    internal Point GoalProteinPosition;
+
     internal OrganType GoalOrganType;
     internal Point GoalPosition = new Point(-1, -1);
     internal int TurnsToGoal;
@@ -22,6 +24,8 @@ internal sealed class Action
     internal ActionSource Source = ActionSource.NONE;
     internal bool BlockC = false;
     internal bool BlockD = false;
+
+    
 
     public override string ToString()
     {

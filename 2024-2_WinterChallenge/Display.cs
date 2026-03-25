@@ -128,8 +128,9 @@ internal static class Display
 
     internal static void Actions(List<Action> actions)
     {
-        foreach (Action action in actions)
+        for (int i = 0; i < actions.Count; i++)       
         {
+            var action = actions[i];
             // Console.Error.WriteLine($"Goal type:{action.GoalType}, Protein type:{action.GoalProteinType}, Turns:{action.TurnsToGoal}, score:{action.Score}");
             Console.Error.WriteLine(action.ToString() + $" - score:{ action.Score} - from {action.Source}");
         }

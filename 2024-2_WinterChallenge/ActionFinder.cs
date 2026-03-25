@@ -30,11 +30,13 @@ internal sealed class ActionFinder
             // If it's harvested or blocked (this can only be from a tentacle facing it) then ignore it
             if (!protein.IsHarvested && !_game.opponentTentaclePath[protein.Position.X, protein.Position.Y])
             {
-                _proteinsToCheck.Add(protein.Clone());
+                _proteinsToCheck.Add(protein.Clone());                
             }
         }
 
         if (_proteinsToCheck.Count == 0) return actions;
+
+        // Console.Error.WriteLine($"Checking {proteins.Count} proteins, {_proteinsToCheck.Count} are valid to check");
 
         actions.AddRange(GetShortestPathsToProteins(organism, 1, GrowStrategy.ALL_PROTEINS));
         if (_proteinsToCheck.Count == 0) return actions;
@@ -81,14 +83,14 @@ internal sealed class ActionFinder
                     continue;
                 }
 
+                //Console.Error.WriteLine($"Calculating path from {organ.Position} to {protein.Position} with max distance {maxDistance} and grow strategy {growStrategy}");
+
                 List<Point> path = _aStar.GetShortestPath(organ.Position, protein.Position, maxDistance, growStrategy, false);
                 
-               // Console.Error.WriteLine($"Path from {organ.Position} to {protein.Position} is {path.Count} long");
+                Console.Error.WriteLine($"Path from {organ.Position} to {protein.Position} is {path.Count} long");
                 if (path.Count > 0)
                 {
-                    //actions.Add(new Tuple<int, ProteinType, List<Point>>(organ.Id, protein.Type, path));
-
-                    Action? action = CreateAction(organism.RootId, organ.Id, protein.Type, path);
+                    Action? action = CreateAction(organism.RootId, organ.Id, protein, path);
 
                     if (action != null)
                     {
@@ -112,7 +114,7 @@ internal sealed class ActionFinder
     }
 
     // TODO: Where does it decide on using a tentacle??
-    private Action? CreateAction(int organismId, int organId, ProteinType proteinType, List<Point> path)
+    private Action? CreateAction(int organismId, int organId, Protein protein, List<Point> path)
     {
         Action? action = new Action();
 
@@ -121,13 +123,14 @@ internal sealed class ActionFinder
         action.OrganismId = organismId;
         action.OrganId = organId;
         
-        action.GoalProteinType = proteinType;
+        action.GoalProteinType = protein.Type;
+        action.GoalProteinPosition = protein.Position;
         action.GoalPosition = path[path.Count - 1];
 
         action.Source = ActionSource.CHECK_FOR_HARVESTS;
 
         // TODO: Add longer consume actions (We might need to consume something if we 
-        //       Have no stock or harvests for C or alculator.CanProduceOrgan(OrganType.H
+        //       Have no stock or harvests for C or D
         if (path.Count == 1)
         {
             action.TurnsToGoal = 1;

@@ -251,6 +251,15 @@ internal sealed class Game
     }
 }
 
+
+internal sealed class LightCycle
+{
+    internal Point StartPosition { get; set; }    
+    internal Point EndPosition { get; set; }
+
+    internal List<Point> Path { get; set; } = new List<Point>();
+}
+
 internal static class Logger
 {
     internal static void CandidateMoves(List<CandidateMove> candidateMoves)
@@ -473,10 +482,9 @@ public class Player
                     Point playerStartPosition = new Point(int.Parse(inputs[0]), int.Parse(inputs[1]));
                     Point playerEndPosition = new Point(int.Parse(inputs[2]), int.Parse(inputs[3]));
 
-                    if (firstTurn)
+                    if (!firstTurn)
                     {
                         game.UpdateMyPosition(playerStartPosition);
-                        firstTurn = false;
                     }
 
                     game.UpdateMyPosition(playerEndPosition);
@@ -488,11 +496,14 @@ public class Player
 
                     if (firstTurn)
                     {
+                        Console.Error.WriteLine($"Enemy start position: {enemyStartPosition}");
                         game.UpdateEnemyPosition(enemyStartPosition);
-                        firstTurn = false;
                     }
 
-                    game.UpdateEnemyPosition(enemyEndPosition);
+                    if (enemyEndPosition.X != -1 && enemyEndPosition.Y != -1)
+                    {
+                        game.UpdateEnemyPosition(enemyEndPosition);
+                    }
                 }
             }
             string nextMove = game.GetNextMove();
@@ -502,9 +513,12 @@ public class Player
                 currentDirection = nextMove;
             }
 
-            Console.WriteLine(currentDirection);
+            firstTurn = false;
 
+            Console.WriteLine(currentDirection);
         }
-    }   
+    }
 }
+
+
 

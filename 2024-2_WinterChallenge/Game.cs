@@ -129,7 +129,7 @@ internal sealed class Game
             
             DisplayTime($"Checked for tentacle action. {possibleActions.Count} possible actions");
             
-            if (!_createdSporer.Contains(organism.RootId))
+            if (possibleActions.Count == 0 && !_createdSporer.Contains(organism.RootId))
             {
                 List<Action> actions = GetHarvestAndConsumeActions(organism, maxProteinDistance);
                 DisplayTime($"Checked for harvest action. {actions.Count} possible actions");
@@ -232,7 +232,8 @@ internal sealed class Game
             
             List<Action> randomActions = GetRandomGrowActions(organism, getFloodFillScores);
             DisplayTime($"Checked for random move action. {randomActions.Count} possible actions");
-            randomActions = randomActions.OrderByDescending(a => a.Score).ToList();            
+            randomActions = randomActions.OrderByDescending(a => a.Score).ToList();
+            Display.Actions(randomActions);
 
             possibleActions.AddRange(randomActions);
             
@@ -262,7 +263,7 @@ internal sealed class Game
 
             possibleActions = possibleActions.OrderByDescending(p => p.Score).ToList();
 
-            Display.Actions(possibleActions);
+            //Display.Actions(possibleActions);
             //Console.Error.WriteLine($"Possible actions: {possibleActions.Count}");
 
             allPossibleActions.Add(organism.RootId, possibleActions);
@@ -793,8 +794,8 @@ internal sealed class Game
             return new List<Action>();
         }
 
-        int notHarvestingScore = 480;
-        int noStockScore = 68;
+        int notHarvestingScore = 28;
+        int noStockScore = 48;
         int harvesterProducingProteinScore = 10;
 
         foreach (Action proteinAction in proteinActions)
@@ -819,10 +820,6 @@ internal sealed class Game
                         proteinAction.Score += 10;
                         break;
                 }
-
-                // Add a small bonus for dist from enemy to prefer harvesting proteins that are closer to us than them. This is because we want to deny them the protein and also because it's more likely that we'll get to it first
-                int distanceFromEnemy = MapChecker.CalculateManhattanDistanceToClosestOpponent(proteinAction.GoalProteinPosition, OpponentOrganisms);
-                proteinAction.Score += distanceFromEnemy;
 
                 if (proteinAction.GoalProteinType == ProteinType.A && _harvestedAProteins < 1)
                 {

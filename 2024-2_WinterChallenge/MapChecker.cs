@@ -14,23 +14,6 @@ internal static class MapChecker
         return Math.Abs(position1.X - position2.X) + Math.Abs(position1.Y - position2.Y);
     }
 
-    internal static int CalculateManhattanDistanceToClosestOpponent(Point targetPosition, List<Organism> opponentOrganisms)
-    {
-        int closestDistance = int.MaxValue;
-        foreach (Organism opponentOrganism in opponentOrganisms)
-        {
-            foreach (Organ organ in opponentOrganism.Organs)
-            {
-                int distance = CalculateManhattanDistance(targetPosition, organ.Position);
-                if (distance < closestDistance)
-                {
-                    closestDistance = distance;
-                }
-            }
-        }
-        return closestDistance;
-    }
-
     internal static bool CanGrowOn(Point pointToCheck, Game game)
     {
         return CanGrowOn(pointToCheck, game, GrowStrategy.NO_PROTEINS, false);

@@ -87,6 +87,20 @@ internal sealed class Game
         int myCurrentSpace = _floodFill.GetAvailableSpace(currentPosition);
         int opponentCurrentSpace = _floodFill.GetAvailableSpace(_enemyLightCycles[0].CurrentPosition);
 
+        // Before anything else, no matter what, always choose the move that gives us the most space
+        foreach (var candidateMove in candidateMoves)
+        {
+            candidateMove.MySpace = _floodFill.GetAvailableSpace(candidateMove.Move);
+        }
+
+        candidateMoves = candidateMoves.OrderByDescending(cm => cm.MySpace).ToList();
+
+        if (candidateMoves[0].MySpace > candidateMoves[1].MySpace)
+        {
+            Console.Error.WriteLine("CHOOSING SPACIOUS ROUTE!");
+            return GetDirection(currentPosition, candidateMoves[0].Move);
+        }
+
         if (!_filling)
         {
             // Flood fill all possible spaces. 
@@ -203,6 +217,7 @@ internal sealed class Game
         };
 
         _myLightCycle.Path.Add(playerStartPosition);
+        _grid[playerStartPosition.Y, playerStartPosition.X] = true;
     }
 
     internal void InitialiseEnemyLightCycle(Point enemyStartPosition)
@@ -218,14 +233,20 @@ internal sealed class Game
                 StartPosition = enemyStartPosition
             };
 
-            lightCycle.Path.Add(enemyStartPosition);
+            Console.Error.WriteLine("Initialising enemy light cycle at position: " + enemyStartPosition);
 
-            _enemyLightCycles.Add(lightCycle);           
+            lightCycle.Path.Add(enemyStartPosition);
+            _enemyLightCycles.Add(lightCycle);     
+            
+            _grid[enemyStartPosition.Y, enemyStartPosition.X] = true;
         }
     }
 
     internal void DestroyEnemy(Point enemyStartPosition)
     {
-        _enemyLightCycles.Remove(_enemyLightCycles.First(e => e.StartPosition == enemyStartPosition));
+        if(_enemyLightCycles.Any(e => e.StartPosition == enemyStartPosition))
+        {
+            _enemyLightCycles.Remove(_enemyLightCycles.First(e => e.StartPosition == enemyStartPosition));
+        }        
     }
 }

@@ -23,7 +23,10 @@ internal class MiniMax
 
         int bestMove = -1;
 
-        foreach (int move in gameState.GetValidMoves())
+        List<int> moves = gameState.GetValidMoves();
+        OrderMoves(moves);
+
+        foreach (int move in moves)
         {
             // Make the move, recursively evaluate the game state, then undo the move
             gameState.ApplyMove(move);
@@ -54,7 +57,7 @@ internal class MiniMax
         return bestMove;
     }
 
-    private static int MiniMaxRecursive(GameState gameState, int depth, int alpha, int beta)
+    private int MiniMaxRecursive(GameState gameState, int depth, int alpha, int beta)
     {
         int bestScore = 0;
 
@@ -66,6 +69,7 @@ internal class MiniMax
         }
 
         List<int> validMoves = gameState.GetValidMoves();
+        OrderMoves(validMoves);
 
         if (gameState.CurrentPlayer == 1)
         {
@@ -117,5 +121,17 @@ internal class MiniMax
         }
 
         return bestScore;
+    }
+
+    // Very basic move ordering that prioritises being closer to the middle column
+    private void OrderMoves(List<int> moves)
+    {
+        moves.Sort((a, b) =>
+        {
+            int middle = 4;
+            int distanceA = Math.Abs(a - middle);
+            int distanceB = Math.Abs(b - middle);
+            return distanceA.CompareTo(distanceB);
+        });
     }
 }

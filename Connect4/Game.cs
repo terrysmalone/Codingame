@@ -3,7 +3,7 @@
 // https://www.codingame.com/multiplayer/bot-programming/connect-4
 internal sealed class Game
 {
-    private int _depth = 3;
+    private int _depth = 4;
 
     private int _rows = 7;
     private int _columns = 9;

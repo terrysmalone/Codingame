@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 
 internal sealed class Game
 {
-    private int _depth = 3;
+    private int _depth = 4;
 
     private int _rows = 7;
     private int _columns = 9;
@@ -94,7 +94,7 @@ internal class GameState
 
     private const int TERMINAL_SCORE = 10000;
     private const int THREE_OF_FOUR_SCORE = 100;
-    private const int TWO_OF_FOUR_SCORE = 10;
+    private const int TWO_OF_FOUR_SCORE = 30;
     private const int CENTRAL_COLUMNS_SCORE = 3;
 
     public GameState(int rows = 6, int columns = 7)
@@ -478,13 +478,16 @@ internal class MiniMax
             bestScore = int.MaxValue;
         }
 
+        int alpha = int.MinValue;
+        int beta = int.MaxValue;
+
         int bestMove = -1;
 
         foreach (int move in gameState.GetValidMoves())
         {
             
             gameState.ApplyMove(move);
-            int score = MiniMaxRecursive(gameState, depth - 1);
+            int score = MiniMaxRecursive(gameState, depth - 1, alpha, beta);
             gameState.UndoLastMove();
 
             Console.Error.WriteLine($"move:{move} - score:{score}");
@@ -496,13 +499,25 @@ internal class MiniMax
                 bestScore = score;
                 bestMove = move;
             }
+
+            
+            if (gameState.CurrentPlayer == 1)
+            {
+                alpha = Math.Max(alpha, bestScore);
+            }
+            else
+            {
+                beta = Math.Min(beta, bestScore);
+            }
         }
 
         return bestMove;
     }
 
-    private static int MiniMaxRecursive(GameState gameState, int depth)
+    private static int MiniMaxRecursive(GameState gameState, int depth, int alpha, int beta)
     {
+        int bestScore = 0;
+
         
         if (depth <= 0 || gameState.IsTerminal())
         {
@@ -510,26 +525,54 @@ internal class MiniMax
             return score + (Math.Sign(score) * depth);
         }
 
-        int bestScore = int.MinValue;
-        if (gameState.CurrentPlayer == -1)
-        {
-            bestScore = int.MaxValue;
-        }
-
         List<int> validMoves = gameState.GetValidMoves();
 
-        foreach (int move in validMoves)
+        if (gameState.CurrentPlayer == 1)
         {
-            
-            gameState.ApplyMove(move);
-            int score = MiniMaxRecursive(gameState, depth - 1);
-            gameState.UndoLastMove();
+            bestScore = int.MinValue;
 
-            
-            if ((gameState.CurrentPlayer == 1 && score > bestScore)
-                || (gameState.CurrentPlayer == -1 && score < bestScore))
+            foreach (int move in validMoves)
             {
-                bestScore = score;
+                
+                gameState.ApplyMove(move);
+                int score = MiniMaxRecursive(gameState, depth - 1, alpha, beta);
+                gameState.UndoLastMove();
+
+                
+                bestScore = Math.Max(bestScore, score);
+
+                
+                alpha = Math.Max(alpha, bestScore);
+
+                
+                if (beta <= alpha)
+                {
+                    break;
+                }
+            }
+        }
+        else
+        {
+            bestScore = int.MaxValue;
+
+            foreach (int move in validMoves)
+            {
+                
+                gameState.ApplyMove(move);
+                int score = MiniMaxRecursive(gameState, depth - 1, alpha, beta);
+                gameState.UndoLastMove();
+
+                
+                bestScore = Math.Min(bestScore, score);
+
+                
+                beta = Math.Min(beta, bestScore);
+
+                
+                if (beta <= alpha)
+                {
+                    break;
+                }
             }
         }
 

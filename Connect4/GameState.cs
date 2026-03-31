@@ -21,7 +21,7 @@ internal class GameState
 
     private const int TERMINAL_SCORE = 10000;
     private const int THREE_OF_FOUR_SCORE = 100;
-    private const int TWO_OF_FOUR_SCORE = 10;
+    private const int TWO_OF_FOUR_SCORE = 30;
     private const int CENTRAL_COLUMNS_SCORE = 3;
 
     public GameState(int rows = 6, int columns = 7)

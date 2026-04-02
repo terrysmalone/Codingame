@@ -4,35 +4,62 @@ using System.Drawing;
 
 namespace Connect4;
 
-internal class GameState
+public class GameState
 {
-    private List<Point[]> _windows = new List<Point[]>();
-
     private int[,] _board;
     public int CurrentPlayer = 1; // 1 for player one, -1 for player two
 
     private int _columns = 9;
     private int _rows = 7;
 
-    private int _lastMoveColumn = -1;
-    private int _lastMoveRow = -1;
-
     private Stack<(int row, int column, int prevPlayer)> _moveHistory = new Stack<(int row, int column, int prevPlayer)>();
 
+    private List<Point[]> _windows = new List<Point[]>();
+
     private const int TERMINAL_SCORE = 10000;
+    private const int PLAYABLE_THREE_OF_FOUR_SCORE = 1000;
     private const int THREE_OF_FOUR_SCORE = 100;
     private const int TWO_OF_FOUR_SCORE = 30;
     private const int CENTRAL_COLUMNS_SCORE = 3;
 
-    public GameState(int rows = 6, int columns = 7)
+    // Transposition table fields 
+    private readonly int _zobristSeed;
+    private ulong[] _zobristPlayer1;
+    private ulong[] _zobristPlayer2;
+    private ulong _zobristPlayerTurn;
+    private ulong _hash;
+
+    public GameState(int rows = 7, int columns = 9, int zobristSeed = -1)
     {
         _rows = rows;
         _columns = columns;
         _board = new int[_rows, _columns];
 
-        PreComputeWindows();
+        _zobristSeed = zobristSeed == -1 ? Random.Shared.Next() : zobristSeed;
 
-        Console.Error.WriteLine($"Windows: {_windows.Count}");
+        GenerateZobristValues();
+
+        PreComputeWindows();
+    }
+
+    private void GenerateZobristValues()
+    {
+        // Use a fixed seed for reproducibility
+        var rand = new Random(_zobristSeed);
+
+        _zobristPlayer1 = new ulong[_rows * _columns];
+        _zobristPlayer2 = new ulong[_rows * _columns];
+
+        // Generate a random 64-bit number for each cell and player combination
+        for (int i = 0; i < _rows * _columns; i++)
+        {
+            _zobristPlayer1[i] = (ulong)rand.NextInt64();
+            _zobristPlayer2[i] = (ulong)rand.NextInt64();
+        }
+        _zobristPlayerTurn = (ulong)rand.NextInt64();
+
+        // Empty board, player 1 to move
+        _hash = _zobristPlayerTurn;
     }
 
     private void PreComputeWindows()
@@ -48,14 +75,14 @@ internal class GameState
                     new Point(column + 1, row),
                     new Point(column + 2, row),
                     new Point(column + 3, row),
-                });                
+                });
             }
         }
 
         // Vertical windows
-        for (int column = 0; column < _columns; column++)
+        for (int row = 0; row < _rows - 3; row++)
         {
-            for (int row = 0; row < _rows - 3; row++)
+            for (int column = 0; column < _columns; column++)
             {
                 _windows.Add(new Point[]
                 {
@@ -102,13 +129,14 @@ internal class GameState
     {
         _board = board;
         CurrentPlayer = currentPlayer;
+        RecomputeHash();
     }
-
 
     public void SetGameStateFromPlay(List<int> moves)
     {
         _board = new int[_rows, _columns];
         CurrentPlayer = 1;
+        _hash = _zobristPlayerTurn; // reset to player 1's turn on empty board
 
         foreach (int move in moves)
         {
@@ -131,6 +159,20 @@ internal class GameState
 
         _board[firstEmpty, move] = CurrentPlayer;
 
+        // Update hash - XOR the placed piece and toggle the player turn
+        int cellIndex = firstEmpty * _columns + move;
+
+        if (CurrentPlayer == 1)
+        {
+            _hash ^= _zobristPlayer1[cellIndex];
+        }
+        else
+        {
+            _hash ^= _zobristPlayer2[cellIndex];
+        }
+
+        _hash ^= _zobristPlayerTurn;
+
         _moveHistory.Push((firstEmpty, move, CurrentPlayer));
 
         CurrentPlayer = -CurrentPlayer;
@@ -138,16 +180,18 @@ internal class GameState
 
     public GameState Clone()
     {
-        var newState = new GameState();
+        var newState = new GameState(_rows, _columns, _zobristSeed);
 
-        for (int i = 0; i < _board.GetLength(0); i++)
+        for (int row = 0; row < _board.GetLength(0); row++)
         {
-            for (int j = 0; j < _board.GetLength(1); j++)
+            for (int column = 0; column < _board.GetLength(1); column++)
             {
-                newState._board[i, j] = _board[i, j];
+                newState._board[row, column] = _board[row, column];
             }
         }
+
         newState.CurrentPlayer = CurrentPlayer;
+        newState._hash = _hash;
 
         return newState;
     }
@@ -177,9 +221,25 @@ internal class GameState
 
         (var lastMoveRow, var lastMoveColumn, int prevPlayer) = _moveHistory.Pop();
 
+        // Update hash - XOR out the removed piece and toggle the player turn
+        int cellIndex = lastMoveRow * _columns + lastMoveColumn;
+
+        if (prevPlayer == 1)
+        {
+            _hash ^= _zobristPlayer1[cellIndex];
+        }
+        else
+        {
+            _hash ^= _zobristPlayer2[cellIndex];
+        }
+
+        _hash ^= _zobristPlayerTurn;
+
         _board[lastMoveRow, lastMoveColumn] = 0;
         CurrentPlayer = prevPlayer;
     }
+
+    public ulong GetHash() => _hash;
 
     public bool IsTerminal()
     {
@@ -203,6 +263,7 @@ internal class GameState
         return true;
     }
 
+    // TODO: Check for winner should use the windows
     private int CheckForWinner()
     {
         for (int row = 0; row < _rows; row++)
@@ -235,7 +296,7 @@ internal class GameState
                 }
 
                 // Diagonal down-right
-                if (row <= _rows-4 && column <= _columns-4 &&
+                if (row <= _rows - 4 && column <= _columns-4 &&
                     player == _board[row + 1, column + 1] &&
                     player == _board[row + 2, column + 2] &&
                     player == _board[row + 3, column + 3])
@@ -244,7 +305,7 @@ internal class GameState
                 }
 
                 // Diagonal up-right
-                if (row >= 3 && column <= _columns - 4 &&
+                if (row >= _rows - 4 && column <= _columns - 4 &&
                     player == _board[row - 1, column + 1] &&
                     player == _board[row - 2, column + 2] &&
                     player == _board[row - 3, column + 3])
@@ -271,6 +332,25 @@ internal class GameState
         return score;
     }
 
+    private int CentralColumnsScore()
+    {
+        int score = 0;
+
+        for (int row = 0; row < _rows; row++)
+        {
+            if (_board[row, 3] == 1)
+            {
+                score += CENTRAL_COLUMNS_SCORE;
+            }
+            else if (_board[row, 3] == -1)
+            {
+                score -= CENTRAL_COLUMNS_SCORE;
+            }
+        }
+
+        return score;
+    }
+
     private int WindowScores()
     {
         int score = 0;
@@ -291,12 +371,17 @@ internal class GameState
         int player2Count = 0;
         int emptyCount = 0;
 
+        int emptyRow = 0;
+        int emptyColumn = 0;
+
         foreach (Point point in window)
         {
             switch (_board[point.Y, point.X])
             {
                 case 0:
                     emptyCount++;
+                    emptyRow = point.Y;
+                    emptyColumn = point.X;
                     break;
                 case 1:
                     player1Count++;
@@ -304,12 +389,19 @@ internal class GameState
                 case -1:
                     player2Count++;
                     break;
-            } 
+            }
         }
 
         if (player1Count == 3 && emptyCount == 1)
         {
-            score += THREE_OF_FOUR_SCORE;
+            if (IsPlayable(emptyRow, emptyColumn))
+            {
+                score += PLAYABLE_THREE_OF_FOUR_SCORE;
+            }
+            else
+            {
+                score += THREE_OF_FOUR_SCORE;
+            }
         }
         else if (player1Count == 2 && emptyCount == 2)
         {
@@ -317,7 +409,14 @@ internal class GameState
         }
         else if (player2Count == 3 && emptyCount == 1)
         {
-            score -= THREE_OF_FOUR_SCORE;
+            if (IsPlayable(emptyRow, emptyColumn))
+            {
+                score -= PLAYABLE_THREE_OF_FOUR_SCORE;
+            }
+            else
+            {
+                score -= THREE_OF_FOUR_SCORE;
+            }
         }
         else if (player2Count == 2 && emptyCount == 2)
         {
@@ -327,24 +426,35 @@ internal class GameState
         return score;
     }
 
-    private int CentralColumnsScore()
+    private bool IsPlayable(int emptyRow, int emptyColumn)
     {
-        int score = 0;
-        for (int column = 3; column <= 5; column++) 
+        return false;
+    }
+
+    private void RecomputeHash()
+    {
+        _hash = 0;
+
+        for (int row = 0; row < _rows; row++)
         {
-            for (int row = 0; row < _rows; row++)
+            for (int col = 0; col < _columns; col++)
             {
-                if (_board[row, column] == 1)
+                int cellIndex = row * _columns + col;
+
+                if (_board[row, col] == 1)
                 {
-                    score += CENTRAL_COLUMNS_SCORE;
+                    _hash ^= _zobristPlayer1[cellIndex];
                 }
-                else if (_board[row, column] == -1)
+                else if (_board[row, col] == -1)
                 {
-                    score -= CENTRAL_COLUMNS_SCORE;
+                    _hash ^= _zobristPlayer2[cellIndex];
                 }
             }
         }
 
-        return score;
+        if (CurrentPlayer == 1)
+        {
+            _hash ^= _zobristPlayerTurn;
+        }
     }
 }

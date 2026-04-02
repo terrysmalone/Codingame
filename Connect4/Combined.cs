@@ -501,7 +501,7 @@ public class GameState
 
     private bool IsPlayable(int emptyRow, int emptyColumn)
     {
-        return false;
+        return emptyRow == _rows - 1 || _board[emptyRow + 1, emptyColumn] != 0;
     }
 
     private void RecomputeHash()

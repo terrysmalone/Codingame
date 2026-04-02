@@ -427,8 +427,8 @@ public class GameState
     }
 
     private bool IsPlayable(int emptyRow, int emptyColumn)
-    {
-        return false;
+    {// A cell is playable if it's in the bottom row or the cell below it is not empty
+        return emptyRow == _rows - 1 || _board[emptyRow + 1, emptyColumn] != 0;
     }
 
     private void RecomputeHash()

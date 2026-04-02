@@ -44,10 +44,10 @@ internal class GameState
             {
                 _windows.Add(new Point[]
                 {
-                    new Point(row, column),
-                    new Point(row, column + 1),
-                    new Point(row, column + 2),
-                    new Point(row, column + 3),
+                    new Point(column, row),
+                    new Point(column + 1, row),
+                    new Point(column + 2, row),
+                    new Point(column + 3, row),
                 });                
             }
         }
@@ -59,10 +59,10 @@ internal class GameState
             {
                 _windows.Add(new Point[]
                 {
-                    new Point(row, column),
-                    new Point(row + 1, column),
-                    new Point(row + 2, column),
-                    new Point(row + 3, column),
+                    new Point(column, row),
+                    new Point(column, row + 1),
+                    new Point(column, row + 2),
+                    new Point(column, row + 3),
                 });
 
             }
@@ -74,10 +74,10 @@ internal class GameState
             {
                 _windows.Add(new Point[]
                 {
-                    new Point(row, column),
-                    new Point(row + 1, column + 1),
-                    new Point(row + 2, column + 2),
-                    new Point(row + 3, column + 3),
+                    new Point(column, row),
+                    new Point(column + 1, row + 1),
+                    new Point(column + 2, row + 2),
+                    new Point(column + 3, row + 3),
                 });
             }
         }
@@ -88,10 +88,10 @@ internal class GameState
             {
                 _windows.Add(new Point[]
                 {
-                    new Point(row, column),
-                    new Point(row - 1, column + 1),
-                    new Point(row - 2, column + 2),
-                    new Point(row - 3, column + 3),
+                    new Point(column, row),
+                    new Point(column + 1, row - 1),
+                    new Point(column + 2, row - 2),
+                    new Point(column + 3, row - 3),
                 });
             }
         }
@@ -293,7 +293,7 @@ internal class GameState
 
         foreach (Point point in window)
         {
-            switch (_board[point.X, point.Y])
+            switch (_board[point.Y, point.X])
             {
                 case 0:
                     emptyCount++;

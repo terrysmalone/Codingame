@@ -90,11 +90,10 @@ internal sealed class Program
         string blockContent = text.Substring(blockStart + 1);
 
         // Remove single-line comments
-        blockContent = System.Text.RegularExpressions.Regex.Replace(blockContent, @"//.*$", "", System.Text.RegularExpressions.RegexOptions.Multiline);
+        //blockContent = System.Text.RegularExpressions.Regex.Replace(blockContent, @"//.*$", "", System.Text.RegularExpressions.RegexOptions.Multiline);
 
         // Remove multi-line comments
-        blockContent = System.Text.RegularExpressions.Regex.Replace(blockContent, @"/\*.*?\*/", "", System.Text.RegularExpressions.RegexOptions.Singleline);
-
+        //blockContent = System.Text.RegularExpressions.Regex.Replace(blockContent, @"/\*.*?\*/", "", System.Text.RegularExpressions.RegexOptions.Singleline);
 
         // Get usings
         int index = 0;

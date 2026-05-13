@@ -41,6 +41,8 @@ internal class Game
 
     private PathFinder _pathFinder;
 
+    private int _round = 0;
+
     public Game(int width, int height)
     {
         _width = width;
@@ -49,14 +51,30 @@ internal class Game
         _pathFinder = new PathFinder(width, height);
     }
 
-    internal string GetAction()
+    internal List<string> GetActions()
     {
+        List<Point> excludedTrees = new List<Point>();
+
         Logger.Inventory("Player inventory", _playerInventory);
         Logger.Inventory("Enemy inventory", _enemyInventory);
 
-        List<Tree> treesWithFruit = _trees.FindAll(tree => tree.Fruits > 0);
+        _round++;
 
         List<string> actions = new List<string>();
+
+        // If we're on the first round make the best troll we can
+        if (_round == 1)
+        {
+            (int plums, int lemons, int apples) = TrainingUtil.GetBestTrollTraining(_playerTrolls.Count, _playerInventory);
+
+            Logger.Message($"Training troll with {plums} plums, {lemons} lemons and {apples} apples");
+            if (plums > 0 && lemons > 0 && apples > 0)
+            {
+                actions.Add($"TRAIN {plums} {lemons} {apples} 0");
+            }
+        }
+
+        List<Tree> treesWithFruit = _trees.FindAll(tree => tree.Fruits > 0);
 
         foreach (Troll troll in _playerTrolls)
         {
@@ -87,14 +105,15 @@ internal class Game
                 }
                 else
                 {
-                    List<Point> pathToClosestTree = GetPathToClosestTree(troll.Position, treesWithFruit);
+                    List<Point> pathToClosestTree = GetPathToClosestTree(troll.Position, treesWithFruit, excludedTrees);
                     actions.Add($"MOVE {troll.Id} {pathToClosestTree[0].X} {pathToClosestTree[0].Y}");
+                    excludedTrees.Add(pathToClosestTree.Last());
                 }
             }
             
         }
 
-        return actions[0];
+        return actions;
     }
 
     private bool IsAtTree(Point position, List<Tree> treesWithFruit)
@@ -133,13 +152,18 @@ internal class Game
         return closestPath;
     }
 
-    private List<Point> GetPathToClosestTree(Point position, List<Tree> treesWithFruit)
+    private List<Point> GetPathToClosestTree(Point position, List<Tree> treesWithFruit, List<Point> excludedTrees)
     {
         int closestDistance = int.MaxValue;
         List<Point> closestPath = new List<Point>();
 
         foreach (Tree tree in treesWithFruit)
         {
+            if (excludedTrees.Contains(tree.Position))
+            {
+                continue;
+            }
+
             List<Point> path = _pathFinder.GetShortestPath(position, tree.Position);
 
             //Logger.Path($"Tree {tree.Position}", path);
@@ -584,13 +608,42 @@ partial class Player
             // MOVE <id> <x> <y>
             // HARVEST <id> - when you are on the same cell as a tree
             // DROP <id> - when you are next to your shack and carry items
-            Console.WriteLine(game.GetAction());
+            string actions = string.Join(";", game.GetActions());
+
+            Console.WriteLine(actions);
 
             // Console.WriteLine("MOVE 0 7 7");
         }
     }
 }
 
+
+internal static class TrainingUtil
+{
+    internal static (int plums, int lemons, int apples) GetBestTrollTraining(int numberOfTrolls, Inventory inventory)
+    {
+        int plums = GetMaxAmount(numberOfTrolls, inventory.Plum);
+        int lemons = GetMaxAmount(numberOfTrolls, inventory.Lemon);
+        int apples = GetMaxAmount(numberOfTrolls, inventory.Apple);
+
+        return (plums, lemons, apples);
+    }
+
+    private static int GetMaxAmount(int numberOfTrolls, int fruitCount)
+    {
+        int max = 0;
+
+        while(true)
+        {
+            max++;
+
+            if(numberOfTrolls + (max * max) > fruitCount)
+            {
+                return max - 1;
+            }
+        }
+    }
+}
 
 internal struct Tree
 {

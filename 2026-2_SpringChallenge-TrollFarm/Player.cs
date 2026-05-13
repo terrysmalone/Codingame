@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Drawing;
+using System.Linq;
 
 namespace SpringChallenge2026;
 
@@ -156,7 +157,9 @@ partial class Player
             // MOVE <id> <x> <y>
             // HARVEST <id> - when you are on the same cell as a tree
             // DROP <id> - when you are next to your shack and carry items
-            Console.WriteLine(game.GetAction());
+            string actions = string.Join(";", game.GetActions());
+
+            Console.WriteLine(actions);
 
             // Console.WriteLine("MOVE 0 7 7");
         }

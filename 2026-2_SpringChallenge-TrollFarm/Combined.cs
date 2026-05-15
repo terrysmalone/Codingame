@@ -68,12 +68,12 @@ internal class Game
         // If we're on the first round make the best troll we can
         if (_round == 1)
         {
-            (int plums, int lemons, int apples) = TrainingUtil.GetBestTrollTraining(_playerTrolls.Count, _playerInventory);
+            (int plums, int lemons, int apples, int iron) = TrainingUtil.GetBestTrollTraining(_playerTrolls.Count, _playerInventory);
 
             Logger.Message($"Training troll with {plums} plums, {lemons} lemons and {apples} apples");
             if (plums > 0 && lemons > 0 && apples > 0)
             {
-                actions.Add($"TRAIN {plums} {lemons} {apples} 0");
+                actions.Add($"TRAIN {plums} {lemons} {apples} {iron}");
             }
         }
 
@@ -637,13 +637,14 @@ partial class Player
 
 internal static class TrainingUtil
 {
-    internal static (int plums, int lemons, int apples) GetBestTrollTraining(int numberOfTrolls, Inventory inventory)
+    internal static (int plums, int lemons, int apples, int iron) GetBestTrollTraining(int numberOfTrolls, Inventory inventory)
     {
         int plums = GetMaxAmount(numberOfTrolls, inventory.Plum);
         int lemons = GetMaxAmount(numberOfTrolls, inventory.Lemon);
         int apples = GetMaxAmount(numberOfTrolls, inventory.Apple);
+        int iron = GetMaxAmount(numberOfTrolls, inventory.Iron);
 
-        return (plums, lemons, apples);
+        return (plums, lemons, apples, iron);
     }
 
     private static int GetMaxAmount(int numberOfTrolls, int fruitCount)

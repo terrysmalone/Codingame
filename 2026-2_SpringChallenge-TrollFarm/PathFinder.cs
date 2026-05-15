@@ -13,11 +13,14 @@ internal sealed class PathFinder
 {
     private readonly int _width;
     private readonly int _height;
+    private readonly bool[,] _isWalkable;
 
-    internal PathFinder(int width, int height)
+    internal PathFinder(int width, int height, bool[,] isWalkable)
     {
         _width = width;
         _height = height;
+
+        _isWalkable = isWalkable;
     }
 
     internal List<Point> GetShortestPath(Point startPosition, Point targetPosition)
@@ -35,8 +38,7 @@ internal sealed class PathFinder
 
             foreach (Point pointToCheck in pointsToCheck)
             {
-                // If pointToCheck is the same as the current point skip it
-                if (pointToCheck == currentNode.Position)
+                if (pointToCheck == currentNode.Position || ((!_isWalkable[pointToCheck.Y, pointToCheck.X]) && pointToCheck != targetPosition))
                 {
                     continue;
                 }

@@ -23,11 +23,18 @@ partial class Player
         {
             string line = Console.ReadLine();
 
+            Logger.Message(line);
 
             char[] rowText = line.ToCharArray();
 
+
             for (int x = 0; x < width; x++)
             {
+                if(rowText[x] == '.')
+                {
+                    game.SetIsWalkable(x, y, true);
+                }
+
                 if (rowText[x] == '0')
                 {
                     game.AddPlayerShack(x, y);

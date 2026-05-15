@@ -43,12 +43,15 @@ internal class Game
 
     private int _round = 0;
 
+    private bool[,] _isWalkable;
+
     public Game(int width, int height)
     {
         _width = width;
         _height = height;
-
-        _pathFinder = new PathFinder(width, height);
+        
+        _isWalkable = new bool[height, width];
+        _pathFinder = new PathFinder(width, height, _isWalkable);
     }
 
     internal List<string> GetActions()
@@ -223,6 +226,11 @@ internal class Game
     {
         _enemyTrolls.Add(troll);
     }
+
+    internal void SetIsWalkable(int x, int y, bool isWalkable)
+    {
+        _isWalkable[y, x] = isWalkable;
+    }
 }
 
 internal struct Inventory
@@ -329,11 +337,14 @@ internal sealed class PathFinder
 {
     private readonly int _width;
     private readonly int _height;
+    private readonly bool[,] _isWalkable;
 
-    internal PathFinder(int width, int height)
+    internal PathFinder(int width, int height, bool[,] isWalkable)
     {
         _width = width;
         _height = height;
+
+        _isWalkable = isWalkable;
     }
 
     internal List<Point> GetShortestPath(Point startPosition, Point targetPosition)
@@ -351,8 +362,7 @@ internal sealed class PathFinder
 
             foreach (Point pointToCheck in pointsToCheck)
             {
-                // If pointToCheck is the same as the current point skip it
-                if (pointToCheck == currentNode.Position)
+                if (pointToCheck == currentNode.Position || ((!_isWalkable[pointToCheck.Y, pointToCheck.X]) && pointToCheck != targetPosition))
                 {
                     continue;
                 }
@@ -474,11 +484,18 @@ partial class Player
         {
             string line = Console.ReadLine();
 
+            Logger.Message(line);
 
             char[] rowText = line.ToCharArray();
 
+
             for (int x = 0; x < width; x++)
             {
+                if(rowText[x] == '.')
+                {
+                    game.SetIsWalkable(x, y, true);
+                }
+
                 if (rowText[x] == '0')
                 {
                     game.AddPlayerShack(x, y);

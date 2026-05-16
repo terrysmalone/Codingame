@@ -352,7 +352,7 @@ internal class Game
                         Logger.Message($"Candidate point: {point}");
                     }
 
-                    (Troll? closestTroll, List<Point> shortestPath) = _positionUtil.GetClosestTrollToTargets(candidateTrolls, candidatePoints);
+                    (Troll? closestTroll, List<Point> shortestPath) = _positionUtil.GetClosestTrollToTargets(candidateTrolls, candidatePoints, 8);
 
                     if (closestTroll != null && shortestPath.Count > 0)
                     {

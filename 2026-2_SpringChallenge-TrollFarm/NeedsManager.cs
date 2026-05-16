@@ -40,6 +40,11 @@ internal sealed class NeedsManager
             CheckAndAddHarvestPriorities();
 
             _priorities.Add(Need.TrainTroll);
+
+            if (_game.GetPlayerTrollCount() >= 4)
+            {
+                _priorities.Add(Need.HarvestIron);
+            }
         }
         else if (_game.Turn < MID_GAME_END)
         {
@@ -90,8 +95,12 @@ internal sealed class NeedsManager
         int bananaCount = InventoryUtil.GetCount(_game.GetPlayerInventory(), ResourceType.BANANA);
         priorities.Add((bananaCount, ResourceType.BANANA));
 
-        int ironCount = InventoryUtil.GetCount(_game.GetPlayerInventory(), ResourceType.IRON);
-        priorities.Add((ironCount, ResourceType.IRON));
+        // Don't prioritise iron if we have 4 trolls. We'll still add it, just as a much lower priority later
+        if (_game.GetPlayerTrollCount() < 4)
+        {
+            int ironCount = InventoryUtil.GetCount(_game.GetPlayerInventory(), ResourceType.IRON);
+            priorities.Add((ironCount, ResourceType.IRON));
+        }
 
         priorities.Sort((a, b) => a.Item1.CompareTo(b.Item1));
 

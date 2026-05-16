@@ -102,7 +102,7 @@ internal class PositionUtil
         return adjacentPoints.Any(p => _game.IsInBounds(p) && _game.IsWater(p));
     }
 
-    internal (Troll? closestTroll, List<Point> shortestPath) GetClosestTrollToTargets(List<Troll> candidateTrolls, List<Point> candidatePoints)
+    internal (Troll? closestTroll, List<Point> shortestPath) GetClosestTrollToTargets(List<Troll> candidateTrolls, List<Point> candidatePoints, int cutoff = int.MaxValue)
     {
         int closestDistance = int.MaxValue;
         Troll? closestTroll = null;
@@ -111,7 +111,7 @@ internal class PositionUtil
         foreach (Point tree in candidatePoints)
         {
             Logger.Message($"Getting closest troll to target at {tree.X}, {tree.Y}");
-            (Troll? troll, List<Point> path) = GetClosestTrollToTarget(candidateTrolls, tree, closestDistance);
+            (Troll? troll, List<Point> path) = GetClosestTrollToTarget(candidateTrolls, tree, Math.Min(closestDistance, cutoff));
 
             Logger.Message($"Closest troll to target at {tree.X}, {tree.Y} is troll {troll?.Id} with path length {path.Count}");
             if (path.Count < closestDistance)

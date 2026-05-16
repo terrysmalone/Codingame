@@ -41,7 +41,7 @@ internal sealed class NeedsManager
 
             _priorities.Add(Need.TrainTroll);
 
-            if (_game.GetPlayerTrollCount() >= 4)
+            if (_game.GetPlayerTrollCount() >= 4 && _positionUtil.ShackToIronDistance() >= 4)
             {
                 _priorities.Add(Need.HarvestIron);
             }
@@ -96,7 +96,7 @@ internal sealed class NeedsManager
         priorities.Add((bananaCount, ResourceType.BANANA));
 
         // Don't prioritise iron if we have 4 trolls. We'll still add it, just as a much lower priority later
-        if (_game.GetPlayerTrollCount() < 4)
+        if (_game.GetPlayerTrollCount() < 4 || _positionUtil.ShackToIronDistance() < 4)
         {
             int ironCount = InventoryUtil.GetCount(_game.GetPlayerInventory(), ResourceType.IRON);
             priorities.Add((ironCount, ResourceType.IRON));

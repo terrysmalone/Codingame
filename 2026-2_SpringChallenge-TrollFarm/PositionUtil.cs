@@ -213,4 +213,31 @@ internal class PositionUtil
         };
         return adjacentPoints.Any(p => p == position);
     }
+
+    internal int ShackToIronDistance()
+    {
+        List<Point> ironPositions = _game.GetIronPositions();
+
+        // Order by manhattan distance to player shack first, then get pathfinder distance to closest one
+        ironPositions = ironPositions.OrderBy(p => CalculateManhattanDistance(p, _game.GetPlayerShackPosition())).ToList();
+
+        int closestDistance = int.MaxValue;
+
+        foreach (Point ironPos in ironPositions)
+        {
+            if (CalculateManhattanDistance(ironPos, _game.GetPlayerShackPosition()) >= closestDistance)
+            {
+                continue;
+            }
+
+            List<Point> path = _pathFinder.GetShortestPath(_game.GetPlayerShackPosition(), ironPos);
+
+            if (path.Count < closestDistance)
+            {
+                closestDistance = path.Count;
+            }
+        }
+
+        return closestDistance;
+    }
 }

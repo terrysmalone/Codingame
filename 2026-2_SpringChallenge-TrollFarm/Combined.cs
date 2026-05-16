@@ -778,6 +778,11 @@ internal class Game
     {
         return _playerInventory;
     }
+
+    internal List<Point> GetIronPositions()
+    {
+        return _iron;
+    }
 }
 
 internal struct Inventory
@@ -1100,7 +1105,7 @@ internal sealed class NeedsManager
 
             _priorities.Add(Need.TrainTroll);
 
-            if (_game.GetPlayerTrollCount() >= 4)
+            if (_game.GetPlayerTrollCount() >= 4 && _positionUtil.ShackToIronDistance() >= 4)
             {
                 _priorities.Add(Need.HarvestIron);
             }
@@ -1155,7 +1160,7 @@ internal sealed class NeedsManager
         priorities.Add((bananaCount, ResourceType.BANANA));
 
         // Don't prioritise iron if we have 4 trolls. We'll still add it, just as a much lower priority later
-        if (_game.GetPlayerTrollCount() < 4)
+        if (_game.GetPlayerTrollCount() < 4 || _positionUtil.ShackToIronDistance() < 4)
         {
             int ironCount = InventoryUtil.GetCount(_game.GetPlayerInventory(), ResourceType.IRON);
             priorities.Add((ironCount, ResourceType.IRON));
@@ -1820,6 +1825,33 @@ internal class PositionUtil
             new Point(target.X, target.Y + 1)
         };
         return adjacentPoints.Any(p => p == position);
+    }
+
+    internal int ShackToIronDistance()
+    {
+        List<Point> ironPositions = _game.GetIronPositions();
+
+        // Order by manhattan distance to player shack first, then get pathfinder distance to closest one
+        ironPositions = ironPositions.OrderBy(p => CalculateManhattanDistance(p, _game.GetPlayerShackPosition())).ToList();
+
+        int closestDistance = int.MaxValue;
+
+        foreach (Point ironPos in ironPositions)
+        {
+            if (CalculateManhattanDistance(ironPos, _game.GetPlayerShackPosition()) >= closestDistance)
+            {
+                continue;
+            }
+
+            List<Point> path = _pathFinder.GetShortestPath(_game.GetPlayerShackPosition(), ironPos);
+
+            if (path.Count < closestDistance)
+            {
+                closestDistance = path.Count;
+            }
+        }
+
+        return closestDistance;
     }
 }
 

@@ -757,4 +757,9 @@ internal class Game
     {
         return _playerInventory;
     }
+
+    internal List<Point> GetIronPositions()
+    {
+        return _iron;
+    }
 }

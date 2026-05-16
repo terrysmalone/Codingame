@@ -7,11 +7,14 @@ using System;
 using System.Drawing;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.WebSockets;
+using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Xml.Linq;
 using static System.Net.Mime.MediaTypeNames;
 using System.Reflection.Metadata.Ecma335;
 using System.Runtime.ConstrainedExecution;
-using System.Xml.Linq;
+using System.Reflection;
 
 internal static class CalculationUtil
 {
@@ -26,11 +29,13 @@ internal static class CalculationUtil
 
 internal class Game
 {
+    internal int Turn { get; private set ;} = 0;
+
     private readonly int _width;
     private readonly int _height;
 
-    private List<Point> _playerShacks = new List<Point>();
-    private List<Point> _enemyShacks = new List<Point>();
+    private Point _playerShack;
+    private Point _enemyShack;
 
     private Inventory _playerInventory;
     private Inventory _enemyInventory;
@@ -38,12 +43,15 @@ internal class Game
     private List<Troll> _playerTrolls = new List<Troll>();
     private List<Troll> _enemyTrolls = new List<Troll>();
     private List<Tree> _trees = new List<Tree>();
+    private List<Point> _iron = new List<Point>();
 
-    private PathFinder _pathFinder;
-
-    private int _round = 0;
+    private NeedsManager _needsManager;
+    private PositionUtil _positionUtil;
 
     private bool[,] _isWalkable;
+    private bool[,] _isWater;
+
+    private HashSet<int> _assigned;
 
     public Game(int width, int height)
     {
@@ -51,108 +59,530 @@ internal class Game
         _height = height;
         
         _isWalkable = new bool[height, width];
-        _pathFinder = new PathFinder(width, height, _isWalkable);
+        _isWater = new bool[height, width];
+
+        _assigned = new HashSet<int>();
+    }
+
+    internal void Initialise()
+    {
+        _positionUtil = new PositionUtil(this, new PathFinder(_width, _height, _isWalkable));
+        _positionUtil.InitialiseBestGrowSpots();
+
+        _needsManager = new NeedsManager(this, _positionUtil);
     }
 
     internal List<string> GetActions()
     {
+        SetAllTrollsToUnassigned();
+
+        _needsManager.SetPriorities();
+
         List<Point> excludedTrees = new List<Point>();
 
-        Logger.Inventory("Player inventory", _playerInventory);
-        Logger.Inventory("Enemy inventory", _enemyInventory);
+        // Logger.Inventory("Player inventory", _playerInventory);
+        // Logger.Inventory("Enemy inventory", _enemyInventory);
 
-        _round++;
+        Turn++;
 
         List<string> actions = new List<string>();
 
-        // If we're on the first round make the best troll we can
-        if (_round == 1)
-        {
-            (int plums, int lemons, int apples, int iron) = TrainingUtil.GetBestTrollTraining(_playerTrolls.Count, _playerInventory);
+        Inventory usableInventory = _playerInventory;
 
-            Logger.Message($"Training troll with {plums} plums, {lemons} lemons and {apples} apples");
-            if (plums > 0 && lemons > 0 && apples > 0)
+
+        // Try to assign all priorities until we're out of trolls
+        List<Need> priorities = _needsManager.GetPriorities();
+
+        Logger.Prioirities(priorities);
+
+        // Logger.Trolls(_playerTrolls);
+
+        foreach (Need need in priorities)
+        {
+            if (_assigned.Count >= _playerTrolls.Count)
             {
-                actions.Add($"TRAIN {plums} {lemons} {apples} {iron}");
+                break;
             }
-        }
 
-        List<Tree> treesWithFruit = _trees.FindAll(tree => tree.Fruits > 0);
-
-        foreach (Troll troll in _playerTrolls)
-        {
-            Logger.Troll(troll);
-
-            if (troll.TotalCarry >= troll.CarryCapacity)
+            // Find all trolls that can meet the need
+            // Choose the best one
+            // Mark it as assigned
+            
+            if (need == Need.HarvestAnyWood)
             {
-                if (IsNextToShack(troll.Position))
+                // if there are no trees near my shack
+                // and I have fruit in my shack
+                // Plant tree near shack
+                Tree? closestTree = _trees.Where(t => t.Fruits > 0).OrderBy(t => _positionUtil.GetShortestPath(_playerShack, t.Position).Count).FirstOrDefault();
+
+                if (closestTree != null)
                 {
-                    actions.Add($"DROP {troll.Id}");
-                }
-                else
-                {
-                    List<Point> pathToClosestShack = GetPathToClosestShack(troll.Position);
-                    
-                    if (pathToClosestShack.Count > 0)
+                    int distance = _positionUtil.GetShortestPath(_playerShack, closestTree.Value.Position).Count;
+
+                    if (distance > 3)
                     {
-                        Point nextPosition = pathToClosestShack[0];
-                        actions.Add($"MOVE {troll.Id} {nextPosition.X} {nextPosition.Y}");
+                        // Get closest troll to shack
+                       
+                        Troll? closestTroll = _playerTrolls.Where(t => !_assigned.Contains(t.Id)).OrderBy(t => _positionUtil.GetShortestPath(t.Position, _playerShack).Count).FirstOrDefault();
+
+                        if (closestTroll != null)
+                        {
+                            if (_positionUtil.IsAdjacentToShack(closestTroll.Position))
+                            {
+                                if(_trees.Any(t => t.Position == closestTroll.Position))
+                                {
+                                    actions.Add($"CHOP {closestTroll.Id}");
+                                    AssignTroll(closestTroll.Id);
+                                    continue;
+                                }
+                                if (!closestTroll.IsCarryingAnyFruit())
+                                {
+                                    if (closestTroll.IsCarryingWood())
+                                    {
+                                        actions.Add($"DROP {closestTroll.Id}");
+                                        AssignTroll(closestTroll.Id);
+                                        continue;
+                                    }
+
+                                    var fruitType = InventoryUtil.GetAnyFruitType(_playerInventory);
+                                    actions.Add($"PICK {closestTroll.Id} {fruitType.ToString()}");
+                                    AssignTroll(closestTroll.Id);
+                                    usableInventory = InventoryUtil.ChangeInventory(usableInventory, fruitType, -1);
+                                    continue;
+                                }
+                                else
+                                {
+                                    ResourceType fruitType = closestTroll.CarryingFruitType();
+                                    
+                                    actions.Add($"PLANT {closestTroll.Id} {fruitType}");
+                                    AssignTroll(closestTroll.Id);
+                                    continue;
+                                }
+                            }
+                        
+                            actions.Add($"MOVE {closestTroll.Id} {_playerShack.X} {_playerShack.Y}");
+                            AssignTroll(closestTroll.Id);
+                            continue;
+                        }
+                    }
+                }
+
+                var freeTrolls = _playerTrolls.Where(t => !_assigned.Contains(t.Id)).ToList();
+
+                if (freeTrolls != null && freeTrolls.Count > 0)
+                {
+                    // if an unassigned troll is carrying anything take it to the shack
+                    var troll = freeTrolls.FirstOrDefault(t => !t.CanCarry());
+
+                    if (troll != null)
+                    {
+                        if (_positionUtil.IsAdjacentToShack(troll.Position) || troll.Position == _playerShack)
+                        {
+                            actions.Add($"DROP {troll.Id}");
+                            AssignTroll(troll.Id);
+                            continue;
+                        }
+                        // Head for the shack
+                        List<Point> shortestPath = _positionUtil.GetShortestPath(troll.Position, _playerShack);
+                        if (shortestPath.Count > 0)
+                        {
+                            Logger.Message($"Closest troll to move for need {need} is {troll.Id} at position {troll.Position} with next move {shortestPath[0]}");
+                            Point nextMove = shortestPath[0];
+                            actions.Add($"MOVE {troll.Id} {nextMove.X} {nextMove.Y}");
+                            AssignTroll(troll.Id);
+                            continue;
+                        }
+                    }
+
+                    // if a troll has space and is at a tree chop it
+                    var trollAtTree = freeTrolls.FirstOrDefault(t => t.CanCarry() && IsAtTree(t.Position, _trees));
+
+                    if (trollAtTree != null)
+                    {
+                        actions.Add($"CHOP {trollAtTree.Id}");
+                        AssignTroll(trollAtTree.Id);
+                        continue;
+                    }
+
+                    // Move a free troll towards the closest tree
+                    List<Troll> availableTrolls = freeTrolls.Where(t => t.CanCarry()).ToList();
+
+                    if (availableTrolls.Count > 0)
+                    {
+                        (Troll? closestTroll, List<Point> path) = _positionUtil.GetClosestTrollToTargets(availableTrolls, _trees.Select(t => t.Position).ToList());
+                        if (closestTroll != null && path.Count > 0)
+                        {
+                            AssignTroll(closestTroll.Id);
+                            actions.Add($"MOVE {closestTroll.Id} {path[0].X} {path[0].Y}");
+                            continue;
+                        }
                     }
                 }
             }
-            else
+
+            // If a need can't be met log it and remove it
+            if (need == Need.AttackEnemy)
             {
-                if (IsAtTree(troll.Position, treesWithFruit))
+                string attackMove = CalculateAtackMove();
+
+                if (!string.IsNullOrEmpty(attackMove))
                 {
-                    actions.Add($"HARVEST {troll.Id}");
+                    actions.Add(attackMove);
+                    continue;
+                }
+            }
+
+            if (NeedsManager.IsGrowNeed(need))
+            {
+                Logger.Message($"Trying to meet grow need {need}");
+
+                ResourceType fruitType = NeedsManager.GetTreeType(need);
+
+                // if a troll has a fruit of this type
+                if (_playerTrolls.Any(t => t.IsCarryingFruit(fruitType) > 0))
+                {
+                    Logger.Message("Troll is carrying fruit" + fruitType + " and trying to find grow spot");
+                    // find closest plant spot for this fruit
+                    Point growSpot = _positionUtil.GetBestGrowSpot();
+
+                    // Get all trolls that are carrying this fruit and are not assigned yet
+                    List<Troll> candidateTrolls = _playerTrolls
+                        .Where(t => !_assigned.Contains(t.Id) && t.IsCarryingFruit(fruitType) > 0)
+                        .ToList();
+
+                    Logger.Message($"Found grow spot at {growSpot} and {candidateTrolls.Count} candidate trolls to plant with");
+
+                    (Troll? closestTroll, List<Point> shortestPath) = _positionUtil.GetClosestTrollToTarget(candidateTrolls, growSpot);
+
+                    if (closestTroll != null)
+                    {
+                        if (closestTroll.Position == growSpot)
+                        {
+                            actions.Add($"PLANT {closestTroll.Id} {fruitType.ToString()}");
+                            AssignTroll(closestTroll.Id);
+                            usableInventory = InventoryUtil.ChangeInventory(usableInventory, fruitType, -1);
+                            continue;
+                        }
+                        else
+                        {
+                            Logger.Message($"Closest troll to move for need {need} is {closestTroll.Id} at position {closestTroll.Position} with next move {shortestPath[0]}");
+                            actions.Add($"MOVE {closestTroll.Id} {shortestPath[0].X} {shortestPath[0].Y}");
+                            AssignTroll(closestTroll.Id);
+                            continue;
+                        }
+                    }
+                    else
+                    {
+                        Logger.Error($"No close troll can be found with {fruitType}");
+                    }
                 }
                 else
                 {
-                    List<Point> pathToClosestTree = GetPathToClosestTree(troll.Position, treesWithFruit, excludedTrees);
-                    actions.Add($"MOVE {troll.Id} {pathToClosestTree[0].X} {pathToClosestTree[0].Y}");
-                    excludedTrees.Add(pathToClosestTree.Last());
+                    (Troll? closestTroll, Point nextMove) = GetClosestTrollMove(usableInventory, fruitType);
+
+                    Logger.Message($"Closest troll to move for need {need} is {closestTroll?.Id} at position {closestTroll?.Position} with next move {nextMove}");
+
+                    if (closestTroll != null)
+                    {
+                        if (closestTroll.Position == nextMove)
+                        {
+                            // It's on the target, either harvest or pick
+                            if (_positionUtil.IsTreeAtPosition(closestTroll.Position, fruitType))
+                            {
+                                actions.Add($"HARVEST {closestTroll.Id}");
+                                AssignTroll(closestTroll.Id);
+                                continue;
+                            }
+                            else
+                            {
+                                actions.Add($"PICK {closestTroll.Id} {fruitType.ToString()}");
+                                usableInventory = InventoryUtil.ChangeInventory(usableInventory, fruitType, -1);
+                                AssignTroll(closestTroll.Id);
+                                continue;
+                            }
+                        }
+                        else
+                        {
+                            actions.Add($"MOVE {closestTroll.Id} {nextMove.X} {nextMove.Y}");
+                            AssignTroll(closestTroll.Id);
+                            continue;
+                        }
+                    }
                 }
             }
             
+            if (NeedsManager.IsharvestNeed(need))
+            {
+                ResourceType fruitType = NeedsManager.GetTreeType(need);
+
+                // if a troll has a fruit of this type
+                if (_playerTrolls.Any(t => !_assigned.Contains(t.Id) && t.IsCarryingFruit(fruitType) > 0))
+                {
+                    Logger.Message($"Troll is carrying fruit {fruitType} and trying to find shack to drop off");
+                    var troll = _playerTrolls.First(t => !_assigned.Contains(t.Id) && t.IsCarryingFruit(fruitType) > 0);
+
+                    if (_positionUtil.IsAdjacentToShack(troll.Position) || troll.Position == _playerShack)
+                    {
+                        actions.Add($"DROP {troll.Id}");
+                        AssignTroll(troll.Id);
+                        usableInventory = InventoryUtil.ChangeInventory(usableInventory, fruitType, 1);
+                        continue;
+                    }
+
+                    // Head for the shack
+                    List<Point> shortestPath = _positionUtil.GetShortestPath(troll.Position, _playerShack);
+
+                    if (shortestPath.Count > 0)
+                    {
+                        Point nextMove = shortestPath[0];
+                        actions.Add($"MOVE {troll.Id} {nextMove.X} {nextMove.Y}");
+                        AssignTroll(troll.Id);
+                        continue;
+                    }
+                }
+                else
+                {
+                    // Find the nearest unassigned troll, with free inventory space, to a tree of this type and send it to harvest
+                    List<Troll> candidateTrolls = _playerTrolls.Where(t => !_assigned.Contains(t.Id) && t.CanCarry()).ToList();
+
+                    List<Point> candidatePoints = new List<Point>();
+
+                    if (need == Need.HarvestIron)
+                    {
+                        candidatePoints = _iron;
+                    }
+                    else
+                    {
+                        candidatePoints = _trees.Where(t => t.Type == fruitType && t.Fruits > 0).Select(t => t.Position).ToList();
+                    }
+
+                    // If we can harvest or mine then do it
+                    string getAction = CanWeGetIt(candidateTrolls, candidatePoints, need);
+
+                    if (!string.IsNullOrEmpty(getAction))
+                    {
+                        actions.Add(getAction);
+                        continue;
+                    }
+
+                    Logger.Message("HERE");
+                    Logger.Message($"Fruit type: {fruitType}");
+
+                    foreach (var point in candidatePoints)
+                    {
+                        Logger.Message($"Candidate point: {point}");
+                    }
+
+                    (Troll? closestTroll, List<Point> shortestPath) = _positionUtil.GetClosestTrollToTargets(candidateTrolls, candidatePoints, 10);
+
+                    if (closestTroll != null && shortestPath.Count > 0)
+                    {
+                        actions.Add($"MOVE {closestTroll.Id} {shortestPath[0].X} {shortestPath[0].Y}");
+                        AssignTroll(closestTroll.Id);
+                        continue;
+                    }
+                }
+
+                // TODO: Deal with wood later
+            }
+
+            Logger.Error("No need could be met for " + need.ToString());
+        }
+
+        foreach (Troll troll in _playerTrolls.Where(t => !t.CanCarry() && !_assigned.Contains(t.Id)))
+        {
+            if (_positionUtil.IsAdjacentToShack(troll.Position) || troll.Position == _playerShack)
+            {
+                actions.Add($"DROP {troll.Id}");
+                AssignTroll(troll.Id);
+            }
+            else
+            {
+                actions.Add($"MOVE {troll.Id} {_playerShack.X} {_playerShack.Y}");
+                AssignTroll(troll.Id);
+            }
+            
+            
+        }
+
+        if (priorities.Contains(Need.TrainTroll))
+        {
+            Logger.Inventory("Usable inventory for training", usableInventory);
+            (int plums, int lemons, int apples, int iron) = TrainingUtil.GetBestTrollTraining(_playerTrolls.Count, usableInventory);
+                        
+            if (plums > 0 && lemons > 0 && apples > 0 && iron > 0)
+            {
+                Logger.Message($"Training troll with {plums} plums, {lemons} lemons, {apples} apples and {iron} iron");
+                actions.Add($"TRAIN {plums} {lemons} {apples} {iron}");
+            }
         }
 
         return actions;
     }
 
-    private bool IsAtTree(Point position, List<Tree> treesWithFruit)
+    private string CalculateAtackMove()
     {
-        return treesWithFruit.Any(tree => tree.Position == position);
+        //Get a list of candidate enemy trees
+        Point enemyShack = _enemyShack;
+
+        List<Point> candidateTrees = new List<Point>();
+
+        for (int y = enemyShack.Y - 2; y <= enemyShack.Y + 2; y++)
+        {
+            for (int x = enemyShack.X - 2; x <= enemyShack.X + 2; x++)
+            {
+                if (enemyShack.X == x && enemyShack.Y == y)
+                {
+                    continue;
+                }
+
+                if (GetManhattanDistance(new Point(x, y), _playerShack) <= 2)
+                {
+                    continue;
+                }
+
+                Point checkPoint = new Point(x, y);
+                if (IsInBounds(checkPoint) && _trees.Any(t => t.Position == checkPoint))
+                {
+                    candidateTrees.Add(checkPoint);                    
+                }
+            }
+        }
+
+        // If any troll is on any candidate square, chop it
+        foreach (Troll troll in _playerTrolls.Where(t => !_assigned.Contains(t.Id)))
+        {
+            if (candidateTrees.Any(t => t == troll.Position))
+            {
+                AssignTroll(troll.Id);
+                return $"CHOP {troll.Id}";
+            }
+        }
+
+
+        (Troll? closestTroll, List<Point> path) = _positionUtil.GetClosestTrollToTargets(_playerTrolls.Where(t => !_assigned.Contains(t.Id)).ToList(), candidateTrees);
+
+        if (closestTroll != null && path.Count > 0)
+        {
+            Logger.Message($"Moving troll {closestTroll.Id} towards enemy for attack with next move {path[0]}");
+            AssignTroll(closestTroll.Id);
+            return $"MOVE {closestTroll.Id} {path[path.Count-1].X} {path[path.Count - 1].Y}";
+        }
+
+        return string.Empty;
+    }
+
+    private int GetManhattanDistance(Point point1, Point point2)
+    {
+        return Math.Abs(point1.X - point2.X) + Math.Abs(point1.Y - point2.Y);
+    }
+
+    private string CanWeGetIt(List<Troll> candidateTrolls, List<Point> candidatePoints, Need need)
+    {
+        foreach (Troll troll in candidateTrolls)
+        {
+            if (need == Need.HarvestIron)
+            {
+                foreach (Point ironSpot in candidatePoints)
+                {
+                    if (_positionUtil.IsAdjacentTo(troll.Position, ironSpot))
+                    {
+                        AssignTroll(troll.Id);
+                        return $"MINE {troll.Id}";                        
+                    }
+                }
+            }
+            else
+            {
+                foreach (Point point in candidatePoints)
+                {
+                    if (troll.Position == point)
+                    {
+                        AssignTroll(troll.Id);
+                        return $"HARVEST {troll.Id}";                        
+                    }
+                }
+            }
+        }
+
+        return string.Empty;
+    }
+
+    private (Troll? closestTroll, Point nextMove) GetClosestTrollMove(Inventory usableInventory, ResourceType fruitType)
+    {
+        Troll? closestTroll = null;
+        Point nextMove = new Point(-1, -1);
+        List<Point> closestPath = new List<Point>();
+
+        var eligibleTrolls = _playerTrolls.Where(t => !_assigned.Contains(t.Id) && t.CanCarry()).ToList();
+
+        if (eligibleTrolls.Count == 0)
+        {
+            return (null, nextMove);
+        }
+
+        if (InventoryUtil.DoesContainFruit(usableInventory, fruitType))
+        {
+            // If a troll is on the shack use that
+            closestTroll = eligibleTrolls.FirstOrDefault(t => t.Position == _playerShack || _positionUtil.IsAdjacentToShack(t.Position));
+
+            if (closestTroll != null)
+            {
+                AssignTroll(closestTroll.Id);
+                return (closestTroll, closestTroll.Position);
+            }
+
+            (closestTroll, closestPath) = _positionUtil.GetClosestTrollToTarget(eligibleTrolls, _playerShack);
+
+            if (closestTroll.Position == _playerShack || _positionUtil.IsAdjacentToShack(closestTroll.Position) || closestPath.Count == 0)
+            {
+                nextMove = closestTroll.Position;
+            }
+            else
+            {
+                nextMove = closestPath[0];
+
+            }
+        }
+
+        // TODO:
+        // Get all harvestable trees of this type
+        // List<Tree> harvestableTrees = _trees.Where(t => t.Type == fruitType && t.Fruits > 0).ToList();
+
+        return (closestTroll, nextMove);
+    }
+
+    private void AssignTroll(int id)
+    {
+        Logger.Message($"Assigning troll {id} to a need");
+        _assigned.Add(id);
+    }
+
+    private void SetAllTrollsToUnassigned()
+    {
+        _assigned.Clear();
+    }
+
+    private bool IsAtTree(Point position, List<Tree> trees)
+    {
+        return trees.Any(tree => tree.Position == position);
     }
 
     private bool IsNextToShack(Point position)
     {
-        foreach (Point shack in _playerShacks)
+        if (CalculationUtil.GetManhattanDistance(position, _playerShack) == 1)
         {
-            if (CalculationUtil.GetManhattanDistance(position, shack) == 1)
-            {
-                return true;
-            }
+            return true;
         }
+        
         return false;
     }
 
-    private List<Point> GetPathToClosestShack(Point position)
+    private List<Point> GetShortestPathToShack(Point position)
     {
-        int closestDistance = int.MaxValue;
-        List<Point> closestPath = new List<Point>();
-
-        foreach (Point shack in _playerShacks)
-        {
-            List<Point> path = _pathFinder.GetShortestPath(position, shack);
-
-            if (path.Count < closestDistance)
-            {
-                closestDistance = path.Count;
-                closestPath = path;
-            }
-        }
-
-        return closestPath;
+        List<Point> path = _positionUtil.GetShortestPath(position, _playerShack);
+       
+        return path;
     }
 
     private List<Point> GetPathToClosestTree(Point position, List<Tree> treesWithFruit, List<Point> excludedTrees)
@@ -167,7 +597,7 @@ internal class Game
                 continue;
             }
 
-            List<Point> path = _pathFinder.GetShortestPath(position, tree.Position);
+            List<Point> path = _positionUtil.GetShortestPath(position, tree.Position);
 
             //Logger.Path($"Tree {tree.Position}", path);
 
@@ -181,24 +611,24 @@ internal class Game
         return closestPath;
     }
 
-    internal void AddPlayerShack(int x, int y)
+    internal void SetPlayerShack(int x, int y)
     {
-        _playerShacks.Add(new Point(x, y));
+        _playerShack = new Point(x, y);
     }
 
-    internal void AddEnemyShack(int x, int y)
+    internal void SetEnemyShack(int x, int y)
     {
-        _enemyShacks.Add(new Point(x, y));
+        _enemyShack = new Point(x, y);
     }
 
     internal void SetEnemyInventory(Inventory inventory)
     {
-        _playerInventory = inventory;
+        _enemyInventory = inventory;
     }
 
     internal void SetPlayerInventory(Inventory inventory)
     {
-        _enemyInventory = inventory;
+        _playerInventory = inventory;
     }
 
     internal void ClearTrees()
@@ -217,19 +647,136 @@ internal class Game
         _enemyTrolls.Clear();
     }
 
-    internal void AddPlayerTroll(Troll troll)
+    internal int GetPlayerTrollCount()
     {
-        _playerTrolls.Add(troll);
+        return _playerTrolls.Count;
     }
 
-    internal void AddEnemyTroll(Troll troll)
+    internal List<Tree> GetTrees(ResourceType fruitType)
     {
-        _enemyTrolls.Add(troll);
+        return _trees.Where(tree => tree.Type == fruitType).ToList();
+    }
+
+    internal Point GetPlayerShackPosition()
+    {
+        return _playerShack;
+    }
+
+    internal void AddOrUpdateTroll(
+        int id, 
+        int player, 
+        Point position, 
+        int movementSpeed, 
+        int carryCapacity, 
+        int harvestPower, 
+        int chopPower, 
+        int carryPlum, 
+        int carryLemon, 
+        int carryApple, 
+        int carryBanana, 
+        int carryIron, 
+        int carryWood)
+    {
+        if (player == 0)
+        {
+            if (_playerTrolls.Any(t => t.Id == id))
+            {
+                var troll = _playerTrolls.First(t => t.Id == id);
+                troll.CarryPlum = carryPlum;
+                troll.CarryLemon = carryLemon;
+                troll.CarryApple = carryApple;
+                troll.CarryBanana = carryBanana;
+                troll.CarryWood = carryWood;
+                troll.CarryIron = carryIron;
+            }
+            else
+            {
+                Troll troll = new Troll(id, position, movementSpeed, carryCapacity, harvestPower, chopPower);
+                troll.CarryPlum = carryPlum;
+                troll.CarryLemon = carryLemon;
+                troll.CarryApple = carryApple;
+                troll.CarryBanana = carryBanana;
+                troll.CarryWood = carryWood;
+                troll.CarryIron = carryIron;
+
+                _playerTrolls.Add(troll);
+            }
+        }
+        else
+        {
+            if (_enemyTrolls.Any(t => t.Id == id))
+            {
+                var troll = _enemyTrolls.First(t => t.Id == id);
+                troll.CarryPlum = carryPlum;
+                troll.CarryLemon = carryLemon;
+                troll.CarryApple = carryApple;
+                troll.CarryBanana = carryBanana;
+                troll.CarryWood = carryWood;
+                troll.CarryIron = carryIron;
+            }
+            else
+            {
+                Troll troll = new Troll(id, position, movementSpeed, carryCapacity, harvestPower, chopPower);
+                troll.CarryPlum = carryPlum;
+                troll.CarryLemon = carryLemon;
+                troll.CarryApple = carryApple;
+                troll.CarryBanana = carryBanana;
+                troll.CarryWood = carryWood;
+                troll.CarryIron = carryIron;
+                _enemyTrolls.Add(troll);
+            }
+        }
+    }
+
+    internal bool IsInBounds(Point spot)
+    {
+        if(spot.X < 0 || spot.X >= _width || spot.Y < 0 || spot.Y >= _height)
+        {
+            return false;
+        }
+
+        return true;
+
+    }
+
+    internal bool IsGrowable(Point spot)
+    {
+        if (_isWalkable[spot.Y, spot.X] == true)
+        {
+            return true;
+        }
+
+        return false;
     }
 
     internal void SetIsWalkable(int x, int y, bool isWalkable)
     {
         _isWalkable[y, x] = isWalkable;
+    }
+
+    internal void SetIsWater(int x, int y, bool isWater)
+    {
+        _isWater[y, x] = isWater;
+    }
+
+    internal bool IsWater(Point spot)
+    {
+        return _isWater[spot.Y, spot.X];
+    }
+
+    internal bool HasTree(Point growSpot)
+    {
+        return _trees.Any(t => t.Position == growSpot);
+    }
+
+    internal void AddIron(int x, int y)
+    {
+        _iron.Add(new Point(x, y));
+    }
+
+    internal Inventory GetPlayerInventory()
+    {
+        return _playerInventory;
     }
 }
 
@@ -244,6 +791,128 @@ internal struct Inventory
 }
 
 
+
+internal static class InventoryUtil
+{
+    internal static bool DoesContainFruit(Inventory inventory, ResourceType fruitType)
+    {
+        if (fruitType == ResourceType.PLUM)
+        {
+            return inventory.Plum > 0;
+        }
+        else if (fruitType == ResourceType.LEMON)
+        {
+            return inventory.Lemon > 0;
+        }
+        else if (fruitType == ResourceType.APPLE)
+        {
+            return inventory.Apple > 0;
+        }
+        else if (fruitType == ResourceType.BANANA)
+        {
+            return inventory.Banana > 0;
+        }
+        else if (fruitType == ResourceType.IRON)
+        {
+            return inventory.Iron > 0;
+        }
+        else if (fruitType == ResourceType.WOOD)
+        {
+            return inventory.Wood > 0;
+        }
+        else
+        {
+            throw new Exception("Invalid fruit type");
+        }
+    }
+
+    internal static int GetCount(Inventory inventory, ResourceType fruitType)
+    {
+        if (fruitType == ResourceType.PLUM)
+        {
+            return inventory.Plum;
+        }
+        else if (fruitType == ResourceType.LEMON)
+        {
+            return inventory.Lemon;
+        }
+        else if (fruitType == ResourceType.APPLE)
+        {
+            return inventory.Apple;
+        }
+        else if (fruitType == ResourceType.BANANA)
+        {
+            return inventory.Banana;
+        }
+        else if (fruitType == ResourceType.IRON)
+        {
+            return inventory.Iron;
+        }
+        else if (fruitType == ResourceType.WOOD)
+        {
+            return inventory.Wood;
+        }
+        else
+        {
+            throw new Exception("Invalid fruit type");
+        }
+    }
+
+    internal static Inventory ChangeInventory(Inventory inventory, ResourceType fruitType, int v)
+    {
+        if (fruitType == ResourceType.PLUM)
+        {
+            return new Inventory{Plum = inventory.Plum - v, Lemon = inventory.Lemon, Apple = inventory.Apple, Banana = inventory.Banana, Iron = inventory.Iron, Wood = inventory.Wood};
+        }
+        else if (fruitType == ResourceType.LEMON)
+        {
+            return new Inventory{Plum = inventory.Plum, Lemon = inventory.Lemon - v, Apple = inventory.Apple, Banana = inventory.Banana, Iron = inventory.Iron, Wood = inventory.Wood};
+        }
+        else if (fruitType == ResourceType.APPLE)
+        {
+            return new Inventory{Plum = inventory.Plum, Lemon = inventory.Lemon, Apple = inventory.Apple - v, Banana = inventory.Banana, Iron = inventory.Iron, Wood = inventory.Wood};
+        }
+        else if (fruitType == ResourceType.BANANA)
+        {
+            return new Inventory{Plum = inventory.Plum, Lemon = inventory.Lemon, Apple = inventory.Apple, Banana = inventory.Banana - v, Iron = inventory.Iron, Wood = inventory.Wood};
+        }
+        else if (fruitType == ResourceType.IRON)
+        {
+            return new Inventory{Plum = inventory.Plum, Lemon = inventory.Lemon, Apple = inventory.Apple, Banana = inventory.Banana, Iron = inventory.Iron - v, Wood = inventory.Wood};
+        }
+        else if (fruitType == ResourceType.WOOD)
+        {
+            return new Inventory{Plum = inventory.Plum, Lemon = inventory.Lemon, Apple = inventory.Apple, Banana = inventory.Banana, Iron = inventory.Iron, Wood = inventory.Wood - v};
+        }
+        else
+        {
+            throw new Exception("Invalid fruit type");
+        }
+    }
+
+    internal static ResourceType GetAnyFruitType(Inventory playerInventory)
+    {
+        // TODO: Order by most plentiful
+        if (playerInventory.Plum > 1)
+        {
+            return ResourceType.PLUM;
+        }
+        else if (playerInventory.Lemon > 1)
+        {
+            return ResourceType.LEMON;
+        }
+        else if (playerInventory.Apple > 1)
+        {
+            return ResourceType.APPLE;
+        }
+        else if (playerInventory.Banana > 1)
+        {
+            return ResourceType.BANANA;
+        }
+
+        return ResourceType.PLUM;
+    }
+}
 
 internal static class Logger    
 {
@@ -297,12 +966,22 @@ internal static class Logger
 
     internal static void Inventory(string message,Inventory inventory)
     {
+        if (DISABLE_LOGGING)
+        {
+            return;
+        }
+
         Console.Error.WriteLine(message);
         Console.Error.WriteLine($"Plum: {inventory.Plum}, Lemon: {inventory.Lemon}, Apple: {inventory.Apple}, Banana: {inventory.Banana}, Iron: {inventory.Iron}, Wood: {inventory.Wood}");
     }
 
     internal static void Path(string message, List<Point> path)
     {
+        if (DISABLE_LOGGING)
+        {
+            return;
+        }
+
         Console.Error.WriteLine(message);
         Console.Error.WriteLine($"Path: {string.Join("->", path)}");
 
@@ -310,9 +989,302 @@ internal static class Logger
 
     internal static void Troll(Troll troll)
     {
-        Console.Error.WriteLine($"Troll {troll.Id} (Player {troll.Player}) at {troll.Position}, MovementSpeed: {troll.MovementSpeed}, CarryCapacity: {troll.CarryCapacity}, HarvestPower: {troll.HarvestPower}, ChopPower: {troll.ChopPower}, CarryPlum: {troll.CarryPlum}, CarryLemon: {troll.CarryLemon}, CarryApple: {troll.CarryApple}, CarryBanana: {troll.CarryBanana}, CarryIron: {troll.CarryIron}, CarryWood: {troll.CarryWood}");
+        if (DISABLE_LOGGING)
+        {
+            return;
+        }
+
+        Console.Error.WriteLine($"Troll {troll.Id} at {troll.Position}, MovementSpeed: {troll.MovementSpeed}, CarryCapacity: {troll.CarryCapacity}, HarvestPower: {troll.HarvestPower}, ChopPower: {troll.ChopPower}, CarryPlum: {troll.CarryPlum}, CarryLemon: {troll.CarryLemon}, CarryApple: {troll.CarryApple}, CarryBanana: {troll.CarryBanana}, CarryIron: {troll.CarryIron}, CarryWood: {troll.CarryWood}");
+    }
+
+    internal static void Prioirities(List<Need> priorities)
+    {
+        if (DISABLE_LOGGING)
+        {
+            return;
+        }
+
+        Console.Error.WriteLine("PRIORITIES:");
+        foreach (Need need in priorities)
+        {
+            Console.Error.WriteLine(need);
+        }
+    }
+
+    internal static void Error(string message)
+    {
+        Console.Error.WriteLine($"ERROR: {message}");
+    }
+
+    internal static void Trolls(List<Troll> playerTrolls)
+    {
+        if (DISABLE_LOGGING)
+        {
+            return;
+        }
+
+        Console.Error.WriteLine("TROLLS:");
+        foreach (Troll troll in playerTrolls)
+        {
+            Troll(troll);
+        }
+    }
+
+    internal static void Trees(List<Tree> trees)
+    {
+        if (DISABLE_LOGGING)
+        {
+            return;
+        }
+
+        foreach (Tree tree in trees)
+        {
+            Console.Error.WriteLine($"Tree at {tree.Position}, Type: {tree.Type}, Size: {tree.Size}, Health: {tree.Health}, Fruits: {tree.Fruits}, Cooldown: {tree.Cooldown}");
+        }
+
+    }        
+}
+
+internal enum Need
+{
+    GrowPlum,
+    GrowLemon,
+    GrowApple,
+    GrowBanana,
+    HarvestPlum,
+    HarvestLemon,
+    HarvestApple,
+    HarvestBanana,
+    HarvestIron,
+    AttackEnemy,
+    HarvestEnemyWood,
+    HarvestAnyWood,
+    TrainTroll,
+}
+
+
+internal sealed class NeedsManager
+{
+    private const int EARLY_GAME_END = 100;
+    private const int MID_GAME_END = 200;
+
+    private readonly Game _game;
+    private readonly PositionUtil _positionUtil;
+
+    private List<Need> _priorities = new List<Need>();
+
+    public NeedsManager(Game game, PositionUtil positionUtil)
+    {
+        _game = game;
+        _positionUtil = positionUtil;
+    }
+
+    internal void SetPriorities()
+    {
+        _priorities.Clear();
+
+        // For now, lets just get one of each tree beside our base
+        if (_game.Turn < EARLY_GAME_END)
+        {
+            if (_game.GetPlayerTrollCount() >= 3)
+            {
+                _priorities.Add(Need.AttackEnemy);
+            }
+            if (_game.GetPlayerTrollCount() >= 6)
+            {
+                _priorities.Add(Need.AttackEnemy);
+            }
+
+            CheckAndAddGrowPriorities();
+            CheckAndAddHarvestPriorities();
+
+            _priorities.Add(Need.TrainTroll);
+        }
+        else if (_game.Turn < MID_GAME_END)
+        {
+            if (_game.GetPlayerTrollCount() >= 3)
+            {
+                _priorities.Add(Need.AttackEnemy);
+            }
+            if (_game.GetPlayerTrollCount() >= 6)
+            {
+                _priorities.Add(Need.AttackEnemy);
+            }
+
+            CheckAndAddGrowPriorities();
+            CheckAndAddHarvestPriorities();
+            _priorities.Add(Need.TrainTroll);
+        }
+        else
+        {
+            // If all 4 adjacent squares are blocked attack the enemy
+            _priorities.Add(Need.HarvestAnyWood);
+            _priorities.Add(Need.HarvestAnyWood);
+            _priorities.Add(Need.HarvestAnyWood);
+            _priorities.Add(Need.HarvestAnyWood);
+            _priorities.Add(Need.AttackEnemy);
+            _priorities.Add(Need.AttackEnemy);
+            _priorities.Add(Need.AttackEnemy);
+            _priorities.Add(Need.AttackEnemy);
+            _priorities.Add(Need.AttackEnemy);
+            _priorities.Add(Need.AttackEnemy);
+            _priorities.Add(Need.AttackEnemy);
+        }
+    }
+
+    private void CheckAndAddHarvestPriorities()
+    {
+        Logger.Inventory("Player inventory", _game.GetPlayerInventory());
+        List<(int, ResourceType)> priorities = new List<(int, ResourceType)>();
+
+        int plumCount = InventoryUtil.GetCount(_game.GetPlayerInventory(), ResourceType.PLUM);
+        priorities.Add((plumCount, ResourceType.PLUM));
+
+        int lemonCount = InventoryUtil.GetCount(_game.GetPlayerInventory(), ResourceType.LEMON);
+        priorities.Add((lemonCount, ResourceType.LEMON));
+
+        int appleCount = InventoryUtil.GetCount(_game.GetPlayerInventory(), ResourceType.APPLE);
+        priorities.Add((appleCount, ResourceType.APPLE));
+
+        int bananaCount = InventoryUtil.GetCount(_game.GetPlayerInventory(), ResourceType.BANANA);
+        priorities.Add((bananaCount, ResourceType.BANANA));
+
+        int ironCount = InventoryUtil.GetCount(_game.GetPlayerInventory(), ResourceType.IRON);
+        priorities.Add((ironCount, ResourceType.IRON));
+
+        priorities.Sort((a, b) => a.Item1.CompareTo(b.Item1));
+
+        foreach ((int count, ResourceType type) in priorities)
+        {
+            if (type == ResourceType.PLUM)
+            {
+                _priorities.Add(Need.HarvestPlum);
+            }
+            else if (type == ResourceType.LEMON)
+            {
+                _priorities.Add(Need.HarvestLemon);
+            }
+            else if (type == ResourceType.APPLE)
+            {
+                _priorities.Add(Need.HarvestApple);
+            }
+            else if (type == ResourceType.BANANA)
+            {
+                _priorities.Add(Need.HarvestBanana);
+            }
+            else if (type == ResourceType.IRON)
+            {
+                _priorities.Add(Need.HarvestIron);
+            }
+        }
+    }
+
+    private void CheckAndAddGrowPriorities()
+    {
+        List<(int, ResourceType)> priorities = new List<(int, ResourceType)>();
+
+        if (TreeCount(ResourceType.PLUM))
+        {
+            int plumCount = InventoryUtil.GetCount(_game.GetPlayerInventory(), ResourceType.PLUM);
+            priorities.Add((plumCount, ResourceType.PLUM));
+        }
+
+        if (TreeCount(ResourceType.LEMON))
+        {
+            int lemonCount = InventoryUtil.GetCount(_game.GetPlayerInventory(), ResourceType.LEMON);
+            priorities.Add((lemonCount, ResourceType.LEMON));
+        }
+
+        if (TreeCount(ResourceType.APPLE))
+        {
+            int appleCount = InventoryUtil.GetCount(_game.GetPlayerInventory(), ResourceType.APPLE);
+            priorities.Add((appleCount, ResourceType.APPLE));
+        }
+
+        if (TreeCount(ResourceType.BANANA))
+        {
+            int bananaCount = InventoryUtil.GetCount(_game.GetPlayerInventory(), ResourceType.BANANA);
+            priorities.Add((bananaCount, ResourceType.BANANA));
+        }       
+
+        priorities.Sort((a, b) => a.Item1.CompareTo(b.Item1));
+
+        foreach ((int count, ResourceType type) in priorities)
+        {
+            if (type == ResourceType.PLUM)
+            {
+                _priorities.Add(Need.GrowPlum);
+            }
+            else if (type == ResourceType.LEMON)
+            {
+                _priorities.Add(Need.GrowLemon);
+            }
+            else if (type == ResourceType.APPLE)
+            {
+                _priorities.Add(Need.GrowApple);
+            }
+            else if (type == ResourceType.BANANA)
+            {
+                _priorities.Add(Need.GrowBanana);
+            }
+        }
+    }
+
+    private bool TreeCount(ResourceType fruitType)
+    {
+        int neededDist = 3;
+        int closest = _positionUtil.GetClosestTreeToShack(fruitType);
+
+        if (closest <= neededDist)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    internal List<Need> GetPriorities()
+    {
+        return _priorities;
+    }
+
+    internal static bool IsGrowNeed(Need need)
+    {
+        return need == Need.GrowPlum || need == Need.GrowLemon || need == Need.GrowApple || need == Need.GrowBanana;
+    }
+
+    internal static ResourceType GetTreeType(Need need)
+    {
+        switch (need)
+        {
+            case Need.GrowPlum:
+            case Need.HarvestPlum:
+                return ResourceType.PLUM;
+            case Need.GrowLemon:
+            case Need.HarvestLemon:
+                return ResourceType.LEMON;
+            case Need.GrowApple:
+            case Need.HarvestApple:
+                return ResourceType.APPLE;
+            case Need.GrowBanana:
+            case Need.HarvestBanana:
+                return ResourceType.BANANA;
+            case Need.HarvestIron:
+                return ResourceType.IRON;
+            case Need.HarvestEnemyWood:
+            case Need.HarvestAnyWood:
+                return ResourceType.WOOD;
+            default:
+                return ResourceType.UNKNOWN;
+        }
+    }
+
+    internal static bool IsharvestNeed(Need need)
+    {
+        return need == Need.HarvestPlum || need == Need.HarvestLemon || need == Need.HarvestApple || need == Need.HarvestBanana || need == Need.HarvestIron || need == Need.HarvestEnemyWood || need == Need.HarvestAnyWood;
     }
 }
+
 
 internal sealed class Node
 {
@@ -495,17 +1467,26 @@ partial class Player
                 {
                     game.SetIsWalkable(x, y, true);
                 }
-
-                if (rowText[x] == '0')
+                else if (rowText[x] == '~')
                 {
-                    game.AddPlayerShack(x, y);
+                    game.SetIsWater(x, y, true);
+                }
+                else if (rowText[x] == '+')
+                {
+                    game.AddIron(x, y);
+                }
+                else if (rowText[x] == '0')
+                {
+                    game.SetPlayerShack(x, y);
                 }
                 else if (rowText[x] == '1')
                 {
-                    game.AddEnemyShack(x, y);
+                    game.SetEnemyShack(x, y);
                 }
             }
         }
+
+        game.Initialise();
 
         // game loop
         while (true)
@@ -563,7 +1544,7 @@ partial class Player
 
                 game.AddTree(new Tree
                 {
-                    Type = type,
+                    Type = Enum.Parse<ResourceType>(type, true),
                     Position = new Point(x, y),
                     Size = size,
                     Health = health,
@@ -592,30 +1573,19 @@ partial class Player
                 int carryIron = int.Parse(inputs[12]);
                 int carryWood = int.Parse(inputs[13]);
 
-                var troll = new Troll
-                {
-                    Id = id,
-                    Position = new Point(x, y),
-                    MovementSpeed = movementSpeed,
-                    CarryCapacity = carryCapacity,
-                    HarvestPower = harvestPower,
-                    ChopPower = chopPower,
-                    CarryPlum = carryPlum,
-                    CarryLemon = carryLemon,
-                    CarryApple = carryApple,
-                    CarryBanana = carryBanana,
-                    CarryIron = carryIron,
-                    CarryWood = carryWood,
-                    TotalCarry = carryPlum + carryLemon + carryApple + carryBanana + carryIron + carryWood
-                };
-                if (player == 0)
-                {
-                    game.AddPlayerTroll(troll);
-                }
-                else
-                {
-                    game.AddEnemyTroll(troll);
-                }
+                game.AddOrUpdateTroll(id, 
+                                      player, 
+                                      new Point(x, y), 
+                                      movementSpeed, 
+                                      carryCapacity, 
+                                      harvestPower, 
+                                      chopPower,
+                                      carryPlum, 
+                                      carryLemon, 
+                                      carryApple, 
+                                      carryBanana, 
+                                      carryIron, 
+                                      carryWood);
             }
 
             // Write an action using Console.WriteLine()
@@ -635,6 +1605,229 @@ partial class Player
 }
 
 
+internal class PositionUtil
+{
+    private readonly Game _game;
+    private readonly PathFinder _pathFinder;
+
+    private List<Point> _bestGrowSpots = new List<Point>();
+
+    public PositionUtil(Game game, PathFinder pathFinder)
+    {
+        _game = game;
+        _pathFinder = pathFinder;
+    }
+
+    internal List<Point> GetShortestPath(Point startPos, Point endPos)
+    {
+        return _pathFinder.GetShortestPath(startPos, endPos);
+    }
+
+    internal int GetClosestTreeToShack(ResourceType fruitType)
+    {
+        List<Tree> treesOfCorrectType = _game.GetTrees(fruitType);
+
+        int closest = int.MaxValue;
+
+        foreach (Tree tree in treesOfCorrectType)
+        {
+            int dist = _pathFinder.GetShortestPath(_game.GetPlayerShackPosition(), tree.Position).Count;
+            if (dist < closest)
+            {
+                closest = dist;
+            }
+        }
+
+        return closest;
+    }
+
+    internal void InitialiseBestGrowSpots()
+    {
+        const int MIN_DIST = 3;
+        Point shackPos = _game.GetPlayerShackPosition();
+
+        Logger.Message($"Initialising best grow spots around shack at {shackPos.X}, {shackPos.Y}");
+
+        List<Point> validSpots = new List<Point>();
+
+        for (int x = shackPos.X - 3; x <= shackPos.X + 3; x++)
+        {
+            for (int y = shackPos.Y - 3; y <= shackPos.Y + 3; y++)
+            {
+                if (x == shackPos.X && y == shackPos.Y)
+                {
+                    continue; // Skip the shack position itself
+                }
+
+                Point checkPoint = new Point(x, y);
+                if (_game.IsInBounds(checkPoint) && _game.IsGrowable(checkPoint))
+                {
+                    validSpots.Add(checkPoint);
+                }
+            }
+        }   
+
+        // order valid spots by pathfinder distance to shack
+        List<(int,Point)> distancesMap = new List<(int, Point)>();
+
+        foreach (Point spot in validSpots)
+        {
+            int dist = _pathFinder.GetShortestPath(shackPos, spot).Count;
+
+            if (dist <= MIN_DIST)
+            distancesMap.Add((dist, spot));
+        }
+
+        // Order so that all spots adjacent to water are first (ordered by closest to shack), then order the rest by closerst to sack
+        // This is because we want to prioritise growing trees adjacent to water, but if there are none available, we want to grow trees as close to the shack as possible
+        _bestGrowSpots = distancesMap.OrderByDescending(d => IsAdjacentToWater(d.Item2)).ThenBy(d => d.Item1).Select(d => d.Item2).ToList();
+
+        foreach (Point spot in _bestGrowSpots)
+        {
+            Console.Error.WriteLine($"Best grow spot: {spot.X}, {spot.Y}");
+        }
+    }
+
+    private bool IsAdjacentToWater(Point point)
+    {
+        List<Point> adjacentPoints = new List<Point>
+        {
+            new Point(point.X - 1, point.Y),
+            new Point(point.X + 1, point.Y),
+            new Point(point.X, point.Y - 1),
+            new Point(point.X, point.Y + 1)
+        };
+
+        return adjacentPoints.Any(p => _game.IsInBounds(p) && _game.IsWater(p));
+    }
+
+    internal (Troll? closestTroll, List<Point> shortestPath) GetClosestTrollToTargets(List<Troll> candidateTrolls, List<Point> candidatePoints, int cutoff)
+    {
+        int closestDistance = int.MaxValue;
+        Troll? closestTroll = null;
+        List<Point> pathToTarget = new List<Point>();
+
+        foreach (Point tree in candidatePoints)
+        {
+            Logger.Message($"Getting closest troll to target at {tree.X}, {tree.Y}");
+            (Troll? troll, List<Point> path) = GetClosestTrollToTarget(candidateTrolls, tree, Math.Min(closestDistance, cutoff));
+
+            Logger.Message($"Closest troll to target at {tree.X}, {tree.Y} is troll {troll?.Id} with path length {path.Count}");
+            if (path.Count < closestDistance)
+            {
+                closestDistance = path.Count;
+                closestTroll = troll;
+                pathToTarget = path;
+            }
+        }
+        
+        return (closestTroll, pathToTarget);
+    }
+
+    internal (Troll?, List<Point>)  GetClosestTrollToTarget(List<Troll> trolls, Point target, int cutoff = int.MaxValue)
+    {
+        int closestDistance = int.MaxValue;
+        Troll? closestTroll = null;
+        List<Point> pathToTarget = new List<Point>();
+
+        // Order trolls by closest manhattan distance to target first
+        trolls = trolls.OrderBy(t => CalculateManhattanDistance(t.Position, target)).ToList();
+
+        foreach (Troll troll in trolls)
+        {
+            if (troll.Position == target)
+            {
+                return (troll, new List<Point> { troll.Position });
+            }
+
+            if (closestTroll != null && (CalculateManhattanDistance(troll.Position, target) >= closestDistance || CalculateManhattanDistance(troll.Position, target) >= cutoff))
+            {
+                Logger.Message($"Cut OFF: Troll {closestTroll.Id}");
+                return (closestTroll, pathToTarget);
+            }
+
+            Logger.Message($"Calculating path from troll {troll.Id} at {troll.Position.X}, {troll.Position.Y} to target at {target.X}, {target.Y}");
+            List<Point> path = _pathFinder.GetShortestPath(troll.Position, target);
+            Logger.Message($"Path length: {path.Count}");
+
+            if (path.Count < closestDistance)
+            {
+                Logger.Message($"New closest troll {troll.Id} at {troll.Position.X}, {troll.Position.Y} with path length {path.Count}");
+                closestDistance = path.Count;
+                closestTroll = troll;
+                pathToTarget = path;
+            }
+        }
+
+        return (closestTroll, pathToTarget);
+    }
+
+    private int CalculateManhattanDistance(Point position1, Point position2)
+    {
+        return Math.Abs(position1.X - position2.X) + Math.Abs(position1.Y - position2.Y);
+    }
+
+    internal bool IsTreeAtPosition(Point position, ResourceType fruitType)
+    {
+        return _game.GetTrees(fruitType).Any(t => t.Position == position);
+    }
+
+    internal Point GetBestGrowSpot()
+    {
+
+        // TODO: Order by closest to current position (and next to water)
+        foreach (Point growSpot in _bestGrowSpots)
+        {
+            if (!_game.HasTree(growSpot))
+            {
+                return growSpot;
+            }
+        }
+            
+        Logger.Error("No valid grow spots found!");
+        return new Point(-1, -1);
+    }
+
+    internal bool IsAdjacentToShack(Point position)
+    {
+        Point shackPos = _game.GetPlayerShackPosition();
+        List<Point> adjacentPoints = new List<Point>
+        {
+            new Point(shackPos.X - 1, shackPos.Y),
+            new Point(shackPos.X + 1, shackPos.Y),
+            new Point(shackPos.X, shackPos.Y - 1),
+            new Point(shackPos.X, shackPos.Y + 1)
+        };
+        return adjacentPoints.Any(p => p == position);
+    }
+
+    internal bool IsAdjacentTo(Point position, Point target)
+    {
+        List<Point> adjacentPoints = new List<Point>
+        {
+            new Point(target.X - 1, target.Y),
+            new Point(target.X + 1, target.Y),
+            new Point(target.X, target.Y - 1),
+            new Point(target.X, target.Y + 1)
+        };
+        return adjacentPoints.Any(p => p == position);
+    }
+}
+
+
+internal enum ResourceType
+{
+    PLUM,
+    LEMON,
+    APPLE,
+    BANANA,
+    IRON,
+    WOOD,
+    UNKNOWN
+}
+
+
+
 internal static class TrainingUtil
 {
     internal static (int plums, int lemons, int apples, int iron) GetBestTrollTraining(int numberOfTrolls, Inventory inventory)
@@ -649,23 +1842,48 @@ internal static class TrainingUtil
 
     private static int GetMaxAmount(int numberOfTrolls, int fruitCount)
     {
-        int max = 0;
+        int minimumRequired = numberOfTrolls + 1;
 
-        while(true)
+        if (minimumRequired > fruitCount)
         {
-            max++;
-
-            if(numberOfTrolls + (max * max) > fruitCount)
-            {
-                return max - 1;
-            }
+            // We can't do it!
+            return 0;
         }
+
+        int lastbaseStat = 1;
+        int lastValid = numberOfTrolls + lastbaseStat;
+
+        while (true)
+        {
+            lastbaseStat++;
+
+            int required = numberOfTrolls + (lastbaseStat * lastbaseStat);
+
+            if (required <= fruitCount)
+            {
+                lastValid = required;
+            }
+            else
+            {
+                break;
+            }
+
+        }
+
+        if (lastbaseStat > 2)
+        {
+            return 2;
+        }
+
+        return lastbaseStat-1;
     }
 }
 
+
+
 internal struct Tree
 {
-    internal string Type;
+    internal ResourceType Type;
     internal Point Position;
     internal int Size;
     internal int Health;
@@ -673,22 +1891,106 @@ internal struct Tree
     internal int Cooldown;
 }
 
-internal struct Troll
+internal class Troll
 {
-    internal int Id;
-    internal int Player;
-    internal Point Position;  
-    internal int MovementSpeed;
-    internal int CarryCapacity;
-    internal int HarvestPower;
-    internal int ChopPower;
-    internal int CarryPlum;
-    internal int CarryLemon;
-    internal int CarryApple;
-    internal int CarryBanana;
-    internal int CarryIron;
-    internal int CarryWood;
+    internal int Id { get; private set; }
+    internal Point Position { get; private set; }
+    internal int MovementSpeed { get; private set; }
+    internal int CarryCapacity { get; private set; }
+    internal int HarvestPower { get; private set; }
 
-    internal int TotalCarry;
+    internal int ChopPower { get; set; }
+    internal int CarryPlum { get; set; }
+    internal int CarryLemon { get; set; }
+    internal int CarryApple { get; set; }
+    internal int CarryBanana { get; set; }
+    internal int CarryIron { get; set; }
+    internal int CarryWood { get; set; }
+
+    public Troll(int id, Point position, int movementSpeed, int carryCapacity, int harvestPower, int chopPower)
+    {
+        Id = id;
+        Position = position;
+        MovementSpeed = movementSpeed;
+        CarryCapacity = carryCapacity;
+        HarvestPower = harvestPower;
+        ChopPower = chopPower;
+    }
+
+    internal int GetTotalCarrying()
+    {
+        return CarryPlum + CarryLemon + CarryApple + CarryBanana + CarryIron + CarryWood;
+    }
+
+    internal bool IsCarryingAnyFruit()
+    {
+        return CarryPlum > 0 || CarryLemon > 0 || CarryApple > 0 || CarryBanana > 0;
+    }
+
+
+    internal int IsCarryingFruit(ResourceType fruitType)
+    {
+        if (fruitType == ResourceType.PLUM)
+        {
+            return CarryPlum;
+        }
+        else if (fruitType == ResourceType.LEMON)
+        {
+            return CarryLemon;
+        }
+        else if (fruitType == ResourceType.APPLE)
+        {
+            return CarryApple;
+        }
+        else if (fruitType == ResourceType.BANANA)
+        {
+            return CarryBanana;
+        }
+        else if (fruitType == ResourceType.IRON)
+        {
+            return CarryIron;
+        }
+        else if (fruitType == ResourceType.WOOD)
+        {
+            return CarryWood;
+        }
+        else
+        {
+            return 0;
+        }
+    }
+
+    internal bool CanCarry()
+    {
+        return GetTotalCarrying() < CarryCapacity;
+    }
+
+    internal ResourceType CarryingFruitType()
+    {
+        if (CarryPlum > 0)
+        {
+            return ResourceType.PLUM;
+        }
+        else if (CarryLemon > 0)
+        {
+            return ResourceType.LEMON;
+        }
+        else if (CarryApple > 0)
+        {
+            return ResourceType.APPLE;
+        }
+        else if (CarryBanana > 0)
+        {
+            return ResourceType.BANANA;
+        }
+
+        return ResourceType.PLUM;
+    }
+
+    internal bool IsCarryingWood()
+    {
+        return CarryWood > 0;
+    }
 }
+    
 

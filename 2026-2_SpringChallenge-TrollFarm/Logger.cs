@@ -57,12 +57,22 @@ internal static class Logger
 
     internal static void Inventory(string message,Inventory inventory)
     {
+        if (DISABLE_LOGGING)
+        {
+            return;
+        }
+
         Console.Error.WriteLine(message);
         Console.Error.WriteLine($"Plum: {inventory.Plum}, Lemon: {inventory.Lemon}, Apple: {inventory.Apple}, Banana: {inventory.Banana}, Iron: {inventory.Iron}, Wood: {inventory.Wood}");
     }
 
     internal static void Path(string message, List<Point> path)
     {
+        if (DISABLE_LOGGING)
+        {
+            return;
+        }
+
         Console.Error.WriteLine(message);
         Console.Error.WriteLine($"Path: {string.Join("->", path)}");
 
@@ -70,6 +80,58 @@ internal static class Logger
 
     internal static void Troll(Troll troll)
     {
-        Console.Error.WriteLine($"Troll {troll.Id} (Player {troll.Player}) at {troll.Position}, MovementSpeed: {troll.MovementSpeed}, CarryCapacity: {troll.CarryCapacity}, HarvestPower: {troll.HarvestPower}, ChopPower: {troll.ChopPower}, CarryPlum: {troll.CarryPlum}, CarryLemon: {troll.CarryLemon}, CarryApple: {troll.CarryApple}, CarryBanana: {troll.CarryBanana}, CarryIron: {troll.CarryIron}, CarryWood: {troll.CarryWood}");
+        if (DISABLE_LOGGING)
+        {
+            return;
+        }
+
+        Console.Error.WriteLine($"Troll {troll.Id} at {troll.Position}, MovementSpeed: {troll.MovementSpeed}, CarryCapacity: {troll.CarryCapacity}, HarvestPower: {troll.HarvestPower}, ChopPower: {troll.ChopPower}, CarryPlum: {troll.CarryPlum}, CarryLemon: {troll.CarryLemon}, CarryApple: {troll.CarryApple}, CarryBanana: {troll.CarryBanana}, CarryIron: {troll.CarryIron}, CarryWood: {troll.CarryWood}");
     }
+
+    internal static void Prioirities(List<Need> priorities)
+    {
+        if (DISABLE_LOGGING)
+        {
+            return;
+        }
+
+        Console.Error.WriteLine("PRIORITIES:");
+        foreach (Need need in priorities)
+        {
+            Console.Error.WriteLine(need);
+        }
+    }
+
+    internal static void Error(string message)
+    {
+        Console.Error.WriteLine($"ERROR: {message}");
+    }
+
+    internal static void Trolls(List<Troll> playerTrolls)
+    {
+        if (DISABLE_LOGGING)
+        {
+            return;
+        }
+
+        Console.Error.WriteLine("TROLLS:");
+        foreach (Troll troll in playerTrolls)
+        {
+            Troll(troll);
+        }
+    }
+
+    internal static void Trees(List<Tree> trees)
+    {
+        if (DISABLE_LOGGING)
+        {
+            return;
+        }
+
+        foreach (Tree tree in trees)
+        {
+            Console.Error.WriteLine($"Tree at {tree.Position}, Type: {tree.Type}, Size: {tree.Size}, Health: {tree.Health}, Fruits: {tree.Fruits}, Cooldown: {tree.Cooldown}");
+        }
+
+    }        
 }

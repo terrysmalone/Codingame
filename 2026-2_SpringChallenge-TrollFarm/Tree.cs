@@ -4,7 +4,7 @@ namespace SpringChallenge2026;
 
 internal struct Tree
 {
-    internal string Type;
+    internal ResourceType Type;
     internal Point Position;
     internal int Size;
     internal int Health;

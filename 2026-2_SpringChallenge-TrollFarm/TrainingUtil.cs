@@ -1,12 +1,5 @@
-﻿using System;
-
 namespace SpringChallenge2026;
 
-// Training a troll costs the number of trolls on your team + the square of the matching attribute.
-// Plums = movementSpeed
-// Lemons = carryCapacity
-// Apples = harvestPower
-// Iron = chopPower
 internal static class TrainingUtil
 {
     internal static (int plums, int lemons, int apples, int iron) GetBestTrollTraining(int numberOfTrolls, Inventory inventory)
@@ -21,16 +14,40 @@ internal static class TrainingUtil
 
     private static int GetMaxAmount(int numberOfTrolls, int fruitCount)
     {
-        int max = 0;
+        int minimumRequired = numberOfTrolls + 1;
 
-        while(true)
+        if (minimumRequired > fruitCount)
         {
-            max++;
-
-            if(numberOfTrolls + (max * max) > fruitCount)
-            {
-                return max - 1;
-            }
+            // We can't do it!
+            return 0;
         }
+
+        int lastbaseStat = 1;
+        int lastValid = numberOfTrolls + lastbaseStat;
+
+        while (true)
+        {
+            lastbaseStat++;
+
+            int required = numberOfTrolls + (lastbaseStat * lastbaseStat);
+
+            if (required <= fruitCount)
+            {
+                lastValid = required;
+            }
+            else
+            {
+                break;
+            }
+
+        }
+
+        if (lastbaseStat > 2)
+        {
+            return 2;
+        }
+
+        return lastbaseStat-1;
     }
 }
+

@@ -34,17 +34,26 @@ partial class Player
                 {
                     game.SetIsWalkable(x, y, true);
                 }
-
-                if (rowText[x] == '0')
+                else if (rowText[x] == '~')
                 {
-                    game.AddPlayerShack(x, y);
+                    game.SetIsWater(x, y, true);
+                }
+                else if (rowText[x] == '+')
+                {
+                    game.AddIron(x, y);
+                }
+                else if (rowText[x] == '0')
+                {
+                    game.SetPlayerShack(x, y);
                 }
                 else if (rowText[x] == '1')
                 {
-                    game.AddEnemyShack(x, y);
+                    game.SetEnemyShack(x, y);
                 }
             }
         }
+
+        game.Initialise();
 
         // game loop
         while (true)
@@ -102,7 +111,7 @@ partial class Player
 
                 game.AddTree(new Tree
                 {
-                    Type = type,
+                    Type = Enum.Parse<ResourceType>(type, true),
                     Position = new Point(x, y),
                     Size = size,
                     Health = health,
@@ -131,30 +140,19 @@ partial class Player
                 int carryIron = int.Parse(inputs[12]);
                 int carryWood = int.Parse(inputs[13]);
 
-                var troll = new Troll
-                {
-                    Id = id,
-                    Position = new Point(x, y),
-                    MovementSpeed = movementSpeed,
-                    CarryCapacity = carryCapacity,
-                    HarvestPower = harvestPower,
-                    ChopPower = chopPower,
-                    CarryPlum = carryPlum,
-                    CarryLemon = carryLemon,
-                    CarryApple = carryApple,
-                    CarryBanana = carryBanana,
-                    CarryIron = carryIron,
-                    CarryWood = carryWood,
-                    TotalCarry = carryPlum + carryLemon + carryApple + carryBanana + carryIron + carryWood
-                };
-                if (player == 0)
-                {
-                    game.AddPlayerTroll(troll);
-                }
-                else
-                {
-                    game.AddEnemyTroll(troll);
-                }
+                game.AddOrUpdateTroll(id, 
+                                      player, 
+                                      new Point(x, y), 
+                                      movementSpeed, 
+                                      carryCapacity, 
+                                      harvestPower, 
+                                      chopPower,
+                                      carryPlum, 
+                                      carryLemon, 
+                                      carryApple, 
+                                      carryBanana, 
+                                      carryIron, 
+                                      carryWood);
             }
 
             // Write an action using Console.WriteLine()

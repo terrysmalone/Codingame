@@ -22,8 +22,20 @@
 
 9d3a3de4975f6ac8f959cedbeadd98a809ef2084
 
+	Submitted: 2026-05-17 03:30
+	Rank: ~263
+
 	Changes:
 	- Fix bug where Troll would try to harvest unripe fruit
+
+0be94c7504ee55e6c6628718f5cea97bf1ded854
+
+	Unsubmitted
+
+	Changes:
+	- Troll should drop iron before chopping wood
+
+
 
 
 

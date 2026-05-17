@@ -162,6 +162,7 @@ internal class Game
 
                 // If there is a nearby tree attack it
                 List<Point> orderedTrees = _trees.Where(t => !_targetedTrees.Contains(t.Position)).OrderBy(t => GetManhattanDistance(t.Position, _playerShack)).Select(t => t.Position).ToList();
+                //List<Point> orderedTrees = _trees.Where(t => !_targetedTrees.Contains(t.Position)).OrderBy(t => t.Size).ThenBy(t => GetManhattanDistance(t.Position, _playerShack)).Select(t => t.Position).ToList();
 
                 Point closeTree = new Point(-1, -1);
 

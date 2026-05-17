@@ -128,4 +128,12 @@ internal static class InventoryUtil
 
         return ResourceType.PLUM;
     }
+
+    internal static bool AllFruitAbove(Inventory inventory, int threshold)
+    {
+        return inventory.Plum > threshold &&
+                inventory.Lemon > threshold &&
+                inventory.Apple > threshold &&
+                inventory.Banana > threshold;
+    }
 }

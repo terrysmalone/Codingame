@@ -35,6 +35,17 @@
 	Changes:
 	- Troll should drop iron before chopping wood
 
+f4686658e98a88b7506fd3ef8f1c19cb6782b83e
+
+	Unsubmitted
+
+	Changes:
+	- Take advantage of trolls with high movement speed
+
+
+
+
+
 
 
 

@@ -76,7 +76,10 @@ internal sealed class NeedsManager
             priorities.Add((ironCount, ResourceType.IRON));
         }
 
-        priorities.Sort((a, b) => a.Item1.CompareTo(b.Item1));
+        if (!InventoryUtil.AllFruitAbove(_game.GetPlayerInventory(), 9) && _game.GetPlayerTrollCount() < 4)
+        {
+            priorities.Sort((a, b) => a.Item1.CompareTo(b.Item1));
+        }
 
         foreach ((int count, ResourceType type) in priorities)
         {

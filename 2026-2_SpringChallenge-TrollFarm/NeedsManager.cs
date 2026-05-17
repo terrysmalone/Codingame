@@ -27,66 +27,28 @@ internal sealed class NeedsManager
     {
         _priorities.Clear();
 
-        int closeTrees = TreeCountWithinDistOfShack(3);
-
-        // For now, lets just get one of each tree beside our base
-        if (_game.Turn < EARLY_GAME_END)
+        if (_game.Turn < EARLY_GAME_END || _game.Turn < MID_GAME_END)
         {
-            if (_game.GetPlayerTrollCount() >= 3)
-            {
-                _priorities.Add(Need.AttackEnemy);
-            }
-            if (_game.GetPlayerTrollCount() >= 6)
-            {
-                _priorities.Add(Need.AttackEnemy);
-            }
 
             CheckAndAddGrowPriorities();
             CheckAndAddHarvestPriorities();
             CheckAndAddHarvestPriorities(); // Add more as a fall back. No harm in harvesting more if I have a lot of trolls
+            _priorities.Add(Need.AttackEnemy);
+            _priorities.Add(Need.AttackEnemy);
+            _priorities.Add(Need.AttackEnemy);
 
-            _priorities.Add(Need.TrainTroll);           
-        }
-        else if (_game.Turn < MID_GAME_END)
-        {
-            if (_game.GetPlayerTrollCount() >= 3)
-            {
-                _priorities.Add(Need.AttackEnemy);
-            }
-            if (_game.GetPlayerTrollCount() >= 6)
-            {
-                _priorities.Add(Need.AttackEnemy);
-            }
-
-            //if (closeTrees > 6)
-            //{
-            //    _priorities.Add(Need.HarvestAnyWood);
-            //    _priorities.Add(Need.HarvestAnyWood);
-            //}
-            //else if (closeTrees > 3)
-            //{
-            //    _priorities.Add(Need.HarvestAnyWood);
-            //}
-
-            CheckAndAddGrowPriorities();
-            CheckAndAddHarvestPriorities();
-            CheckAndAddHarvestPriorities(); // Add more as a fall back. No harm in harvesting more if I have a lot of trolls
             _priorities.Add(Need.TrainTroll);
         }
         else
         {
-            // If all 4 adjacent squares are blocked attack the enemy
             _priorities.Add(Need.HarvestAnyWood);
             _priorities.Add(Need.HarvestAnyWood);
             _priorities.Add(Need.HarvestAnyWood);
             _priorities.Add(Need.HarvestAnyWood);
-            _priorities.Add(Need.AttackEnemy);
-            _priorities.Add(Need.AttackEnemy);
-            _priorities.Add(Need.AttackEnemy);
-            _priorities.Add(Need.AttackEnemy);
-            _priorities.Add(Need.AttackEnemy);
-            _priorities.Add(Need.AttackEnemy);
-            _priorities.Add(Need.AttackEnemy);
+            _priorities.Add(Need.HarvestAnyWood);
+            _priorities.Add(Need.HarvestAnyWood);
+            _priorities.Add(Need.HarvestAnyWood);
+            _priorities.Add(Need.HarvestAnyWood);
         }
     }
 
@@ -108,7 +70,7 @@ internal sealed class NeedsManager
         priorities.Add((bananaCount, ResourceType.BANANA));
 
         // Don't prioritise iron if we have 4 trolls. We'll still add it, just as a much lower priority later
-        if (_game.GetPlayerInventory().Iron < 10 && (_game.GetPlayerTrollCount() < 4 || _positionUtil.ShackToIronDistance() < 10))
+        if (_game.GetPlayerInventory().Iron < 10 && _game.GetPlayerTrollCount() < 4)
         {
             int ironCount = InventoryUtil.GetCount(_game.GetPlayerInventory(), ResourceType.IRON);
             priorities.Add((ironCount, ResourceType.IRON));

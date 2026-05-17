@@ -241,4 +241,37 @@ internal class PositionUtil
 
         return closestDistance;
     }
+
+    internal Point GetClosestGrowableSpot(Point position)
+    {
+        List<Point> growableSpots = new List<Point>();
+        for (int x = position.X - 3; x <= position.X + 3; x++)
+        {
+            for (int y = position.Y - 3; y <= position.Y + 3; y++)
+            {
+                Point checkPoint = new Point(x, y);
+                if (_game.IsInBounds(checkPoint) 
+                    && _game.IsGrowable(checkPoint)
+                    && !_game.HasTree(checkPoint)
+                    )
+                {
+                    growableSpots.Add(checkPoint);
+                }
+            }
+        }
+
+        Point closestSpot = new Point(-1, -1);
+        int closestDistance = int.MaxValue;
+        foreach (Point spot in growableSpots)
+        {
+            int dist = _pathFinder.GetShortestPath(position, spot).Count;
+            if (dist < closestDistance)
+            {
+                closestDistance = dist;
+                closestSpot = spot;
+            }
+        }
+        return closestSpot;
+
+    }
 }

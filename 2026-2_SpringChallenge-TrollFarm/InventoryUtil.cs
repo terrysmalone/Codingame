@@ -5,6 +5,11 @@ namespace SpringChallenge2026;
 
 internal static class InventoryUtil
 {
+    internal static bool DoesContainFruit(Inventory playerInventory)
+    {
+        return playerInventory.Plum > 0 || playerInventory.Lemon > 0 || playerInventory.Apple > 0 || playerInventory.Banana > 0;
+    }
+
     internal static bool DoesContainFruit(Inventory inventory, ResourceType fruitType)
     {
         if (fruitType == ResourceType.PLUM)

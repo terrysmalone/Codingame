@@ -89,19 +89,63 @@ internal class Game
             // Find all trolls that can meet the need
             // Choose the best one
             // Mark it as assigned
-            
+
             if (need == Need.HarvestAnyWood)
             {
-                Logger.Message($"Trying to meet need {need} by harvesting wood");
-                List<Point> orderedTrees = _trees.Where(t => t.Fruits > 0 && !_targetedTrees.Contains(t.Position)).OrderBy(t => GetManhattanDistance(t.Position, _playerShack)).Select(t => t.Position).ToList();
+                // Every troll in the game should be in one of the below states. 
 
-                bool foundCloseTree = false;
+                // If a troll is carrying a seed plant
+                Troll? carryingSeedTroll = _playerTrolls.Where(t => !_assigned.Contains(t.Id) && t.IsCarryingAnyFruit()).FirstOrDefault();
 
-                foreach ( Point tree in orderedTrees)
+                if (carryingSeedTroll != null)
+                {
+                    Logger.Message($"Troll {carryingSeedTroll.Id} is carrying a seed");
+                    // plant it where it is if possible
+                    if (IsGrowable(carryingSeedTroll.Position) && !HasTree(carryingSeedTroll.Position))
+                    {
+                        Logger.Message($"Troll {carryingSeedTroll.Id} is on a grow spot and will plant");
+                        actions.Add($"PLANT {carryingSeedTroll.Id} {carryingSeedTroll.CarryingFruitType()}");
+                        AssignTroll(carryingSeedTroll.Id);
+                        continue;
+                    }
+                    else
+                    {
+                        Logger.Message($"Troll {carryingSeedTroll.Id} is not on a grow spot and will move to one");
+                        Point growSpot = _positionUtil.GetClosestGrowableSpot(carryingSeedTroll.Position);
+                        actions.Add($"MOVE {carryingSeedTroll.Id} {growSpot.X} {growSpot.Y}");
+                        AssignTroll(carryingSeedTroll.Id);
+                        continue;
+                    }
+                }
+
+                // if a troll is carrying wood
+                Troll? carryingWoodTroll = _playerTrolls.Where(t => !_assigned.Contains(t.Id) && t.IsCarryingWood()).FirstOrDefault();
+
+                if (carryingWoodTroll != null)
+                {
+                    if (IsNextToShack(carryingWoodTroll.Position))
+                    {
+                        actions.Add($"DROP {carryingWoodTroll.Id}");
+                        AssignTroll(carryingWoodTroll.Id);
+                        continue;
+                    }
+                    else
+                    {
+                        actions.Add($"MOVE {carryingWoodTroll.Id} {_playerShack.X} {_playerShack.Y}");
+                        AssignTroll(carryingWoodTroll.Id);
+                        continue;
+                    }
+                }
+
+                // If there is a nearby tree attack it
+                List<Point> orderedTrees = _trees.Where(t => !_targetedTrees.Contains(t.Position)).OrderBy(t => GetManhattanDistance(t.Position, _playerShack)).Select(t => t.Position).ToList();
+
+                Point closeTree = new Point(-1, -1);
+
+                foreach (Point tree in orderedTrees)
                 {
                     if (GetManhattanDistance(tree, _playerShack) > 3)
                     {
-                        foundCloseTree = false;
                         break;
                     }
 
@@ -109,108 +153,63 @@ internal class Game
 
                     if (dist <= 3)
                     {
-                        foundCloseTree = true;
+                        closeTree = _trees.First(t => t.Position == tree).Position;
                         break;
                     }
                 }
 
-                if (foundCloseTree == false)
+                if (closeTree != new Point(-1, -1))
                 {
-                    // Get closest troll to shack
+                    // check if a troll is on the tree
+                    Troll? trollOnTree = _playerTrolls.Where(t => !_assigned.Contains(t.Id) && t.CanCarry() && t.Position == closeTree).FirstOrDefault();
 
-                    Troll? closestTroll = _playerTrolls.Where(t => !_assigned.Contains(t.Id)).OrderBy(t => _positionUtil.GetShortestPath(t.Position, _playerShack).Count).FirstOrDefault();
-
-                    if (closestTroll != null)
+                    if (trollOnTree != null)
                     {
-                        if (_positionUtil.IsAdjacentToShack(closestTroll.Position))
-                        {
-                            if(_trees.Any(t => t.Position == closestTroll.Position))
-                            {
-                                actions.Add($"CHOP {closestTroll.Id}");
-                                AssignTroll(closestTroll.Id);
-                                continue;
-                            }
-                            if (!closestTroll.IsCarryingAnyFruit())
-                            {
-                                if (closestTroll.IsCarryingWood())
-                                {
-                                    actions.Add($"DROP {closestTroll.Id}");
-                                    AssignTroll(closestTroll.Id);
-                                    continue;
-                                }
-
-                                var fruitType = InventoryUtil.GetAnyFruitType(_playerInventory);
-                                actions.Add($"PICK {closestTroll.Id} {fruitType.ToString()}");
-                                AssignTroll(closestTroll.Id);
-                                usableInventory = InventoryUtil.ChangeInventory(usableInventory, fruitType, -1);
-                                continue;
-                            }
-                            else
-                            {
-                                ResourceType fruitType = closestTroll.CarryingFruitType();
-                                    
-                                actions.Add($"PLANT {closestTroll.Id} {fruitType}");
-                                AssignTroll(closestTroll.Id);
-                                continue;
-                            }
-                        }
-                        
-                        actions.Add($"MOVE {closestTroll.Id} {_playerShack.X} {_playerShack.Y}");
-                        AssignTroll(closestTroll.Id);
-                        continue;                        
-                    }
-                }
-
-                var freeTrolls = _playerTrolls.Where(t => !_assigned.Contains(t.Id)).ToList();
-
-                if (freeTrolls != null && freeTrolls.Count > 0)
-                {
-                    // if an unassigned troll is carrying anything take it to the shack
-                    var troll = freeTrolls.FirstOrDefault(t => !t.CanCarry());
-
-                    if (troll != null)
-                    {
-                        if (_positionUtil.IsAdjacentToShack(troll.Position) || troll.Position == _playerShack)
-                        {
-                            actions.Add($"DROP {troll.Id}");
-                            AssignTroll(troll.Id);
-                            continue;
-                        }
-                        // Head for the shack
-                        List<Point> shortestPath = _positionUtil.GetShortestPath(troll.Position, _playerShack);
-                        if (shortestPath.Count > 0)
-                        {
-                            Point nextMove = shortestPath[0];
-                            actions.Add($"MOVE {troll.Id} {nextMove.X} {nextMove.Y}");
-                            AssignTroll(troll.Id);
-                            continue;
-                        }
-                    }
-
-                    // if a troll has space and is at a tree chop it
-                    var trollAtTree = freeTrolls.FirstOrDefault(t => t.CanCarry() && IsAtTree(t.Position, _trees));
-
-                    if (trollAtTree != null)
-                    {
-                        actions.Add($"CHOP {trollAtTree.Id}");
-                        AssignTroll(trollAtTree.Id);
+                        actions.Add($"CHOP {trollOnTree.Id}");
+                        AssignTroll(trollOnTree.Id);
+                        _targetedTrees.Add(closeTree);
                         continue;
                     }
-
-                    // Move a free troll towards the closest tree
-                    List<Troll> availableTrolls = freeTrolls.Where(t => t.CanCarry()).ToList();
-
-                    if (availableTrolls.Count > 0)
+                    else
                     {
-                        (Troll? closestTroll, List<Point> path) = _positionUtil.GetClosestTrollToTargets(availableTrolls, _trees.Select(t => t.Position).ToList());
-                        if (closestTroll != null && path.Count > 0)
+                        // Get closest troll to tree
+                        Troll? closestTroll = _playerTrolls.Where(t => !_assigned.Contains(t.Id)).OrderBy(t => _positionUtil.GetShortestPath(t.Position, closeTree).Count).FirstOrDefault();
+
+                        if (closestTroll != null)
                         {
+                            actions.Add($"MOVE {closestTroll.Id} {closeTree.X} {closeTree.Y}");
                             AssignTroll(closestTroll.Id);
-                            actions.Add($"MOVE {closestTroll.Id} {path[0].X} {path[0].Y}");
+                            _targetedTrees.Add(closeTree);
                             continue;
                         }
                     }
                 }
+
+                // Go get a seed
+                // Get the closest unassigned troll to the shack with inventory space
+                if (InventoryUtil.DoesContainFruit(_playerInventory))
+                {
+                    Troll? closestTroll = _playerTrolls.Where(t => !_assigned.Contains(t.Id) && t.CanCarry()).OrderBy(t => _positionUtil.GetShortestPath(t.Position, _playerShack).Count).FirstOrDefault();
+                    
+                    if (closestTroll != null)
+                    {
+                        if (IsNextToShack(closestTroll.Position))
+                        {
+                            actions.Add($"PICK {closestTroll.Id} {InventoryUtil.GetAnyFruitType(usableInventory)}");
+                            usableInventory = InventoryUtil.ChangeInventory(usableInventory, InventoryUtil.GetAnyFruitType(usableInventory), -1);
+                            AssignTroll(closestTroll.Id);
+                            continue;
+                        }
+                        else
+                        {
+                            actions.Add($"MOVE {closestTroll.Id} {_playerShack.X} {_playerShack.Y}");
+                            AssignTroll(closestTroll.Id);
+                            continue;
+                        }
+                    }
+                }
+
+                // If there is a far away tree attack it
             }
 
             // If a need can't be met log it and remove it

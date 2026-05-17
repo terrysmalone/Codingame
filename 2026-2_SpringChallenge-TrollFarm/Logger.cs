@@ -133,5 +133,15 @@ internal static class Logger
             Console.Error.WriteLine($"Tree at {tree.Position}, Type: {tree.Type}, Size: {tree.Size}, Health: {tree.Health}, Fruits: {tree.Fruits}, Cooldown: {tree.Cooldown}");
         }
 
-    }        
+    }
+
+    internal static void Assign(int id, string message)
+    {
+        if (DISABLE_LOGGING)
+        {
+            return;
+        }
+        Console.Error.WriteLine($"ASSIGNING Troll {id} to {message}");
+
+    }
 }

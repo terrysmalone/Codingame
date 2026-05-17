@@ -169,9 +169,9 @@ internal class PositionUtil
         return Math.Abs(position1.X - position2.X) + Math.Abs(position1.Y - position2.Y);
     }
 
-    internal bool IsTreeAtPosition(Point position, ResourceType fruitType)
+    internal bool IsRipeTreeAtPosition(Point position, ResourceType fruitType)
     {
-        return _game.GetTrees(fruitType).Any(t => t.Position == position);
+        return _game.GetTrees(fruitType).Any(t => t.Position == position && t.Fruits > 0);
     }
 
     internal Point GetBestGrowSpot()

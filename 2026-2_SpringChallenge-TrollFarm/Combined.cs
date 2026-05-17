@@ -109,6 +109,8 @@ internal class Game
                 break;
             }
 
+            Logger.Message($"Trying to meet need {need}");
+
             // Find all trolls that can meet the need
             // Choose the best one
             // Mark it as assigned
@@ -161,8 +163,7 @@ internal class Game
                 }
 
                 // If there is a nearby tree attack it
-                List<Point> orderedTrees = _trees.Where(t => !_targetedTrees.Contains(t.Position)).OrderBy(t => GetManhattanDistance(t.Position, _playerShack)).Select(t => t.Position).ToList();
-                //List<Point> orderedTrees = _trees.Where(t => !_targetedTrees.Contains(t.Position)).OrderBy(t => t.Size).ThenBy(t => GetManhattanDistance(t.Position, _playerShack)).Select(t => t.Position).ToList();
+                List<Point> orderedTrees = _trees.Where(t => !_targetedTrees.Contains(t.Position)).OrderBy(t => t.Size).ThenBy(t => GetManhattanDistance(t.Position, _playerShack)).Select(t => t.Position).ToList();
 
                 Point closeTree = new Point(-1, -1);
 
@@ -170,7 +171,7 @@ internal class Game
                 {
                     if (GetManhattanDistance(tree, _playerShack) > 3)
                     {
-                        break;
+                        continue;
                     }
 
                     int dist = _positionUtil.GetShortestPath(_playerShack, tree).Count;
@@ -250,14 +251,11 @@ internal class Game
 
             if (NeedsManager.IsGrowNeed(need))
             {
-                Logger.Message($"Trying to meet grow need {need}");
-
                 ResourceType fruitType = NeedsManager.GetTreeType(need);
 
                 // if a troll has a fruit of this type
                 if (_playerTrolls.Any(t => t.IsCarryingFruit(fruitType) > 0))
                 {
-                    Logger.Message("Troll is carrying fruit" + fruitType + " and trying to find grow spot");
                     // find closest plant spot for this fruit
                     Point growSpot = _positionUtil.GetBestGrowSpot();
 
@@ -278,6 +276,7 @@ internal class Game
                     {
                         if (closestTroll.Position == growSpot)
                         {
+                            Logger.Assign(closestTroll.Id, $"PLANT {fruitType} at {growSpot.X},{growSpot.Y}");
                             actions.Add($"PLANT {closestTroll.Id} {fruitType.ToString()}");
                             AssignTroll(closestTroll.Id);
                             usableInventory = InventoryUtil.ChangeInventory(usableInventory, fruitType, -1);
@@ -285,7 +284,7 @@ internal class Game
                         }
                         else
                         {
-                            Logger.Message($"Closest troll to move for need {need} is {closestTroll.Id} at position {closestTroll.Position} with next move {shortestPath[0]}");
+                            Logger.Assign(closestTroll.Id, $"MOVE to grow spot at {growSpot}");
                             actions.Add($"MOVE {closestTroll.Id} {shortestPath[0].X} {shortestPath[0].Y}");
                             AssignTroll(closestTroll.Id);
                             continue;
@@ -300,21 +299,21 @@ internal class Game
                 {
                     (Troll? closestTroll, Point nextMove) = GetClosestTrollMove(usableInventory, fruitType);
 
-                    Logger.Message($"Closest troll to move for need {need} is {closestTroll?.Id} at position {closestTroll?.Position} with next move {nextMove}");
-
                     if (closestTroll != null)
                     {
                         if (closestTroll.Position == nextMove)
                         {
                             // It's on the target, either harvest or pick
-                            if (_positionUtil.IsTreeAtPosition(closestTroll.Position, fruitType))
+                            if (_positionUtil.IsRipeTreeAtPosition(closestTroll.Position, fruitType))
                             {
+                                Logger.Assign(closestTroll.Id, $"HARVEST {fruitType} at {closestTroll.Position.X},{closestTroll.Position.Y} to PLANT it");
                                 actions.Add($"HARVEST {closestTroll.Id}");
                                 AssignTroll(closestTroll.Id);
                                 continue;
                             }
                             else
                             {
+                                Logger.Assign(closestTroll.Id, $"PICK {fruitType} at {closestTroll.Position.X},{closestTroll.Position.Y}");
                                 actions.Add($"PICK {closestTroll.Id} {fruitType.ToString()}");
                                 usableInventory = InventoryUtil.ChangeInventory(usableInventory, fruitType, -1);
                                 AssignTroll(closestTroll.Id);
@@ -323,6 +322,7 @@ internal class Game
                         }
                         else
                         {
+                            Logger.Assign(closestTroll.Id, $"MOVE towards {fruitType} target at {nextMove.X},{nextMove.Y}");
                             actions.Add($"MOVE {closestTroll.Id} {nextMove.X} {nextMove.Y}");
                             AssignTroll(closestTroll.Id);
                             continue;
@@ -1077,7 +1077,17 @@ internal static class Logger
             Console.Error.WriteLine($"Tree at {tree.Position}, Type: {tree.Type}, Size: {tree.Size}, Health: {tree.Health}, Fruits: {tree.Fruits}, Cooldown: {tree.Cooldown}");
         }
 
-    }        
+    }
+
+    internal static void Assign(int id, string message)
+    {
+        if (DISABLE_LOGGING)
+        {
+            return;
+        }
+        Console.Error.WriteLine($"ASSIGNING Troll {id} to {message}");
+
+    }
 }
 
 internal enum Need
@@ -1101,7 +1111,7 @@ internal enum Need
 internal sealed class NeedsManager
 {
     private const int EARLY_GAME_END = 100;
-    private const int MID_GAME_END = 200;
+    private const int MID_GAME_END = 175;
 
     private readonly Game _game;
     private readonly PositionUtil _positionUtil;
@@ -1853,9 +1863,9 @@ internal class PositionUtil
         return Math.Abs(position1.X - position2.X) + Math.Abs(position1.Y - position2.Y);
     }
 
-    internal bool IsTreeAtPosition(Point position, ResourceType fruitType)
+    internal bool IsRipeTreeAtPosition(Point position, ResourceType fruitType)
     {
-        return _game.GetTrees(fruitType).Any(t => t.Position == position);
+        return _game.GetTrees(fruitType).Any(t => t.Position == position && t.Fruits > 0);
     }
 
     internal Point GetBestGrowSpot()

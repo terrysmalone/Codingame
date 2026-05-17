@@ -10,7 +10,7 @@ namespace SpringChallenge2026;
 internal sealed class NeedsManager
 {
     private const int EARLY_GAME_END = 100;
-    private const int MID_GAME_END = 200;
+    private const int MID_GAME_END = 175;
 
     private readonly Game _game;
     private readonly PositionUtil _positionUtil;

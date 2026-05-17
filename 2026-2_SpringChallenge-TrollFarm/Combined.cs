@@ -10,6 +10,8 @@ using System.Linq;
 using System.Net.WebSockets;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.ComponentModel.Design;
+using System.Dynamic;
 using System.Xml.Linq;
 using static System.Net.Mime.MediaTypeNames;
 using System.Reflection.Metadata.Ecma335;
@@ -51,6 +53,8 @@ internal class Game
     private bool[,] _isWalkable;
     private bool[,] _isWater;
 
+    private List<Point> _targetedTrees = new List<Point>();
+
     private HashSet<int> _assigned;
 
     public Game(int width, int height)
@@ -74,6 +78,8 @@ internal class Game
 
     internal List<string> GetActions()
     {
+        _targetedTrees.Clear();
+
         SetAllTrollsToUnassigned();
 
         _needsManager.SetPriorities();
@@ -94,7 +100,6 @@ internal class Game
         List<Need> priorities = _needsManager.GetPriorities();
 
         Logger.Prioirities(priorities);
-
         // Logger.Trolls(_playerTrolls);
 
         foreach (Need need in priorities)
@@ -110,60 +115,72 @@ internal class Game
             
             if (need == Need.HarvestAnyWood)
             {
-                // if there are no trees near my shack
-                // and I have fruit in my shack
-                // Plant tree near shack
-                Tree? closestTree = _trees.Where(t => t.Fruits > 0).OrderBy(t => _positionUtil.GetShortestPath(_playerShack, t.Position).Count).FirstOrDefault();
+                Logger.Message($"Trying to meet need {need} by harvesting wood");
+                List<Point> orderedTrees = _trees.Where(t => t.Fruits > 0 && !_targetedTrees.Contains(t.Position)).OrderBy(t => GetManhattanDistance(t.Position, _playerShack)).Select(t => t.Position).ToList();
 
-                if (closestTree != null)
+                bool foundCloseTree = false;
+
+                foreach ( Point tree in orderedTrees)
                 {
-                    int distance = _positionUtil.GetShortestPath(_playerShack, closestTree.Value.Position).Count;
-
-                    if (distance > 3)
+                    if (GetManhattanDistance(tree, _playerShack) > 3)
                     {
-                        // Get closest troll to shack
-                       
-                        Troll? closestTroll = _playerTrolls.Where(t => !_assigned.Contains(t.Id)).OrderBy(t => _positionUtil.GetShortestPath(t.Position, _playerShack).Count).FirstOrDefault();
+                        foundCloseTree = false;
+                        break;
+                    }
 
-                        if (closestTroll != null)
+                    int dist = _positionUtil.GetShortestPath(_playerShack, tree).Count;
+
+                    if (dist <= 3)
+                    {
+                        foundCloseTree = true;
+                        break;
+                    }
+                }
+
+                if (foundCloseTree == false)
+                {
+                    // Get closest troll to shack
+
+                    Troll? closestTroll = _playerTrolls.Where(t => !_assigned.Contains(t.Id)).OrderBy(t => _positionUtil.GetShortestPath(t.Position, _playerShack).Count).FirstOrDefault();
+
+                    if (closestTroll != null)
+                    {
+                        if (_positionUtil.IsAdjacentToShack(closestTroll.Position))
                         {
-                            if (_positionUtil.IsAdjacentToShack(closestTroll.Position))
+                            if(_trees.Any(t => t.Position == closestTroll.Position))
                             {
-                                if(_trees.Any(t => t.Position == closestTroll.Position))
-                                {
-                                    actions.Add($"CHOP {closestTroll.Id}");
-                                    AssignTroll(closestTroll.Id);
-                                    continue;
-                                }
-                                if (!closestTroll.IsCarryingAnyFruit())
-                                {
-                                    if (closestTroll.IsCarryingWood())
-                                    {
-                                        actions.Add($"DROP {closestTroll.Id}");
-                                        AssignTroll(closestTroll.Id);
-                                        continue;
-                                    }
-
-                                    var fruitType = InventoryUtil.GetAnyFruitType(_playerInventory);
-                                    actions.Add($"PICK {closestTroll.Id} {fruitType.ToString()}");
-                                    AssignTroll(closestTroll.Id);
-                                    usableInventory = InventoryUtil.ChangeInventory(usableInventory, fruitType, -1);
-                                    continue;
-                                }
-                                else
-                                {
-                                    ResourceType fruitType = closestTroll.CarryingFruitType();
-                                    
-                                    actions.Add($"PLANT {closestTroll.Id} {fruitType}");
-                                    AssignTroll(closestTroll.Id);
-                                    continue;
-                                }
+                                actions.Add($"CHOP {closestTroll.Id}");
+                                AssignTroll(closestTroll.Id);
+                                continue;
                             }
-                        
-                            actions.Add($"MOVE {closestTroll.Id} {_playerShack.X} {_playerShack.Y}");
-                            AssignTroll(closestTroll.Id);
-                            continue;
+                            if (!closestTroll.IsCarryingAnyFruit())
+                            {
+                                if (closestTroll.IsCarryingWood())
+                                {
+                                    actions.Add($"DROP {closestTroll.Id}");
+                                    AssignTroll(closestTroll.Id);
+                                    continue;
+                                }
+
+                                var fruitType = InventoryUtil.GetAnyFruitType(_playerInventory);
+                                actions.Add($"PICK {closestTroll.Id} {fruitType.ToString()}");
+                                AssignTroll(closestTroll.Id);
+                                usableInventory = InventoryUtil.ChangeInventory(usableInventory, fruitType, -1);
+                                continue;
+                            }
+                            else
+                            {
+                                ResourceType fruitType = closestTroll.CarryingFruitType();
+                                    
+                                actions.Add($"PLANT {closestTroll.Id} {fruitType}");
+                                AssignTroll(closestTroll.Id);
+                                continue;
+                            }
                         }
+                        
+                        actions.Add($"MOVE {closestTroll.Id} {_playerShack.X} {_playerShack.Y}");
+                        AssignTroll(closestTroll.Id);
+                        continue;                        
                     }
                 }
 
@@ -186,7 +203,6 @@ internal class Game
                         List<Point> shortestPath = _positionUtil.GetShortestPath(troll.Position, _playerShack);
                         if (shortestPath.Count > 0)
                         {
-                            Logger.Message($"Closest troll to move for need {need} is {troll.Id} at position {troll.Position} with next move {shortestPath[0]}");
                             Point nextMove = shortestPath[0];
                             actions.Add($"MOVE {troll.Id} {nextMove.X} {nextMove.Y}");
                             AssignTroll(troll.Id);
@@ -245,12 +261,16 @@ internal class Game
                     // find closest plant spot for this fruit
                     Point growSpot = _positionUtil.GetBestGrowSpot();
 
+                    if (growSpot.X == -1 && growSpot.Y == -1)
+                    {
+                        Logger.Error("No grow spot found for " + fruitType);
+                        continue;
+                    }
+
                     // Get all trolls that are carrying this fruit and are not assigned yet
                     List<Troll> candidateTrolls = _playerTrolls
                         .Where(t => !_assigned.Contains(t.Id) && t.IsCarryingFruit(fruitType) > 0)
                         .ToList();
-
-                    Logger.Message($"Found grow spot at {growSpot} and {candidateTrolls.Count} candidate trolls to plant with");
 
                     (Troll? closestTroll, List<Point> shortestPath) = _positionUtil.GetClosestTrollToTarget(candidateTrolls, growSpot);
 
@@ -783,6 +803,11 @@ internal class Game
     {
         return _iron;
     }
+
+    internal List<Tree> GetTrees()
+    {
+        return _trees;
+    }
 }
 
 internal struct Inventory
@@ -1088,6 +1113,8 @@ internal sealed class NeedsManager
     {
         _priorities.Clear();
 
+        int closeTrees = TreeCountWithinDistOfShack(3);
+
         // For now, lets just get one of each tree beside our base
         if (_game.Turn < EARLY_GAME_END)
         {
@@ -1102,10 +1129,11 @@ internal sealed class NeedsManager
 
             CheckAndAddGrowPriorities();
             CheckAndAddHarvestPriorities();
+            CheckAndAddHarvestPriorities(); // Add more as a fall back. No harm in harvesting more if I have a lot of trolls
 
             _priorities.Add(Need.TrainTroll);
 
-            if (_game.GetPlayerTrollCount() >= 4 && _positionUtil.ShackToIronDistance() >= 4)
+            if (_game.GetPlayerInventory().Iron <= 10 && _game.GetPlayerTrollCount() < 5 && _positionUtil.ShackToIronDistance() < 8)
             {
                 _priorities.Add(Need.HarvestIron);
             }
@@ -1121,8 +1149,19 @@ internal sealed class NeedsManager
                 _priorities.Add(Need.AttackEnemy);
             }
 
+            if (closeTrees > 6)
+            {
+                _priorities.Add(Need.HarvestAnyWood);
+                _priorities.Add(Need.HarvestAnyWood);
+            }
+            else if (closeTrees > 3)
+            {
+                _priorities.Add(Need.HarvestAnyWood);
+            }
+
             CheckAndAddGrowPriorities();
             CheckAndAddHarvestPriorities();
+            CheckAndAddHarvestPriorities(); // Add more as a fall back. No harm in harvesting more if I have a lot of trolls
             _priorities.Add(Need.TrainTroll);
         }
         else
@@ -1160,7 +1199,7 @@ internal sealed class NeedsManager
         priorities.Add((bananaCount, ResourceType.BANANA));
 
         // Don't prioritise iron if we have 4 trolls. We'll still add it, just as a much lower priority later
-        if (_game.GetPlayerTrollCount() < 4 || _positionUtil.ShackToIronDistance() < 4)
+        if (_game.GetPlayerInventory().Iron < 10 && (_game.GetPlayerTrollCount() < 4 || _positionUtil.ShackToIronDistance() < 4))
         {
             int ironCount = InventoryUtil.GetCount(_game.GetPlayerInventory(), ResourceType.IRON);
             priorities.Add((ironCount, ResourceType.IRON));
@@ -1186,42 +1225,54 @@ internal sealed class NeedsManager
             {
                 _priorities.Add(Need.HarvestBanana);
             }
-            else if (type == ResourceType.IRON)
-            {
-                _priorities.Add(Need.HarvestIron);
-            }
         }
     }
 
     private void CheckAndAddGrowPriorities()
     {
+        int neededDist = 3;
+
         List<(int, ResourceType)> priorities = new List<(int, ResourceType)>();
 
-        if (TreeCount(ResourceType.PLUM))
+        // Number of trees within 3 of shack
+        int plumTreeCount = TreeCountWithinDistOfShack(ResourceType.PLUM, neededDist);
+        int lemonTreeCount = TreeCountWithinDistOfShack(ResourceType.LEMON, neededDist);
+        int appleTreeCount = TreeCountWithinDistOfShack(ResourceType.APPLE, neededDist);
+        int bananaTreeCount = TreeCountWithinDistOfShack(ResourceType.BANANA, neededDist);
+
+        // Number of fruit in inventory
+        int plumCount = InventoryUtil.GetCount(_game.GetPlayerInventory(), ResourceType.PLUM);
+        int lemonCount = InventoryUtil.GetCount(_game.GetPlayerInventory(), ResourceType.LEMON);
+        int appleCount = InventoryUtil.GetCount(_game.GetPlayerInventory(), ResourceType.APPLE);
+        int bananaCount = InventoryUtil.GetCount(_game.GetPlayerInventory(), ResourceType.BANANA);
+
+        int plumPriority = CalculatePriority(plumCount, plumTreeCount);
+        int lemonPriority = CalculatePriority(lemonCount, lemonTreeCount);
+        int applePriority = CalculatePriority(appleCount, appleTreeCount);
+        int bananaPriority = CalculatePriority(bananaCount, bananaTreeCount);
+
+        Logger.Message($"Grow priorities - Plum: {plumPriority} (Count: {plumCount}, Trees: {plumTreeCount}), Lemon: {lemonPriority} (Count: {lemonCount}, Trees: {lemonTreeCount}), Apple: {applePriority} (Count: {appleCount}, Trees: {appleTreeCount}), Banana: {bananaPriority} (Count: {bananaCount}, Trees: {bananaTreeCount})");
+        if (plumPriority > 0)
         {
-            int plumCount = InventoryUtil.GetCount(_game.GetPlayerInventory(), ResourceType.PLUM);
-            priorities.Add((plumCount, ResourceType.PLUM));
+            priorities.Add((plumPriority, ResourceType.PLUM));
         }
 
-        if (TreeCount(ResourceType.LEMON))
-        {
-            int lemonCount = InventoryUtil.GetCount(_game.GetPlayerInventory(), ResourceType.LEMON);
-            priorities.Add((lemonCount, ResourceType.LEMON));
+        if(lemonPriority > 0)
+        { 
+            priorities.Add((lemonPriority, ResourceType.LEMON));
         }
 
-        if (TreeCount(ResourceType.APPLE))
+        if(applePriority > 0)
         {
-            int appleCount = InventoryUtil.GetCount(_game.GetPlayerInventory(), ResourceType.APPLE);
-            priorities.Add((appleCount, ResourceType.APPLE));
+            priorities.Add((applePriority, ResourceType.APPLE));
         }
 
-        if (TreeCount(ResourceType.BANANA))
+        if(bananaPriority > 0)
         {
-            int bananaCount = InventoryUtil.GetCount(_game.GetPlayerInventory(), ResourceType.BANANA);
-            priorities.Add((bananaCount, ResourceType.BANANA));
-        }       
+            priorities.Add((bananaPriority, ResourceType.BANANA));
+        }             
 
-        priorities.Sort((a, b) => a.Item1.CompareTo(b.Item1));
+        priorities.Sort((a, b) => b.Item1.CompareTo(a.Item1));
 
         foreach ((int count, ResourceType type) in priorities)
         {
@@ -1244,17 +1295,71 @@ internal sealed class NeedsManager
         }
     }
 
-    private bool TreeCount(ResourceType fruitType)
+    private int CalculatePriority(int inventoryCount, int treeCount)
     {
-        int neededDist = 3;
-        int closest = _positionUtil.GetClosestTreeToShack(fruitType);
-
-        if (closest <= neededDist)
+        int priority = -1;
+        
+        if (treeCount == 0)
         {
-            return false;
+            priority += 100;
+        }
+        else if (treeCount == 1)
+        {
+            priority += 50;
+        }
+        
+
+        // We want ones with a smaller inventory to be prioritised
+        if (priority >= 0)
+        {
+            priority += (40 - inventoryCount);
         }
 
-        return true;
+        return priority;
+    }
+
+    private int TreeCountWithinDistOfShack(int neededDist)
+    {
+        int count = 0;
+
+        foreach (Tree tree in _game.GetTrees().OrderBy(t => _positionUtil.CalculateManhattanDistance(_game.GetPlayerShackPosition(), t.Position)).ToList())
+        {
+            if (_positionUtil.CalculateManhattanDistance(_game.GetPlayerShackPosition(), tree.Position) > neededDist)
+            {
+                continue;
+            }
+
+            if (_positionUtil.GetShortestPath(_game.GetPlayerShackPosition(), tree.Position).Count <= neededDist)
+            {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    private int TreeCountWithinDistOfShack(ResourceType fruitType, int neededDist)
+    {
+        List<Tree> eligibleTrees = _game.GetTrees(fruitType);
+
+        eligibleTrees = eligibleTrees.OrderBy(t => _positionUtil.CalculateManhattanDistance(_game.GetPlayerShackPosition(), t.Position)).ToList();
+
+        int count = 0;
+         
+        foreach (Tree tree in eligibleTrees)
+        {
+            if (_positionUtil.CalculateManhattanDistance(_game.GetPlayerShackPosition(), tree.Position) > neededDist)
+            {
+                continue;
+            }
+                
+            if(_positionUtil.GetShortestPath(_game.GetPlayerShackPosition(), tree.Position).Count <= neededDist)
+            {
+                count++;
+            }
+        }
+
+        return count;
     }
 
     internal List<Need> GetPriorities()
@@ -1723,10 +1828,8 @@ internal class PositionUtil
 
         foreach (Point tree in candidatePoints)
         {
-            Logger.Message($"Getting closest troll to target at {tree.X}, {tree.Y}");
             (Troll? troll, List<Point> path) = GetClosestTrollToTarget(candidateTrolls, tree, Math.Min(closestDistance, cutoff));
 
-            Logger.Message($"Closest troll to target at {tree.X}, {tree.Y} is troll {troll?.Id} with path length {path.Count}");
             if (path.Count < closestDistance)
             {
                 closestDistance = path.Count;
@@ -1749,6 +1852,7 @@ internal class PositionUtil
 
         foreach (Troll troll in trolls)
         {
+            Logger.Message($"Checking troll {troll.Id} at position {troll.Position.X}, {troll.Position.Y} for target at {target.X}, {target.Y}");
             if (troll.Position == target)
             {
                 return (troll, new List<Point> { troll.Position });
@@ -1773,10 +1877,12 @@ internal class PositionUtil
             }
         }
 
+        Logger.Message($"Closest troll to target at {target.X}, {target.Y} is troll {closestTroll?.Id} with path length {closestDistance}");
+
         return (closestTroll, pathToTarget);
     }
 
-    private int CalculateManhattanDistance(Point position1, Point position2)
+    internal int CalculateManhattanDistance(Point position1, Point position2)
     {
         return Math.Abs(position1.X - position2.X) + Math.Abs(position1.Y - position2.Y);
     }
@@ -1909,11 +2015,6 @@ internal static class TrainingUtil
                 break;
             }
 
-        }
-
-        if (lastbaseStat > 2)
-        {
-            return 2;
         }
 
         return lastbaseStat-1;

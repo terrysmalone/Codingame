@@ -42,11 +42,6 @@ internal static class TrainingUtil
 
         }
 
-        if (lastbaseStat > 2)
-        {
-            return 2;
-        }
-
         return lastbaseStat-1;
     }
 }

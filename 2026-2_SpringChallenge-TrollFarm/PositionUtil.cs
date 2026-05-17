@@ -110,10 +110,8 @@ internal class PositionUtil
 
         foreach (Point tree in candidatePoints)
         {
-            Logger.Message($"Getting closest troll to target at {tree.X}, {tree.Y}");
             (Troll? troll, List<Point> path) = GetClosestTrollToTarget(candidateTrolls, tree, Math.Min(closestDistance, cutoff));
 
-            Logger.Message($"Closest troll to target at {tree.X}, {tree.Y} is troll {troll?.Id} with path length {path.Count}");
             if (path.Count < closestDistance)
             {
                 closestDistance = path.Count;
@@ -136,6 +134,7 @@ internal class PositionUtil
 
         foreach (Troll troll in trolls)
         {
+            Logger.Message($"Checking troll {troll.Id} at position {troll.Position.X}, {troll.Position.Y} for target at {target.X}, {target.Y}");
             if (troll.Position == target)
             {
                 return (troll, new List<Point> { troll.Position });
@@ -160,10 +159,12 @@ internal class PositionUtil
             }
         }
 
+        Logger.Message($"Closest troll to target at {target.X}, {target.Y} is troll {closestTroll?.Id} with path length {closestDistance}");
+
         return (closestTroll, pathToTarget);
     }
 
-    private int CalculateManhattanDistance(Point position1, Point position2)
+    internal int CalculateManhattanDistance(Point position1, Point position2)
     {
         return Math.Abs(position1.X - position2.X) + Math.Abs(position1.Y - position2.Y);
     }

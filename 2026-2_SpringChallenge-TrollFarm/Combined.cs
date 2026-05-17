@@ -1131,12 +1131,7 @@ internal sealed class NeedsManager
             CheckAndAddHarvestPriorities();
             CheckAndAddHarvestPriorities(); // Add more as a fall back. No harm in harvesting more if I have a lot of trolls
 
-            _priorities.Add(Need.TrainTroll);
-
-            if (_game.GetPlayerInventory().Iron <= 10 && _game.GetPlayerTrollCount() < 5 && _positionUtil.ShackToIronDistance() < 8)
-            {
-                _priorities.Add(Need.HarvestIron);
-            }
+            _priorities.Add(Need.TrainTroll);           
         }
         else if (_game.Turn < MID_GAME_END)
         {
@@ -1149,15 +1144,15 @@ internal sealed class NeedsManager
                 _priorities.Add(Need.AttackEnemy);
             }
 
-            if (closeTrees > 6)
-            {
-                _priorities.Add(Need.HarvestAnyWood);
-                _priorities.Add(Need.HarvestAnyWood);
-            }
-            else if (closeTrees > 3)
-            {
-                _priorities.Add(Need.HarvestAnyWood);
-            }
+            //if (closeTrees > 6)
+            //{
+            //    _priorities.Add(Need.HarvestAnyWood);
+            //    _priorities.Add(Need.HarvestAnyWood);
+            //}
+            //else if (closeTrees > 3)
+            //{
+            //    _priorities.Add(Need.HarvestAnyWood);
+            //}
 
             CheckAndAddGrowPriorities();
             CheckAndAddHarvestPriorities();
@@ -1199,7 +1194,7 @@ internal sealed class NeedsManager
         priorities.Add((bananaCount, ResourceType.BANANA));
 
         // Don't prioritise iron if we have 4 trolls. We'll still add it, just as a much lower priority later
-        if (_game.GetPlayerInventory().Iron < 10 && (_game.GetPlayerTrollCount() < 4 || _positionUtil.ShackToIronDistance() < 4))
+        if (_game.GetPlayerInventory().Iron < 10 && (_game.GetPlayerTrollCount() < 4 || _positionUtil.ShackToIronDistance() < 10))
         {
             int ironCount = InventoryUtil.GetCount(_game.GetPlayerInventory(), ResourceType.IRON);
             priorities.Add((ironCount, ResourceType.IRON));
@@ -1224,6 +1219,10 @@ internal sealed class NeedsManager
             else if (type == ResourceType.BANANA)
             {
                 _priorities.Add(Need.HarvestBanana);
+            }
+            else if (type == ResourceType.IRON)
+            {
+                _priorities.Add(Need.HarvestIron);
             }
         }
     }

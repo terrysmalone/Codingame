@@ -1,4 +1,10 @@
-﻿# Changes
+﻿# TODO
+
+- Once resources are all above 10 stop prioritizing order. Just do the closest ones.
+
+
+
+# Changes
 
 5c5897d2388e8858e8f5c8b95e9dba6d6305e8cc 
 
@@ -13,6 +19,13 @@
 	Changes:
 	- Go for small trees first
 	- Start end game sooner
+
+9d3a3de4975f6ac8f959cedbeadd98a809ef2084
+
+	Changes:
+	- Fix bug where Troll would try to harvest unripe fruit
+
+
 
 
 

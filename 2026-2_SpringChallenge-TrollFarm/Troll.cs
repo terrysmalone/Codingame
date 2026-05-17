@@ -103,5 +103,10 @@ internal class Troll
     {
         return CarryWood > 0;
     }
+
+    internal bool IsCarryingIron()
+    {
+        return CarryIron > 0;
+    }
 }
     

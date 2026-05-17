@@ -63,9 +63,6 @@ internal class Game
 
         List<Point> excludedTrees = new List<Point>();
 
-        // Logger.Inventory("Player inventory", _playerInventory);
-        // Logger.Inventory("Enemy inventory", _enemyInventory);
-
         Turn++;
 
         List<string> actions = new List<string>();
@@ -76,9 +73,6 @@ internal class Game
         // Try to assign all priorities until we're out of trolls
         List<Need> priorities = _needsManager.GetPriorities();
 
-        Logger.Prioirities(priorities);
-        // Logger.Trolls(_playerTrolls);
-
         foreach (Need need in priorities)
         {
             if (_assigned.Count >= _playerTrolls.Count)
@@ -87,10 +81,6 @@ internal class Game
             }
 
             Logger.Message($"Trying to meet need {need}");
-
-            // Find all trolls that can meet the need
-            // Choose the best one
-            // Mark it as assigned
 
             if (need == Need.HarvestAnyWood)
             {
@@ -105,14 +95,14 @@ internal class Game
                     // plant it where it is if possible
                     if (IsGrowable(carryingSeedTroll.Position) && !HasTree(carryingSeedTroll.Position))
                     {
-                        Logger.Message($"Troll {carryingSeedTroll.Id} is on a grow spot and will plant");
+                        Logger.Assign(carryingSeedTroll.Id, $"PLANT {carryingSeedTroll.CarryingFruitType()} at {carryingSeedTroll.Position.X},{carryingSeedTroll.Position.Y}");
                         actions.Add($"PLANT {carryingSeedTroll.Id} {carryingSeedTroll.CarryingFruitType()}");
                         AssignTroll(carryingSeedTroll.Id);
                         continue;
                     }
                     else
                     {
-                        Logger.Message($"Troll {carryingSeedTroll.Id} is not on a grow spot and will move to one");
+                        Logger.Assign(carryingSeedTroll.Id, $"MOVE to grow spot for {carryingSeedTroll.CarryingFruitType()}");
                         Point growSpot = _positionUtil.GetClosestGrowableSpot(carryingSeedTroll.Position);
                         actions.Add($"MOVE {carryingSeedTroll.Id} {growSpot.X} {growSpot.Y}");
                         AssignTroll(carryingSeedTroll.Id);
@@ -127,14 +117,37 @@ internal class Game
                 {
                     if (IsNextToShack(carryingWoodTroll.Position))
                     {
+                        Logger.Assign(carryingWoodTroll.Id, $"DROP wood at shack");
                         actions.Add($"DROP {carryingWoodTroll.Id}");
                         AssignTroll(carryingWoodTroll.Id);
                         continue;
                     }
                     else
                     {
+                        Logger.Assign(carryingWoodTroll.Id, $"MOVE to shack to drop wood");
                         actions.Add($"MOVE {carryingWoodTroll.Id} {_playerShack.X} {_playerShack.Y}");
                         AssignTroll(carryingWoodTroll.Id);
+                        continue;
+                    }
+                }
+
+                // if a troll is carrying iron
+                Troll? carryingironTroll = _playerTrolls.Where(t => !_assigned.Contains(t.Id) && t.IsCarryingIron()).FirstOrDefault();
+
+                if (carryingironTroll != null)
+                {
+                    if (IsNextToShack(carryingironTroll.Position))
+                    {
+                        Logger.Assign(carryingironTroll.Id, $"DROP iron at shack");
+                        actions.Add($"DROP {carryingironTroll.Id}");
+                        AssignTroll(carryingironTroll.Id);
+                        continue;
+                    }
+                    else
+                    {
+                        Logger.Assign(carryingironTroll.Id, $"MOVE to shack to drop iron");
+                        actions.Add($"MOVE {carryingironTroll.Id} {_playerShack.X} {_playerShack.Y}");
+                        AssignTroll(carryingironTroll.Id);
                         continue;
                     }
                 }
@@ -167,6 +180,7 @@ internal class Game
 
                     if (trollOnTree != null)
                     {
+                        Logger.Assign(trollOnTree.Id, $"CHOP tree at {closeTree.X},{closeTree.Y}");
                         actions.Add($"CHOP {trollOnTree.Id}");
                         AssignTroll(trollOnTree.Id);
                         _targetedTrees.Add(closeTree);
@@ -179,6 +193,7 @@ internal class Game
 
                         if (closestTroll != null)
                         {
+                            Logger.Assign(closestTroll.Id, $"MOVE to tree at {closeTree.X},{closeTree.Y} to chop");
                             actions.Add($"MOVE {closestTroll.Id} {closeTree.X} {closeTree.Y}");
                             AssignTroll(closestTroll.Id);
                             _targetedTrees.Add(closeTree);
@@ -197,6 +212,7 @@ internal class Game
                     {
                         if (IsNextToShack(closestTroll.Position))
                         {
+                            Logger.Assign(closestTroll.Id, $"PICK any fruit at shack to plant");
                             actions.Add($"PICK {closestTroll.Id} {InventoryUtil.GetAnyFruitType(usableInventory)}");
                             usableInventory = InventoryUtil.ChangeInventory(usableInventory, InventoryUtil.GetAnyFruitType(usableInventory), -1);
                             AssignTroll(closestTroll.Id);
@@ -204,6 +220,7 @@ internal class Game
                         }
                         else
                         {
+                            Logger.Assign(closestTroll.Id, $"MOVE to shack to get seed for planting");
                             actions.Add($"MOVE {closestTroll.Id} {_playerShack.X} {_playerShack.Y}");
                             AssignTroll(closestTroll.Id);
                             continue;

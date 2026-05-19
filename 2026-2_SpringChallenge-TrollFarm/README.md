@@ -37,10 +37,21 @@
 
 f4686658e98a88b7506fd3ef8f1c19cb6782b83e
 
-	Unsubmitted
+	Submitted: 2026-05-17 04:22
+	Rank: ~290
 
 	Changes:
 	- Take advantage of trolls with high movement speed
+
+842d405bea1f38cce3d9b40994244486f556750a
+
+	Submitted: 2026-05-19 12:48
+	Rank: ~265
+
+	Changes:
+	- Make sure Trolls harvest until full
+
+
 
 
 

@@ -69,6 +69,31 @@ internal class Game
 
         Inventory usableInventory = _playerInventory;
 
+        // If any troll has a fruit, and space for more, and they're on a tree with 
+        // that fruit available, then harvest
+        foreach (Troll troll in _playerTrolls)
+        {
+            if (troll.IsCarryingAnyFruit() && troll.CanCarry())
+            {
+                ResourceType carriedFruitType = troll.CarryingFruitType();
+
+                if(_trees.Any(t => t.Position == troll.Position 
+                              && t.Type == carriedFruitType
+                              && t.Fruits > 0))
+                {
+                    Tree harvestableTree = _trees.First(t => t.Position == troll.Position 
+                                                        && t.Type == carriedFruitType
+                                                        && t.Fruits > 0);
+
+                    Logger.Assign(troll.Id, $"HARVEST {carriedFruitType} at {troll.Position.X},{troll.Position.Y} to PLANT it");
+                    actions.Add($"HARVEST {troll.Id}");
+                    AssignTroll(troll.Id);
+
+                    Logger.Message("FOUND!!!");
+                    
+                }
+            }
+        }
 
         // Try to assign all priorities until we're out of trolls
         List<Need> priorities = _needsManager.GetPriorities();

@@ -78,27 +78,27 @@ internal static class InventoryUtil
     {
         if (fruitType == ResourceType.PLUM)
         {
-            return new Inventory{Plum = inventory.Plum - v, Lemon = inventory.Lemon, Apple = inventory.Apple, Banana = inventory.Banana, Iron = inventory.Iron, Wood = inventory.Wood};
+            return new Inventory{Plum = inventory.Plum + v, Lemon = inventory.Lemon, Apple = inventory.Apple, Banana = inventory.Banana, Iron = inventory.Iron, Wood = inventory.Wood};
         }
         else if (fruitType == ResourceType.LEMON)
         {
-            return new Inventory{Plum = inventory.Plum, Lemon = inventory.Lemon - v, Apple = inventory.Apple, Banana = inventory.Banana, Iron = inventory.Iron, Wood = inventory.Wood};
+            return new Inventory{Plum = inventory.Plum, Lemon = inventory.Lemon + v, Apple = inventory.Apple, Banana = inventory.Banana, Iron = inventory.Iron, Wood = inventory.Wood};
         }
         else if (fruitType == ResourceType.APPLE)
         {
-            return new Inventory{Plum = inventory.Plum, Lemon = inventory.Lemon, Apple = inventory.Apple - v, Banana = inventory.Banana, Iron = inventory.Iron, Wood = inventory.Wood};
+            return new Inventory{Plum = inventory.Plum, Lemon = inventory.Lemon, Apple = inventory.Apple + v, Banana = inventory.Banana, Iron = inventory.Iron, Wood = inventory.Wood};
         }
         else if (fruitType == ResourceType.BANANA)
         {
-            return new Inventory{Plum = inventory.Plum, Lemon = inventory.Lemon, Apple = inventory.Apple, Banana = inventory.Banana - v, Iron = inventory.Iron, Wood = inventory.Wood};
+            return new Inventory{Plum = inventory.Plum, Lemon = inventory.Lemon, Apple = inventory.Apple, Banana = inventory.Banana + v, Iron = inventory.Iron, Wood = inventory.Wood};
         }
         else if (fruitType == ResourceType.IRON)
         {
-            return new Inventory{Plum = inventory.Plum, Lemon = inventory.Lemon, Apple = inventory.Apple, Banana = inventory.Banana, Iron = inventory.Iron - v, Wood = inventory.Wood};
+            return new Inventory{Plum = inventory.Plum, Lemon = inventory.Lemon, Apple = inventory.Apple, Banana = inventory.Banana, Iron = inventory.Iron + v, Wood = inventory.Wood};
         }
         else if (fruitType == ResourceType.WOOD)
         {
-            return new Inventory{Plum = inventory.Plum, Lemon = inventory.Lemon, Apple = inventory.Apple, Banana = inventory.Banana, Iron = inventory.Iron, Wood = inventory.Wood - v};
+            return new Inventory{Plum = inventory.Plum, Lemon = inventory.Lemon, Apple = inventory.Apple, Banana = inventory.Banana, Iron = inventory.Iron, Wood = inventory.Wood + v};
         }
         else
         {

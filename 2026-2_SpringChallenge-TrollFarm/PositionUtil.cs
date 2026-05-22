@@ -190,6 +190,35 @@ internal class PositionUtil
         return new Point(-1, -1);
     }
 
+    internal List<Point> GetAdjacentToShackPoints()
+    {
+        Point shackPos = _game.GetPlayerShackPosition();
+
+        List<Point> adjacentPoints = new List<Point>();
+
+        if(_game.IsInBounds(new Point(shackPos.X - 1, shackPos.Y)))
+        {
+            adjacentPoints.Add(new Point(shackPos.X - 1, shackPos.Y));
+        }
+
+        if(_game.IsInBounds(new Point(shackPos.X + 1, shackPos.Y)))
+        {
+            adjacentPoints.Add(new Point(shackPos.X + 1, shackPos.Y));
+        }
+
+        if(_game.IsInBounds(new Point(shackPos.X, shackPos.Y - 1)))
+        {
+            adjacentPoints.Add(new Point(shackPos.X, shackPos.Y - 1));
+        }
+
+        if(_game.IsInBounds(new Point(shackPos.X, shackPos.Y + 1)))
+        {
+            adjacentPoints.Add(new Point(shackPos.X, shackPos.Y + 1));
+        }      
+
+        return adjacentPoints;
+    }
+
     internal bool IsAdjacentToShack(Point position)
     {
         Point shackPos = _game.GetPlayerShackPosition();

@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
 using System.Net.WebSockets;
+using System.Reflection.Metadata.Ecma335;
 
 namespace SpringChallenge2026;
 
@@ -57,7 +59,7 @@ internal class Game
     {
         _targetedTrees.Clear();
 
-        SetAllTrollsToUnassigned();
+        ResetTrolls();
 
         _needsManager.SetPriorities();
 
@@ -87,10 +89,7 @@ internal class Game
 
                     Logger.Assign(troll.Id, $"HARVEST {carriedFruitType} at {troll.Position.X},{troll.Position.Y} to PLANT it");
                     actions.Add($"HARVEST {troll.Id}");
-                    AssignTroll(troll.Id);
-
-                    Logger.Message("FOUND!!!");
-                    
+                    AssignTroll(troll, troll.Position);                   
                 }
             }
         }
@@ -122,16 +121,21 @@ internal class Game
                     {
                         Logger.Assign(carryingSeedTroll.Id, $"PLANT {carryingSeedTroll.CarryingFruitType()} at {carryingSeedTroll.Position.X},{carryingSeedTroll.Position.Y}");
                         actions.Add($"PLANT {carryingSeedTroll.Id} {carryingSeedTroll.CarryingFruitType()}");
-                        AssignTroll(carryingSeedTroll.Id);
+                        AssignTroll(carryingSeedTroll, carryingSeedTroll.Position);
                         continue;
                     }
                     else
                     {
                         Logger.Assign(carryingSeedTroll.Id, $"MOVE to grow spot for {carryingSeedTroll.CarryingFruitType()}");
                         Point growSpot = _positionUtil.GetClosestGrowableSpot(carryingSeedTroll.Position);
-                        actions.Add($"MOVE {carryingSeedTroll.Id} {growSpot.X} {growSpot.Y}");
-                        AssignTroll(carryingSeedTroll.Id);
-                        continue;
+
+                        Point? nextMoveToSpot = FindNextMoveToPoint(carryingSeedTroll, growSpot);
+                        if (nextMoveToSpot != null)
+                        {
+                            actions.Add($"MOVE {carryingSeedTroll.Id} {nextMoveToSpot.Value.X} {nextMoveToSpot.Value.Y}");
+                            AssignTroll(carryingSeedTroll, nextMoveToSpot.Value);
+                            continue;
+                        }                        
                     }
                 }
 
@@ -144,14 +148,16 @@ internal class Game
                     {
                         Logger.Assign(carryingWoodTroll.Id, $"DROP wood at shack");
                         actions.Add($"DROP {carryingWoodTroll.Id}");
-                        AssignTroll(carryingWoodTroll.Id);
+                        AssignTroll(carryingWoodTroll, carryingWoodTroll.Position);
                         continue;
                     }
                     else
                     {
-                        Logger.Assign(carryingWoodTroll.Id, $"MOVE to shack to drop wood");
-                        actions.Add($"MOVE {carryingWoodTroll.Id} {_playerShack.X} {_playerShack.Y}");
-                        AssignTroll(carryingWoodTroll.Id);
+                        Point nextMoveToShack = FindNextMoveToShack(carryingWoodTroll);
+
+                        Logger.Assign(carryingWoodTroll.Id, $"MOVE to shack at {nextMoveToShack.X},{nextMoveToShack.Y} to drop wood");
+                        actions.Add($"MOVE {carryingWoodTroll.Id} {nextMoveToShack.X} {nextMoveToShack.Y}");
+                        AssignTroll(carryingWoodTroll, nextMoveToShack);
                         continue;
                     }
                 }
@@ -165,14 +171,16 @@ internal class Game
                     {
                         Logger.Assign(carryingironTroll.Id, $"DROP iron at shack");
                         actions.Add($"DROP {carryingironTroll.Id}");
-                        AssignTroll(carryingironTroll.Id);
+                        AssignTroll(carryingironTroll, carryingironTroll.Position);
                         continue;
                     }
                     else
                     {
+                        Point nextMoveToShack = FindNextMoveToShack(carryingironTroll);
+
                         Logger.Assign(carryingironTroll.Id, $"MOVE to shack to drop iron");
-                        actions.Add($"MOVE {carryingironTroll.Id} {_playerShack.X} {_playerShack.Y}");
-                        AssignTroll(carryingironTroll.Id);
+                        actions.Add($"MOVE {carryingironTroll.Id} {nextMoveToShack.X} {nextMoveToShack.Y}");
+                        AssignTroll(carryingironTroll, nextMoveToShack);
                         continue;
                     }
                 }
@@ -207,7 +215,7 @@ internal class Game
                     {
                         Logger.Assign(trollOnTree.Id, $"CHOP tree at {closeTree.X},{closeTree.Y}");
                         actions.Add($"CHOP {trollOnTree.Id}");
-                        AssignTroll(trollOnTree.Id);
+                        AssignTroll(trollOnTree, trollOnTree.Position);
                         _targetedTrees.Add(closeTree);
                         continue;
                     }
@@ -218,11 +226,15 @@ internal class Game
 
                         if (closestTroll != null)
                         {
-                            Logger.Assign(closestTroll.Id, $"MOVE to tree at {closeTree.X},{closeTree.Y} to chop");
-                            actions.Add($"MOVE {closestTroll.Id} {closeTree.X} {closeTree.Y}");
-                            AssignTroll(closestTroll.Id);
-                            _targetedTrees.Add(closeTree);
-                            continue;
+                            Point? nextMoveToSpot = FindNextMoveToPoint(closestTroll, closeTree);
+                            if (nextMoveToSpot != null)
+                            {
+                                Logger.Assign(closestTroll.Id, $"MOVE to tree at {nextMoveToSpot.Value.X},{nextMoveToSpot.Value.Y} to chop");
+                                actions.Add($"MOVE {closestTroll.Id} {nextMoveToSpot.Value.X} {nextMoveToSpot.Value.Y}");
+                                AssignTroll(closestTroll, nextMoveToSpot.Value);
+                                _targetedTrees.Add(closeTree);
+                                continue;
+                            }
                         }
                     }
                 }
@@ -240,14 +252,16 @@ internal class Game
                             Logger.Assign(closestTroll.Id, $"PICK any fruit at shack to plant");
                             actions.Add($"PICK {closestTroll.Id} {InventoryUtil.GetAnyFruitType(usableInventory)}");
                             usableInventory = InventoryUtil.ChangeInventory(usableInventory, InventoryUtil.GetAnyFruitType(usableInventory), -1);
-                            AssignTroll(closestTroll.Id);
+                            AssignTroll(closestTroll, closestTroll.Position);
                             continue;
                         }
                         else
                         {
+                            Point nextMoveToShack = FindNextMoveToShack(closestTroll);
+
                             Logger.Assign(closestTroll.Id, $"MOVE to shack to get seed for planting");
-                            actions.Add($"MOVE {closestTroll.Id} {_playerShack.X} {_playerShack.Y}");
-                            AssignTroll(closestTroll.Id);
+                            actions.Add($"MOVE {closestTroll.Id} {nextMoveToShack.X} {nextMoveToShack.Y}");
+                            AssignTroll(closestTroll, nextMoveToShack);
                             continue;
                         }
                     }
@@ -259,7 +273,7 @@ internal class Game
             // If a need can't be met log it and remove it
             if (need == Need.AttackEnemy)
             {
-                string attackMove = CalculateAtackMove();
+                string attackMove = CalculateAttackMove();
 
                 if (!string.IsNullOrEmpty(attackMove))
                 {
@@ -297,16 +311,21 @@ internal class Game
                         {
                             Logger.Assign(closestTroll.Id, $"PLANT {fruitType} at {growSpot.X},{growSpot.Y}");
                             actions.Add($"PLANT {closestTroll.Id} {fruitType.ToString()}");
-                            AssignTroll(closestTroll.Id);
+                            AssignTroll(closestTroll, growSpot);
                             usableInventory = InventoryUtil.ChangeInventory(usableInventory, fruitType, -1);
                             continue;
                         }
                         else
                         {
-                            Logger.Assign(closestTroll.Id, $"MOVE to grow spot at {growSpot}");
-                            actions.Add($"MOVE {closestTroll.Id} {growSpot.X} {growSpot.Y}");
-                            AssignTroll(closestTroll.Id);
-                            continue;
+                            Point? nextMoveToSpot = FindNextMoveToPoint(closestTroll, growSpot);
+                            if (nextMoveToSpot != null)
+                            {
+                                Logger.Assign(closestTroll.Id, $"MOVE to grow spot at {nextMoveToSpot.Value}");
+                                actions.Add($"MOVE {closestTroll.Id} {nextMoveToSpot.Value.X} {nextMoveToSpot.Value.Y}");
+                                AssignTroll(closestTroll, nextMoveToSpot.Value);
+
+                                continue;
+                            }
                         }
                     }
                     else
@@ -327,7 +346,7 @@ internal class Game
                             {
                                 Logger.Assign(closestTroll.Id, $"HARVEST {fruitType} at {closestTroll.Position.X},{closestTroll.Position.Y} to PLANT it");
                                 actions.Add($"HARVEST {closestTroll.Id}");
-                                AssignTroll(closestTroll.Id);
+                                AssignTroll(closestTroll, closestTroll.Position);
                                 continue;
                             }
                             else
@@ -335,16 +354,20 @@ internal class Game
                                 Logger.Assign(closestTroll.Id, $"PICK {fruitType} at {closestTroll.Position.X},{closestTroll.Position.Y}");
                                 actions.Add($"PICK {closestTroll.Id} {fruitType.ToString()}");
                                 usableInventory = InventoryUtil.ChangeInventory(usableInventory, fruitType, -1);
-                                AssignTroll(closestTroll.Id);
+                                AssignTroll(closestTroll, closestTroll.Position);
                                 continue;
                             }
                         }
                         else
                         {
-                            Logger.Assign(closestTroll.Id, $"MOVE towards {fruitType} target at {nextMove.X},{nextMove.Y}");
-                            actions.Add($"MOVE {closestTroll.Id} {nextMove.X} {nextMove.Y}");
-                            AssignTroll(closestTroll.Id);
-                            continue;
+                            Point? nextMoveToSpot = FindNextMoveToPoint(closestTroll, nextMove);
+                            if (nextMoveToSpot != null)
+                            {
+                                Logger.Assign(closestTroll.Id, $"MOVE towards {fruitType} target at {nextMoveToSpot.Value.X},{nextMoveToSpot.Value.Y}");
+                                actions.Add($"MOVE {closestTroll.Id} {nextMoveToSpot.Value.X} {nextMoveToSpot.Value.Y}");
+                                AssignTroll(closestTroll, nextMoveToSpot.Value);
+                                continue;
+                            }
                         }
                     }
                 }
@@ -363,17 +386,18 @@ internal class Game
                     if (_positionUtil.IsAdjacentToShack(troll.Position) || troll.Position == _playerShack)
                     {
                         actions.Add($"DROP {troll.Id}");
-                        AssignTroll(troll.Id);
+                        AssignTroll(troll, troll.Position);
                         usableInventory = InventoryUtil.ChangeInventory(usableInventory, fruitType, 1);
                         continue;
                     }
 
                     // Head for the shack
-                    Logger.Assign(troll.Id, $"MOVE to shack to drop off {fruitType}");
-                    actions.Add($"MOVE {troll.Id} {_playerShack.X} {_playerShack.Y}");
-                    AssignTroll(troll.Id);
-                    continue;
-                    
+                    Point nextMoveToShack = FindNextMoveToShack(troll);
+
+                    Logger.Assign(troll.Id, $"MOVE to shack at {nextMoveToShack.X},{nextMoveToShack.Y}to drop off {fruitType}");
+                    actions.Add($"MOVE {troll.Id} {nextMoveToShack.X} {nextMoveToShack.Y}");
+                    AssignTroll(troll, nextMoveToShack);
+                    continue;                    
                 }
                 else
                 {
@@ -404,9 +428,13 @@ internal class Game
 
                     if (closestTroll != null && shortestPath.Count > 0)
                     {
-                        actions.Add($"MOVE {closestTroll.Id} {shortestPath[shortestPath.Count-1].X} {shortestPath[shortestPath.Count - 1].Y}");
-                        AssignTroll(closestTroll.Id);
-                        continue;
+                        Point? nextMoveToSpot = FindNextMoveToPoint(closestTroll, shortestPath[shortestPath.Count - 1]);
+                        if (nextMoveToSpot != null)
+                        {
+                            actions.Add($"MOVE {closestTroll.Id} {nextMoveToSpot.Value.X} {nextMoveToSpot.Value.Y}");
+                            AssignTroll(closestTroll, nextMoveToSpot.Value);
+                            continue;
+                        }
                     }
                 }
 
@@ -421,15 +449,14 @@ internal class Game
             if (_positionUtil.IsAdjacentToShack(troll.Position) || troll.Position == _playerShack)
             {
                 actions.Add($"DROP {troll.Id}");
-                AssignTroll(troll.Id);
+                AssignTroll(troll, troll.Position);
             }
             else
             {
-                actions.Add($"MOVE {troll.Id} {_playerShack.X} {_playerShack.Y}");
-                AssignTroll(troll.Id);
+                Point adjacentShack = FindNextMoveToShack(troll);
+                actions.Add($"MOVE {troll.Id} {adjacentShack.X} {adjacentShack.Y}");
+                AssignTroll(troll, troll.Position);
             }
-            
-            
         }
 
         if (priorities.Contains(Need.TrainTroll))
@@ -447,7 +474,113 @@ internal class Game
         return actions;
     }
 
-    private string CalculateAtackMove()
+    private Point FindNextMoveToShack(Troll troll)
+    {
+        // Find a spot adjacent to a shack that is empty or that we know will be empty next move.
+        List<Point> shackAdjacentPoints = _positionUtil.GetAdjacentToShackPoints();
+        List<Point> validAdjacentPoints = new List<Point>();
+
+        foreach (Point adjacent in shackAdjacentPoints)
+        {
+            if (_isWalkable[adjacent.Y, adjacent.X] && WillBeFreeNextTurn(adjacent))
+            {
+                validAdjacentPoints.Add(adjacent);
+            }
+        }
+
+        Logger.Message($"validAdjacentPoints after checking what's free: {string.Join(", ", validAdjacentPoints.Select(p => $"({p.X},{p.Y})"))}");
+
+        // If there are no valid adjacent points loosen the criteria
+        if (validAdjacentPoints.Count == 0)
+        {
+            foreach (Point adjacent in shackAdjacentPoints)
+            {
+                if (_isWalkable[adjacent.Y, adjacent.X])
+                {
+                    validAdjacentPoints.Add(adjacent);
+                }
+            }
+        }
+
+        // Just path to the shack
+        if (validAdjacentPoints.Count == 0)
+        {
+            List<Point> path = _positionUtil.GetShortestPath(troll.Position, _playerShack);
+
+            if (path.Count == 0 || path.Count <= troll.MovementSpeed)
+            {
+                return _playerShack;
+            }
+            else
+            {
+                return path[troll.MovementSpeed - 1];
+            }
+        }
+
+        // Order by shortest distance to the troll
+        validAdjacentPoints = validAdjacentPoints.OrderBy(p => GetManhattanDistance(p, troll.Position)).ToList();
+
+        foreach (Point adjacent in validAdjacentPoints)
+        {
+            Point? nextMove = FindNextMoveToPoint(troll, adjacent);
+
+            if (nextMove == null)
+            {
+                continue;
+            }
+
+            return nextMove.Value;
+        }
+
+        return _playerShack;
+    }
+
+    private Point? FindNextMoveToPoint(Troll troll, Point target)
+    {
+        // Pathfind to it
+        List<Point> path = _positionUtil.GetShortestPath(troll.Position, target);
+
+        if (path.Count == 0)
+        {
+            return null;
+        }
+
+        if (path.Count <= troll.MovementSpeed)
+        {
+            return target;
+        }
+        else
+        {
+            Point nextMove = path[troll.MovementSpeed - 1];
+
+            if (WillBeFreeNextTurn(nextMove))
+            {
+                return nextMove;
+            }
+        }
+
+        return null;
+    }
+
+    private bool WillBeFreeNextTurn(Point point)
+    {
+        foreach (Troll troll in _playerTrolls)
+        {
+            if (troll.NextMove == null && troll.Position == point)
+            {
+                return false;
+            }
+
+            if (troll.NextMove != null && troll.NextMove == point)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private string CalculateAttackMove()
     {
         //Get a list of candidate enemy trees
         Point enemyShack = _enemyShack;
@@ -481,7 +614,7 @@ internal class Game
         {
             if (candidateTrees.Any(t => t == troll.Position))
             {
-                AssignTroll(troll.Id);
+                AssignTroll(troll, troll.Position);
                 return $"CHOP {troll.Id}";
             }
         }
@@ -492,7 +625,7 @@ internal class Game
         if (closestTroll != null && path.Count > 0)
         {
             Logger.Message($"Moving troll {closestTroll.Id} towards enemy for attack with next move {path[0]}");
-            AssignTroll(closestTroll.Id);
+            AssignTroll(closestTroll, path[0]);
             return $"MOVE {closestTroll.Id} {path[^1].X} {path[^1].Y}";
         }
 
@@ -515,7 +648,7 @@ internal class Game
                     if (_positionUtil.IsAdjacentTo(troll.Position, ironSpot))
                     {
                         Logger.Assign(troll.Id, $"MINE iron at {ironSpot.X},{ironSpot.Y}");
-                        AssignTroll(troll.Id);
+                        AssignTroll(troll, troll.Position);
                         return $"MINE {troll.Id}";                        
                     }
                 }
@@ -527,7 +660,7 @@ internal class Game
                     if (troll.Position == point)
                     {
                         Logger.Assign(troll.Id, $"HARVEST {point.X},{point.Y}");
-                        AssignTroll(troll.Id);
+                        AssignTroll(troll, troll.Position);
                         return $"HARVEST {troll.Id}";                        
                     }
                 }
@@ -557,7 +690,6 @@ internal class Game
 
             if (closestTroll != null)
             {
-                AssignTroll(closestTroll.Id);
                 return (closestTroll, closestTroll.Position);
             }
 
@@ -581,15 +713,21 @@ internal class Game
         return (closestTroll, nextMove);
     }
 
-    private void AssignTroll(int id)
+    private void AssignTroll(Troll troll, Point nextPoint)
     {
-        Logger.Message($"Assigning troll {id} to a need");
-        _assigned.Add(id);
+        _assigned.Add(troll.Id);
+
+        troll.NextMove = nextPoint;
     }
 
-    private void SetAllTrollsToUnassigned()
+    private void ResetTrolls()
     {
         _assigned.Clear();
+
+        foreach (Troll troll in _playerTrolls)
+        {
+            troll.NextMove = null;
+        }
     }
 
     private bool IsAtTree(Point position, List<Tree> trees)

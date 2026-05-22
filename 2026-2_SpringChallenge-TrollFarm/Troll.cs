@@ -19,6 +19,8 @@ internal class Troll
     internal int CarryIron { get; set; }
     internal int CarryWood { get; set; }
 
+    internal Point? NextMove { get; set; } = null;
+
     public Troll(int id, Point position, int movementSpeed, int carryCapacity, int harvestPower, int chopPower)
     {
         Id = id;

@@ -51,6 +51,13 @@ f4686658e98a88b7506fd3ef8f1c19cb6782b83e
 	Changes:
 	- Make sure Trolls harvest until full
 
+2683dab981453b949e5545855f82c15d9a76092c
+
+	Unsubmitted
+
+	Changes:
+	- Fix inventory change bug
+
 
 
 

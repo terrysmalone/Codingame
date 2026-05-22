@@ -35,6 +35,7 @@ internal class Game
     private List<Point> _targetedTrees = new List<Point>();
 
     private HashSet<int> _assigned;
+    private List<Point> _excludePoints = new List<Point>();
 
     public Game(int width, int height)
     {
@@ -58,6 +59,7 @@ internal class Game
     internal List<string> GetActions()
     {
         _targetedTrees.Clear();
+        _excludePoints.Clear();
 
         ResetTrolls();
 
@@ -122,7 +124,7 @@ internal class Game
                         continue;
                     }
 
-                    int dist = _positionUtil.GetShortestPath(_playerShack, tree).Count;
+                    int dist = _positionUtil.GetShortestPath(_playerShack, tree, _excludePoints).Count;
 
                     if (dist <= 3)
                     {
@@ -147,7 +149,7 @@ internal class Game
                     else
                     {
                         // Get closest troll to tree
-                        Troll? closestTroll = _playerTrolls.Where(t => !_assigned.Contains(t.Id) && t.CanCarry()).OrderBy(t => _positionUtil.GetShortestPath(t.Position, closeTree).Count).FirstOrDefault();
+                        Troll? closestTroll = _playerTrolls.Where(t => !_assigned.Contains(t.Id) && t.CanCarry()).OrderBy(t => _positionUtil.GetShortestPath(t.Position, closeTree, _excludePoints).Count).FirstOrDefault();
 
                         if (closestTroll != null)
                         {
@@ -243,7 +245,7 @@ internal class Game
                 // Get the closest unassigned troll to the shack with inventory space
                 if (InventoryUtil.DoesContainFruit(_playerInventory))
                 {
-                    Troll? closestTroll = _playerTrolls.Where(t => !_assigned.Contains(t.Id) && t.CanCarry()).OrderBy(t => _positionUtil.GetShortestPath(t.Position, _playerShack).Count).FirstOrDefault();
+                    Troll? closestTroll = _playerTrolls.Where(t => !_assigned.Contains(t.Id) && t.CanCarry()).OrderBy(t => _positionUtil.GetShortestPath(t.Position, _playerShack, _excludePoints).Count).FirstOrDefault();
                     
                     if (closestTroll != null)
                     {
@@ -303,7 +305,7 @@ internal class Game
                         .Where(t => !_assigned.Contains(t.Id) && t.IsCarryingFruit(fruitType) > 0)
                         .ToList();
 
-                    (Troll? closestTroll, List<Point> shortestPath) = _positionUtil.GetClosestTrollToTarget(candidateTrolls, growSpot);
+                    (Troll? closestTroll, List<Point> shortestPath) = _positionUtil.GetClosestTrollToTarget(candidateTrolls, growSpot, _excludePoints);
 
                     if (closestTroll != null)
                     {
@@ -424,7 +426,7 @@ internal class Game
                         continue;
                     }
 
-                    (Troll? closestTroll, List<Point> shortestPath) = _positionUtil.GetClosestTrollToTargets(candidateTrolls, candidatePoints, 8);
+                    (Troll? closestTroll, List<Point> shortestPath) = _positionUtil.GetClosestTrollToTargets(candidateTrolls, candidatePoints, _excludePoints, 8);
 
                     if (closestTroll != null && shortestPath.Count > 0)
                     {
@@ -505,7 +507,7 @@ internal class Game
         // Just path to the shack
         if (validAdjacentPoints.Count == 0)
         {
-            List<Point> path = _positionUtil.GetShortestPath(troll.Position, _playerShack);
+            List<Point> path = _positionUtil.GetShortestPath(troll.Position, _playerShack, _excludePoints);
 
             if (path.Count == 0 || path.Count <= troll.MovementSpeed)
             {
@@ -538,7 +540,7 @@ internal class Game
     private Point? FindNextMoveToPoint(Troll troll, Point target)
     {
         // Pathfind to it
-        List<Point> path = _positionUtil.GetShortestPath(troll.Position, target);
+        List<Point> path = _positionUtil.GetShortestPath(troll.Position, target, _excludePoints);
 
         if (path.Count == 0)
         {
@@ -622,7 +624,7 @@ internal class Game
         }
 
 
-        (Troll? closestTroll, List<Point> path) = _positionUtil.GetClosestTrollToTargets(_playerTrolls.Where(t => !_assigned.Contains(t.Id)).ToList(), candidateTrees);
+        (Troll? closestTroll, List<Point> path) = _positionUtil.GetClosestTrollToTargets(_playerTrolls.Where(t => !_assigned.Contains(t.Id)).ToList(), candidateTrees, _excludePoints);
 
         if (closestTroll != null && path.Count > 0)
         {
@@ -695,7 +697,7 @@ internal class Game
                 return (closestTroll, closestTroll.Position);
             }
 
-            (closestTroll, closestPath) = _positionUtil.GetClosestTrollToTarget(eligibleTrolls, _playerShack);
+            (closestTroll, closestPath) = _positionUtil.GetClosestTrollToTarget(eligibleTrolls, _playerShack, _excludePoints);
 
             if (closestTroll.Position == _playerShack || _positionUtil.IsAdjacentToShack(closestTroll.Position) || closestPath.Count == 0)
             {
@@ -720,6 +722,7 @@ internal class Game
         _assigned.Add(troll.Id);
 
         troll.NextMove = nextPoint;
+        _excludePoints.Add(nextPoint);
     }
 
     private void ResetTrolls()
@@ -749,7 +752,7 @@ internal class Game
 
     private List<Point> GetShortestPathToShack(Point position)
     {
-        List<Point> path = _positionUtil.GetShortestPath(position, _playerShack);
+        List<Point> path = _positionUtil.GetShortestPath(position, _playerShack, _excludePoints);
        
         return path;
     }
@@ -766,7 +769,7 @@ internal class Game
                 continue;
             }
 
-            List<Point> path = _positionUtil.GetShortestPath(position, tree.Position);
+            List<Point> path = _positionUtil.GetShortestPath(position, tree.Position, _excludePoints);
 
             //Logger.Path($"Tree {tree.Position}", path);
 

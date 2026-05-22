@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.Design;
+using System.Drawing;
 using System.Dynamic;
 using System.Linq;
 using System.Xml.Linq;
@@ -207,7 +208,7 @@ internal sealed class NeedsManager
                 continue;
             }
 
-            if (_positionUtil.GetShortestPath(_game.GetPlayerShackPosition(), tree.Position).Count <= neededDist)
+            if (_positionUtil.GetShortestPath(_game.GetPlayerShackPosition(), tree.Position, new List<Point>()).Count <= neededDist)
             {
                 count++;
             }
@@ -231,7 +232,7 @@ internal sealed class NeedsManager
                 continue;
             }
                 
-            if(_positionUtil.GetShortestPath(_game.GetPlayerShackPosition(), tree.Position).Count <= neededDist)
+            if(_positionUtil.GetShortestPath(_game.GetPlayerShackPosition(), tree.Position, new List<Point>()).Count <= neededDist)
             {
                 count++;
             }

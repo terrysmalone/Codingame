@@ -23,7 +23,7 @@ internal sealed class PathFinder
         _isWalkable = isWalkable;
     }
 
-    internal List<Point> GetShortestPath(Point startPosition, Point targetPosition)
+    internal List<Point> GetShortestPath(Point startPosition, Point targetPosition, List<Point> excludePoints)
     {
         var nodes = new List<Node>();
         var currentNode = new Node(startPosition);
@@ -38,7 +38,7 @@ internal sealed class PathFinder
 
             foreach (Point pointToCheck in pointsToCheck)
             {
-                if (pointToCheck == currentNode.Position || ((!_isWalkable[pointToCheck.Y, pointToCheck.X]) && pointToCheck != targetPosition))
+                if (pointToCheck == currentNode.Position || ((!_isWalkable[pointToCheck.Y, pointToCheck.X]) && pointToCheck != targetPosition) || excludePoints.Contains(pointToCheck))
                 {
                     continue;
                 }

@@ -19,27 +19,9 @@ internal class PositionUtil
         _pathFinder = pathFinder;
     }
 
-    internal List<Point> GetShortestPath(Point startPos, Point endPos)
+    internal List<Point> GetShortestPath(Point startPos, Point endPos, List<Point> excludePoints)
     {
-        return _pathFinder.GetShortestPath(startPos, endPos);
-    }
-
-    internal int GetClosestTreeToShack(ResourceType fruitType)
-    {
-        List<Tree> treesOfCorrectType = _game.GetTrees(fruitType);
-
-        int closest = int.MaxValue;
-
-        foreach (Tree tree in treesOfCorrectType)
-        {
-            int dist = _pathFinder.GetShortestPath(_game.GetPlayerShackPosition(), tree.Position).Count;
-            if (dist < closest)
-            {
-                closest = dist;
-            }
-        }
-
-        return closest;
+        return _pathFinder.GetShortestPath(startPos, endPos, excludePoints);
     }
 
     internal void InitialiseBestGrowSpots()
@@ -73,7 +55,7 @@ internal class PositionUtil
 
         foreach (Point spot in validSpots)
         {
-            int dist = _pathFinder.GetShortestPath(shackPos, spot).Count;
+            int dist = _pathFinder.GetShortestPath(shackPos, spot, new List<Point>()).Count;
 
             if (dist <= MIN_DIST)
             distancesMap.Add((dist, spot));
@@ -102,7 +84,7 @@ internal class PositionUtil
         return adjacentPoints.Any(p => _game.IsInBounds(p) && _game.IsWater(p));
     }
 
-    internal (Troll? closestTroll, List<Point> shortestPath) GetClosestTrollToTargets(List<Troll> candidateTrolls, List<Point> candidatePoints, int cutoff = int.MaxValue)
+    internal (Troll? closestTroll, List<Point> shortestPath) GetClosestTrollToTargets(List<Troll> candidateTrolls, List<Point> candidatePoints, List<Point> excludePoints, int cutoff = int.MaxValue)
     {
         int closestDistance = int.MaxValue;
         Troll? closestTroll = null;
@@ -110,7 +92,7 @@ internal class PositionUtil
 
         foreach (Point tree in candidatePoints)
         {
-            (Troll? troll, List<Point> path) = GetClosestTrollToTarget(candidateTrolls, tree, Math.Min(closestDistance, cutoff));
+            (Troll? troll, List<Point> path) = GetClosestTrollToTarget(candidateTrolls, tree, excludePoints, Math.Min(closestDistance, cutoff));
 
             if (path.Count < closestDistance)
             {
@@ -123,7 +105,7 @@ internal class PositionUtil
         return (closestTroll, pathToTarget);
     }
 
-    internal (Troll?, List<Point>)  GetClosestTrollToTarget(List<Troll> trolls, Point target, int cutoff = int.MaxValue)
+    internal (Troll?, List<Point>)  GetClosestTrollToTarget(List<Troll> trolls, Point target, List<Point> excludePoints, int cutoff = int.MaxValue)
     {
         int closestDistance = int.MaxValue;
         Troll? closestTroll = null;
@@ -147,7 +129,7 @@ internal class PositionUtil
             }
 
             Logger.Message($"Calculating path from troll {troll.Id} at {troll.Position.X}, {troll.Position.Y} to target at {target.X}, {target.Y}");
-            List<Point> path = _pathFinder.GetShortestPath(troll.Position, target);
+            List<Point> path = _pathFinder.GetShortestPath(troll.Position, target, excludePoints);
             Logger.Message($"Path length: {path.Count}");
 
             if (path.Count < closestDistance)
@@ -260,7 +242,7 @@ internal class PositionUtil
                 continue;
             }
 
-            List<Point> path = _pathFinder.GetShortestPath(_game.GetPlayerShackPosition(), ironPos);
+            List<Point> path = _pathFinder.GetShortestPath(_game.GetPlayerShackPosition(), ironPos, new List<Point>());
 
             if (path.Count < closestDistance)
             {
@@ -293,7 +275,7 @@ internal class PositionUtil
         int closestDistance = int.MaxValue;
         foreach (Point spot in growableSpots)
         {
-            int dist = _pathFinder.GetShortestPath(position, spot).Count;
+            int dist = _pathFinder.GetShortestPath(position, spot, new List<Point>()).Count;
             if (dist < closestDistance)
             {
                 closestDistance = dist;

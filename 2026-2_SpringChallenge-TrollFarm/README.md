@@ -61,10 +61,18 @@ f4686658e98a88b7506fd3ef8f1c19cb6782b83e
 b9a45bbc3892f01ec566dfdcfb298412ce897ab4
 
 	Submitted: 2026-05-23 00:00
-	Rank:
+	Rank: ~26
 
-	Changes: ~64
+	Changes: 
 	- Use better pathfinding
+
+066533121f5578d701409be531d4f3a64cb37d8c
+
+	Submitted: 2026-05-23 00:25
+	Rank: 
+
+	Changes: 
+	- Prioritise chopping wood before movement
 
 
 

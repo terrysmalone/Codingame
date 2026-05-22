@@ -110,6 +110,60 @@ internal class Game
             {
                 // Every troll in the game should be in one of the below states. 
 
+                // If there is a nearby tree attack it
+                List<Point> orderedTrees = _trees.Where(t => !_targetedTrees.Contains(t.Position)).OrderBy(t => t.Size).ThenBy(t => GetManhattanDistance(t.Position, _playerShack)).Select(t => t.Position).ToList();
+
+                Point closeTree = new Point(-1, -1);
+
+                foreach (Point tree in orderedTrees)
+                {
+                    if (GetManhattanDistance(tree, _playerShack) > 3)
+                    {
+                        continue;
+                    }
+
+                    int dist = _positionUtil.GetShortestPath(_playerShack, tree).Count;
+
+                    if (dist <= 3)
+                    {
+                        closeTree = _trees.First(t => t.Position == tree).Position;
+                        break;
+                    }
+                }
+
+                if (closeTree != new Point(-1, -1))
+                {
+                    // check if a troll is on the tree
+                    Troll? trollOnTree = _playerTrolls.Where(t => !_assigned.Contains(t.Id) && t.CanCarry() && t.Position == closeTree).FirstOrDefault();
+
+                    if (trollOnTree != null)
+                    {
+                        Logger.Assign(trollOnTree.Id, $"CHOP tree at {closeTree.X},{closeTree.Y}");
+                        actions.Add($"CHOP {trollOnTree.Id}");
+                        AssignTroll(trollOnTree, trollOnTree.Position);
+                        _targetedTrees.Add(closeTree);
+                        continue;
+                    }
+                    else
+                    {
+                        // Get closest troll to tree
+                        Troll? closestTroll = _playerTrolls.Where(t => !_assigned.Contains(t.Id) && t.CanCarry()).OrderBy(t => _positionUtil.GetShortestPath(t.Position, closeTree).Count).FirstOrDefault();
+
+                        if (closestTroll != null)
+                        {
+                            Point? nextMoveToSpot = FindNextMoveToPoint(closestTroll, closeTree);
+                            if (nextMoveToSpot != null)
+                            {
+                                Logger.Assign(closestTroll.Id, $"MOVE to tree at {nextMoveToSpot.Value.X},{nextMoveToSpot.Value.Y} to chop");
+                                actions.Add($"MOVE {closestTroll.Id} {nextMoveToSpot.Value.X} {nextMoveToSpot.Value.Y}");
+                                AssignTroll(closestTroll, nextMoveToSpot.Value);
+                                _targetedTrees.Add(closeTree);
+                                continue;
+                            }
+                        }
+                    }
+                }
+
                 // If a troll is carrying a seed plant
                 Troll? carryingSeedTroll = _playerTrolls.Where(t => !_assigned.Contains(t.Id) && t.IsCarryingAnyFruit()).FirstOrDefault();
 
@@ -182,60 +236,6 @@ internal class Game
                         actions.Add($"MOVE {carryingironTroll.Id} {nextMoveToShack.X} {nextMoveToShack.Y}");
                         AssignTroll(carryingironTroll, nextMoveToShack);
                         continue;
-                    }
-                }
-
-                // If there is a nearby tree attack it
-                List<Point> orderedTrees = _trees.Where(t => !_targetedTrees.Contains(t.Position)).OrderBy(t => t.Size).ThenBy(t => GetManhattanDistance(t.Position, _playerShack)).Select(t => t.Position).ToList();
-
-                Point closeTree = new Point(-1, -1);
-
-                foreach (Point tree in orderedTrees)
-                {
-                    if (GetManhattanDistance(tree, _playerShack) > 3)
-                    {
-                        continue;
-                    }
-
-                    int dist = _positionUtil.GetShortestPath(_playerShack, tree).Count;
-
-                    if (dist <= 3)
-                    {
-                        closeTree = _trees.First(t => t.Position == tree).Position;
-                        break;
-                    }
-                }
-
-                if (closeTree != new Point(-1, -1))
-                {
-                    // check if a troll is on the tree
-                    Troll? trollOnTree = _playerTrolls.Where(t => !_assigned.Contains(t.Id) && t.CanCarry() && t.Position == closeTree).FirstOrDefault();
-
-                    if (trollOnTree != null)
-                    {
-                        Logger.Assign(trollOnTree.Id, $"CHOP tree at {closeTree.X},{closeTree.Y}");
-                        actions.Add($"CHOP {trollOnTree.Id}");
-                        AssignTroll(trollOnTree, trollOnTree.Position);
-                        _targetedTrees.Add(closeTree);
-                        continue;
-                    }
-                    else
-                    {
-                        // Get closest troll to tree
-                        Troll? closestTroll = _playerTrolls.Where(t => !_assigned.Contains(t.Id)).OrderBy(t => _positionUtil.GetShortestPath(t.Position, closeTree).Count).FirstOrDefault();
-
-                        if (closestTroll != null)
-                        {
-                            Point? nextMoveToSpot = FindNextMoveToPoint(closestTroll, closeTree);
-                            if (nextMoveToSpot != null)
-                            {
-                                Logger.Assign(closestTroll.Id, $"MOVE to tree at {nextMoveToSpot.Value.X},{nextMoveToSpot.Value.Y} to chop");
-                                actions.Add($"MOVE {closestTroll.Id} {nextMoveToSpot.Value.X} {nextMoveToSpot.Value.Y}");
-                                AssignTroll(closestTroll, nextMoveToSpot.Value);
-                                _targetedTrees.Add(closeTree);
-                                continue;
-                            }
-                        }
                     }
                 }
 
@@ -566,6 +566,8 @@ internal class Game
     {
         foreach (Troll troll in _playerTrolls)
         {
+            // If we don't know a trolls next move use the current one, 
+            // otherwise use the next move to check if the point will be free
             if (troll.NextMove == null && troll.Position == point)
             {
                 return false;

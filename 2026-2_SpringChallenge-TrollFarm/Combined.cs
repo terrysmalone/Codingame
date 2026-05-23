@@ -436,7 +436,7 @@ internal class Game
                     }
                     else
                     {
-                        candidatePoints = _trees.Where(t => t.Type == fruitType && t.Fruits > 0).Select(t => t.Position).ToList();
+                        candidatePoints = _trees.Where(t => t.Type == fruitType && t.Fruits > 0).OrderBy(t => GetManhattanDistance(t.Position, _playerShack)).Select(t => t.Position).ToList();
                     }
 
                     // If we can harvest or mine then do it
@@ -1378,6 +1378,8 @@ internal sealed class NeedsManager
             return;
         }
 
+        bool enoughFruit = true;
+
         int currentTarget = _game.GetPlayerTrollCount() + 1;
 
         int plumCount = InventoryUtil.GetCount(_game.GetPlayerInventory(), ResourceType.PLUM);
@@ -1385,6 +1387,7 @@ internal sealed class NeedsManager
         if (plumCount < currentTarget)
         {
             _priorities.Add(Need.HarvestPlum);
+            enoughFruit = false;
         }
 
         int lemonCount = InventoryUtil.GetCount(_game.GetPlayerInventory(), ResourceType.LEMON);
@@ -1392,6 +1395,7 @@ internal sealed class NeedsManager
         if (lemonCount < currentTarget)
         {
             _priorities.Add(Need.HarvestLemon);
+            enoughFruit = false;
         }
 
         int appleCount = InventoryUtil.GetCount(_game.GetPlayerInventory(), ResourceType.APPLE);
@@ -1399,6 +1403,7 @@ internal sealed class NeedsManager
         if (appleCount < currentTarget)
         {
             _priorities.Add(Need.HarvestApple);
+            enoughFruit = false;
         }
 
         int bananaCount = InventoryUtil.GetCount(_game.GetPlayerInventory(), ResourceType.BANANA);
@@ -1406,11 +1411,12 @@ internal sealed class NeedsManager
         if (bananaCount < currentTarget)
         {
             _priorities.Add(Need.HarvestBanana);
+            enoughFruit = false;
         }
 
         int ironCount = InventoryUtil.GetCount(_game.GetPlayerInventory(), ResourceType.IRON);
 
-        if (ironCount < currentTarget)
+        if (ironCount < currentTarget && enoughFruit)
         {
             _priorities.Add(Need.HarvestIron);
         }

@@ -90,11 +90,11 @@ internal class PositionUtil
         Troll? closestTroll = null;
         List<Point> pathToTarget = new List<Point>();
 
-        foreach (Point tree in candidatePoints)
+        foreach (Point point in candidatePoints)
         {
-            (Troll? troll, List<Point> path) = GetClosestTrollToTarget(candidateTrolls, tree, excludePoints, Math.Min(closestDistance, cutoff));
+            (Troll? troll, List<Point> path) = GetClosestTrollToTarget(candidateTrolls, point, excludePoints, Math.Min(closestDistance, cutoff));
 
-            if (path.Count < closestDistance)
+            if (path.Count > 0 && path.Count < closestDistance)
             {
                 closestDistance = path.Count;
                 closestTroll = troll;
@@ -116,7 +116,6 @@ internal class PositionUtil
 
         foreach (Troll troll in trolls)
         {
-            Logger.Message($"Checking troll {troll.Id} at position {troll.Position.X}, {troll.Position.Y} for target at {target.X}, {target.Y}");
             if (troll.Position == target)
             {
                 return (troll, new List<Point> { troll.Position });
@@ -124,15 +123,12 @@ internal class PositionUtil
 
             if (closestTroll != null && (CalculateManhattanDistance(troll.Position, target) >= closestDistance || CalculateManhattanDistance(troll.Position, target) >= cutoff))
             {
-                Logger.Message($"Cut OFF: Troll {closestTroll.Id}");
                 return (closestTroll, pathToTarget);
             }
 
-            Logger.Message($"Calculating path from troll {troll.Id} at {troll.Position.X}, {troll.Position.Y} to target at {target.X}, {target.Y}");
             List<Point> path = _pathFinder.GetShortestPath(troll.Position, target, excludePoints);
-            Logger.Message($"Path length: {path.Count}");
 
-            if (path.Count < closestDistance)
+            if (path.Count > 0 && path.Count < closestDistance)
             {
                 Logger.Message($"New closest troll {troll.Id} at {troll.Position.X}, {troll.Position.Y} with path length {path.Count}");
                 closestDistance = path.Count;
@@ -140,8 +136,6 @@ internal class PositionUtil
                 pathToTarget = path;
             }
         }
-
-        Logger.Message($"Closest troll to target at {target.X}, {target.Y} is troll {closestTroll?.Id} with path length {closestDistance}");
 
         return (closestTroll, pathToTarget);
     }

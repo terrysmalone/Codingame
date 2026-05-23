@@ -416,7 +416,7 @@ internal class Game
                     }
                     else
                     {
-                        candidatePoints = _trees.Where(t => t.Type == fruitType && t.Fruits > 0).Select(t => t.Position).ToList();
+                        candidatePoints = _trees.Where(t => t.Type == fruitType && t.Fruits > 0).OrderBy(t => GetManhattanDistance(t.Position, _playerShack)).Select(t => t.Position).ToList();
                     }
 
                     // If we can harvest or mine then do it

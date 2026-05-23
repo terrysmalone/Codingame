@@ -99,6 +99,15 @@ bd9df75820e357775f3f0d46b1a173264bbedcfd
 	- Only get iron when we have enough fruit
 	- Search closer trees first
 
+daa3a4d5b279e56b0d601e48e95c032f80053d17
+
+	Submitted: 2026-05-23 02:55
+	Rank: ~13
+
+	Changes:
+	- Fix pathfinding bug
+
+
 
 
 

@@ -62,6 +62,12 @@ internal class Game
         _targetedTrees.Clear();
         _excludePoints.Clear();
 
+        // Set all exclude points to the current troll positions
+        foreach (Troll troll in _playerTrolls)
+        {
+            _excludePoints.Add(troll.Position);
+        }
+
         ResetTrolls();
 
         _needsManager.SetPriorities();
@@ -760,6 +766,8 @@ internal class Game
         _assigned.Add(troll.Id);
 
         troll.NextMove = nextPoint;
+        _excludePoints.Remove(troll.Position);
+
         _excludePoints.Add(nextPoint);
     }
 

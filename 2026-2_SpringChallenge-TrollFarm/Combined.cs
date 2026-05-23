@@ -82,6 +82,12 @@ internal class Game
         _targetedTrees.Clear();
         _excludePoints.Clear();
 
+        // Set all exclude points to the current troll positions
+        foreach (Troll troll in _playerTrolls)
+        {
+            _excludePoints.Add(troll.Position);
+        }
+
         ResetTrolls();
 
         _needsManager.SetPriorities();
@@ -175,6 +181,7 @@ internal class Game
 
                         if (closestTroll != null)
                         {
+                            Logger.Message($"Closest troll to tree at {closeTree.X},{closeTree.Y} is troll {closestTroll.Id} at {closestTroll.Position.X},{closestTroll.Position.Y}");
                             Point? nextMoveToSpot = FindNextMoveToPoint(closestTroll, closeTree);
                             if (nextMoveToSpot != null)
                             {
@@ -470,17 +477,15 @@ internal class Game
 
         foreach (Troll troll in _playerTrolls.Where(t => !_assigned.Contains(t.Id)))
         {
-            Logger.Message($"Checking troll {troll.Id}");
             if (!troll.CanCarry())
             {
                 if (_positionUtil.IsAdjacentToShack(troll.Position) || troll.Position == _playerShack)
                 {
-                    Logger.Message($"Dropping off non-fruit item at shack");
                     actions.Add($"DROP {troll.Id}");
                     AssignTroll(troll, troll.Position);
                 }
                 else
-                {                    
+                {
                     Point adjacentShack = FindNextMoveToShack(troll);
                     Logger.Message($"Moving to shack via {adjacentShack.X} {adjacentShack.Y}");
                     actions.Add($"MOVE {troll.Id} {adjacentShack.X} {adjacentShack.Y}");
@@ -489,15 +494,14 @@ internal class Game
             }
             else
             {
-                Logger.Message($"Troll can carry");
+
+
                 // Get the nearest tree that isnt targeted with fruit
                 List<Tree> fruitBearingTrees = _trees.Where(t => t.Fruits > 0 && !_targetedTrees.Contains(t.Position))
                                                      .OrderBy(t => GetManhattanDistance(t.Position, troll.Position)).ToList();
 
-                Logger.Message($"Found {fruitBearingTrees.Count} fruit bearing trees that aren't targeted");
                 if (fruitBearingTrees.Any(t => t.Position == troll.Position))
                 {
-                    Logger.Message($"Troll is on a tree with fruit, harvesting");
                     Logger.Assign(troll.Id, $"HARVEST tree at {troll.Position.X},{troll.Position.Y} to PLANT it");
                     actions.Add($"HARVEST {troll.Id}");
                     AssignTroll(troll, troll.Position);
@@ -505,7 +509,7 @@ internal class Game
                 }
 
                 List<Point> path = GetPathToClosestTree(troll.Position, fruitBearingTrees, _excludePoints);
-                Logger.Message($"Path to closest tree: {string.Join(", ", path.Select(p => $"({p.X},{p.Y})"))}");
+
                 if (path.Count > 0)
                 {
                     Point? nextMove = FindNextMoveToPoint(troll, path[path.Count - 1]);
@@ -783,6 +787,8 @@ internal class Game
         _assigned.Add(troll.Id);
 
         troll.NextMove = nextPoint;
+        _excludePoints.Remove(troll.Position);
+
         _excludePoints.Add(nextPoint);
     }
 
@@ -832,7 +838,6 @@ internal class Game
 
             List<Point> path = _positionUtil.GetShortestPath(position, tree.Position, _excludePoints);
 
-            Logger.Message($"Path to tree at {tree.Position.X},{tree.Position.Y}: {string.Join(", ", path.Select(p => $"({p.X},{p.Y})"))}");
             //Logger.Path($"Tree {tree.Position}", path);
 
             if (path.Count > 0 && path.Count < closestDistance)

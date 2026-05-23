@@ -5,6 +5,7 @@ using System.Drawing;
 using System.Linq;
 using System.Net.WebSockets;
 using System.Reflection.Metadata.Ecma335;
+using System.Xml.Linq;
 
 namespace SpringChallenge2026;
 
@@ -98,6 +99,7 @@ internal class Game
 
         // Try to assign all priorities until we're out of trolls
         List<Need> priorities = _needsManager.GetPriorities();
+        Logger.Prioirities(priorities);
 
         foreach (Need need in priorities)
         {
@@ -446,18 +448,53 @@ internal class Game
             Logger.Error("No need could be met for " + need.ToString());
         }
 
-        foreach (Troll troll in _playerTrolls.Where(t => !t.CanCarry() && !_assigned.Contains(t.Id)))
+        foreach (Troll troll in _playerTrolls.Where(t => !_assigned.Contains(t.Id)))
         {
-            if (_positionUtil.IsAdjacentToShack(troll.Position) || troll.Position == _playerShack)
+            if (!troll.CanCarry())
             {
-                actions.Add($"DROP {troll.Id}");
-                AssignTroll(troll, troll.Position);
+                if (_positionUtil.IsAdjacentToShack(troll.Position) || troll.Position == _playerShack)
+                {
+                    actions.Add($"DROP {troll.Id}");
+                    AssignTroll(troll, troll.Position);
+                }
+                else
+                {
+                    Point adjacentShack = FindNextMoveToShack(troll);
+                    actions.Add($"MOVE {troll.Id} {adjacentShack.X} {adjacentShack.Y}");
+                    AssignTroll(troll, troll.Position);
+                }
             }
             else
             {
-                Point adjacentShack = FindNextMoveToShack(troll);
-                actions.Add($"MOVE {troll.Id} {adjacentShack.X} {adjacentShack.Y}");
-                AssignTroll(troll, troll.Position);
+
+
+                // Get the nearest tree that isnt targeted with fruit
+                List<Tree> fruitBearingTrees = _trees.Where(t => t.Fruits > 0 && !_targetedTrees.Contains(t.Position))
+                                                     .OrderBy(t => GetManhattanDistance(t.Position, troll.Position)).ToList();
+
+                if (fruitBearingTrees.Any(t => t.Position == troll.Position))
+                {
+                    Logger.Assign(troll.Id, $"HARVEST tree at {troll.Position.X},{troll.Position.Y} to PLANT it");
+                    actions.Add($"HARVEST {troll.Id}");
+                    AssignTroll(troll, troll.Position);
+                    continue;
+                }
+
+                List<Point> path = GetPathToClosestTree(troll.Position, fruitBearingTrees, _excludePoints);
+
+                if (path.Count > 0)
+                {
+                    Point? nextMove = FindNextMoveToPoint(troll, path[path.Count - 1]);
+
+                    if (nextMove != null)
+                    {
+                        Point nextMoveToTree = path[0];
+                        Logger.Assign(troll.Id, $"MOVE towards tree at {nextMove.Value.X},{nextMove.Value.Y} to harvest");
+                        actions.Add($"MOVE {troll.Id} {nextMove.Value.X} {nextMove.Value.Y}");
+                        AssignTroll(troll, nextMoveToTree);
+                        continue;
+                    }
+                }
             }
         }
 

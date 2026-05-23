@@ -17,6 +17,7 @@ internal sealed class NeedsManager
     private readonly PositionUtil _positionUtil;
 
     private List<Need> _priorities = new List<Need>();
+    private const int MAX_TROLLS = 4;
 
     public NeedsManager(Game game, PositionUtil positionUtil)
     {
@@ -33,10 +34,9 @@ internal sealed class NeedsManager
 
             CheckAndAddGrowPriorities();
             CheckAndAddHarvestPriorities();
-            CheckAndAddHarvestPriorities(); // Add more as a fall back. No harm in harvesting more if I have a lot of trolls
-            _priorities.Add(Need.AttackEnemy);
-            _priorities.Add(Need.AttackEnemy);
-            _priorities.Add(Need.AttackEnemy);
+            //_priorities.Add(Need.AttackEnemy);
+            //_priorities.Add(Need.AttackEnemy);
+            //_priorities.Add(Need.AttackEnemy);
 
             _priorities.Add(Need.TrainTroll);
         }
@@ -55,55 +55,47 @@ internal sealed class NeedsManager
 
     private void CheckAndAddHarvestPriorities()
     {
-        Logger.Inventory("Player inventory", _game.GetPlayerInventory());
-        List<(int, ResourceType)> priorities = new List<(int, ResourceType)>();
+        // If we have more than at least max trolls don't bother prioiritising
+        if(_game.GetPlayerTrollCount() >= MAX_TROLLS)
+        {
+            return;
+        }
+
+        int currentTarget = _game.GetPlayerTrollCount() + 1;
 
         int plumCount = InventoryUtil.GetCount(_game.GetPlayerInventory(), ResourceType.PLUM);
-        priorities.Add((plumCount, ResourceType.PLUM));
+
+        if (plumCount < currentTarget)
+        {
+            _priorities.Add(Need.HarvestPlum);
+        }
 
         int lemonCount = InventoryUtil.GetCount(_game.GetPlayerInventory(), ResourceType.LEMON);
-        priorities.Add((lemonCount, ResourceType.LEMON));
+        
+        if (lemonCount < currentTarget)
+        {
+            _priorities.Add(Need.HarvestLemon);
+        }
 
         int appleCount = InventoryUtil.GetCount(_game.GetPlayerInventory(), ResourceType.APPLE);
-        priorities.Add((appleCount, ResourceType.APPLE));
+        
+        if (appleCount < currentTarget)
+        {
+            _priorities.Add(Need.HarvestApple);
+        }
 
         int bananaCount = InventoryUtil.GetCount(_game.GetPlayerInventory(), ResourceType.BANANA);
-        priorities.Add((bananaCount, ResourceType.BANANA));
 
-        // Don't prioritise iron if we have 4 trolls. We'll still add it, just as a much lower priority later
-        if (_game.GetPlayerInventory().Iron < 10 && _game.GetPlayerTrollCount() < 4)
+        if (bananaCount < currentTarget)
         {
-            int ironCount = InventoryUtil.GetCount(_game.GetPlayerInventory(), ResourceType.IRON);
-            priorities.Add((ironCount, ResourceType.IRON));
+            _priorities.Add(Need.HarvestBanana);
         }
 
-        if (!InventoryUtil.AllFruitAbove(_game.GetPlayerInventory(), 9) && _game.GetPlayerTrollCount() < 4)
-        {
-            priorities.Sort((a, b) => a.Item1.CompareTo(b.Item1));
-        }
+        int ironCount = InventoryUtil.GetCount(_game.GetPlayerInventory(), ResourceType.IRON);
 
-        foreach ((int count, ResourceType type) in priorities)
+        if (ironCount < currentTarget)
         {
-            if (type == ResourceType.PLUM)
-            {
-                _priorities.Add(Need.HarvestPlum);
-            }
-            else if (type == ResourceType.LEMON)
-            {
-                _priorities.Add(Need.HarvestLemon);
-            }
-            else if (type == ResourceType.APPLE)
-            {
-                _priorities.Add(Need.HarvestApple);
-            }
-            else if (type == ResourceType.BANANA)
-            {
-                _priorities.Add(Need.HarvestBanana);
-            }
-            else if (type == ResourceType.IRON)
-            {
-                _priorities.Add(Need.HarvestIron);
-            }
+            _priorities.Add(Need.HarvestIron);
         }
     }
 

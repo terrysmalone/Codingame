@@ -10,10 +10,10 @@ using System.Diagnostics;
 using System.Linq;
 using System.Net.WebSockets;
 using System.Reflection.Metadata.Ecma335;
+using System.Xml.Linq;
 using System.Collections.Concurrent;
 using System.ComponentModel.Design;
 using System.Dynamic;
-using System.Xml.Linq;
 using static System.Net.Mime.MediaTypeNames;
 using System.Runtime.ConstrainedExecution;
 using System.Reflection;
@@ -119,6 +119,7 @@ internal class Game
 
         // Try to assign all priorities until we're out of trolls
         List<Need> priorities = _needsManager.GetPriorities();
+        Logger.Prioirities(priorities);
 
         foreach (Need need in priorities)
         {
@@ -467,18 +468,53 @@ internal class Game
             Logger.Error("No need could be met for " + need.ToString());
         }
 
-        foreach (Troll troll in _playerTrolls.Where(t => !t.CanCarry() && !_assigned.Contains(t.Id)))
+        foreach (Troll troll in _playerTrolls.Where(t => !_assigned.Contains(t.Id)))
         {
-            if (_positionUtil.IsAdjacentToShack(troll.Position) || troll.Position == _playerShack)
+            if (!troll.CanCarry())
             {
-                actions.Add($"DROP {troll.Id}");
-                AssignTroll(troll, troll.Position);
+                if (_positionUtil.IsAdjacentToShack(troll.Position) || troll.Position == _playerShack)
+                {
+                    actions.Add($"DROP {troll.Id}");
+                    AssignTroll(troll, troll.Position);
+                }
+                else
+                {
+                    Point adjacentShack = FindNextMoveToShack(troll);
+                    actions.Add($"MOVE {troll.Id} {adjacentShack.X} {adjacentShack.Y}");
+                    AssignTroll(troll, troll.Position);
+                }
             }
             else
             {
-                Point adjacentShack = FindNextMoveToShack(troll);
-                actions.Add($"MOVE {troll.Id} {adjacentShack.X} {adjacentShack.Y}");
-                AssignTroll(troll, troll.Position);
+
+
+                // Get the nearest tree that isnt targeted with fruit
+                List<Tree> fruitBearingTrees = _trees.Where(t => t.Fruits > 0 && !_targetedTrees.Contains(t.Position))
+                                                     .OrderBy(t => GetManhattanDistance(t.Position, troll.Position)).ToList();
+
+                if (fruitBearingTrees.Any(t => t.Position == troll.Position))
+                {
+                    Logger.Assign(troll.Id, $"HARVEST tree at {troll.Position.X},{troll.Position.Y} to PLANT it");
+                    actions.Add($"HARVEST {troll.Id}");
+                    AssignTroll(troll, troll.Position);
+                    continue;
+                }
+
+                List<Point> path = GetPathToClosestTree(troll.Position, fruitBearingTrees, _excludePoints);
+
+                if (path.Count > 0)
+                {
+                    Point? nextMove = FindNextMoveToPoint(troll, path[path.Count - 1]);
+
+                    if (nextMove != null)
+                    {
+                        Point nextMoveToTree = path[0];
+                        Logger.Assign(troll.Id, $"MOVE towards tree at {nextMove.Value.X},{nextMove.Value.Y} to harvest");
+                        actions.Add($"MOVE {troll.Id} {nextMove.Value.X} {nextMove.Value.Y}");
+                        AssignTroll(troll, nextMoveToTree);
+                        continue;
+                    }
+                }
             }
         }
 
@@ -1298,6 +1334,7 @@ internal sealed class NeedsManager
     private readonly PositionUtil _positionUtil;
 
     private List<Need> _priorities = new List<Need>();
+    private const int MAX_TROLLS = 4;
 
     public NeedsManager(Game game, PositionUtil positionUtil)
     {
@@ -1314,10 +1351,9 @@ internal sealed class NeedsManager
 
             CheckAndAddGrowPriorities();
             CheckAndAddHarvestPriorities();
-            CheckAndAddHarvestPriorities(); // Add more as a fall back. No harm in harvesting more if I have a lot of trolls
-            _priorities.Add(Need.AttackEnemy);
-            _priorities.Add(Need.AttackEnemy);
-            _priorities.Add(Need.AttackEnemy);
+            //_priorities.Add(Need.AttackEnemy);
+            //_priorities.Add(Need.AttackEnemy);
+            //_priorities.Add(Need.AttackEnemy);
 
             _priorities.Add(Need.TrainTroll);
         }
@@ -1336,55 +1372,47 @@ internal sealed class NeedsManager
 
     private void CheckAndAddHarvestPriorities()
     {
-        Logger.Inventory("Player inventory", _game.GetPlayerInventory());
-        List<(int, ResourceType)> priorities = new List<(int, ResourceType)>();
+        // If we have more than at least max trolls don't bother prioiritising
+        if(_game.GetPlayerTrollCount() >= MAX_TROLLS)
+        {
+            return;
+        }
+
+        int currentTarget = _game.GetPlayerTrollCount() + 1;
 
         int plumCount = InventoryUtil.GetCount(_game.GetPlayerInventory(), ResourceType.PLUM);
-        priorities.Add((plumCount, ResourceType.PLUM));
+
+        if (plumCount < currentTarget)
+        {
+            _priorities.Add(Need.HarvestPlum);
+        }
 
         int lemonCount = InventoryUtil.GetCount(_game.GetPlayerInventory(), ResourceType.LEMON);
-        priorities.Add((lemonCount, ResourceType.LEMON));
+        
+        if (lemonCount < currentTarget)
+        {
+            _priorities.Add(Need.HarvestLemon);
+        }
 
         int appleCount = InventoryUtil.GetCount(_game.GetPlayerInventory(), ResourceType.APPLE);
-        priorities.Add((appleCount, ResourceType.APPLE));
+        
+        if (appleCount < currentTarget)
+        {
+            _priorities.Add(Need.HarvestApple);
+        }
 
         int bananaCount = InventoryUtil.GetCount(_game.GetPlayerInventory(), ResourceType.BANANA);
-        priorities.Add((bananaCount, ResourceType.BANANA));
 
-        // Don't prioritise iron if we have 4 trolls. We'll still add it, just as a much lower priority later
-        if (_game.GetPlayerInventory().Iron < 10 && _game.GetPlayerTrollCount() < 4)
+        if (bananaCount < currentTarget)
         {
-            int ironCount = InventoryUtil.GetCount(_game.GetPlayerInventory(), ResourceType.IRON);
-            priorities.Add((ironCount, ResourceType.IRON));
+            _priorities.Add(Need.HarvestBanana);
         }
 
-        if (!InventoryUtil.AllFruitAbove(_game.GetPlayerInventory(), 9) && _game.GetPlayerTrollCount() < 4)
-        {
-            priorities.Sort((a, b) => a.Item1.CompareTo(b.Item1));
-        }
+        int ironCount = InventoryUtil.GetCount(_game.GetPlayerInventory(), ResourceType.IRON);
 
-        foreach ((int count, ResourceType type) in priorities)
+        if (ironCount < currentTarget)
         {
-            if (type == ResourceType.PLUM)
-            {
-                _priorities.Add(Need.HarvestPlum);
-            }
-            else if (type == ResourceType.LEMON)
-            {
-                _priorities.Add(Need.HarvestLemon);
-            }
-            else if (type == ResourceType.APPLE)
-            {
-                _priorities.Add(Need.HarvestApple);
-            }
-            else if (type == ResourceType.BANANA)
-            {
-                _priorities.Add(Need.HarvestBanana);
-            }
-            else if (type == ResourceType.IRON)
-            {
-                _priorities.Add(Need.HarvestIron);
-            }
+            _priorities.Add(Need.HarvestIron);
         }
     }
 

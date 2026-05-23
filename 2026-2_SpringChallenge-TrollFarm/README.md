@@ -107,7 +107,13 @@ daa3a4d5b279e56b0d601e48e95c032f80053d17
 	Changes:
 	- Fix pathfinding bug
 
+0f63f60f3847052949a6ba3e50eb7ab940fd899e
 
+	Submitted: 2026-05-23 04:00
+	Rank: ~3
+
+	Changes:
+	- Fix close tree checks
 
 
 

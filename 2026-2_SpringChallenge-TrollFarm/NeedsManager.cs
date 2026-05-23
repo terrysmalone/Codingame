@@ -34,7 +34,7 @@ internal sealed class NeedsManager
 
             CheckAndAddGrowPriorities();
             CheckAndAddHarvestPriorities();
-            //_priorities.Add(Need.AttackEnemy);
+            _priorities.Add(Need.AttackEnemy);
             //_priorities.Add(Need.AttackEnemy);
             //_priorities.Add(Need.AttackEnemy);
 

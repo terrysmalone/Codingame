@@ -353,38 +353,45 @@ internal class Game
                 }
                 else
                 {
-                    (Troll? closestTroll, Point nextMove) = GetClosestTrollMove(usableInventory, fruitType);
+                    Point growSpot = _positionUtil.GetBestGrowSpot();
 
-                    if (closestTroll != null)
+                    if (growSpot != new Point(-1, -1))
                     {
-                        if (closestTroll.Position == nextMove)
+
+
+                        (Troll? closestTroll, Point nextMove) = GetClosestTrollMove(usableInventory, fruitType);
+
+                        if (closestTroll != null)
                         {
-                            // It's on the target, either harvest or pick
-                            if (_positionUtil.IsRipeTreeAtPosition(closestTroll.Position, fruitType))
+                            if (closestTroll.Position == nextMove)
                             {
-                                Logger.Assign(closestTroll.Id, $"HARVEST {fruitType} at {closestTroll.Position.X},{closestTroll.Position.Y} to PLANT it");
-                                actions.Add($"HARVEST {closestTroll.Id}");
-                                AssignTroll(closestTroll, closestTroll.Position);
-                                continue;
+                                // It's on the target, either harvest or pick
+                                if (_positionUtil.IsRipeTreeAtPosition(closestTroll.Position, fruitType))
+                                {
+                                    Logger.Assign(closestTroll.Id, $"HARVEST {fruitType} at {closestTroll.Position.X},{closestTroll.Position.Y} to PLANT it");
+                                    actions.Add($"HARVEST {closestTroll.Id}");
+                                    AssignTroll(closestTroll, closestTroll.Position);
+                                    continue;
+                                }
+                                else
+                                {
+                                    Logger.Assign(closestTroll.Id, $"PICK {fruitType} at {closestTroll.Position.X},{closestTroll.Position.Y}");
+                                    actions.Add($"PICK {closestTroll.Id} {fruitType.ToString()}");
+                                    usableInventory = InventoryUtil.ChangeInventory(usableInventory, fruitType, -1);
+                                    AssignTroll(closestTroll, closestTroll.Position);
+                                    continue;
+                                }
                             }
                             else
                             {
-                                Logger.Assign(closestTroll.Id, $"PICK {fruitType} at {closestTroll.Position.X},{closestTroll.Position.Y}");
-                                actions.Add($"PICK {closestTroll.Id} {fruitType.ToString()}");
-                                usableInventory = InventoryUtil.ChangeInventory(usableInventory, fruitType, -1);
-                                AssignTroll(closestTroll, closestTroll.Position);
-                                continue;
-                            }
-                        }
-                        else
-                        {
-                            Point? nextMoveToSpot = FindNextMoveToPoint(closestTroll, nextMove);
-                            if (nextMoveToSpot != null)
-                            {
-                                Logger.Assign(closestTroll.Id, $"MOVE towards {fruitType} target at {nextMoveToSpot.Value.X},{nextMoveToSpot.Value.Y}");
-                                actions.Add($"MOVE {closestTroll.Id} {nextMoveToSpot.Value.X} {nextMoveToSpot.Value.Y}");
-                                AssignTroll(closestTroll, nextMoveToSpot.Value);
-                                continue;
+                                Point? nextMoveToSpot = FindNextMoveToPoint(closestTroll, nextMove);
+                                if (nextMoveToSpot != null)
+                                {
+                                    Logger.Assign(closestTroll.Id, $"MOVE towards {fruitType} target at {nextMoveToSpot.Value.X},{nextMoveToSpot.Value.Y}");
+                                    actions.Add($"MOVE {closestTroll.Id} {nextMoveToSpot.Value.X} {nextMoveToSpot.Value.Y}");
+                                    AssignTroll(closestTroll, nextMoveToSpot.Value);
+                                    continue;
+                                }
                             }
                         }
                     }
@@ -1349,7 +1356,7 @@ internal sealed class NeedsManager
 
             CheckAndAddGrowPriorities();
             CheckAndAddHarvestPriorities();
-            //_priorities.Add(Need.AttackEnemy);
+            _priorities.Add(Need.AttackEnemy);
             //_priorities.Add(Need.AttackEnemy);
             //_priorities.Add(Need.AttackEnemy);
 

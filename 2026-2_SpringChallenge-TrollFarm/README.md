@@ -77,10 +77,28 @@ b9a45bbc3892f01ec566dfdcfb298412ce897ab4
 139bcfa4893987bd10e0d03930f7af0b98c932cf
 
 	Submitted: 2026-05-23 00:56
-	Rank: 
+	Rank: 3
 
 	Changes: 
 	- Add exclude points to pathfinding
+
+139bcfa4893987bd10e0d03930f7af0b98c932cf
+
+	Submitted: 2026-05-23 01:51
+	Rank: ~28
+
+	Changes:
+	- Start harvesting closest fruit earlier
+
+bd9df75820e357775f3f0d46b1a173264bbedcfd
+
+	Submitted: 2026-05-23 02:15
+	Rank: ~11
+
+	Changes:
+	- Only get iron when we have enough fruit
+	- Search closer trees first
+
 
 
 

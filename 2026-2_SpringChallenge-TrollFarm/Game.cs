@@ -460,6 +460,7 @@ internal class Game
                 else
                 {
                     Point adjacentShack = FindNextMoveToShack(troll);
+                    Logger.Message($"Moving to shack via {adjacentShack.X} {adjacentShack.Y}");
                     actions.Add($"MOVE {troll.Id} {adjacentShack.X} {adjacentShack.Y}");
                     AssignTroll(troll, troll.Position);
                 }
@@ -810,7 +811,7 @@ internal class Game
 
             //Logger.Path($"Tree {tree.Position}", path);
 
-            if (path.Count < closestDistance)
+            if (path.Count > 0 && path.Count < closestDistance)
             {
                 closestDistance = path.Count;
                 closestPath = path;

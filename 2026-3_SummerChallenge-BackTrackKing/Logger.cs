@@ -17,6 +17,16 @@ internal static class Logger
         DISABLE_LOGGING = false;
     }
 
+    internal static void Message(string message)
+    {
+        if (DISABLE_LOGGING) 
+        {
+            return;
+        }
+
+        Console.Error.WriteLine(message);
+    }
+
     internal static void RegionMap(Map map)
     {      
 

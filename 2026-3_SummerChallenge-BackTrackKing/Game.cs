@@ -53,6 +53,10 @@ public class Game
 
     internal string CalculateActions()
     {
+        // Analyse all best paths
+
+
+
         int actionPoints = 3; 
         // Logger.TypeMap(_map);
 

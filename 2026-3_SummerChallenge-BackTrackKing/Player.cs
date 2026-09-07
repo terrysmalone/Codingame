@@ -41,6 +41,8 @@ class Player
                 {
                     inputs = Console.ReadLine().Split(' ');
                     int tracksOwner = int.Parse(inputs[0]);
+                    game.SetTrack(j, i, tracksOwner);
+
                     int instability = int.Parse(inputs[1]); // region inked (destroyed) when this >= 3.
                     bool inked = inputs[2] != "0"; // true if region is destroyed.
                     string partOfActiveConnections = inputs[3]; // if this cell is part of one or more railway connections, this will be town ids (separated by -) in a list separated by commas. e.g. 0-1,1-2,1-3. "x" otherwise.
@@ -54,7 +56,7 @@ class Player
 
 
             // AUTOPLACE x1 y1 x2 | PLACE_TRACKS x y | DISRUPT regionId | MESSAGE text
-            Console.WriteLine("WAIT");
+            Console.WriteLine(actions);
         }
     }
 
@@ -89,7 +91,13 @@ class Player
             int townY = int.Parse(inputs[2]);
             string desiredConnections = inputs[3]; // comma-separated town ids e.g. 0,1,2,3
 
-            var town = new Town(townId, townX, townY, desiredConnections.Split(',').Select(int.Parse).ToList());
+            List<int> desiredConnectionsList = new List<int>();
+            if (desiredConnections != "x")
+            {
+                desiredConnectionsList = desiredConnections.Split(',').Select(int.Parse).ToList();
+            }
+
+            var town = new Town(townId, townX, townY, desiredConnectionsList);
             towns.Add(town);
         }
 

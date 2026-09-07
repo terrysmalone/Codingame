@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.VisualBasic;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -17,6 +18,8 @@ public class Game
     private int _opponentScore;
 
     private PathFinder _pathFinder;
+
+    private List<(int, int)> _completedPaths;
 
     public Game(int myId)
     {
@@ -49,25 +52,81 @@ public class Game
 
     internal string CalculateActions()
     {
+        int actionPoints = 3; 
         // Logger.TypeMap(_map);
 
         // First pass
         // For all towns, for all desired paths, find the shortest path to the desired town
+        List<Point> shortest = new List<Point>();
+        int shortestDistance = int.MaxValue;
+
         foreach (var town in _towns)
         {
-            Logger.Message($"Checking town {town.Id} at ({town.X}, {town.Y})");
-
             foreach (var desiredConnection in town.DesiredConnections)
             {
                 Town desiredTown = _towns.First(t => t.Id == desiredConnection);
 
-                Logger.Message($"Desired connection to town {desiredTown.Id} at ({desiredTown.X}, {desiredTown.Y})");
                 var shortestPath = _pathFinder.GetShortestPath(new Point(town.X, town.Y), new Point(desiredTown.X, desiredTown.Y));
 
-                Logger.Message($"Shortest path to town {desiredTown.Id} is {shortestPath.Count} steps");
+                if (shortestPath.Count < shortestDistance)
+                {
+                    // Don't count the target town as part of the path
+                    if (shortestPath.Count > 1)
+                    {
+                        shortestPath.RemoveAt(shortestPath.Count - 1);
+                    }
+
+                    shortestDistance = shortestPath.Count;
+                    shortest = shortestPath;
+                }
             }
         }
 
-        return "WAIT";
+        Logger.Message($"Shortest path found is {shortestDistance} steps with points : {string.Join(", ", shortest.Select(p => $"({p.X}, {p.Y})"))}");
+
+        // Work out what tracks I can make
+        List<(Point, CellType)> cellTypes = new List<(Point, CellType)>();
+
+        foreach (var point in shortest)
+        {
+            if (_map.isTrackFree(point.X, point.Y))
+            {
+                CellType cellType = _map.CellTypes[point.X, point.Y];
+                cellTypes.Add((point, cellType));
+            }
+        }
+
+        Logger.Message($"Shortest untrakced path found is: {string.Join(", ", cellTypes.Select(c => $"({c.Item1.X}, {c.Item1.Y})"))}");
+
+        // Order by cell type, so we can prioritize plains over rivers and mountains
+        List <(Point, CellType)> orderedCellTypes = cellTypes.OrderBy(ct => ct.Item2).ToList();
+
+        var actions = string.Empty;
+
+        bool stop = false;
+        int count = 0;
+        while (actionPoints > 0 && count < orderedCellTypes.Count && stop == false)
+        {
+            var (point, cellType) = orderedCellTypes[count];
+
+            if ((int)cellType + 1 <= actionPoints)
+            {
+                actions += $"PLACE_TRACKS {point.X} {point.Y};";
+                actionPoints -= (int)cellType + 1;
+            }
+            else
+            {
+                stop = true;
+            }
+
+            count++;
+        }
+
+        return actions;
+    }
+
+    internal void SetTrack(int j, int i, int tracksOwner)
+    {
+        _map.SetTrack(j, i, tracksOwner);
     }
 }

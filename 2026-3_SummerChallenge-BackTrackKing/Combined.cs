@@ -49,6 +49,7 @@ public class Game
         _myId = myId;
 
         _towns = new List<Town>();
+        _completedPaths = new List<(int, int)>();
     }
 
     internal void SetMap(Map map)
@@ -87,6 +88,11 @@ public class Game
         {
             foreach (var desiredConnection in town.DesiredConnections)
             {
+                if (_completedPaths.Contains((town.Id, desiredConnection)))
+                {
+                    continue;
+                }
+
                 Town desiredTown = _towns.First(t => t.Id == desiredConnection);
 
                 var shortestPath = _pathFinder.GetShortestPath(new Point(town.X, town.Y), new Point(desiredTown.X, desiredTown.Y));
@@ -99,8 +105,17 @@ public class Game
                         shortestPath.RemoveAt(shortestPath.Count - 1);
                     }
 
-                    shortestDistance = shortestPath.Count;
-                    shortest = shortestPath;
+                    // If it's 100% tracked find something else
+                    if (IsAlreadyTracked(shortestPath))
+                    {
+                        // Add to list of completed paths so we don't try to do it again
+                        _completedPaths.Add((town.Id, desiredTown.Id));
+                    }
+                    else
+                    {
+                        shortestDistance = shortestPath.Count;
+                        shortest = shortestPath;
+                    }
                 }
             }
         }
@@ -146,6 +161,19 @@ public class Game
         }
 
         return actions;
+    }
+
+    private bool IsAlreadyTracked(List<Point> path)
+    {
+        foreach (var point in path)
+        {
+            if (_map.isTrackFree(point.X, point.Y))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     internal void SetTrack(int j, int i, int tracksOwner)

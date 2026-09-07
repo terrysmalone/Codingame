@@ -16,32 +16,25 @@ class Player
     {
         string[] inputs;
         int myId = int.Parse(Console.ReadLine()); // 0 or 1
+
+        var game = new Game(myId);
+
         int width = int.Parse(Console.ReadLine()); // map size
         int height = int.Parse(Console.ReadLine());
-        for (int i = 0; i < height; i++)
-        {
-            for (int j = 0; j < width; j++)
-            {
-                inputs = Console.ReadLine().Split(' ');
-                int regionId = int.Parse(inputs[0]);
-                int type = int.Parse(inputs[1]); // 0 (PLAINS), 1 (RIVER), 2 (MOUNTAIN), 3 (POI)
-            }
-        }
-        int townCount = int.Parse(Console.ReadLine());
-        for (int i = 0; i < townCount; i++)
-        {
-            inputs = Console.ReadLine().Split(' ');
-            int townId = int.Parse(inputs[0]);
-            int townX = int.Parse(inputs[1]);
-            int townY = int.Parse(inputs[2]);
-            string desiredConnections = inputs[3]; // comma-separated town ids e.g. 0,1,2,3
-        }
+
+        InitialiseMap(game, width, height);
+
+        InitialiseTowns(game);
 
         // game loop
         while (true)
         {
             int myScore = int.Parse(Console.ReadLine());
             int foeScore = int.Parse(Console.ReadLine());
+
+            game.SetMyScore(myScore);
+            game.SetOpponentScore(foeScore);
+
             for (int i = 0; i < height; i++)
             {
                 for (int j = 0; j < width; j++)
@@ -54,6 +47,8 @@ class Player
                 }
             }
 
+            string actions = game.CalculateActions();
+
             // Write an action using Console.WriteLine()
             // To debug: Console.Error.WriteLine("Debug messages...");
 
@@ -61,5 +56,43 @@ class Player
             // AUTOPLACE x1 y1 x2 | PLACE_TRACKS x y | DISRUPT regionId | MESSAGE text
             Console.WriteLine("WAIT");
         }
+    }
+
+    private static void InitialiseMap(Game game, int width, int height)
+    {
+        var map = new Map(width, height);
+
+        for (int i = 0; i < height; i++)
+        {
+            for (int j = 0; j < width; j++)
+            {
+                var inputs = Console.ReadLine().Split(' ');
+                int regionId = int.Parse(inputs[0]);
+                int type = int.Parse(inputs[1]); // 0 (PLAINS), 1 (RIVER), 2 (MOUNTAIN), 3 (POI)
+
+                map.SetCell(j, i, (CellType)type, regionId);
+            }
+        }
+
+        game.SetMap(map);
+    }
+
+    private static void InitialiseTowns(Game game)
+    {
+        List<Town> towns = new List<Town>();
+        int townCount = int.Parse(Console.ReadLine());
+        for (int i = 0; i < townCount; i++)
+        {
+            var inputs = Console.ReadLine().Split(' ');
+            int townId = int.Parse(inputs[0]);
+            int townX = int.Parse(inputs[1]);
+            int townY = int.Parse(inputs[2]);
+            string desiredConnections = inputs[3]; // comma-separated town ids e.g. 0,1,2,3
+
+            var town = new Town(townId, townX, townY, desiredConnections.Split(',').Select(int.Parse).ToList());
+            towns.Add(town);
+        }
+
+        game.SetTowns(towns);
     }
 }

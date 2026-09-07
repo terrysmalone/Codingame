@@ -4,11 +4,140 @@
 ***************************************************************/
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.IO;
 using System.Text;
 using System.Collections;
-using System.Collections.Generic;
+
+internal enum CellType
+{
+    PLAINS = 0,
+    RIVER = 1,
+    MOUNTAIN = 2,
+    POI = 3
+}
+
+public class Game
+{
+    private int myId;
+
+    private Map map;
+
+    private List<Town> towns;
+
+    private int myScore;
+    private int opponentScore;
+
+    public Game(int myId)
+    {
+        this.myId = myId;
+
+        towns = new List<Town>();
+    }
+
+    internal void SetMap(Map map)
+    {
+        this.map = map;
+    }
+
+    internal void SetMyScore(int myScore)
+    {
+        this.myScore = myScore;
+    }
+
+    internal void SetOpponentScore(int foeScore)
+    {
+        this.opponentScore = foeScore;
+    }
+
+    internal void SetTowns(List<Town> towns)
+    {
+        this.towns = towns;
+    }
+
+    internal string CalculateActions()
+    {
+        Logger.TypeMap(map);
+
+        return "WAIT";
+    }
+}
+
+
+internal static class Logger
+{
+
+    private static bool DISABLE_LOGGING = false;
+
+    internal static void DisableLogging()
+    {
+        DISABLE_LOGGING = true;
+    }
+
+    internal static void EnableLogging()
+    {
+        DISABLE_LOGGING = false;
+    }
+
+    internal static void RegionMap(Map map)
+    {      
+
+    }
+
+    internal static void TypeMap(Map map)
+    {
+        for (int y = 0; y < map.Height; y++)
+        {
+            for (int x = 0; x < map.Width; x++)
+            {
+                Console.Error.Write(ToSymbol(map.CellTypes[x, y]));
+            }
+            Console.Error.WriteLine();
+        }
+    }
+
+    private static string ToSymbol(CellType cellType)
+    {
+        switch (cellType)
+        {
+                case CellType.PLAINS:
+                    return " ";
+                case CellType.RIVER:
+                    return "~";
+                case CellType.MOUNTAIN:
+                    return "^";
+                case CellType.POI:
+                    return "*";
+                default:
+                    return " ";
+        }
+    }
+}
+
+internal class Map {
+    internal int Width { get; }
+    internal int Height { get; }
+
+    internal CellType[,] CellTypes;
+    internal int[,] Regions;
+
+
+    internal Map(int width, int height)
+    {
+        Width = width;
+        Height = height;
+
+        CellTypes = new CellType[width, height];
+        Regions = new int[width, height];
+    }
+
+    internal void SetCell(int x, int y, CellType cellType, int region)
+    {
+        CellTypes[x, y] = cellType;
+        Regions[x, y] = region;
+    }
+}
 
 class Player
 {
@@ -16,32 +145,25 @@ class Player
     {
         string[] inputs;
         int myId = int.Parse(Console.ReadLine()); // 0 or 1
+
+        var game = new Game(myId);
+
         int width = int.Parse(Console.ReadLine()); // map size
         int height = int.Parse(Console.ReadLine());
-        for (int i = 0; i < height; i++)
-        {
-            for (int j = 0; j < width; j++)
-            {
-                inputs = Console.ReadLine().Split(' ');
-                int regionId = int.Parse(inputs[0]);
-                int type = int.Parse(inputs[1]); // 0 (PLAINS), 1 (RIVER), 2 (MOUNTAIN), 3 (POI)
-            }
-        }
-        int townCount = int.Parse(Console.ReadLine());
-        for (int i = 0; i < townCount; i++)
-        {
-            inputs = Console.ReadLine().Split(' ');
-            int townId = int.Parse(inputs[0]);
-            int townX = int.Parse(inputs[1]);
-            int townY = int.Parse(inputs[2]);
-            string desiredConnections = inputs[3]; // comma-separated town ids e.g. 0,1,2,3
-        }
+
+        InitialiseMap(game, width, height);
+
+        InitialiseTowns(game);
 
         // game loop
         while (true)
         {
             int myScore = int.Parse(Console.ReadLine());
             int foeScore = int.Parse(Console.ReadLine());
+
+            game.SetMyScore(myScore);
+            game.SetOpponentScore(foeScore);
+
             for (int i = 0; i < height; i++)
             {
                 for (int j = 0; j < width; j++)
@@ -54,6 +176,8 @@ class Player
                 }
             }
 
+            string actions = game.CalculateActions();
+
             // Write an action using Console.WriteLine()
             // To debug: Console.Error.WriteLine("Debug messages...");
 
@@ -62,5 +186,64 @@ class Player
             Console.WriteLine("WAIT");
         }
     }
+
+    private static void InitialiseMap(Game game, int width, int height)
+    {
+        var map = new Map(width, height);
+
+        for (int i = 0; i < height; i++)
+        {
+            for (int j = 0; j < width; j++)
+            {
+                var inputs = Console.ReadLine().Split(' ');
+                int regionId = int.Parse(inputs[0]);
+                int type = int.Parse(inputs[1]); // 0 (PLAINS), 1 (RIVER), 2 (MOUNTAIN), 3 (POI)
+
+                map.SetCell(j, i, (CellType)type, regionId);
+            }
+        }
+
+        game.SetMap(map);
+    }
+
+    private static void InitialiseTowns(Game game)
+    {
+        List<Town> towns = new List<Town>();
+        int townCount = int.Parse(Console.ReadLine());
+        for (int i = 0; i < townCount; i++)
+        {
+            var inputs = Console.ReadLine().Split(' ');
+            int townId = int.Parse(inputs[0]);
+            int townX = int.Parse(inputs[1]);
+            int townY = int.Parse(inputs[2]);
+            string desiredConnections = inputs[3]; // comma-separated town ids e.g. 0,1,2,3
+
+            var town = new Town(townId, townX, townY, desiredConnections.Split(',').Select(int.Parse).ToList());
+            towns.Add(town);
+        }
+
+        game.SetTowns(towns);
+    }
 }
+
+
+internal class Town
+{
+    internal int Id { get; private set; }
+
+    internal int X { get; private set; }
+
+    internal int Y { get; private set; }
+
+    internal List<int> DesiredConnections { get; private set; }
+
+    internal Town(int id, int x, int y, List<int> desiredConnections)
+    {
+        Id = id;
+        X = x;
+        Y = y;
+        DesiredConnections = desiredConnections;
+    }
+}
+
 

@@ -897,7 +897,7 @@ internal class RegionTracker
     // score
     internal int GetStrongestEnemyRegion()
     {
-        // For every region calculate enemyTracks -myTracks, Choose the region with the highest score
+        // For every region calculate enemyTracks - myTracks, Choose the region with the highest score
         int strongestEnemyRegion = int.MinValue;
         int strongerstEnemyRegionId = -1;
 
@@ -909,6 +909,13 @@ internal class RegionTracker
             }
 
             int score = region.GetEnemyTracks() - region.GetMyTracks();
+
+            // If it's already been attacked, and it favours the enemy attack here straight away. 
+            // Lets finish what we started.
+            if (score > 0 && region.Instability > 0)
+            {
+                return region.Id;
+            }
 
             if (score > strongestEnemyRegion && score > 0)
             {

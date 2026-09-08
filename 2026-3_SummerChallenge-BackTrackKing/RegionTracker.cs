@@ -7,10 +7,12 @@ namespace BackTrackKing;
 
 internal class RegionTracker
 {
+    private int _myId;
     private List<Region> _regions;
 
-    public RegionTracker()
+    public RegionTracker(int myId)
     {
+        _myId = myId;
         _regions = new List<Region>();
     }
 
@@ -65,9 +67,24 @@ internal class RegionTracker
         if (region == null)
         {
             Logger.Error($"Region not found for cell ({x}, {y}) in AddTrack");
+            return;
         }
 
-        region.AddTrack(x, y, tracksOwner);
+        switch (tracksOwner)
+        {
+            case 0:
+                region.AddMyTrack(x, y);
+                break;
+            case 1:
+                region.AddOpponentTrack(x, y);
+                break;
+            case 2:
+                region.AddJointTrack(x, y);
+                break;
+            default:
+                Logger.Error($"Invalid tracksOwner value {tracksOwner} in AddTrack");
+                break;
+        }
     }
 
     internal void UpdateRegion(int regionId, int instability, bool inked)
@@ -80,5 +97,33 @@ internal class RegionTracker
         }
 
         region.UpdateInstability(instability, inked);
+    }
+
+    // First pass at getting a disrupt action
+    // For every region calculate enemyTracks - myTracks, Choose the region with the highest
+    // score
+    internal int GetStrongestEnemyRegion()
+    {
+        // For every region calculate enemyTracks -myTracks, Choose the region with the highest score
+        int strongestEnemyRegion = int.MinValue;
+        int strongerstEnemyRegionId = -1;
+
+        foreach (Region region in _regions) 
+        {
+            if (region.IsInked)
+            {
+                continue;
+            }
+
+            int score = region.GetEnemyTracks() - region.GetMyTracks();
+
+            if (score > strongestEnemyRegion)
+            {
+                strongestEnemyRegion = score;
+                strongerstEnemyRegionId = region.Id;
+            }
+        }
+
+        return strongerstEnemyRegionId;
     }
 }

@@ -80,7 +80,7 @@ public class Game
         _towns = new List<Town>();
         _completedPaths = new List<(int, int)>();
 
-        _regionTracker = new RegionTracker();
+        _regionTracker = new RegionTracker(_myId);
     }
 
     internal void SetMap(Map map)
@@ -200,7 +200,16 @@ public class Game
             count++;
         }
 
+        actions += GetDisruptAction();
+
         return actions;
+    }
+
+    private string GetDisruptAction()
+    {
+        int region = _regionTracker.GetStrongestEnemyRegion();
+
+        return region != -1 ? $"DISRUPT {region};" : string.Empty;
     }
 
     private bool IsAlreadyTracked(List<Point> path)
@@ -564,13 +573,19 @@ internal class Region
     internal int Instability { get; private set; }
 
     private HashSet<Point> _cells;
-    private Dictionary<Point, int> _cellTracks;
+    private HashSet<Point> _allTracks;
+    private HashSet<Point> _myTracks;
+    private HashSet<Point> _opponentTracks;
+    private HashSet<Point> _jointTracks;
 
     public Region(int id)
     {
         Id = id;
         _cells = new HashSet<Point>();
-        _cellTracks = new Dictionary<Point, int>();
+        _allTracks = new HashSet<Point>();
+        _myTracks = new HashSet<Point>();
+        _opponentTracks = new HashSet<Point>();
+        _jointTracks = new HashSet<Point>();
     }
 
     internal void AddCell(int x, int y)
@@ -583,17 +598,37 @@ internal class Region
         return _cells;
     }
 
-    internal void AddTrack(int x, int y, int tracksOwner)
+    internal void AddJointTrack(int x, int y)
     {
         if (IsInked)
         {
             return;
         }
 
-        if (!_cellTracks.ContainsKey(new Point(x, y)))
+        _jointTracks.Add(new Point(x, y));
+        _allTracks.Add(new Point(x, y));
+    }
+
+    internal void AddMyTrack(int x, int y)
+    {
+        if (IsInked)
         {
-            _cellTracks.Add(new Point(x, y), tracksOwner);
+            return;
         }
+
+        _myTracks.Add(new Point(x, y));
+        _allTracks.Add(new Point(x, y));
+    }
+
+    internal void AddOpponentTrack(int x, int y)
+    {
+        if (IsInked)
+        {
+            return;
+        }
+
+        _opponentTracks.Add(new Point(x, y));
+        _allTracks.Add(new Point(x, y));
     }
 
     internal void UpdateInstability(int instability, bool inked)
@@ -601,14 +636,26 @@ internal class Region
         Instability = instability;
         IsInked = inked;
     }
+
+    internal int GetEnemyTracks()
+    {
+        return _opponentTracks.Count;
+    }
+
+    internal int GetMyTracks()
+    {
+        return _myTracks.Count;
+    }
 }
 
 internal class RegionTracker
 {
+    private int _myId;
     private List<Region> _regions;
 
-    public RegionTracker()
+    public RegionTracker(int myId)
     {
+        _myId = myId;
         _regions = new List<Region>();
     }
 
@@ -663,9 +710,24 @@ internal class RegionTracker
         if (region == null)
         {
             Logger.Error($"Region not found for cell ({x}, {y}) in AddTrack");
+            return;
         }
 
-        region.AddTrack(x, y, tracksOwner);
+        switch (tracksOwner)
+        {
+            case 0:
+                region.AddMyTrack(x, y);
+                break;
+            case 1:
+                region.AddOpponentTrack(x, y);
+                break;
+            case 2:
+                region.AddJointTrack(x, y);
+                break;
+            default:
+                Logger.Error($"Invalid tracksOwner value {tracksOwner} in AddTrack");
+                break;
+        }
     }
 
     internal void UpdateRegion(int regionId, int instability, bool inked)
@@ -678,6 +740,34 @@ internal class RegionTracker
         }
 
         region.UpdateInstability(instability, inked);
+    }
+
+    // First pass at getting a disrupt action
+    // For every region calculate enemyTracks - myTracks, Choose the region with the highest
+    // score
+    internal int GetStrongestEnemyRegion()
+    {
+        // For every region calculate enemyTracks -myTracks, Choose the region with the highest score
+        int strongestEnemyRegion = int.MinValue;
+        int strongerstEnemyRegionId = -1;
+
+        foreach (Region region in _regions) 
+        {
+            if (region.IsInked)
+            {
+                continue;
+            }
+
+            int score = region.GetEnemyTracks() - region.GetMyTracks();
+
+            if (score > strongestEnemyRegion)
+            {
+                strongestEnemyRegion = score;
+                strongerstEnemyRegionId = region.Id;
+            }
+        }
+
+        return strongerstEnemyRegionId;
     }
 }
 

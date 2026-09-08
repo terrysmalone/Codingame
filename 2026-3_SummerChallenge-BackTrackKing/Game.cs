@@ -29,7 +29,7 @@ public class Game
         _towns = new List<Town>();
         _completedPaths = new List<(int, int)>();
 
-        _regionTracker = new RegionTracker();
+        _regionTracker = new RegionTracker(_myId);
     }
 
     internal void SetMap(Map map)
@@ -149,7 +149,16 @@ public class Game
             count++;
         }
 
+        actions += GetDisruptAction();
+
         return actions;
+    }
+
+    private string GetDisruptAction()
+    {
+        int region = _regionTracker.GetStrongestEnemyRegion();
+
+        return region != -1 ? $"DISRUPT {region};" : string.Empty;
     }
 
     private bool IsAlreadyTracked(List<Point> path)

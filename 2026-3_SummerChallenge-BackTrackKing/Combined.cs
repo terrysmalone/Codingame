@@ -3,15 +3,43 @@
   It combined all classes in the project to work in Codingame.
 ***************************************************************/
 
-using System;
-using System.Drawing;
-using Microsoft.VisualBasic;
 using System.Collections.Generic;
+using System.Drawing;
+using System;
+using Microsoft.VisualBasic;
 using System.Linq;
 using System.Text;
 using System.Xml.Linq;
 using System.IO;
 using System.Collections;
+
+internal class BestPath
+{
+    internal int SourceTownId { get; private set; }
+    internal int DestinationTownId { get; private set; }
+
+    internal List<Point> shortestPath;
+
+    internal BestPath(int sourceTownId, int destinationTownId)
+    {
+        SourceTownId = sourceTownId;
+        DestinationTownId = destinationTownId;
+
+        shortestPath = new List<Point>();
+    }
+
+    internal void SetShortestPath(List<Point> path)
+    {
+        shortestPath = path;
+    }
+
+    internal List<Point> GetShortestPath()
+    {
+        return shortestPath;
+    }
+}
+
+
 
 internal class CalculationUtil
 {
@@ -41,6 +69,7 @@ public class Game
     private int _opponentScore;
 
     private PathFinder _pathFinder;
+    private RegionTracker _regionTracker;
 
     private List<(int, int)> _completedPaths;
 
@@ -50,6 +79,8 @@ public class Game
 
         _towns = new List<Town>();
         _completedPaths = new List<(int, int)>();
+
+        _regionTracker = new RegionTracker();
     }
 
     internal void SetMap(Map map)
@@ -76,6 +107,15 @@ public class Game
 
     internal string CalculateActions()
     {
+        // TODO
+        // 1. Analyse all best paths to desired towns (They can change when regions are inked)
+        //      Q. Do I need to do it from scratch every time? I could persist best paths and only update when 
+        //         a region is inked.
+        // 2. Keep track of all regions and their states
+        //      Q. As above, do I need to do it from scratch every time? I could persist regions and update
+        //      Region class should hold: Id, IsInked, Instability level, list of optimal paths on it and who owns tracks on them. List of non-optimal
+        //        tracks on them
+
         int actionPoints = 3; 
         // Logger.TypeMap(_map);
 
@@ -95,7 +135,7 @@ public class Game
 
                 Town desiredTown = _towns.First(t => t.Id == desiredConnection);
 
-                var shortestPath = _pathFinder.GetShortestPath(new Point(town.X, town.Y), new Point(desiredTown.X, desiredTown.Y));
+                var shortestPath = _pathFinder.GetShortestPath(new Point(town.X, town.Y), new Point(desiredTown.X, desiredTown.Y), _regionTracker.GetExcludePoints());
 
                 if (shortestPath.Count < shortestDistance)
                 {
@@ -176,9 +216,23 @@ public class Game
         return true;
     }
 
-    internal void SetTrack(int j, int i, int tracksOwner)
+    internal void UpdateCell(int x, int y, int tracksOwner, int instability, bool inked)
     {
-        _map.SetTrack(j, i, tracksOwner);
+        _map.SetTrack(x, y, tracksOwner);
+
+        int regionId = _regionTracker.GetRegionId(x, y);
+
+        _regionTracker.UpdateRegion(regionId, instability, inked);
+
+        if (tracksOwner != -1)
+        {
+            _regionTracker.AddTrack(regionId, x, y, tracksOwner);
+        }
+    }
+
+    internal void InitialiseCellToRegion(int x, int y, int regionId)
+    {
+        _regionTracker.AddCellToRegion(x, y, regionId);
     }
 }
 
@@ -196,6 +250,11 @@ internal static class Logger
     internal static void EnableLogging()
     {
         DISABLE_LOGGING = false;
+    }
+
+    internal static void Error(string message)
+    {
+        Console.Error.WriteLine("ERROR: " + message);
     }
 
     internal static void Message(string message)
@@ -312,7 +371,7 @@ internal class PathFinder
         _height = height;
     }
 
-    internal List<Point> GetShortestPath(Point startPosition, Point targetPosition)
+    internal List<Point> GetShortestPath(Point startPosition, Point targetPosition, HashSet<Point> excludePoints)
     {
         var nodesByPos = new Dictionary<Point, Node>();
         var open = new PriorityQueue<Node, int>();
@@ -353,6 +412,11 @@ internal class PathFinder
             var neighbours = GetPointsToCheck(current);
             foreach (var neighbour in neighbours)
             {
+                if (excludePoints != null && excludePoints.Contains(neighbour))
+                {
+                    continue;
+                }
+
                 if (!nodesByPos.TryGetValue(neighbour, out var existing))
                 {
                     var node = new Node(neighbour)
@@ -447,10 +511,13 @@ class Player
                 {
                     inputs = Console.ReadLine().Split(' ');
                     int tracksOwner = int.Parse(inputs[0]);
-                    game.SetTrack(j, i, tracksOwner);
+                    
 
                     int instability = int.Parse(inputs[1]); // region inked (destroyed) when this >= 3.
                     bool inked = inputs[2] != "0"; // true if region is destroyed.
+
+                    game.UpdateCell(j, i, tracksOwner, instability, inked);
+
                     string partOfActiveConnections = inputs[3]; // if this cell is part of one or more railway connections, this will be town ids (separated by -) in a list separated by commas. e.g. 0-1,1-2,1-3. "x" otherwise.
                 }
             }
@@ -479,6 +546,7 @@ class Player
                 int type = int.Parse(inputs[1]); // 0 (PLAINS), 1 (RIVER), 2 (MOUNTAIN), 3 (POI)
 
                 map.SetCell(j, i, (CellType)type, regionId);
+                game.InitialiseCellToRegion(j, i, regionId);
             }
         }
 
@@ -511,6 +579,132 @@ class Player
     }
 }
 
+
+internal class Region
+{
+    internal int Id { get; private set; }
+
+    internal bool IsInked { get; private set; } = false;
+
+    internal int Instability { get; private set; }
+
+    private HashSet<Point> _cells;
+    private Dictionary<Point, int> _cellTracks;
+
+    public Region(int id)
+    {
+        Id = id;
+        _cells = new HashSet<Point>();
+        _cellTracks = new Dictionary<Point, int>();
+    }
+
+    internal void AddCell(int x, int y)
+    {
+        _cells.Add(new Point(x, y));
+    }
+
+    internal IEnumerable<Point> GetCells()
+    {
+        return _cells;
+    }
+
+    internal void AddTrack(int x, int y, int tracksOwner)
+    {
+        if (IsInked)
+        {
+            return;
+        }
+
+        if (!_cellTracks.ContainsKey(new Point(x, y)))
+        {
+            _cellTracks.Add(new Point(x, y), tracksOwner);
+        }
+    }
+
+    internal void UpdateInstability(int instability, bool inked)
+    {
+        Instability = instability;
+        IsInked = inked;
+    }
+}
+
+internal class RegionTracker
+{
+    private List<Region> _regions;
+
+    public RegionTracker()
+    {
+        _regions = new List<Region>();
+    }
+
+    internal void AddCellToRegion(int x, int y, int regionId)
+    {
+        Region? existingRegion = _regions.SingleOrDefault(r => r.Id == regionId);
+
+        if (existingRegion == null)
+        {
+            Region region = new Region(regionId);
+            region.AddCell(x, y);
+            _regions.Add(region);
+        }
+        else
+        {
+            existingRegion.AddCell(x, y);
+        }
+    }
+
+    internal HashSet<Point> GetExcludePoints()
+    {
+        HashSet<Point> excludePoints = new HashSet<Point>();
+
+        foreach (var region in _regions)
+        {
+            if (region.IsInked)
+            {
+                excludePoints.UnionWith(region.GetCells());
+            }
+        }
+
+        return excludePoints;
+    }
+
+    internal int GetRegionId(int x, int y)
+    {
+        Region? region = _regions.SingleOrDefault(r => r.GetCells().Contains(new Point(x, y)));
+
+        if (region == null)
+        {
+            Logger.Error($"Region not found for cell ({x}, {y}) in GetRegionId");
+            return -1;
+        }
+
+        return region.Id;
+    }
+
+    internal void AddTrack(int regionId, int x, int y, int tracksOwner)
+    {
+        Region? region = _regions.SingleOrDefault(r => r.GetCells().Contains(new Point(x, y)));
+
+        if (region == null)
+        {
+            Logger.Error($"Region not found for cell ({x}, {y}) in AddTrack");
+        }
+
+        region.AddTrack(x, y, tracksOwner);
+    }
+
+    internal void UpdateRegion(int regionId, int instability, bool inked)
+    {
+        Region? region = _regions.SingleOrDefault(r => r.Id == regionId);
+
+        if (region == null)
+        {
+            Logger.Error($"Region not found for id {regionId} in UpdateRegion");
+        }
+
+        region.UpdateInstability(instability, inked);
+    }
+}
 
 internal class Town
 {

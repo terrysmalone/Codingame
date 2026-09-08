@@ -18,7 +18,7 @@ internal class PathFinder
         _height = height;
     }
 
-    internal List<Point> GetShortestPath(Point startPosition, Point targetPosition)
+    internal List<Point> GetShortestPath(Point startPosition, Point targetPosition, HashSet<Point> excludePoints)
     {
         var nodesByPos = new Dictionary<Point, Node>();
         var open = new PriorityQueue<Node, int>();
@@ -59,6 +59,11 @@ internal class PathFinder
             var neighbours = GetPointsToCheck(current);
             foreach (var neighbour in neighbours)
             {
+                if (excludePoints != null && excludePoints.Contains(neighbour))
+                {
+                    continue;
+                }
+
                 if (!nodesByPos.TryGetValue(neighbour, out var existing))
                 {
                     var node = new Node(neighbour)

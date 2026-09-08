@@ -17,6 +17,11 @@ internal static class Logger
         DISABLE_LOGGING = false;
     }
 
+    internal static void Error(string message)
+    {
+        Console.Error.WriteLine("ERROR: " + message);
+    }
+
     internal static void Message(string message)
     {
         if (DISABLE_LOGGING) 

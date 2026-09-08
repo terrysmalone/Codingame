@@ -18,6 +18,7 @@ public class Game
     private int _opponentScore;
 
     private PathFinder _pathFinder;
+    private RegionTracker _regionTracker;
 
     private List<(int, int)> _completedPaths;
 
@@ -27,6 +28,8 @@ public class Game
 
         _towns = new List<Town>();
         _completedPaths = new List<(int, int)>();
+
+        _regionTracker = new RegionTracker();
     }
 
     internal void SetMap(Map map)
@@ -53,9 +56,14 @@ public class Game
 
     internal string CalculateActions()
     {
-        // Analyse all best paths
-
-
+        // TODO
+        // 1. Analyse all best paths to desired towns (They can change when regions are inked)
+        //      Q. Do I need to do it from scratch every time? I could persist best paths and only update when 
+        //         a region is inked.
+        // 2. Keep track of all regions and their states
+        //      Q. As above, do I need to do it from scratch every time? I could persist regions and update
+        //      Region class should hold: Id, IsInked, Instability level, list of optimal paths on it and who owns tracks on them. List of non-optimal
+        //        tracks on them
 
         int actionPoints = 3; 
         // Logger.TypeMap(_map);
@@ -76,7 +84,7 @@ public class Game
 
                 Town desiredTown = _towns.First(t => t.Id == desiredConnection);
 
-                var shortestPath = _pathFinder.GetShortestPath(new Point(town.X, town.Y), new Point(desiredTown.X, desiredTown.Y));
+                var shortestPath = _pathFinder.GetShortestPath(new Point(town.X, town.Y), new Point(desiredTown.X, desiredTown.Y), _regionTracker.GetExcludePoints());
 
                 if (shortestPath.Count < shortestDistance)
                 {
@@ -157,8 +165,22 @@ public class Game
         return true;
     }
 
-    internal void SetTrack(int j, int i, int tracksOwner)
+    internal void UpdateCell(int x, int y, int tracksOwner, int instability, bool inked)
     {
-        _map.SetTrack(j, i, tracksOwner);
+        _map.SetTrack(x, y, tracksOwner);
+
+        int regionId = _regionTracker.GetRegionId(x, y);
+
+        _regionTracker.UpdateRegion(regionId, instability, inked);
+
+        if (tracksOwner != -1)
+        {
+            _regionTracker.AddTrack(regionId, x, y, tracksOwner);
+        }
+    }
+
+    internal void InitialiseCellToRegion(int x, int y, int regionId)
+    {
+        _regionTracker.AddCellToRegion(x, y, regionId);
     }
 }

@@ -10,6 +10,8 @@ internal class Region
 
     internal bool IsInked { get; private set; } = false;
 
+    internal bool HasTown { get; set; } = false;
+
     internal int Instability { get; private set; }
 
     private HashSet<Point> _cells;

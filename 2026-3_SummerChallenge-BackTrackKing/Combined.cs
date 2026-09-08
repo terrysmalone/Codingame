@@ -243,6 +243,11 @@ public class Game
     {
         _regionTracker.AddCellToRegion(x, y, regionId);
     }
+
+    internal void AddTownToRegion(int townId, int townX, int townY)
+    {
+        _regionTracker.AddTown(townId, townX, townY);
+    }
 }
 
 
@@ -480,6 +485,8 @@ class Player
 
         InitialiseTowns(game);
 
+
+
         // game loop
         while (true)
         {
@@ -557,6 +564,8 @@ class Player
 
             var town = new Town(townId, townX, townY, desiredConnectionsList);
             towns.Add(town);
+
+            game.AddTownToRegion(townId, townX, townY);
         }
 
         game.SetTowns(towns);
@@ -569,6 +578,8 @@ internal class Region
     internal int Id { get; private set; }
 
     internal bool IsInked { get; private set; } = false;
+
+    internal bool HasTown { get; set; } = false;
 
     internal int Instability { get; private set; }
 
@@ -770,14 +781,14 @@ internal class RegionTracker
 
         foreach (Region region in _regions) 
         {
-            if (region.IsInked)
+            if (region.IsInked || region.HasTown)
             {
                 continue;
             }
 
             int score = region.GetEnemyTracks() - region.GetMyTracks();
 
-            if (score > strongestEnemyRegion)
+            if (score > strongestEnemyRegion && score > 0)
             {
                 strongestEnemyRegion = score;
                 strongerstEnemyRegionId = region.Id;
@@ -785,6 +796,19 @@ internal class RegionTracker
         }
 
         return strongerstEnemyRegionId;
+    }
+
+    internal void AddTown(int townId, int townX, int townY)
+    {
+        Region? region = _regions.SingleOrDefault(r => r.GetCells().Contains(new Point(townX, townY)));
+
+        if (region == null)
+        {
+            Logger.Error($"Region not found for cell ({townX}, {townY}) in AddTown");
+            return;
+        }
+
+        region.HasTown = true;
     }
 }
 

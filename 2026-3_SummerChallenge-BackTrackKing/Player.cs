@@ -26,6 +26,8 @@ class Player
 
         InitialiseTowns(game);
 
+
+
         // game loop
         while (true)
         {
@@ -103,6 +105,8 @@ class Player
 
             var town = new Town(townId, townX, townY, desiredConnectionsList);
             towns.Add(town);
+
+            game.AddTownToRegion(townId, townX, townY);
         }
 
         game.SetTowns(towns);

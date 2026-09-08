@@ -192,4 +192,9 @@ public class Game
     {
         _regionTracker.AddCellToRegion(x, y, regionId);
     }
+
+    internal void AddTownToRegion(int townId, int townX, int townY)
+    {
+        _regionTracker.AddTown(townId, townX, townY);
+    }
 }

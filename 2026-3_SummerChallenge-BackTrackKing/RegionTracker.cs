@@ -127,14 +127,14 @@ internal class RegionTracker
 
         foreach (Region region in _regions) 
         {
-            if (region.IsInked)
+            if (region.IsInked || region.HasTown)
             {
                 continue;
             }
 
             int score = region.GetEnemyTracks() - region.GetMyTracks();
 
-            if (score > strongestEnemyRegion)
+            if (score > strongestEnemyRegion && score > 0)
             {
                 strongestEnemyRegion = score;
                 strongerstEnemyRegionId = region.Id;
@@ -142,5 +142,18 @@ internal class RegionTracker
         }
 
         return strongerstEnemyRegionId;
+    }
+
+    internal void AddTown(int townId, int townX, int townY)
+    {
+        Region? region = _regions.SingleOrDefault(r => r.GetCells().Contains(new Point(townX, townY)));
+
+        if (region == null)
+        {
+            Logger.Error($"Region not found for cell ({townX}, {townY}) in AddTown");
+            return;
+        }
+
+        region.HasTown = true;
     }
 }

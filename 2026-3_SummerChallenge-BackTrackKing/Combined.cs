@@ -71,14 +71,11 @@ public class Game
     private PathFinder _pathFinder;
     private RegionTracker _regionTracker;
 
-    private List<(int, int)> _completedPaths;
-
     public Game(int myId)
     {
         _myId = myId;
 
         _towns = new List<Town>();
-        _completedPaths = new List<(int, int)>();
 
         _regionTracker = new RegionTracker(_myId);
     }
@@ -128,11 +125,6 @@ public class Game
         {
             foreach (var desiredConnection in town.DesiredConnections)
             {
-                if (_completedPaths.Contains((town.Id, desiredConnection)))
-                {
-                    continue;
-                }
-
                 Town desiredTown = _towns.First(t => t.Id == desiredConnection);
 
                 var shortestPath = _pathFinder.GetShortestPath(new Point(town.X, town.Y), new Point(desiredTown.X, desiredTown.Y), _regionTracker.GetExcludePoints());
@@ -156,12 +148,7 @@ public class Game
                     }
 
                     // If it's 100% tracked find something else
-                    if (IsAlreadyTracked(shortestPath))
-                    {
-                        // Add to list of completed paths so we don't try to do it again
-                        _completedPaths.Add((town.Id, desiredTown.Id));
-                    }
-                    else
+                    if (!IsAlreadyTracked(shortestPath))
                     {
                         shortestDistance = shortestPath.Count;
                         shortest = shortestPath;
@@ -208,6 +195,11 @@ public class Game
             }
 
             count++;
+        }
+
+        if (actionPoints > 0)
+        {
+            Logger.Error($"Unspent action points: {actionPoints}");
         }
 
         actions += GetDisruptAction();

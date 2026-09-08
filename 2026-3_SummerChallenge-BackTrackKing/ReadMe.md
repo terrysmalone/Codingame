@@ -2,8 +2,8 @@
 
 ## Bugs
 
-* I currently stop using points if I complete a track. If I have points left over, I should look at the next track to use all 3 points every turn.
-
+* I currently stop using points if I complete a track. If I have points left over, I should look at the next track to use all 3 points every turn (seed=-7454113018111024000 - 49 times!)
+* seed=-7454113018111024000 at 62 onwards why don't I go for 8 to 6
 ## Improvements
 
 * When I start to destroy a region, make sure to finish

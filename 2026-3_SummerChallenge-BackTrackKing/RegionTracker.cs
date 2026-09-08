@@ -70,20 +70,37 @@ internal class RegionTracker
             return;
         }
 
-        switch (tracksOwner)
+        if (tracksOwner == -1)
         {
-            case 0:
+            return;
+        }
+
+        if (tracksOwner == 2)
+        {
+            region.AddJointTrack(x, y);
+        }
+
+        if (_myId == 0)
+        {
+            if (tracksOwner == 0)
+            {
                 region.AddMyTrack(x, y);
-                break;
-            case 1:
+            }
+            else if (tracksOwner == 1)
+            {
                 region.AddOpponentTrack(x, y);
-                break;
-            case 2:
-                region.AddJointTrack(x, y);
-                break;
-            default:
-                Logger.Error($"Invalid tracksOwner value {tracksOwner} in AddTrack");
-                break;
+            }
+        }
+        else
+        {
+            if (tracksOwner == 0)
+            {
+                region.AddOpponentTrack(x, y);                
+            }
+            else if (tracksOwner == 1)
+            {
+                region.AddMyTrack(x, y);
+            }
         }
     }
 

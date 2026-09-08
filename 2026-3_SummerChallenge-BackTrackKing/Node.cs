@@ -14,6 +14,9 @@ internal sealed class Node
 
     internal bool Closed { get; set; }
 
+    // Track the move that leads to this node for tie-breaking equidistant paths
+    internal Point? FirstMove { get; set; }
+
     internal Node(Point position)
     {
         Position = position;

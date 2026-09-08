@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace BackTrackKing;
 
@@ -32,13 +33,27 @@ internal static class Logger
         Console.Error.WriteLine(message);
     }
 
-    internal static void RegionMap(Map map)
-    {      
+    internal static void DesirePaths(List<DesirePath> desirePaths)
+    {
+        if (DISABLE_LOGGING)
+        {
+            return;
+        }
 
+        Console.Error.WriteLine($"DesirePaths");
+        foreach (var desirePath in desirePaths)
+        {
+            Console.Error.WriteLine($"{desirePath.FullPath[0].X},{desirePath.FullPath[0].Y} -> {desirePath.FullPath[desirePath.FullPathCount-1].X},{desirePath.FullPath[desirePath.FullPathCount - 1].Y} - Path:{desirePath.RemainingPathCount}/{desirePath.FullPathCount}, Action:{desirePath.RemainingActionCount}/{desirePath.FullActionCount}");
+        }
     }
 
     internal static void TypeMap(Map map)
     {
+        if (DISABLE_LOGGING)
+        {
+            return;
+        }
+
         for (int y = 0; y < map.Height; y++)
         {
             for (int x = 0; x < map.Width; x++)

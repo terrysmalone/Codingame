@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Reflection.Metadata.Ecma335;
 
 namespace BackTrackKing;
 
@@ -53,103 +54,11 @@ public class Game
 
     internal string CalculateActions()
     {
-        // TODO
-        // 1. Analyse all best paths to desired towns (They can change when regions are inked)
-        //      Q. Do I need to do it from scratch every time? I could persist best paths and only update when 
-        //         a region is inked.
-        // 2. Keep track of all regions and their states
-        //      Q. As above, do I need to do it from scratch every time? I could persist regions and update
-        //      Region class should hold: Id, IsInked, Instability level, list of optimal paths on it and who owns tracks on them. List of non-optimal
-        //        tracks on them
+        List<DesirePath> desirePaths = CalculateDesirePaths();
 
-        int actionPoints = 3; 
-        // Logger.TypeMap(_map);
+        // Logger.DesirePaths(desirePaths);
 
-        // First pass
-        // For all towns, for all desired paths, find the shortest path to the desired town
-        List<Point> shortest = new List<Point>();
-        int shortestDistance = int.MaxValue;
-
-        foreach (var town in _towns)
-        {
-            foreach (var desiredConnection in town.DesiredConnections)
-            {
-                Town desiredTown = _towns.First(t => t.Id == desiredConnection);
-
-                var shortestPath = _pathFinder.GetShortestPath(new Point(town.X, town.Y), new Point(desiredTown.X, desiredTown.Y), _regionTracker.GetExcludePoints());
-
-                if (shortestPath.Count < shortestDistance)
-                {
-                    // Don't count the target town as part of the path
-                    if (shortestPath.Count > 0)
-                    {
-                        shortestPath.RemoveAt(shortestPath.Count - 1);
-
-                        for (int i = shortestPath.Count-1; i >= 0; i--)
-                        {
-                            var point = shortestPath[i];
-                            if (_towns.Any(t => t.X == point.X && t.Y == point.Y))
-                            {
-                                shortestPath.RemoveAt(i);
-                                i--;
-                            }
-                        }
-                    }
-
-                    // If it's 100% tracked find something else
-                    if (!IsAlreadyTracked(shortestPath))
-                    {
-                        shortestDistance = shortestPath.Count;
-                        shortest = shortestPath;
-                    }
-                }
-            }
-        }
-
-        Logger.Message($"Shortest path found is {shortestDistance} steps with points : {string.Join(", ", shortest.Select(p => $"({p.X}, {p.Y})"))}");
-
-        // Work out what tracks I can make
-        List<(Point, CellType)> cellTypes = new List<(Point, CellType)>();
-
-        foreach (var point in shortest)
-        {
-            if (_map.isTrackFree(point.X, point.Y))
-            {
-                CellType cellType = _map.CellTypes[point.X, point.Y];
-                cellTypes.Add((point, cellType));
-            }
-        }
-
-        Logger.Message($"Shortest untracked path found is: {string.Join(", ", cellTypes.Select(c => $"({c.Item1.X}, {c.Item1.Y})"))}");
-
-        // Order by cell type, so we can prioritize plains over rivers and mountains
-        List <(Point, CellType)> orderedCellTypes = cellTypes.OrderBy(ct => ct.Item2).ToList();
-
-        var actions = string.Empty;
-
-        bool stop = false;
-        int count = 0;
-        while (actionPoints > 0 && count < orderedCellTypes.Count && stop == false)
-        {
-            var (point, cellType) = orderedCellTypes[count];
-
-            if ((int)cellType + 1 <= actionPoints)
-            {
-                actions += $"PLACE_TRACKS {point.X} {point.Y};";
-                actionPoints -= (int)cellType + 1;
-            }
-            else
-            {
-                stop = true;
-            }
-
-            count++;
-        }
-
-        if (actionPoints > 0)
-        {
-            Logger.Error($"Unspent action points: {actionPoints}");
-        }
+        var actions = CalculateActions(desirePaths);
 
         actions += GetDisruptAction();
 
@@ -159,6 +68,176 @@ public class Game
         }
 
         return actions;
+    }
+
+    private string CalculateActions(List<DesirePath> desirePaths)
+    {
+        string actions = string.Empty;
+
+        int actionPoints = 3;
+
+        foreach (var desirePath in desirePaths)
+        {
+            // Get all remaining tracks to place
+            // Order by lowest first
+            // Start allocating them
+
+            // If we've use all 3, return
+
+            List<(Point, CellType)> cellTypes = new List<(Point, CellType)>();
+
+            foreach (var point in desirePath.RemainingPath)
+            {
+                if (_map.isTrackFree(point.X, point.Y))
+                {
+                    CellType cellType = _map.CellTypes[point.X, point.Y];
+                    cellTypes.Add((point, cellType));
+                }
+            }
+
+            // Order by cell type, so we can prioritize plains over rivers and mountains
+            List<(Point, CellType)> orderedCellTypes = cellTypes.OrderBy(ct => ct.Item2).ToList();
+
+            foreach ((Point, CellType) pair in orderedCellTypes)
+            {
+                if ((int)pair.Item2 + 1 <= actionPoints)
+                {
+                    Point cellPoint = pair.Item1;
+                    int cellValue = (int)pair.Item2 + 1;
+                    
+                    actions += $"PLACE_TRACKS {cellPoint.X} {cellPoint.Y};";
+                    actionPoints -= cellValue;
+                }
+                else
+                {
+                    continue;
+                }
+
+                if (actionPoints <= 0)
+                {
+                    return actions;
+                }
+            }
+        }
+
+        if (actionPoints > 0)
+        {
+            Logger.Error($"Unspent action points: {actionPoints}");
+        }
+
+        return actions;
+    }
+
+    private List<DesirePath> CalculateDesirePaths()
+    {
+        Logger.Message("Calculating desire paths");
+
+        List<DesirePath> desirePaths = new List<DesirePath>();
+        foreach (var town in _towns)
+        {
+            foreach (var desiredConnection in town.DesiredConnections)
+            {
+                List<Point> fullSanitisedPath = FindShortestSanitisedPath(new Point(town.X, town.Y), desiredConnection);
+                
+                if (fullSanitisedPath == null || fullSanitisedPath.Count == 0)
+                {
+                    continue;
+                }
+
+                // If it's 100% tracked continue
+                if (IsAlreadyTracked(fullSanitisedPath))
+                {
+                    continue;
+                }
+
+                int fullPathCount = fullSanitisedPath.Count;
+                int fullActionCount = CalculateActionCount(fullSanitisedPath);
+
+
+                List<Point> remainingPathPoints = new List<Point>();
+
+                foreach (var point in fullSanitisedPath)
+                {
+                    if (_map.isTrackFree(point.X, point.Y))
+                    {
+                        remainingPathPoints.Add(point);
+                    }
+                }
+
+                int remainingPathCount = remainingPathPoints.Count;
+                int remainingActionCount = CalculateActionCount(remainingPathPoints);
+
+                var desirePath = new DesirePath(fullSanitisedPath, remainingPathPoints)
+                {
+                    FullPathCount = fullPathCount,
+                    FullActionCount = fullActionCount,
+                    RemainingPathCount = remainingPathCount,
+                    RemainingActionCount = remainingActionCount
+                };
+
+                desirePaths.Add(desirePath);
+            }
+        }
+
+        Logger.Message($"Finished calculating {desirePaths.Count} desire paths");
+
+        return desirePaths.OrderBy(dp => dp.RemainingActionCount).ThenBy(dp => dp.RemainingPathCount).ToList();
+    }
+
+    private List<Point> FindShortestSanitisedPath(Point startPoint, int desiredConnection)
+    {
+        Town desiredTown = _towns.First(t => t.Id == desiredConnection);
+
+        List<Point> shortestPath = _pathFinder.GetShortestPath(new Point(startPoint.X, startPoint.Y), new Point(desiredTown.X, desiredTown.Y), _regionTracker.GetExcludePoints());
+
+        if (shortestPath.Count <= 0)
+        {
+            return new List<Point>();
+        }
+
+        // Don't count the target town as part of the path
+        shortestPath.RemoveAt(shortestPath.Count - 1);
+
+        // Don't count towns on the path
+        for (int i = shortestPath.Count - 1; i >= 0; i--)
+        {
+            var point = shortestPath[i];
+            if (_towns.Any(t => t.X == point.X && t.Y == point.Y))
+            {
+                shortestPath.RemoveAt(i);
+                i--;
+            }
+        }
+
+        return shortestPath;
+    }
+
+    private int CalculateActionCount(List<Point> path)
+    {
+        int actionCount = 0;
+
+        foreach (var point in path)
+        {
+            CellType cellType = _map.CellTypes[point.X, point.Y];
+
+            switch (cellType)
+            {
+                case CellType.PLAINS:
+                    actionCount += 1;
+                    break;
+                case CellType.RIVER:
+                    actionCount += 2;
+                    break;
+                case CellType.MOUNTAIN:
+                    actionCount += 3;
+                    break;
+                default:
+                    Logger.Error($"Unknown cell type: {cellType}");
+                    break;
+            }
+        }
+
+        return actionCount;
     }
 
     private string GetDisruptAction()

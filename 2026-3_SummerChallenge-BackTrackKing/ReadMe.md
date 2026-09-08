@@ -9,3 +9,12 @@
 * When I start to destroy a region, make sure to finish
 * Prioritise disrupting regions where the player is already scoring from
 * Don't always disrupt a region opponent has more presence. Look at presence across entire route to destination
+
+# Progress
+
+2025
+
+f05509c54374211605954d8148a2ac5e7b7692ad
+
+	Submitted: 2026-09-08 08:07pm
+	Rank: 180

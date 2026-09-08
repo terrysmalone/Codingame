@@ -89,9 +89,19 @@ public class Game
                 if (shortestPath.Count < shortestDistance)
                 {
                     // Don't count the target town as part of the path
-                    if (shortestPath.Count > 1)
+                    if (shortestPath.Count > 0)
                     {
                         shortestPath.RemoveAt(shortestPath.Count - 1);
+
+                        for (int i = shortestPath.Count-1; i >= 0; i--)
+                        {
+                            var point = shortestPath[i];
+                            if (_towns.Any(t => t.X == point.X && t.Y == point.Y))
+                            {
+                                shortestPath.RemoveAt(i);
+                                i--;
+                            }
+                        }
                     }
 
                     // If it's 100% tracked find something else

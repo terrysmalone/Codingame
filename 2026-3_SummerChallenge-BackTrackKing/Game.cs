@@ -123,7 +123,7 @@ public class Game
             }
         }
 
-        Logger.Message($"Shortest untrakced path found is: {string.Join(", ", cellTypes.Select(c => $"({c.Item1.X}, {c.Item1.Y})"))}");
+        Logger.Message($"Shortest untracked path found is: {string.Join(", ", cellTypes.Select(c => $"({c.Item1.X}, {c.Item1.Y})"))}");
 
         // Order by cell type, so we can prioritize plains over rivers and mountains
         List <(Point, CellType)> orderedCellTypes = cellTypes.OrderBy(ct => ct.Item2).ToList();
@@ -150,6 +150,11 @@ public class Game
         }
 
         actions += GetDisruptAction();
+
+        if (string.IsNullOrEmpty(actions))
+        {
+            actions = "WAIT;";
+        }
 
         return actions;
     }

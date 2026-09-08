@@ -202,6 +202,11 @@ public class Game
 
         actions += GetDisruptAction();
 
+        if (string.IsNullOrEmpty(actions))
+        {
+            actions = "WAIT;";
+        }
+
         return actions;
     }
 

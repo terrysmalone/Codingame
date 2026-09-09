@@ -175,7 +175,7 @@ public class Game
 
         // Logger.DesirePaths(desirePaths);
         // _regionTracker.LogRegions();
-        // _connectionTracker.LogConnections();
+        //_connectionTracker.LogConnections();
 
         var actions = CalculatePaintActions(desirePaths);
 
@@ -1096,9 +1096,9 @@ internal class RegionTracker
 
         if (_activeRegionScores.Count > 0 && _activeRegionScores.First().Key > 0)
         {
-            // TODO: Something about sticking with a region if we've started destabilising it already
-            // Check all regions with the same high score. Pick the one with the highest instability
-            int highScore = _activeRegionScores.First().Key;
+            // Logger.RegionScores(_activeRegionScores);
+
+            int highScore = _activeRegionScores.First().Value;
 
             int highestInstability = int.MinValue;
             int highestInstabilityRegionId = -1;
@@ -1111,7 +1111,6 @@ internal class RegionTracker
                     
                     if (region != null && region.Instability > highestInstability)
                     {
-                        Logger.Message($"Checking region score for {region.Id} - {region.Instability}");
                         highestInstability = region.Instability;
                         highestInstabilityRegionId = region.Id;
                     }
@@ -1121,9 +1120,6 @@ internal class RegionTracker
                     break;
                 }
             }
-
-            // Logger.RegionScores(_activeRegionScores);
-
 
             return highestInstabilityRegionId;
         }

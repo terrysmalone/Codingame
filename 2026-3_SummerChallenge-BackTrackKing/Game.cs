@@ -60,7 +60,7 @@ public class Game
 
         // Logger.DesirePaths(desirePaths);
         // _regionTracker.LogRegions();
-        // _connectionTracker.LogConnections();
+        //_connectionTracker.LogConnections();
 
         var actions = CalculatePaintActions(desirePaths);
 

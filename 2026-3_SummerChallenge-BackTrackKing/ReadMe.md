@@ -5,8 +5,10 @@
 * Scores should be the same no matter what side I am. Verify.
 
 ## Improvements
-
-* Secondary order regions to disrupt by number of tracks opponent has. Lets make him work harder to re-establish a connection
+* I complete tracks even if it favours my opponent. Don't complete tracks if they will own as much of the finished result as me (Look a7 fight 32 against stem. On move 10 I shouldn't place a track on 13,4. It makes it even. If he had placed it there too he'd have won that one)
+* Use unspent action points. Just place anywhere. At least if they destry track we'll have more coverage.
+* Don't keep building on a region that has a high instability score. The opponent has started making it unstable. They'll keep doing it
+* Secondary order regions to disrupt by number of track pieces opponent has. Lets make him work harder to re-establish a connection
 
 # Progress
 
@@ -34,6 +36,13 @@ bfba5ccdb1cbd010a43fd7c17db200300a088ac5
 	Rank: (168) 180 
 
 	NOTE: I found a bug which is causing me to try to place track where it already is
+
+fd97a90c59e8b94b64c70d1a7d5bef24a8048041
+
+	Changes: Fix bug where tracks were being placed on top of existing tracks
+	Submitted: 2026-09-09 10:10pm
+	Rank: (198) to 166
+
 
 
 	

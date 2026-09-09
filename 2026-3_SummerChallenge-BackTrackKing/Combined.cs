@@ -992,7 +992,7 @@ internal class RegionTracker
 
         foreach (var region in _regions)
         {
-            if (region.IsInked)
+            if (region.Instability > 0)
             {
                 excludePoints.UnionWith(region.GetCells());
             }

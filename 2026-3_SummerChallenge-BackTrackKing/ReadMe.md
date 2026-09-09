@@ -9,6 +9,7 @@
 * Use unspent action points. Just place anywhere. At least if they destry track we'll have more coverage.
 * Don't keep building on a region that has a high instability score. The opponent has started making it unstable. They'll keep doing it
 * Secondary order regions to disrupt by number of track pieces opponent has. Lets make him work harder to re-establish a connection
+* Prioritise where to place tracks based on it being on multiple desire paths.
 
 # Progress
 
@@ -45,10 +46,21 @@ fd97a90c59e8b94b64c70d1a7d5bef24a8048041
 
 ea9d068376cdd5fbabbce068d9447454a3ebae1e
 
-	Changes: Fix bugin calculating region score
+	Changes: Fix bug in calculating region score
 	Submitted: 2026-09-09 11:00pm
 	Rank: (166) to 176
 
+f644c7bc61f750d7455aa62319c64d50f63588af
+
+	Changes: Fix another bug in calculating region score
+	Submitted: 2026-09-09 11:27pm
+	Rank: (176) to 200
+
+fee
+
+	Changes: Experiment with excluding instability regions from desire paths.
+	Submitted: 2026-09-10 12:22am
+	Rank: (188) to 
 
 
 	

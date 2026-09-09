@@ -37,4 +37,9 @@ internal class ConnectionTracker
     {
         Logger.Connections(_connectionScores);
     }
+
+    internal Dictionary<string, int> GetConnectionScores()
+    {
+        return _connectionScores;
+    }
 }

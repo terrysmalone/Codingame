@@ -92,6 +92,11 @@ internal class ConnectionTracker
     {
         Logger.Connections(_connectionScores);
     }
+
+    internal Dictionary<string, int> GetConnectionScores()
+    {
+        return _connectionScores;
+    }
 }
 
 internal class DesirePath
@@ -169,8 +174,8 @@ public class Game
         List<DesirePath> desirePaths = CalculateDesirePaths();
 
         // Logger.DesirePaths(desirePaths);
-        //_regionTracker.LogRegions();
-        _connectionTracker.LogConnections();
+        // _regionTracker.LogRegions();
+        // _connectionTracker.LogConnections();
 
         var actions = CalculatePaintActions(desirePaths);
 
@@ -356,22 +361,22 @@ public class Game
 
     private string CalculateDisruptAction()
     {
+        int region = -1;
         // PLAN
-        // Priorities
-        // 1. Target regions that contain completed tracks generating the enemy the most points
-        // 2. Target regions that contain the most partially completed tracks that belong to the enemy
-        // 3. Target the region with the highest ratio of enemy tracks to my tracks
         // NOTE: In most cases if we've started to disrupt a region then finish. Only point 1 should override that. 
         //       We want to always prioritise stopping the opponent from scoring
-
-        // PREREQUISITES
-        // At the start of every round give every region a score for:
-        // * currently completed tracks (enemy parts - mine)
-        // * Partial tracks (enemy parts - mine)
-        // * Ratio of enemy tracks to my tracks (enemy parts - mine) (This is already mostly done by GetStrongestEnemyRegion()
+        //
+        // Priorities
+        // 1. Target regions that contain completed tracks generating the enemy the most points
+        region = _regionTracker.GetStrongestEnemyRegionWithActiveTracks(_connectionTracker.GetConnectionScores());
 
 
-        int region = _regionTracker.GetStrongestEnemyRegion();
+        // 2. Target regions that contain the most partially completed tracks that belong to the enemy
+        // 3. Target the region with the highest ratio of enemy tracks to my tracks
+        if (region == -1)
+        {
+            region = _regionTracker.GetStrongestEnemyRegion();
+        }
 
         return region != -1 ? $"DISRUPT {region};" : string.Empty;
     }
@@ -533,6 +538,22 @@ internal static class Logger
         {
             Console.Error.WriteLine($"{connection.Key}: {connection.Value}");
         }
+    }
+
+    internal static void RegionScores(Dictionary<int, int> regionScores)
+    {
+        if (DISABLE_LOGGING)
+        {
+            return;
+        }
+
+        Console.Error.WriteLine("REGION SCORES");
+
+        foreach (var regionScore in regionScores)
+        {
+            Console.Error.WriteLine($"{regionScore.Key}: {regionScore.Value}");
+        }
+
     }
 }
 
@@ -1035,6 +1056,48 @@ internal class RegionTracker
         }
 
         region.UpdateInstability(instability, inked);
+    }
+
+    internal int GetStrongestEnemyRegionWithActiveTracks(Dictionary<string, int> dictionary)
+    {
+        Dictionary<int, int> regionScores = new Dictionary<int, int>();
+
+        foreach (Region region in _regions)
+        {
+            if (region.IsInked || region.HasTown)
+            {
+                continue;
+            }
+
+            int regionScore = 0;
+
+            HashSet<string> regionConnections = region.GetActiveConnections();
+
+            foreach (string connection in regionConnections)
+            {
+                if (dictionary.TryGetValue(connection, out int score))
+                {
+                    regionScore += score;
+                }
+            }
+
+            regionScores.Add(region.Id, regionScore);
+        }
+
+        regionScores = regionScores.OrderByDescending(kv => kv.Value).ToDictionary(kv => kv.Key, kv => kv.Value);
+
+        // TODO: Something about sticking with a region if we've started destabilising it already
+
+        // Logger.RegionScores(regionScores);
+
+        if (regionScores.Count > 0 && regionScores.First().Key > 0)
+        {
+            return regionScores.First().Key;
+        }
+        else
+        {
+            return -1;
+        }
     }
 
     // First pass at getting a disrupt action

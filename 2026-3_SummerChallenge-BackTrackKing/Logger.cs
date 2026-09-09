@@ -110,4 +110,20 @@ internal static class Logger
             Console.Error.WriteLine($"{connection.Key}: {connection.Value}");
         }
     }
+
+    internal static void RegionScores(Dictionary<int, int> regionScores)
+    {
+        if (DISABLE_LOGGING)
+        {
+            return;
+        }
+
+        Console.Error.WriteLine("REGION SCORES");
+
+        foreach (var regionScore in regionScores)
+        {
+            Console.Error.WriteLine($"{regionScore.Key}: {regionScore.Value}");
+        }
+
+    }
 }

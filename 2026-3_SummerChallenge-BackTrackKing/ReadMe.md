@@ -4,8 +4,7 @@
 
 ## Improvements
 
-* Prioritise disrupting regions where the player is already scoring from (use `partOfActiveConnections` in player)
-* Don't always disrupt a region opponent has more presence. Look at presence across entire route to destination
+* Secondary order regions to disrupt by number of tracks opponent has. Lets make him work harder to re-establish a connection
 
 # Progress
 

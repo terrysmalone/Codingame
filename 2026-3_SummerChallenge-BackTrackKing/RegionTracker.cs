@@ -119,6 +119,48 @@ internal class RegionTracker
         region.UpdateInstability(instability, inked);
     }
 
+    internal int GetStrongestEnemyRegionWithActiveTracks(Dictionary<string, int> dictionary)
+    {
+        Dictionary<int, int> regionScores = new Dictionary<int, int>();
+
+        foreach (Region region in _regions)
+        {
+            if (region.IsInked || region.HasTown)
+            {
+                continue;
+            }
+
+            int regionScore = 0;
+
+            HashSet<string> regionConnections = region.GetActiveConnections();
+
+            foreach (string connection in regionConnections)
+            {
+                if (dictionary.TryGetValue(connection, out int score))
+                {
+                    regionScore += score;
+                }
+            }
+
+            regionScores.Add(region.Id, regionScore);
+        }
+
+        regionScores = regionScores.OrderByDescending(kv => kv.Value).ToDictionary(kv => kv.Key, kv => kv.Value);
+
+        // TODO: Something about sticking with a region if we've started destabilising it already
+
+        // Logger.RegionScores(regionScores);
+
+        if (regionScores.Count > 0 && regionScores.First().Key > 0)
+        {
+            return regionScores.First().Key;
+        }
+        else
+        {
+            return -1;
+        }
+    }
+
     // First pass at getting a disrupt action
     // For every region calculate enemyTracks - myTracks, Choose the region with the highest
     // score

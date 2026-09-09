@@ -47,6 +47,11 @@ internal static class Logger
         }
     }
 
+    internal static void DesirePath(DesirePath desirePath)
+    {
+        Console.Error.WriteLine($"{desirePath.FullPath[0].X},{desirePath.FullPath[0].Y} -> {desirePath.FullPath[desirePath.FullPathCount - 1].X},{desirePath.FullPath[desirePath.FullPathCount - 1].Y} - Path:{desirePath.RemainingPathCount}/{desirePath.FullPathCount}, Action:{desirePath.RemainingActionCount}/{desirePath.FullActionCount}");
+    }
+
     internal static void TypeMap(Map map)
     {
         if (DISABLE_LOGGING)

@@ -185,6 +185,9 @@ public class Game
                 };
 
                 desirePaths.Add(desirePath);
+
+                //Logger.Message($"Found path from {town.Id} to {desiredConnection}");
+                //Logger.DesirePath(desirePath);
             }
         }
 

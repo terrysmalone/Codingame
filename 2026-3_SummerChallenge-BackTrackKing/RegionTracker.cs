@@ -150,7 +150,7 @@ internal class RegionTracker
         _activeRegionScores = _activeRegionScores.OrderByDescending(kv => kv.Value).ToDictionary(kv => kv.Key, kv => kv.Value);
 
 
-        if (_activeRegionScores.Count > 0 && _activeRegionScores.First().Key > 0)
+        if (_activeRegionScores.Count > 0 && _activeRegionScores.First().Value > 0)
         {
             // Logger.RegionScores(_activeRegionScores);
 

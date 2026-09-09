@@ -300,6 +300,9 @@ public class Game
                 };
 
                 desirePaths.Add(desirePath);
+
+                //Logger.Message($"Found path from {town.Id} to {desiredConnection}");
+                //Logger.DesirePath(desirePath);
             }
         }
 
@@ -479,6 +482,11 @@ internal static class Logger
         {
             Console.Error.WriteLine($"{desirePath.FullPath[0].X},{desirePath.FullPath[0].Y} -> {desirePath.FullPath[desirePath.FullPathCount-1].X},{desirePath.FullPath[desirePath.FullPathCount - 1].Y} - Path:{desirePath.RemainingPathCount}/{desirePath.FullPathCount}, Action:{desirePath.RemainingActionCount}/{desirePath.FullActionCount}");
         }
+    }
+
+    internal static void DesirePath(DesirePath desirePath)
+    {
+        Console.Error.WriteLine($"{desirePath.FullPath[0].X},{desirePath.FullPath[0].Y} -> {desirePath.FullPath[desirePath.FullPathCount - 1].X},{desirePath.FullPath[desirePath.FullPathCount - 1].Y} - Path:{desirePath.RemainingPathCount}/{desirePath.FullPathCount}, Action:{desirePath.RemainingActionCount}/{desirePath.FullActionCount}");
     }
 
     internal static void TypeMap(Map map)
@@ -1094,7 +1102,7 @@ internal class RegionTracker
         _activeRegionScores = _activeRegionScores.OrderByDescending(kv => kv.Value).ToDictionary(kv => kv.Key, kv => kv.Value);
 
 
-        if (_activeRegionScores.Count > 0 && _activeRegionScores.First().Key > 0)
+        if (_activeRegionScores.Count > 0 && _activeRegionScores.First().Value > 0)
         {
             // Logger.RegionScores(_activeRegionScores);
 

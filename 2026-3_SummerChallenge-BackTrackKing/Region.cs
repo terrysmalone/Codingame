@@ -20,8 +20,7 @@ internal class Region
     private HashSet<Point> _opponentTracks;
     private HashSet<Point> _jointTracks;
 
-    private int _myConnectionCount = 0;
-    private int _opponentConnectionCount = 0;
+    private HashSet<string> _activeConnections = new HashSet<string>();
 
     public Region(int id)
     {
@@ -92,24 +91,26 @@ internal class Region
         return _myTracks.Count;
     }
 
-    internal void AddToMyConnectionCount(int partOfConnectionCount)
+    internal void AddActiveConnections(string[]? connections)
     {
-        _myConnectionCount += partOfConnectionCount;
-    }
+        if (connections == null)
+        {
+            return;
+        }
 
-    internal void AddToOpponentConnectionCount(int partOfConnectionCount)
-    {
-        _opponentConnectionCount += partOfConnectionCount;
-    }
-
-    internal int GetActiveConnectionScore()
-    {
-        return _opponentConnectionCount - _myConnectionCount;
+        foreach (var connection in connections)
+        {
+            _activeConnections.Add(connection);
+        }
     }
 
     internal void ResetCounts()
     {
-        _myConnectionCount = 0;
-        _opponentConnectionCount = 0;
+        _activeConnections.Clear();
+    }
+
+    internal HashSet<string> GetActiveConnections()
+    {
+        return _activeConnections;
     }
 }

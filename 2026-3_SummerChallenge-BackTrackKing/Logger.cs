@@ -92,7 +92,7 @@ internal static class Logger
 
         foreach (var region in regions)
         {
-            Console.Error.WriteLine($"{region.Id}: {region.GetActiveConnectionScore()}");
+            Console.Error.WriteLine($"{region.Id}: Connections: {string.Join(",", region.GetActiveConnections())}, Instability: {region.Instability}, Inked: {region.IsInked}, HasTown: {region.HasTown}, MyTracks: {region.GetMyTracks()}, EnemyTracks: {region.GetEnemyTracks()}");
         }
     }
 }

@@ -60,7 +60,7 @@ internal class RegionTracker
         return region.Id;
     }
 
-    internal void AddTrack(int regionId, int x, int y, int tracksOwner, int partOfConnectionCount)
+    internal void AddTrack(int regionId, int x, int y, int tracksOwner, string[]? connections)
     {
         Region? region = _regions.SingleOrDefault(r => r.GetCells().Contains(new Point(x, y)));
 
@@ -75,6 +75,8 @@ internal class RegionTracker
             return;
         }
 
+        region.AddActiveConnections(connections);
+
         if (tracksOwner == 2)
         {
             region.AddJointTrack(x, y);
@@ -86,12 +88,10 @@ internal class RegionTracker
             if (tracksOwner == 0)
             {
                 region.AddMyTrack(x, y);
-                region.AddToMyConnectionCount(partOfConnectionCount);
             }
             else if (tracksOwner == 1)
             {
                 region.AddOpponentTrack(x, y);
-                region.AddToOpponentConnectionCount(partOfConnectionCount);
             }
         }
         else
@@ -175,10 +175,5 @@ internal class RegionTracker
     internal void LogRegions()
     {
         Logger.Regions(_regions);
-    }
-
-    internal void SortByConnectionScore()
-    {
-        _regions = _regions.OrderByDescending(r => r.GetActiveConnectionScore()).ToList();
     }
 }

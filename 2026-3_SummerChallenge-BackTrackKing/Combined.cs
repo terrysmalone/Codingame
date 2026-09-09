@@ -58,6 +58,21 @@ internal enum CellType
     POI = 3
 }
 
+internal class ConnectionTracker
+{
+    private Dictionary <string, int> _connections;
+
+    internal ConnectionTracker()
+    {
+        _connections = new Dictionary<string, int>();
+    }
+
+    internal void ClearConnections()
+    {
+        _connections.Clear();
+    }
+}
+
 internal class DesirePath
 { 
     internal List<Point> FullPath { get; private set; }
@@ -94,6 +109,7 @@ public class Game
 
     private PathFinder _pathFinder;
     private RegionTracker _regionTracker;
+    private ConnectionTracker _connectionTracker;
 
     public Game(int myId)
     {
@@ -102,6 +118,7 @@ public class Game
         _towns = new List<Town>();
 
         _regionTracker = new RegionTracker(_myId);
+        _connectionTracker = new ConnectionTracker();
     }
 
     internal void SetMap(Map map)
@@ -131,7 +148,6 @@ public class Game
         List<DesirePath> desirePaths = CalculateDesirePaths();
 
         // Logger.DesirePaths(desirePaths);
-        _regionTracker.SortByConnectionScore();
         _regionTracker.LogRegions();
 
         var actions = CalculateActions(desirePaths);
@@ -351,7 +367,7 @@ public class Game
         return true;
     }
 
-    internal void UpdateCell(int x, int y, int tracksOwner, int instability, bool inked, int partOfConnectionCount)
+    internal void UpdateCell(int x, int y, int tracksOwner, int instability, bool inked, string[]? connections)
     {
         _map.SetTrack(x, y, tracksOwner);
 
@@ -361,7 +377,7 @@ public class Game
 
         if (tracksOwner != -1)
         {
-            _regionTracker.AddTrack(regionId, x, y, tracksOwner, partOfConnectionCount);
+            _regionTracker.AddTrack(regionId, x, y, tracksOwner, connections);
         }
     }
 
@@ -378,6 +394,7 @@ public class Game
     internal void ResetRegions()
     {
         _regionTracker.ResetRegions();
+        _connectionTracker.ClearConnections();
     }
 }
 
@@ -470,7 +487,7 @@ internal static class Logger
 
         foreach (var region in regions)
         {
-            Console.Error.WriteLine($"{region.Id}: {region.GetActiveConnectionScore()}");
+            Console.Error.WriteLine($"{region.Id}: Connections: {string.Join(",", region.GetActiveConnections())}, Instability: {region.Instability}, Inked: {region.IsInked}, HasTown: {region.HasTown}, MyTracks: {region.GetMyTracks()}, EnemyTracks: {region.GetEnemyTracks()}");
         }
     }
 }
@@ -670,21 +687,24 @@ class Player
 
                     string partOfActiveConnections = inputs[3]; // if this cell is part of one or more railway connections, this will be town ids (separated by -) in a list separated by commas. e.g. 0-1,1-2,1-3. "x" otherwise.
 
-                    int partOfConnectionCount = 0;
+                    string[]? connections = null;
+
                     if (partOfActiveConnections != "x")
                     {
-                        var connections = partOfActiveConnections.Split(',');
-                        foreach (var connection in connections)
-                        {
+                        connections = partOfActiveConnections.Split(',');
+                        //foreach (var connection in connections)
+                        //{
                             // var towns = connection.Split('-');
                             // int townAId = int.Parse(towns[0]);
                             // int townBId = int.Parse(towns[1]);
-                            partOfConnectionCount++;
-                        }
+
+                        //    connectionCounts.Add
+
+                        //}
                     }
 
 
-                    game.UpdateCell(j, i, tracksOwner, instability, inked, partOfConnectionCount);
+                    game.UpdateCell(j, i, tracksOwner, instability, inked, connections);
                 }
             }
 
@@ -764,8 +784,7 @@ internal class Region
     private HashSet<Point> _opponentTracks;
     private HashSet<Point> _jointTracks;
 
-    private int _myConnectionCount = 0;
-    private int _opponentConnectionCount = 0;
+    private HashSet<string> _activeConnections = new HashSet<string>();
 
     public Region(int id)
     {
@@ -836,25 +855,27 @@ internal class Region
         return _myTracks.Count;
     }
 
-    internal void AddToMyConnectionCount(int partOfConnectionCount)
+    internal void AddActiveConnections(string[]? connections)
     {
-        _myConnectionCount += partOfConnectionCount;
-    }
+        if (connections == null)
+        {
+            return;
+        }
 
-    internal void AddToOpponentConnectionCount(int partOfConnectionCount)
-    {
-        _opponentConnectionCount += partOfConnectionCount;
-    }
-
-    internal int GetActiveConnectionScore()
-    {
-        return _opponentConnectionCount - _myConnectionCount;
+        foreach (var connection in connections)
+        {
+            _activeConnections.Add(connection);
+        }
     }
 
     internal void ResetCounts()
     {
-        _myConnectionCount = 0;
-        _opponentConnectionCount = 0;
+        _activeConnections.Clear();
+    }
+
+    internal HashSet<string> GetActiveConnections()
+    {
+        return _activeConnections;
     }
 }
 
@@ -913,7 +934,7 @@ internal class RegionTracker
         return region.Id;
     }
 
-    internal void AddTrack(int regionId, int x, int y, int tracksOwner, int partOfConnectionCount)
+    internal void AddTrack(int regionId, int x, int y, int tracksOwner, string[]? connections)
     {
         Region? region = _regions.SingleOrDefault(r => r.GetCells().Contains(new Point(x, y)));
 
@@ -928,6 +949,8 @@ internal class RegionTracker
             return;
         }
 
+        region.AddActiveConnections(connections);
+
         if (tracksOwner == 2)
         {
             region.AddJointTrack(x, y);
@@ -939,12 +962,10 @@ internal class RegionTracker
             if (tracksOwner == 0)
             {
                 region.AddMyTrack(x, y);
-                region.AddToMyConnectionCount(partOfConnectionCount);
             }
             else if (tracksOwner == 1)
             {
                 region.AddOpponentTrack(x, y);
-                region.AddToOpponentConnectionCount(partOfConnectionCount);
             }
         }
         else
@@ -1029,12 +1050,8 @@ internal class RegionTracker
     {
         Logger.Regions(_regions);
     }
-
-    internal void SortByConnectionScore()
-    {
-        _regions = _regions.OrderByDescending(r => r.GetActiveConnectionScore()).ToList();
-    }
 }
+
 
 internal class Town
 {

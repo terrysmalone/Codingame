@@ -52,21 +52,24 @@ class Player
 
                     string partOfActiveConnections = inputs[3]; // if this cell is part of one or more railway connections, this will be town ids (separated by -) in a list separated by commas. e.g. 0-1,1-2,1-3. "x" otherwise.
 
-                    int partOfConnectionCount = 0;
+                    string[]? connections = null;
+
                     if (partOfActiveConnections != "x")
                     {
-                        var connections = partOfActiveConnections.Split(',');
-                        foreach (var connection in connections)
-                        {
+                        connections = partOfActiveConnections.Split(',');
+                        //foreach (var connection in connections)
+                        //{
                             // var towns = connection.Split('-');
                             // int townAId = int.Parse(towns[0]);
                             // int townBId = int.Parse(towns[1]);
-                            partOfConnectionCount++;
-                        }
+
+                        //    connectionCounts.Add
+
+                        //}
                     }
 
 
-                    game.UpdateCell(j, i, tracksOwner, instability, inked, partOfConnectionCount);
+                    game.UpdateCell(j, i, tracksOwner, instability, inked, connections);
                 }
             }
 

@@ -20,6 +20,7 @@ public class Game
 
     private PathFinder _pathFinder;
     private RegionTracker _regionTracker;
+    private ConnectionTracker _connectionTracker;
 
     public Game(int myId)
     {
@@ -28,6 +29,7 @@ public class Game
         _towns = new List<Town>();
 
         _regionTracker = new RegionTracker(_myId);
+        _connectionTracker = new ConnectionTracker();
     }
 
     internal void SetMap(Map map)
@@ -57,7 +59,6 @@ public class Game
         List<DesirePath> desirePaths = CalculateDesirePaths();
 
         // Logger.DesirePaths(desirePaths);
-        _regionTracker.SortByConnectionScore();
         _regionTracker.LogRegions();
 
         var actions = CalculateActions(desirePaths);
@@ -277,7 +278,7 @@ public class Game
         return true;
     }
 
-    internal void UpdateCell(int x, int y, int tracksOwner, int instability, bool inked, int partOfConnectionCount)
+    internal void UpdateCell(int x, int y, int tracksOwner, int instability, bool inked, string[]? connections)
     {
         _map.SetTrack(x, y, tracksOwner);
 
@@ -287,7 +288,7 @@ public class Game
 
         if (tracksOwner != -1)
         {
-            _regionTracker.AddTrack(regionId, x, y, tracksOwner, partOfConnectionCount);
+            _regionTracker.AddTrack(regionId, x, y, tracksOwner, connections);
         }
     }
 
@@ -304,5 +305,6 @@ public class Game
     internal void ResetRegions()
     {
         _regionTracker.ResetRegions();
+        _connectionTracker.ClearConnections();
     }
 }

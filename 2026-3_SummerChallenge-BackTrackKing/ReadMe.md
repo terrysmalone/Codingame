@@ -2,6 +2,8 @@
 
 ## Bugs
 
+* Scores should be the same no matter what side I am. Verify.
+
 ## Improvements
 
 * Secondary order regions to disrupt by number of tracks opponent has. Lets make him work harder to re-establish a connection
@@ -25,10 +27,7 @@ bfba5ccdb1cbd010a43fd7c17db200300a088ac5
 	Submitted: 2026-09-08 11:02pm
 	Rank: 145
 
-
-
-
-seed=3057042493508682000 - Score 2788 -	1425	
+	
 
 
 

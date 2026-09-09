@@ -10,6 +10,8 @@ internal class RegionTracker
     private int _myId;
     private List<Region> _regions;
 
+    private Dictionary<int, int> _activeRegionScores;
+
     public RegionTracker(int myId)
     {
         _myId = myId;
@@ -121,7 +123,7 @@ internal class RegionTracker
 
     internal int GetStrongestEnemyRegionWithActiveTracks(Dictionary<string, int> dictionary)
     {
-        Dictionary<int, int> regionScores = new Dictionary<int, int>();
+        _activeRegionScores = new Dictionary<int, int>();
 
         foreach (Region region in _regions)
         {
@@ -142,18 +144,44 @@ internal class RegionTracker
                 }
             }
 
-            regionScores.Add(region.Id, regionScore);
+            _activeRegionScores.Add(region.Id, regionScore);
         }
 
-        regionScores = regionScores.OrderByDescending(kv => kv.Value).ToDictionary(kv => kv.Key, kv => kv.Value);
+        _activeRegionScores = _activeRegionScores.OrderByDescending(kv => kv.Value).ToDictionary(kv => kv.Key, kv => kv.Value);
 
-        // TODO: Something about sticking with a region if we've started destabilising it already
 
-        // Logger.RegionScores(regionScores);
-
-        if (regionScores.Count > 0 && regionScores.First().Key > 0)
+        if (_activeRegionScores.Count > 0 && _activeRegionScores.First().Key > 0)
         {
-            return regionScores.First().Key;
+            // TODO: Something about sticking with a region if we've started destabilising it already
+            // Check all regions with the same high score. Pick the one with the highest instability
+            int highScore = _activeRegionScores.First().Key;
+
+            int highestInstability = int.MinValue;
+            int highestInstabilityRegionId = -1;
+
+            foreach (var regionScore in _activeRegionScores)
+            {
+                if (regionScore.Value == highScore)
+                {
+                    Region? region = _regions.SingleOrDefault(r => r.Id == regionScore.Key);
+                    
+                    if (region != null && region.Instability > highestInstability)
+                    {
+                        Logger.Message($"Checking region score for {region.Id} - {region.Instability}");
+                        highestInstability = region.Instability;
+                        highestInstabilityRegionId = region.Id;
+                    }
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            // Logger.RegionScores(_activeRegionScores);
+
+
+            return highestInstabilityRegionId;
         }
         else
         {
@@ -170,9 +198,16 @@ internal class RegionTracker
         int strongestEnemyRegion = int.MinValue;
         int strongerstEnemyRegionId = -1;
 
-        foreach (Region region in _regions) 
+        foreach (Region region in _regions)
         {
             if (region.IsInked || region.HasTown)
+            {
+                continue;
+            }
+
+            // Don't check this if the region has active connections in my favour
+            int activeRegionScore = _activeRegionScores[region.Id];
+            if(activeRegionScore < 0)
             {
                 continue;
             }

@@ -95,4 +95,19 @@ internal static class Logger
             Console.Error.WriteLine($"{region.Id}: Connections: {string.Join(",", region.GetActiveConnections())}, Instability: {region.Instability}, Inked: {region.IsInked}, HasTown: {region.HasTown}, MyTracks: {region.GetMyTracks()}, EnemyTracks: {region.GetEnemyTracks()}");
         }
     }
+
+    internal static void Connections(Dictionary<string, int> connections)
+    {
+        if (DISABLE_LOGGING)
+        {
+            return;
+        }
+
+        Console.Error.WriteLine("CONNECTIONS");
+
+        foreach (var connection in connections)
+        {
+            Console.Error.WriteLine($"{connection.Key}: {connection.Value}");
+        }
+    }
 }

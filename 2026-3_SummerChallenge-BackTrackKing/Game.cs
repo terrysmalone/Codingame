@@ -59,11 +59,12 @@ public class Game
         List<DesirePath> desirePaths = CalculateDesirePaths();
 
         // Logger.DesirePaths(desirePaths);
-        _regionTracker.LogRegions();
+        // _regionTracker.LogRegions();
+        // _connectionTracker.LogConnections();
 
-        var actions = CalculateActions(desirePaths);
+        var actions = CalculatePaintActions(desirePaths);
 
-        actions += GetDisruptAction();
+        actions += CalculateDisruptAction();
 
         if (string.IsNullOrEmpty(actions))
         {
@@ -73,7 +74,7 @@ public class Game
         return actions;
     }
 
-    private string CalculateActions(List<DesirePath> desirePaths)
+    private string CalculatePaintActions(List<DesirePath> desirePaths)
     {
         string actions = string.Empty;
 
@@ -243,7 +244,7 @@ public class Game
         return actionCount;
     }
 
-    private string GetDisruptAction()
+    private string CalculateDisruptAction()
     {
         // PLAN
         // Priorities
@@ -289,6 +290,13 @@ public class Game
         if (tracksOwner != -1)
         {
             _regionTracker.AddTrack(regionId, x, y, tracksOwner, connections);
+
+            if (tracksOwner != 2)
+            {
+                bool myTrack = tracksOwner == _myId;
+                
+                _connectionTracker.UpdateConnections(connections, myTrack);
+            }
         }
     }
 

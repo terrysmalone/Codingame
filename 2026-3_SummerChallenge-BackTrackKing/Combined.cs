@@ -60,16 +60,37 @@ internal enum CellType
 
 internal class ConnectionTracker
 {
-    private Dictionary <string, int> _connections;
+    // Connection to score map. Score is enemy tracks-mytracks.
+    private Dictionary <string, int> _connectionScores;
 
     internal ConnectionTracker()
     {
-        _connections = new Dictionary<string, int>();
+        _connectionScores = new Dictionary<string, int>();
     }
 
     internal void ClearConnections()
     {
-        _connections.Clear();
+        _connectionScores.Clear();
+    }
+
+    internal void UpdateConnections(string[]? connections, bool myTrack)
+    {
+        if (connections == null)
+        {
+            return;
+        }
+
+        int addScore = myTrack ? -1 : 1;
+
+        foreach (string connection in connections)
+        {
+            _connectionScores[connection] = _connectionScores.GetValueOrDefault(connection) + addScore;
+        }
+    }
+
+    internal void LogConnections()
+    {
+        Logger.Connections(_connectionScores);
     }
 }
 
@@ -148,11 +169,12 @@ public class Game
         List<DesirePath> desirePaths = CalculateDesirePaths();
 
         // Logger.DesirePaths(desirePaths);
-        _regionTracker.LogRegions();
+        //_regionTracker.LogRegions();
+        _connectionTracker.LogConnections();
 
-        var actions = CalculateActions(desirePaths);
+        var actions = CalculatePaintActions(desirePaths);
 
-        actions += GetDisruptAction();
+        actions += CalculateDisruptAction();
 
         if (string.IsNullOrEmpty(actions))
         {
@@ -162,7 +184,7 @@ public class Game
         return actions;
     }
 
-    private string CalculateActions(List<DesirePath> desirePaths)
+    private string CalculatePaintActions(List<DesirePath> desirePaths)
     {
         string actions = string.Empty;
 
@@ -332,7 +354,7 @@ public class Game
         return actionCount;
     }
 
-    private string GetDisruptAction()
+    private string CalculateDisruptAction()
     {
         // PLAN
         // Priorities
@@ -378,6 +400,13 @@ public class Game
         if (tracksOwner != -1)
         {
             _regionTracker.AddTrack(regionId, x, y, tracksOwner, connections);
+
+            if (tracksOwner != 2)
+            {
+                bool myTrack = tracksOwner == _myId;
+                
+                _connectionTracker.UpdateConnections(connections, myTrack);
+            }
         }
     }
 
@@ -488,6 +517,21 @@ internal static class Logger
         foreach (var region in regions)
         {
             Console.Error.WriteLine($"{region.Id}: Connections: {string.Join(",", region.GetActiveConnections())}, Instability: {region.Instability}, Inked: {region.IsInked}, HasTown: {region.HasTown}, MyTracks: {region.GetMyTracks()}, EnemyTracks: {region.GetEnemyTracks()}");
+        }
+    }
+
+    internal static void Connections(Dictionary<string, int> connections)
+    {
+        if (DISABLE_LOGGING)
+        {
+            return;
+        }
+
+        Console.Error.WriteLine("CONNECTIONS");
+
+        foreach (var connection in connections)
+        {
+            Console.Error.WriteLine($"{connection.Key}: {connection.Value}");
         }
     }
 }

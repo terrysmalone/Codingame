@@ -76,6 +76,8 @@ public class Game
 
     private string CalculatePaintActions(List<DesirePath> desirePaths)
     {
+        List<Point> paintedPoints = new List<Point>();
+
         string actions = string.Empty;
 
         int actionPoints = 3;
@@ -104,13 +106,16 @@ public class Game
 
             foreach ((Point, CellType) pair in orderedCellTypes)
             {
-                if ((int)pair.Item2 + 1 <= actionPoints)
+                Point cellPoint = pair.Item1;
+
+                // Don't count it if we've already painted it this turn
+                if ((int)pair.Item2 + 1 <= actionPoints && !paintedPoints.Contains(cellPoint))
                 {
-                    Point cellPoint = pair.Item1;
                     int cellValue = (int)pair.Item2 + 1;
                     
                     actions += $"PLACE_TRACKS {cellPoint.X} {cellPoint.Y};";
                     actionPoints -= cellValue;
+                    paintedPoints.Add(cellPoint);
                 }
                 else
                 {

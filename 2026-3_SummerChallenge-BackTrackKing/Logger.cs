@@ -80,4 +80,19 @@ internal static class Logger
                     return " ";
         }
     }
+
+    internal static void Regions(List<Region> regions)
+    {
+        if (DISABLE_LOGGING)
+        {
+            return;
+        }
+
+        Console.Error.WriteLine("REGIONS");
+
+        foreach (var region in regions)
+        {
+            Console.Error.WriteLine($"{region.Id}: {region.GetActiveConnectionScore()}");
+        }
+    }
 }

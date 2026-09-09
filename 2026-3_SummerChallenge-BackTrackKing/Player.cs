@@ -37,6 +37,8 @@ class Player
             game.SetMyScore(myScore);
             game.SetOpponentScore(foeScore);
 
+            game.ResetRegions();
+
             for (int i = 0; i < height; i++)
             {
                 for (int j = 0; j < width; j++)
@@ -48,9 +50,23 @@ class Player
                     int instability = int.Parse(inputs[1]); // region inked (destroyed) when this >= 3.
                     bool inked = inputs[2] != "0"; // true if region is destroyed.
 
-                    game.UpdateCell(j, i, tracksOwner, instability, inked);
-
                     string partOfActiveConnections = inputs[3]; // if this cell is part of one or more railway connections, this will be town ids (separated by -) in a list separated by commas. e.g. 0-1,1-2,1-3. "x" otherwise.
+
+                    int partOfConnectionCount = 0;
+                    if (partOfActiveConnections != "x")
+                    {
+                        var connections = partOfActiveConnections.Split(',');
+                        foreach (var connection in connections)
+                        {
+                            // var towns = connection.Split('-');
+                            // int townAId = int.Parse(towns[0]);
+                            // int townBId = int.Parse(towns[1]);
+                            partOfConnectionCount++;
+                        }
+                    }
+
+
+                    game.UpdateCell(j, i, tracksOwner, instability, inked, partOfConnectionCount);
                 }
             }
 

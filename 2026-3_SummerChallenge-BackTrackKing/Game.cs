@@ -57,6 +57,8 @@ public class Game
         List<DesirePath> desirePaths = CalculateDesirePaths();
 
         // Logger.DesirePaths(desirePaths);
+        _regionTracker.SortByConnectionScore();
+        _regionTracker.LogRegions();
 
         var actions = CalculateActions(desirePaths);
 
@@ -242,6 +244,21 @@ public class Game
 
     private string GetDisruptAction()
     {
+        // PLAN
+        // Priorities
+        // 1. Target regions that contain completed tracks generating the enemy the most points
+        // 2. Target regions that contain the most partially completed tracks that belong to the enemy
+        // 3. Target the region with the highest ratio of enemy tracks to my tracks
+        // NOTE: In most cases if we've started to disrupt a region then finish. Only point 1 should override that. 
+        //       We want to always prioritise stopping the opponent from scoring
+
+        // PREREQUISITES
+        // At the start of every round give every region a score for:
+        // * currently completed tracks (enemy parts - mine)
+        // * Partial tracks (enemy parts - mine)
+        // * Ratio of enemy tracks to my tracks (enemy parts - mine) (This is already mostly done by GetStrongestEnemyRegion()
+
+
         int region = _regionTracker.GetStrongestEnemyRegion();
 
         return region != -1 ? $"DISRUPT {region};" : string.Empty;
@@ -260,7 +277,7 @@ public class Game
         return true;
     }
 
-    internal void UpdateCell(int x, int y, int tracksOwner, int instability, bool inked)
+    internal void UpdateCell(int x, int y, int tracksOwner, int instability, bool inked, int partOfConnectionCount)
     {
         _map.SetTrack(x, y, tracksOwner);
 
@@ -270,7 +287,7 @@ public class Game
 
         if (tracksOwner != -1)
         {
-            _regionTracker.AddTrack(regionId, x, y, tracksOwner);
+            _regionTracker.AddTrack(regionId, x, y, tracksOwner, partOfConnectionCount);
         }
     }
 
@@ -282,5 +299,10 @@ public class Game
     internal void AddTownToRegion(int townId, int townX, int townY)
     {
         _regionTracker.AddTown(townId, townX, townY);
+    }
+
+    internal void ResetRegions()
+    {
+        _regionTracker.ResetRegions();
     }
 }

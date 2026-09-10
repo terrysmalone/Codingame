@@ -1221,7 +1221,7 @@ internal class RegionTracker
             int highScore = _activeRegionScores.First().Value;
 
             int highestInstability = int.MinValue;
-            int highestInstabilityRegionId = -1;
+            List<int> highestInstabilityRegionIds = new List<int>();
 
             foreach (var regionScore in _activeRegionScores)
             {
@@ -1232,7 +1232,12 @@ internal class RegionTracker
                     if (region != null && region.Instability > highestInstability)
                     {
                         highestInstability = region.Instability;
-                        highestInstabilityRegionId = region.Id;
+                        highestInstabilityRegionIds.Clear();
+                        highestInstabilityRegionIds.Add(region.Id);
+                    }
+                    else if (region != null && region.Instability == highestInstability)
+                    {
+                        highestInstabilityRegionIds.Add(region.Id);
                     }
                 }
                 else
@@ -1241,7 +1246,33 @@ internal class RegionTracker
                 }
             }
 
-            return highestInstabilityRegionId;
+            if (highestInstabilityRegionIds.Count == 1)
+            {
+                return highestInstabilityRegionIds.First();
+            }
+            else
+            {
+                // If there are multiple regions with the same high score and instability, choose the one with the most enemy tracks on it
+                int mostEnemyTracks = int.MinValue;
+                int mostEnemyTracksRegionId = -1;
+
+                foreach (int regionId in highestInstabilityRegionIds)
+                {
+                    Region? region = _regions.SingleOrDefault(r => r.Id == regionId);
+
+                    if (region != null)
+                    {
+                        int enemyTracks = region.GetEnemyTracks();
+                        if (enemyTracks > mostEnemyTracks)
+                        {
+                            mostEnemyTracks = enemyTracks;
+                            mostEnemyTracksRegionId = region.Id;
+                        }
+                    }
+                }
+
+                return mostEnemyTracksRegionId;
+            }
         }
         else
         {

@@ -131,4 +131,18 @@ internal static class Logger
         }
 
     }
+
+    internal static void ConnectionScoresMap(int[,] connectionScoresMap)
+    {
+        Console.Error.WriteLine("CONNECTION SCORES MAP");
+
+        for (int y = 0; y < connectionScoresMap.GetLength(1); y++)
+        {
+            for (int x = 0; x < connectionScoresMap.GetLength(0); x++)
+            {
+                Console.Error.Write($"{connectionScoresMap[x, y]} ");
+            }
+            Console.Error.WriteLine();
+        }
+    }
 }

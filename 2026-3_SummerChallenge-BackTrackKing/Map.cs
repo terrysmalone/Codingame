@@ -11,6 +11,11 @@ internal class Map {
 
     private int[,] _trackOwner;
 
+    private bool[,] _isWalkable;
+    private bool[,] _hasTrack;
+    private int[,] cellCost;
+
+
 
     internal Map(int width, int height)
     {

@@ -60,20 +60,29 @@ internal enum CellType
 
 internal class ConnectionTracker
 {
+    private int _width, _height;
     // Connection to score map. Score is enemy tracks-mytracks.
     private Dictionary <string, int> _connectionScores;
 
-    internal ConnectionTracker()
+    // NOTE: This isn't currently used, but calculated each turn
+    private int[,] _connectionScoresMap;
+
+    internal ConnectionTracker(int width, int height)
     {
+        _width = width;
+        _height = height;
+
         _connectionScores = new Dictionary<string, int>();
+        _connectionScoresMap = new int[width, height];
     }
 
     internal void ClearConnections()
     {
         _connectionScores.Clear();
+        _connectionScoresMap = new int[_width, _height];
     }
 
-    internal void UpdateConnections(string[]? connections, bool myTrack)
+    internal void UpdateConnections(string[]? connections, int x, int y, bool myTrack)
     {
         if (connections == null)
         {
@@ -85,6 +94,7 @@ internal class ConnectionTracker
         foreach (string connection in connections)
         {
             _connectionScores[connection] = _connectionScores.GetValueOrDefault(connection) + addScore;
+            _connectionScoresMap[x, y] += addScore;
         }
     }
 
@@ -96,6 +106,11 @@ internal class ConnectionTracker
     internal Dictionary<string, int> GetConnectionScores()
     {
         return _connectionScores;
+    }
+
+    internal int[,] GetConnectionScoresMap()
+    {
+        return _connectionScoresMap;
     }
 }
 
@@ -137,14 +152,14 @@ public class Game
     private RegionTracker _regionTracker;
     private ConnectionTracker _connectionTracker;
 
-    public Game(int myId)
+    public Game(int myId, int width, int height)
     {
         _myId = myId;
 
         _towns = new List<Town>();
 
         _regionTracker = new RegionTracker(_myId);
-        _connectionTracker = new ConnectionTracker();
+        _connectionTracker = new ConnectionTracker(width, height);
     }
 
     internal void SetMap(Map map)
@@ -171,6 +186,8 @@ public class Game
 
     internal string CalculateActions()
     {
+        // Logger.ConnectionScoresMap(_connectionTracker.GetConnectionScoresMap());
+
         List<DesirePath> desirePaths = CalculateDesirePaths();
 
         // Logger.DesirePaths(desirePaths);
@@ -192,19 +209,11 @@ public class Game
     private string CalculatePaintActions(List<DesirePath> desirePaths)
     {
         List<Point> paintedPoints = new List<Point>();
+        int remainingActionPoints = 3;
 
-        string actions = string.Empty;
-
-        int actionPoints = 3;
-
+        // CHeck for desire path points (excluding anyhintg that's even a little unstable)
         foreach (var desirePath in desirePaths)
         {
-            // Get all remaining tracks to place
-            // Order by lowest first
-            // Start allocating them
-
-            // If we've use all 3, return
-
             List<(Point, CellType)> cellTypes = new List<(Point, CellType)>();
 
             foreach (var point in desirePath.RemainingPath)
@@ -224,12 +233,11 @@ public class Game
                 Point cellPoint = pair.Item1;
 
                 // Don't count it if we've already painted it this turn
-                if ((int)pair.Item2 + 1 <= actionPoints && !paintedPoints.Contains(cellPoint))
+                if ((int)pair.Item2 + 1 <= remainingActionPoints && !paintedPoints.Contains(cellPoint))
                 {
                     int cellValue = (int)pair.Item2 + 1;
-                    
-                    actions += $"PLACE_TRACKS {cellPoint.X} {cellPoint.Y};";
-                    actionPoints -= cellValue;
+
+                    remainingActionPoints -= cellValue;
                     paintedPoints.Add(cellPoint);
                 }
                 else
@@ -237,16 +245,42 @@ public class Game
                     continue;
                 }
 
-                if (actionPoints <= 0)
+                if (remainingActionPoints <= 0)
                 {
+                    string actions = GetActionsString(paintedPoints);
                     return actions;
                 }
             }
         }
 
-        if (actionPoints > 0)
+        if (remainingActionPoints > 0)
         {
-            Logger.Error($"Unspent action points: {actionPoints}");
+
+            Logger.Error($"Unspent action points: {remainingActionPoints}");
+            // Logger.Error($"Using up {remainingActionPoints} unspent action points");
+
+            // As a first pass, just pick a random empty space
+            // Get all connected tracks. Score by how many points more than opponent they give me.
+            // Order tham by best scoring for me. 
+
+
+            //while (remainingActionPoints > 0)
+            //{
+                
+            //}
+        }
+
+        return GetActionsString(paintedPoints);
+    }
+
+    private static string GetActionsString(List<Point> actionPoints)
+    {
+        // Action points to a string of actions
+        string actions = string.Empty;
+
+        foreach (var point in actionPoints)
+        {
+            actions += $"PLACE_TRACKS {point.X} {point.Y};";
         }
 
         return actions;
@@ -418,7 +452,7 @@ public class Game
             {
                 bool myTrack = tracksOwner == _myId;
                 
-                _connectionTracker.UpdateConnections(connections, myTrack);
+                _connectionTracker.UpdateConnections(connections, x, y, myTrack);
             }
         }
     }
@@ -568,6 +602,20 @@ internal static class Logger
         }
 
     }
+
+    internal static void ConnectionScoresMap(int[,] connectionScoresMap)
+    {
+        Console.Error.WriteLine("CONNECTION SCORES MAP");
+
+        for (int y = 0; y < connectionScoresMap.GetLength(1); y++)
+        {
+            for (int x = 0; x < connectionScoresMap.GetLength(0); x++)
+            {
+                Console.Error.Write($"{connectionScoresMap[x, y]} ");
+            }
+            Console.Error.WriteLine();
+        }
+    }
 }
 
 internal class Map {
@@ -578,6 +626,11 @@ internal class Map {
     internal int[,] Regions;
 
     private int[,] _trackOwner;
+
+    private bool[,] _isWalkable;
+    private bool[,] _hasTrack;
+    private int[,] cellCost;
+
 
 
     internal Map(int width, int height)
@@ -730,10 +783,10 @@ class Player
         string[] inputs;
         int myId = int.Parse(Console.ReadLine()); // 0 or 1
 
-        var game = new Game(myId);
-
         int width = int.Parse(Console.ReadLine()); // map size
         int height = int.Parse(Console.ReadLine());
+
+        var game = new Game(myId, width, height);
 
         InitialiseMap(game, width, height);
 

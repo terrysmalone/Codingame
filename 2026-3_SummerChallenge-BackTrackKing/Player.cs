@@ -17,10 +17,10 @@ class Player
         string[] inputs;
         int myId = int.Parse(Console.ReadLine()); // 0 or 1
 
-        var game = new Game(myId);
-
         int width = int.Parse(Console.ReadLine()); // map size
         int height = int.Parse(Console.ReadLine());
+
+        var game = new Game(myId, width, height);
 
         InitialiseMap(game, width, height);
 

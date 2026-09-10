@@ -22,14 +22,14 @@ public class Game
     private RegionTracker _regionTracker;
     private ConnectionTracker _connectionTracker;
 
-    public Game(int myId)
+    public Game(int myId, int width, int height)
     {
         _myId = myId;
 
         _towns = new List<Town>();
 
         _regionTracker = new RegionTracker(_myId);
-        _connectionTracker = new ConnectionTracker();
+        _connectionTracker = new ConnectionTracker(width, height);
     }
 
     internal void SetMap(Map map)
@@ -56,6 +56,8 @@ public class Game
 
     internal string CalculateActions()
     {
+        // Logger.ConnectionScoresMap(_connectionTracker.GetConnectionScoresMap());
+
         List<DesirePath> desirePaths = CalculateDesirePaths();
 
         // Logger.DesirePaths(desirePaths);
@@ -77,19 +79,11 @@ public class Game
     private string CalculatePaintActions(List<DesirePath> desirePaths)
     {
         List<Point> paintedPoints = new List<Point>();
+        int remainingActionPoints = 3;
 
-        string actions = string.Empty;
-
-        int actionPoints = 3;
-
+        // CHeck for desire path points (excluding anyhintg that's even a little unstable)
         foreach (var desirePath in desirePaths)
         {
-            // Get all remaining tracks to place
-            // Order by lowest first
-            // Start allocating them
-
-            // If we've use all 3, return
-
             List<(Point, CellType)> cellTypes = new List<(Point, CellType)>();
 
             foreach (var point in desirePath.RemainingPath)
@@ -109,12 +103,11 @@ public class Game
                 Point cellPoint = pair.Item1;
 
                 // Don't count it if we've already painted it this turn
-                if ((int)pair.Item2 + 1 <= actionPoints && !paintedPoints.Contains(cellPoint))
+                if ((int)pair.Item2 + 1 <= remainingActionPoints && !paintedPoints.Contains(cellPoint))
                 {
                     int cellValue = (int)pair.Item2 + 1;
-                    
-                    actions += $"PLACE_TRACKS {cellPoint.X} {cellPoint.Y};";
-                    actionPoints -= cellValue;
+
+                    remainingActionPoints -= cellValue;
                     paintedPoints.Add(cellPoint);
                 }
                 else
@@ -122,16 +115,42 @@ public class Game
                     continue;
                 }
 
-                if (actionPoints <= 0)
+                if (remainingActionPoints <= 0)
                 {
+                    string actions = GetActionsString(paintedPoints);
                     return actions;
                 }
             }
         }
 
-        if (actionPoints > 0)
+        if (remainingActionPoints > 0)
         {
-            Logger.Error($"Unspent action points: {actionPoints}");
+
+            Logger.Error($"Unspent action points: {remainingActionPoints}");
+            // Logger.Error($"Using up {remainingActionPoints} unspent action points");
+
+            // As a first pass, just pick a random empty space
+            // Get all connected tracks. Score by how many points more than opponent they give me.
+            // Order tham by best scoring for me. 
+
+
+            //while (remainingActionPoints > 0)
+            //{
+                
+            //}
+        }
+
+        return GetActionsString(paintedPoints);
+    }
+
+    private static string GetActionsString(List<Point> actionPoints)
+    {
+        // Action points to a string of actions
+        string actions = string.Empty;
+
+        foreach (var point in actionPoints)
+        {
+            actions += $"PLACE_TRACKS {point.X} {point.Y};";
         }
 
         return actions;
@@ -303,7 +322,7 @@ public class Game
             {
                 bool myTrack = tracksOwner == _myId;
                 
-                _connectionTracker.UpdateConnections(connections, myTrack);
+                _connectionTracker.UpdateConnections(connections, x, y, myTrack);
             }
         }
     }

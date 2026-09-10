@@ -9,6 +9,8 @@ namespace BackTrackKing;
 
 public class Game
 {
+    private const int TOTAL_ACTION_POINTS = 3;
+
     private int _myId;
 
     private Map _map;
@@ -79,11 +81,51 @@ public class Game
     private string CalculatePaintActions(List<DesirePath> desirePaths)
     {
         List<Point> paintedPoints = new List<Point>();
-        int remainingActionPoints = 3;
 
+        CheckDesirePaths(paintedPoints, desirePaths, excludePathsWhereEnemyIsStronger: true);
+
+        // If we still have action points left check with a more relaxed criteria (allow painting on paths the opponent
+        // has more control of
+        if (TOTAL_ACTION_POINTS - paintedPoints.Count > 0)
+        {
+            CheckDesirePaths(paintedPoints, desirePaths, excludePathsWhereEnemyIsStronger: false);
+        }
+            
+        if (TOTAL_ACTION_POINTS - paintedPoints.Count > 0)
+        {
+            Logger.Error($"Unspent action points: {TOTAL_ACTION_POINTS - paintedPoints.Count}");
+            // Logger.Error($"Using up {remainingActionPoints} unspent action points");
+
+            // As a first pass, just pick a random empty space
+            // Get all connected tracks. Score by how many points more than opponent they give me.
+            // Order tham by best scoring for me. 
+
+
+            //while (remainingActionPoints > 0)
+            //{
+
+            //}
+        }
+
+        return GetActionsString(paintedPoints);
+    }
+
+    private void CheckDesirePaths(List<Point> paintedPoints, List<DesirePath> desirePaths, bool excludePathsWhereEnemyIsStronger)
+    {
         // CHeck for desire path points (excluding anyhintg that's even a little unstable)
         foreach (var desirePath in desirePaths)
         {
+            if (excludePathsWhereEnemyIsStronger)
+            {
+                bool isWorthwhile = IsPathWorthwhile(desirePath);
+
+                if (!isWorthwhile)
+                {
+                    Logger.Message($"Skipping desire path from {desirePath.FullPath[0]} to {desirePath.FullPath[desirePath.FullPath.Count-1]} for initial check");
+                    continue;
+                }
+            }
+
             List<(Point, CellType)> cellTypes = new List<(Point, CellType)>();
 
             foreach (var point in desirePath.RemainingPath)
@@ -103,11 +145,11 @@ public class Game
                 Point cellPoint = pair.Item1;
 
                 // Don't count it if we've already painted it this turn
+                int remainingActionPoints = TOTAL_ACTION_POINTS - paintedPoints.Count;
                 if ((int)pair.Item2 + 1 <= remainingActionPoints && !paintedPoints.Contains(cellPoint))
                 {
                     int cellValue = (int)pair.Item2 + 1;
 
-                    remainingActionPoints -= cellValue;
                     paintedPoints.Add(cellPoint);
                 }
                 else
@@ -117,30 +159,10 @@ public class Game
 
                 if (remainingActionPoints <= 0)
                 {
-                    string actions = GetActionsString(paintedPoints);
-                    return actions;
+                    return;
                 }
             }
         }
-
-        if (remainingActionPoints > 0)
-        {
-
-            Logger.Error($"Unspent action points: {remainingActionPoints}");
-            // Logger.Error($"Using up {remainingActionPoints} unspent action points");
-
-            // As a first pass, just pick a random empty space
-            // Get all connected tracks. Score by how many points more than opponent they give me.
-            // Order tham by best scoring for me. 
-
-
-            //while (remainingActionPoints > 0)
-            //{
-                
-            //}
-        }
-
-        return GetActionsString(paintedPoints);
     }
 
     private static string GetActionsString(List<Point> actionPoints)
@@ -202,14 +224,6 @@ public class Game
                     RemainingPathCount = remainingPathCount,
                     RemainingActionCount = remainingActionCount
                 };
-
-                bool isWorthwhile = IsPathWorthwhile(desirePath);
-
-                if (!isWorthwhile)
-                {
-                    Logger.Message($"Skipping desire path from {town.Id} to {desiredConnection} as it's not worthwhile");
-                    continue;
-                }
 
                 desirePaths.Add(desirePath);
 

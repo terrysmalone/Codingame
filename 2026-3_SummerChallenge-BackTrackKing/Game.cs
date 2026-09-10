@@ -108,6 +108,8 @@ public class Game
 
             bool cutout = false;
 
+            List<Point> towns = _towns.Select(t => new Point(t.X, t.Y)).ToList();
+
             while (remainingActionPoints > 0 && getHighestAbsoluteScore > 0 && !cutout)
             {
                 for (int y= 0; y < _map.Height; y++)
@@ -141,8 +143,8 @@ public class Game
 
                                 int regionId = _regionTracker.GetRegionId(pt.X, pt.Y);
 
-                                if (_map.isTrackFree(pt.X, pt.Y) && !paintedPoints.Contains(pt) && !_regionTracker.IsRegionInked(regionId))
-                                {
+                                if (_map.isTrackFree(pt.X, pt.Y) && !towns.Contains(pt) && !paintedPoints.Contains(pt) && !_regionTracker.IsRegionInked(regionId))
+                                {                                    
                                     CellType cellType = _map.CellTypes[pt.X, pt.Y];
                                     int cellValue = (int)cellType + 1;
                                     if (cellValue <= remainingActionPoints)

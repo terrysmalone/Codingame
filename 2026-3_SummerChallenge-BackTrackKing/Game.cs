@@ -9,8 +9,6 @@ namespace BackTrackKing;
 
 public class Game
 {
-    private const int TOTAL_ACTION_POINTS = 3;
-
     private int _myId;
 
     private Map _map;
@@ -87,14 +85,14 @@ public class Game
 
         // If we still have action points left check with a more relaxed criteria (allow painting on paths the opponent
         // has more control of
-        if (TOTAL_ACTION_POINTS - paintedPoints.Count > 0)
+        if (remainingActionPoints > 0)
         {
             remainingActionPoints = CheckDesirePaths(paintedPoints, desirePaths, remainingActionPoints, excludePathsWhereEnemyIsStronger: false);
         }
             
-        if (TOTAL_ACTION_POINTS - paintedPoints.Count > 0)
+        if (remainingActionPoints > 0)
         {
-            Logger.Error($"Unspent action points: {TOTAL_ACTION_POINTS - paintedPoints.Count}");
+            Logger.Error($"Unspent action points: {remainingActionPoints}");
             // Logger.Error($"Using up {remainingActionPoints} unspent action points");
 
             // As a first pass, just pick a random empty space

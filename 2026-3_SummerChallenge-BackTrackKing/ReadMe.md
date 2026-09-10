@@ -72,8 +72,20 @@ c640216ee416fc8027159efe8b48c62824edd8b2
 
 	Changes: Do a second check for paths if the first gives nothing
 	Submitted: 2026-09-10 10:05pm
-	Rank: (189) to 
+	Rank: (189) to 158
 
+8d10c46f7a1feb6aae24bac3ea94753b8c4fc083
+
+	Changes: Prioritise disrupting regions with more enemy tracks
+			 Fixed bug in pointing cells
+	Submitted: 2026-09-10 11:27pm
+	Rank: (164) to 124
+
+415e39b7dcf439f83505ad5374c8dd28a83d309a
+
+	Changes: Fix remaining points bug
+	Submitted: 2026-09-11 12:09am
+	Rank: (124) to 151
 
 	
 

@@ -62,6 +62,17 @@ internal class RegionTracker
         return region.Id;
     }
 
+    internal bool IsRegionInked(int regionId)
+    {
+        Region? region = _regions.SingleOrDefault(r => r.Id == regionId);
+        if (region == null)
+        {
+            Logger.Error($"Region not found for id {regionId} in IsRegionInked");
+            return false;
+        }
+        return region.IsInked;
+    }
+
     internal void AddTrack(int regionId, int x, int y, int tracksOwner, string[]? connections)
     {
         Region? region = _regions.SingleOrDefault(r => r.GetCells().Contains(new Point(x, y)));
@@ -149,10 +160,9 @@ internal class RegionTracker
 
         _activeRegionScores = _activeRegionScores.OrderByDescending(kv => kv.Value).ToDictionary(kv => kv.Key, kv => kv.Value);
 
-
         if (_activeRegionScores.Count > 0 && _activeRegionScores.First().Value > 0)
         {
-            Logger.RegionScores(_activeRegionScores);
+            // Logger.RegionScores(_activeRegionScores);
 
             int highScore = _activeRegionScores.First().Value;
 

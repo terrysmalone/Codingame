@@ -92,18 +92,82 @@ public class Game
             
         if (remainingActionPoints > 0)
         {
-            Logger.Error($"Unspent action points: {remainingActionPoints}");
             // Logger.Error($"Using up {remainingActionPoints} unspent action points");
 
-            // As a first pass, just pick a random empty space
-            // Get all connected tracks. Score by how many points more than opponent they give me.
-            // Order tham by best scoring for me. 
+            // Logger.ConnectionScoresMap(_connectionTracker.GetConnectionScoresMap());
 
+            // Simple first pass
+            // Get the highest number from connection score map. 
+            // Loop through tracks with that number
+            // When we find one check its neighbours. If they're empty add track if we can
+            // If we've checked them all decrement number by 1
+            // Throughout cache where we've checked so we don't do it again. 
 
-            //while (remainingActionPoints > 0)
-            //{
+            // Get the highest number from connection score map. 
+            int getHighestAbsoluteScore = _connectionTracker.GetHighestAbsoluteConnectionScore();
 
-            //}
+            bool cutout = false;
+
+            while (remainingActionPoints > 0 && getHighestAbsoluteScore > 0 && !cutout)
+            {
+                for (int y= 0; y < _map.Height; y++)
+                {
+                    if (cutout)
+                    {
+                        break;
+                    }
+                    for (int x = 0; x < _map.Width; x++)
+                    {
+                        if (cutout)
+                        {
+                            break;
+                        }
+                        int score = Math.Abs(_connectionTracker.GetConnectionScoresMap()[x, y]);
+                        if (score == getHighestAbsoluteScore)
+                        {
+                            var neighbours = new Point[4];
+                            neighbours[0] = new Point(x, y - 1); // North
+                            neighbours[1] = new Point(x + 1, y); // East
+                            neighbours[2] = new Point(x, y + 1); // South
+                            neighbours[3] = new Point(x - 1, y); // West
+
+                            foreach (var pt in neighbours)
+                            {
+                                // bounds check
+                                if (pt.X < 0 || pt.X >= _map.Width || pt.Y < 0 || pt.Y >= _map.Height)
+                                {
+                                    continue;
+                                }
+
+                                int regionId = _regionTracker.GetRegionId(pt.X, pt.Y);
+
+                                if (_map.isTrackFree(pt.X, pt.Y) && !paintedPoints.Contains(pt) && !_regionTracker.IsRegionInked(regionId))
+                                {
+                                    CellType cellType = _map.CellTypes[pt.X, pt.Y];
+                                    int cellValue = (int)cellType + 1;
+                                    if (cellValue <= remainingActionPoints)
+                                    {
+                                        remainingActionPoints -= cellValue;
+                                        paintedPoints.Add(pt);
+                                        if (remainingActionPoints <= 0)
+                                        {
+                                            cutout = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                getHighestAbsoluteScore--;
+            }
+        }
+
+        if (remainingActionPoints > 0)
+        {
+            Logger.Error($"Unspent action points: {remainingActionPoints}");
         }
 
         return GetActionsString(paintedPoints);

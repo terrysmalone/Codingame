@@ -114,6 +114,25 @@ internal class ConnectionTracker
     {
         return _connectionScoresMap;
     }
+
+    internal int GetHighestAbsoluteConnectionScore()
+    {
+        int highestScore = 0;
+        
+        for (int x = 0; x < _width; x++)
+        {
+            for (int y = 0; y < _height; y++)
+            {
+                int score = Math.Abs(_connectionScoresMap[x, y]);
+                if (score > highestScore)
+                {
+                    highestScore = score;
+                }
+            }
+        }
+
+        return highestScore;
+    }
 }
 
 internal class DesirePath
@@ -141,8 +160,6 @@ internal class DesirePath
 
 public class Game
 {
-    private const int TOTAL_ACTION_POINTS = 3;
-
     private int _myId;
 
     private Map _map;
@@ -219,25 +236,89 @@ public class Game
 
         // If we still have action points left check with a more relaxed criteria (allow painting on paths the opponent
         // has more control of
-        if (TOTAL_ACTION_POINTS - paintedPoints.Count > 0)
+        if (remainingActionPoints > 0)
         {
             remainingActionPoints = CheckDesirePaths(paintedPoints, desirePaths, remainingActionPoints, excludePathsWhereEnemyIsStronger: false);
         }
             
-        if (TOTAL_ACTION_POINTS - paintedPoints.Count > 0)
+        if (remainingActionPoints > 0)
         {
-            Logger.Error($"Unspent action points: {TOTAL_ACTION_POINTS - paintedPoints.Count}");
             // Logger.Error($"Using up {remainingActionPoints} unspent action points");
 
-            // As a first pass, just pick a random empty space
-            // Get all connected tracks. Score by how many points more than opponent they give me.
-            // Order tham by best scoring for me. 
+            // Logger.ConnectionScoresMap(_connectionTracker.GetConnectionScoresMap());
 
+            // Simple first pass
+            // Get the highest number from connection score map. 
+            // Loop through tracks with that number
+            // When we find one check its neighbours. If they're empty add track if we can
+            // If we've checked them all decrement number by 1
+            // Throughout cache where we've checked so we don't do it again. 
 
-            //while (remainingActionPoints > 0)
-            //{
+            // Get the highest number from connection score map. 
+            int getHighestAbsoluteScore = _connectionTracker.GetHighestAbsoluteConnectionScore();
 
-            //}
+            bool cutout = false;
+
+            while (remainingActionPoints > 0 && getHighestAbsoluteScore > 0 && !cutout)
+            {
+                for (int y= 0; y < _map.Height; y++)
+                {
+                    if (cutout)
+                    {
+                        break;
+                    }
+                    for (int x = 0; x < _map.Width; x++)
+                    {
+                        if (cutout)
+                        {
+                            break;
+                        }
+                        int score = Math.Abs(_connectionTracker.GetConnectionScoresMap()[x, y]);
+                        if (score == getHighestAbsoluteScore)
+                        {
+                            var neighbours = new Point[4];
+                            neighbours[0] = new Point(x, y - 1); // North
+                            neighbours[1] = new Point(x + 1, y); // East
+                            neighbours[2] = new Point(x, y + 1); // South
+                            neighbours[3] = new Point(x - 1, y); // West
+
+                            foreach (var pt in neighbours)
+                            {
+                                // bounds check
+                                if (pt.X < 0 || pt.X >= _map.Width || pt.Y < 0 || pt.Y >= _map.Height)
+                                {
+                                    continue;
+                                }
+
+                                int regionId = _regionTracker.GetRegionId(pt.X, pt.Y);
+
+                                if (_map.isTrackFree(pt.X, pt.Y) && !paintedPoints.Contains(pt) && !_regionTracker.IsRegionInked(regionId))
+                                {
+                                    CellType cellType = _map.CellTypes[pt.X, pt.Y];
+                                    int cellValue = (int)cellType + 1;
+                                    if (cellValue <= remainingActionPoints)
+                                    {
+                                        remainingActionPoints -= cellValue;
+                                        paintedPoints.Add(pt);
+                                        if (remainingActionPoints <= 0)
+                                        {
+                                            cutout = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                getHighestAbsoluteScore--;
+            }
+        }
+
+        if (remainingActionPoints > 0)
+        {
+            Logger.Error($"Unspent action points: {remainingActionPoints}");
         }
 
         return GetActionsString(paintedPoints);
@@ -1128,6 +1209,17 @@ internal class RegionTracker
         return region.Id;
     }
 
+    internal bool IsRegionInked(int regionId)
+    {
+        Region? region = _regions.SingleOrDefault(r => r.Id == regionId);
+        if (region == null)
+        {
+            Logger.Error($"Region not found for id {regionId} in IsRegionInked");
+            return false;
+        }
+        return region.IsInked;
+    }
+
     internal void AddTrack(int regionId, int x, int y, int tracksOwner, string[]? connections)
     {
         Region? region = _regions.SingleOrDefault(r => r.GetCells().Contains(new Point(x, y)));
@@ -1215,10 +1307,9 @@ internal class RegionTracker
 
         _activeRegionScores = _activeRegionScores.OrderByDescending(kv => kv.Value).ToDictionary(kv => kv.Key, kv => kv.Value);
 
-
         if (_activeRegionScores.Count > 0 && _activeRegionScores.First().Value > 0)
         {
-            Logger.RegionScores(_activeRegionScores);
+            // Logger.RegionScores(_activeRegionScores);
 
             int highScore = _activeRegionScores.First().Value;
 

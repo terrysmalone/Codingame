@@ -57,4 +57,23 @@ internal class ConnectionTracker
     {
         return _connectionScoresMap;
     }
+
+    internal int GetHighestAbsoluteConnectionScore()
+    {
+        int highestScore = 0;
+        
+        for (int x = 0; x < _width; x++)
+        {
+            for (int y = 0; y < _height; y++)
+            {
+                int score = Math.Abs(_connectionScoresMap[x, y]);
+                if (score > highestScore)
+                {
+                    highestScore = score;
+                }
+            }
+        }
+
+        return highestScore;
+    }
 }

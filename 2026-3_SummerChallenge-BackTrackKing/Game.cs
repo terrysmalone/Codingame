@@ -203,6 +203,14 @@ public class Game
                     RemainingActionCount = remainingActionCount
                 };
 
+                bool isWorthwhile = IsPathWorthwhile(desirePath);
+
+                if (!isWorthwhile)
+                {
+                    Logger.Message($"Skipping desire path from {town.Id} to {desiredConnection} as it's not worthwhile");
+                    continue;
+                }
+
                 desirePaths.Add(desirePath);
 
                 //Logger.Message($"Found path from {town.Id} to {desiredConnection}");
@@ -213,6 +221,41 @@ public class Game
         Logger.Message($"Finished calculating {desirePaths.Count} desire paths");
 
         return desirePaths.OrderBy(dp => dp.RemainingActionCount).ThenBy(dp => dp.RemainingPathCount).ToList();
+    }
+
+    // Check if completing a path is worthwhile. If the opponent already owns most of it, there's no point
+    // pursuing it
+    private bool IsPathWorthwhile(DesirePath desirePath)
+    {
+        // Use: NetAdvantageAfterCompletion = (MyExistingCellsInPath + desirePath.RemainingPathCount) - OpponentExistingCellsInPath
+
+        int myExistingCells = 0;
+        int opponentExistingCells = 0;
+
+        foreach (var point in desirePath.FullPath)
+        {
+            int trackOwner = _map.GetTrackOwner(point.X, point.Y);
+
+            if (trackOwner != -1 && trackOwner != 2)
+            {
+                if (trackOwner == _myId)
+                {
+                    myExistingCells++;
+                }
+                else if (trackOwner != -1 && trackOwner != _myId)
+                {
+                    opponentExistingCells++;
+                }
+            }
+        }
+
+        // For now, just avoid it if they have more on that path
+        if (opponentExistingCells > myExistingCells)
+        {
+            return false;
+        }
+
+        return true;
     }
 
     private List<Point> FindShortestSanitisedPath(Point startPoint, int desiredConnection)

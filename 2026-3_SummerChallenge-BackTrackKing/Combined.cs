@@ -11,8 +11,10 @@ using System.Linq;
 using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Xml.Linq;
-using System.IO;
 using System.Collections;
+using System.Diagnostics;
+using System.IO;
+using System.Numerics;
 
 internal class BestPath
 {
@@ -333,6 +335,14 @@ public class Game
                     RemainingActionCount = remainingActionCount
                 };
 
+                bool isWorthwhile = IsPathWorthwhile(desirePath);
+
+                if (!isWorthwhile)
+                {
+                    Logger.Message($"Skipping desire path from {town.Id} to {desiredConnection} as it's not worthwhile");
+                    continue;
+                }
+
                 desirePaths.Add(desirePath);
 
                 //Logger.Message($"Found path from {town.Id} to {desiredConnection}");
@@ -343,6 +353,41 @@ public class Game
         Logger.Message($"Finished calculating {desirePaths.Count} desire paths");
 
         return desirePaths.OrderBy(dp => dp.RemainingActionCount).ThenBy(dp => dp.RemainingPathCount).ToList();
+    }
+
+    // Check if completing a path is worthwhile. If the opponent already owns most of it, there's no point
+    // pursuing it
+    private bool IsPathWorthwhile(DesirePath desirePath)
+    {
+        // Use: NetAdvantageAfterCompletion = (MyExistingCellsInPath + desirePath.RemainingPathCount) - OpponentExistingCellsInPath
+
+        int myExistingCells = 0;
+        int opponentExistingCells = 0;
+
+        foreach (var point in desirePath.FullPath)
+        {
+            int trackOwner = _map.GetTrackOwner(point.X, point.Y);
+
+            if (trackOwner != -1 && trackOwner != 2)
+            {
+                if (trackOwner == _myId)
+                {
+                    myExistingCells++;
+                }
+                else if (trackOwner != -1 && trackOwner != _myId)
+                {
+                    opponentExistingCells++;
+                }
+            }
+        }
+
+        // For now, just avoid it if they have more on that path
+        if (opponentExistingCells > myExistingCells)
+        {
+            return false;
+        }
+
+        return true;
     }
 
     private List<Point> FindShortestSanitisedPath(Point startPoint, int desiredConnection)
@@ -627,12 +672,6 @@ internal class Map {
 
     private int[,] _trackOwner;
 
-    private bool[,] _isWalkable;
-    private bool[,] _hasTrack;
-    private int[,] cellCost;
-
-
-
     internal Map(int width, int height)
     {
         Width = width;
@@ -658,6 +697,11 @@ internal class Map {
     internal bool isTrackFree(int x, int y)
     {
         return _trackOwner[x, y] == -1;
+    }
+
+    internal int GetTrackOwner(int x, int y)
+    {
+        return _trackOwner[x, y];
     }
 }
 
@@ -810,8 +854,9 @@ class Player
                 for (int j = 0; j < width; j++)
                 {
                     inputs = Console.ReadLine().Split(' ');
-                    int tracksOwner = int.Parse(inputs[0]);
-                    
+                    int tracksOwner = int.Parse(inputs[0]); // -1 if this cell has no track. 2 if neutral
+
+
 
                     int instability = int.Parse(inputs[1]); // region inked (destroyed) when this >= 3.
                     bool inked = inputs[2] != "0"; // true if region is destroyed.

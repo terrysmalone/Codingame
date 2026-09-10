@@ -1,9 +1,11 @@
 ﻿using System;
-using System.Linq;
-using System.IO;
-using System.Text;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Numerics;
+using System.Text;
 
 namespace BackTrackKing;
 
@@ -44,8 +46,9 @@ class Player
                 for (int j = 0; j < width; j++)
                 {
                     inputs = Console.ReadLine().Split(' ');
-                    int tracksOwner = int.Parse(inputs[0]);
-                    
+                    int tracksOwner = int.Parse(inputs[0]); // -1 if this cell has no track. 2 if neutral
+
+
 
                     int instability = int.Parse(inputs[1]); // region inked (destroyed) when this >= 3.
                     bool inked = inputs[2] != "0"; // true if region is destroyed.

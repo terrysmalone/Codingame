@@ -11,12 +11,6 @@ internal class Map {
 
     private int[,] _trackOwner;
 
-    private bool[,] _isWalkable;
-    private bool[,] _hasTrack;
-    private int[,] cellCost;
-
-
-
     internal Map(int width, int height)
     {
         Width = width;
@@ -42,5 +36,10 @@ internal class Map {
     internal bool isTrackFree(int x, int y)
     {
         return _trackOwner[x, y] == -1;
+    }
+
+    internal int GetTrackOwner(int x, int y)
+    {
+        return _trackOwner[x, y];
     }
 }

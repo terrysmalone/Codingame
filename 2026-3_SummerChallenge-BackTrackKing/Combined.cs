@@ -213,14 +213,15 @@ public class Game
     private string CalculatePaintActions(List<DesirePath> desirePaths)
     {
         List<Point> paintedPoints = new List<Point>();
+        int remainingActionPoints = 3;
 
-        CheckDesirePaths(paintedPoints, desirePaths, excludePathsWhereEnemyIsStronger: true);
+        remainingActionPoints = CheckDesirePaths(paintedPoints, desirePaths, remainingActionPoints, excludePathsWhereEnemyIsStronger: true);
 
         // If we still have action points left check with a more relaxed criteria (allow painting on paths the opponent
         // has more control of
         if (TOTAL_ACTION_POINTS - paintedPoints.Count > 0)
         {
-            CheckDesirePaths(paintedPoints, desirePaths, excludePathsWhereEnemyIsStronger: false);
+            remainingActionPoints = CheckDesirePaths(paintedPoints, desirePaths, remainingActionPoints, excludePathsWhereEnemyIsStronger: false);
         }
             
         if (TOTAL_ACTION_POINTS - paintedPoints.Count > 0)
@@ -242,7 +243,7 @@ public class Game
         return GetActionsString(paintedPoints);
     }
 
-    private void CheckDesirePaths(List<Point> paintedPoints, List<DesirePath> desirePaths, bool excludePathsWhereEnemyIsStronger)
+    private int CheckDesirePaths(List<Point> paintedPoints, List<DesirePath> desirePaths, int remainingActionPoints, bool excludePathsWhereEnemyIsStronger)
     {
         // CHeck for desire path points (excluding anyhintg that's even a little unstable)
         foreach (var desirePath in desirePaths)
@@ -277,11 +278,10 @@ public class Game
                 Point cellPoint = pair.Item1;
 
                 // Don't count it if we've already painted it this turn
-                int remainingActionPoints = TOTAL_ACTION_POINTS - paintedPoints.Count;
                 if ((int)pair.Item2 + 1 <= remainingActionPoints && !paintedPoints.Contains(cellPoint))
                 {
                     int cellValue = (int)pair.Item2 + 1;
-
+                    remainingActionPoints -= cellValue;
                     paintedPoints.Add(cellPoint);
                 }
                 else
@@ -291,10 +291,12 @@ public class Game
 
                 if (remainingActionPoints <= 0)
                 {
-                    return;
+                    return remainingActionPoints;
                 }
             }
         }
+
+        return remainingActionPoints;
     }
 
     private static string GetActionsString(List<Point> actionPoints)

@@ -225,7 +225,6 @@ public class Game
             
         if (TOTAL_ACTION_POINTS - paintedPoints.Count > 0)
         {
-
             Logger.Error($"Unspent action points: {TOTAL_ACTION_POINTS - paintedPoints.Count}");
             // Logger.Error($"Using up {remainingActionPoints} unspent action points");
 
@@ -254,7 +253,7 @@ public class Game
 
                 if (!isWorthwhile)
                 {
-                    Logger.Message($"Skipping desire path from {desirePath.FullPath[0]} to {desirePath.FullPath[desirePath.FullPath.Count-1]} as it's not worthwhile");
+                    Logger.Message($"Skipping desire path from {desirePath.FullPath[0]} to {desirePath.FullPath[desirePath.FullPath.Count-1]} for initial check");
                     continue;
                 }
             }
@@ -1217,7 +1216,7 @@ internal class RegionTracker
 
         if (_activeRegionScores.Count > 0 && _activeRegionScores.First().Value > 0)
         {
-            // Logger.RegionScores(_activeRegionScores);
+            Logger.RegionScores(_activeRegionScores);
 
             int highScore = _activeRegionScores.First().Value;
 

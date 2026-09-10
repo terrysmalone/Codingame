@@ -152,7 +152,7 @@ internal class RegionTracker
 
         if (_activeRegionScores.Count > 0 && _activeRegionScores.First().Value > 0)
         {
-            // Logger.RegionScores(_activeRegionScores);
+            Logger.RegionScores(_activeRegionScores);
 
             int highScore = _activeRegionScores.First().Value;
 

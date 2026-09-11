@@ -1587,14 +1587,22 @@ internal class TrackPlacementCalculator
         List<TrackCandidate> candidates = new List<TrackCandidate>(_candidates.Values);
 
 
+        // Original - Loss 1657 - 747
         //candidates = candidates.OrderBy(c => c.ActionCost)
         //                       .ThenBy(c => c.ShortestRemainingCount())
         //                       .ThenByDescending(c => c.GetTownCount())
         //                       .ThenByDescending(c => c.IsInSafeRegion).ToList();
 
-        candidates = candidates.OrderBy(c => c.ActionCost)
-                               .ThenBy(c => c.ShortestRemainingCount())
+        // Loss 736 - 181
+        //candidates = candidates.OrderBy(c => c.ShortestRemainingCount())
+        //                       .ThenBy(c => c.ActionCost)
+        //                       .ThenByDescending(c => c.GetTownCount())
+        //                       .ThenByDescending(c => c.IsInSafeRegion).ToList();
+
+        // Loss 511 - 394
+        candidates = candidates.OrderBy(c => c.ShortestRemainingCount())                               
                                .ThenByDescending(c => c.GetTownCount())
+                               .ThenBy(c => c.ActionCost)
                                .ThenByDescending(c => c.IsInSafeRegion).ToList();
 
         Logger.TrackCandidates(candidates);

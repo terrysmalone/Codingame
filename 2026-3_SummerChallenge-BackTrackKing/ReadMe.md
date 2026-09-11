@@ -91,9 +91,13 @@ c640216ee416fc8027159efe8b48c62824edd8b2
 
 	Changes: Start using up leftover paint points
 	Submitted: 2026-09-11 12:29am
-	Rank: (151) to 
+	Rank: (151) to -
 
-	
+4656f92cb4de3d5e1abc9fa2fab597f13a0ea1c4
+
+	Changes: Don't place tracks on towns
+	Submitted: 2026-09-11 12:49am
+	Rank: (151) to 152
 
 
 

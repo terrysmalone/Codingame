@@ -64,6 +64,9 @@ public class Game
         // _regionTracker.LogRegions();
         //_connectionTracker.LogConnections();
 
+        TrackPlacementCalculator trackPlacementCalculator = new TrackPlacementCalculator(_map, _regionTracker);
+        trackPlacementCalculator.CalculateBestCandidates(desirePaths);
+
         var actions = CalculatePaintActions(desirePaths);
 
         actions += CalculateDisruptAction();
@@ -283,7 +286,7 @@ public class Game
                 int remainingPathCount = remainingPathPoints.Count;
                 int remainingActionCount = CalculateActionCount(remainingPathPoints);
 
-                var desirePath = new DesirePath(fullSanitisedPath, remainingPathPoints)
+                var desirePath = new DesirePath(fullSanitisedPath, remainingPathPoints, $"{town.Id}-{desiredConnection}")
                 {
                     FullPathCount = fullPathCount,
                     FullActionCount = fullActionCount,

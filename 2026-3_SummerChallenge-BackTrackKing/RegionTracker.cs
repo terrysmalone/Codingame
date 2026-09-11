@@ -281,6 +281,32 @@ internal class RegionTracker
         region.HasTown = true;
     }
 
+    internal bool IsSafeRegion(int regionId)
+    {
+        Region? region = _regions.SingleOrDefault(r => r.Id == regionId);
+
+        if (region == null)
+        {
+            Logger.Error($"Region not found for id {regionId} in IsSafeRegion");
+            return false;
+        }
+
+        return region.HasTown;
+    }
+
+    internal int GetInstabilityLevel(int regionId)
+    {
+        Region? region = _regions.SingleOrDefault(r => r.Id == regionId);
+
+        if (region == null)
+        {
+            Logger.Error($"Region not found for id {regionId} in GetInstabilityLevel");
+            return 0;
+        }
+
+        return region.Instability;
+    }
+
     internal void ResetRegions()
     {
         _regions.ForEach(r => r.ResetCounts());

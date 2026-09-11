@@ -8,7 +8,7 @@ internal class Map {
 
     internal int[,] CellCosts;
 
-    internal int[,] Regions;
+    internal int[,] RegionIds;
 
     private int[,] _trackOwner;
 
@@ -19,7 +19,7 @@ internal class Map {
 
         CellCosts = new int[width, height];
 
-        Regions = new int[width, height];
+        RegionIds = new int[width, height];
 
         _trackOwner = new int[width, height];
     }
@@ -46,7 +46,7 @@ internal class Map {
 
         CellCosts[x, y] = cellCost;
 
-        Regions[x, y] = region;
+        RegionIds[x, y] = region;
     }
 
     internal void SetTrack(int x, int y, int tracksOwner)

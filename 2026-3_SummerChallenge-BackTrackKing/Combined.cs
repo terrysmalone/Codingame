@@ -15,6 +15,7 @@ using System.Collections;
 using System.Diagnostics;
 using System.IO;
 using System.Numerics;
+using System.Reflection.Metadata;
 
 internal class BestPath
 {
@@ -141,6 +142,8 @@ internal class DesirePath
 
     internal List<Point> RemainingPath { get; private set; }
 
+    internal string TownConnection { get; private set; }
+
     internal int FullPathCount { get; set; }
 
     internal int FullActionCount { get; set; }
@@ -149,10 +152,12 @@ internal class DesirePath
 
     internal int RemainingActionCount { get; set; }
 
-    public DesirePath(List<Point> fullPath, List<Point> remainingPath)
+    public DesirePath(List<Point> fullPath, List<Point> remainingPath, string townConnection)
     {
         FullPath = fullPath;
         RemainingPath = remainingPath;
+
+        TownConnection = townConnection;
     }
 }
 
@@ -214,6 +219,9 @@ public class Game
         // Logger.DesirePaths(desirePaths);
         // _regionTracker.LogRegions();
         //_connectionTracker.LogConnections();
+
+        TrackPlacementCalculator trackPlacementCalculator = new TrackPlacementCalculator(_map, _regionTracker);
+        trackPlacementCalculator.CalculateBestCandidates(desirePaths);
 
         var actions = CalculatePaintActions(desirePaths);
 
@@ -295,9 +303,9 @@ public class Game
                                 int regionId = _regionTracker.GetRegionId(pt.X, pt.Y);
 
                                 if (_map.isTrackFree(pt.X, pt.Y) && !towns.Contains(pt) && !paintedPoints.Contains(pt) && !_regionTracker.IsRegionInked(regionId))
-                                {                                    
-                                    CellType cellType = _map.CellTypes[pt.X, pt.Y];
-                                    int cellValue = (int)cellType + 1;
+                                {   
+                                    int cellValue = _map.CellCosts[pt.X, pt.Y];
+
                                     if (cellValue <= remainingActionPoints)
                                     {
                                         remainingActionPoints -= cellValue;
@@ -342,28 +350,28 @@ public class Game
                 }
             }
 
-            List<(Point, CellType)> cellTypes = new List<(Point, CellType)>();
+            List<(Point, int)> cellCosts = new List<(Point, int)>();
 
             foreach (var point in desirePath.RemainingPath)
             {
                 if (_map.isTrackFree(point.X, point.Y))
                 {
-                    CellType cellType = _map.CellTypes[point.X, point.Y];
-                    cellTypes.Add((point, cellType));
+                    int cellCost = _map.CellCosts[point.X, point.Y];
+                    cellCosts.Add((point, cellCost));
                 }
             }
 
             // Order by cell type, so we can prioritize plains over rivers and mountains
-            List<(Point, CellType)> orderedCellTypes = cellTypes.OrderBy(ct => ct.Item2).ToList();
+            List<(Point, int)> orderedCellTypes = cellCosts.OrderBy(ct => ct.Item2).ToList();
 
             foreach ((Point, CellType) pair in orderedCellTypes)
             {
                 Point cellPoint = pair.Item1;
 
                 // Don't count it if we've already painted it this turn
-                if ((int)pair.Item2 + 1 <= remainingActionPoints && !paintedPoints.Contains(cellPoint))
+                if ((int)pair.Item2 <= remainingActionPoints && !paintedPoints.Contains(cellPoint))
                 {
-                    int cellValue = (int)pair.Item2 + 1;
+                    int cellValue = (int)pair.Item2;
                     remainingActionPoints -= cellValue;
                     paintedPoints.Add(cellPoint);
                 }
@@ -434,7 +442,7 @@ public class Game
                 int remainingPathCount = remainingPathPoints.Count;
                 int remainingActionCount = CalculateActionCount(remainingPathPoints);
 
-                var desirePath = new DesirePath(fullSanitisedPath, remainingPathPoints)
+                var desirePath = new DesirePath(fullSanitisedPath, remainingPathPoints, $"{town.Id}-{desiredConnection}")
                 {
                     FullPathCount = fullPathCount,
                     FullActionCount = fullActionCount,
@@ -523,23 +531,8 @@ public class Game
 
         foreach (var point in path)
         {
-            CellType cellType = _map.CellTypes[point.X, point.Y];
-
-            switch (cellType)
-            {
-                case CellType.PLAINS:
-                    actionCount += 1;
-                    break;
-                case CellType.RIVER:
-                    actionCount += 2;
-                    break;
-                case CellType.MOUNTAIN:
-                    actionCount += 3;
-                    break;
-                default:
-                    Logger.Error($"Unknown cell type: {cellType}");
-                    break;
-            }
+            int cellCost = _map.CellCosts[point.X, point.Y];
+            actionCount += cellCost;
         }
 
         return actionCount;
@@ -678,24 +671,22 @@ internal static class Logger
         {
             for (int x = 0; x < map.Width; x++)
             {
-                Console.Error.Write(ToSymbol(map.CellTypes[x, y]));
+                Console.Error.Write(ToSymbol(map.CellCosts[x, y]));
             }
             Console.Error.WriteLine();
         }
     }
 
-    private static string ToSymbol(CellType cellType)
+    private static string ToSymbol(int cellCost)
     {
-        switch (cellType)
+        switch (cellCost)
         {
-                case CellType.PLAINS:
+                case 1:
                     return " ";
-                case CellType.RIVER:
+                case 2:
                     return "~";
-                case CellType.MOUNTAIN:
+                case 3:
                     return "^";
-                case CellType.POI:
-                    return "*";
                 default:
                     return " ";
         }
@@ -749,6 +740,11 @@ internal static class Logger
 
     internal static void ConnectionScoresMap(int[,] connectionScoresMap)
     {
+        if (DISABLE_LOGGING)
+        {
+            return;
+        }
+
         Console.Error.WriteLine("CONNECTION SCORES MAP");
 
         for (int y = 0; y < connectionScoresMap.GetLength(1); y++)
@@ -760,14 +756,32 @@ internal static class Logger
             Console.Error.WriteLine();
         }
     }
+
+    internal static void TrackCandidates(Dictionary<Point, TrackCandidate> candidates)
+    {
+        if (DISABLE_LOGGING)
+        {
+            return;
+        }
+
+        Console.Error.WriteLine("TRACK CANDIDATES");
+
+        foreach (var candidate in candidates)
+        {
+            var cellPosition = candidate.Key;
+            var trackCandidate = candidate.Value;
+            Console.Error.WriteLine($"Cell: {cellPosition.X},{cellPosition.Y} - Region: {trackCandidate.RegionId}, Cost: {trackCandidate.ActionCost}, DesirePaths: {trackCandidate.DesirePathCount}, TownPathsCount: {trackCandidate.GetTownCount()}, Instability: {trackCandidate.InstabilityLevel}, SafeRegion: {trackCandidate.IsInSafeRegion}");
+        }
+    }
 }
 
 internal class Map {
     internal int Width { get; }
     internal int Height { get; }
 
-    internal CellType[,] CellTypes;
-    internal int[,] Regions;
+    internal int[,] CellCosts;
+
+    internal int[,] RegionIds;
 
     private int[,] _trackOwner;
 
@@ -776,16 +790,36 @@ internal class Map {
         Width = width;
         Height = height;
 
-        CellTypes = new CellType[width, height];
-        Regions = new int[width, height];
+        CellCosts = new int[width, height];
+
+        RegionIds = new int[width, height];
 
         _trackOwner = new int[width, height];
     }
 
     internal void SetCell(int x, int y, CellType cellType, int region)
     {
-        CellTypes[x, y] = cellType;
-        Regions[x, y] = region;
+        int cellCost = 0;
+
+        switch (cellType)
+        {
+            case CellType.PLAINS:
+                cellCost = 1;
+                break;
+            case CellType.RIVER:
+                cellCost = 2;
+                break;
+            case CellType.MOUNTAIN:
+                cellCost = 3;
+                break;
+            default:
+                Logger.Error($"Unknown cell type: {cellType}");
+                break;
+        }
+
+        CellCosts[x, y] = cellCost;
+
+        RegionIds[x, y] = region;
     }
 
     internal void SetTrack(int x, int y, int tracksOwner)
@@ -1430,6 +1464,32 @@ internal class RegionTracker
         region.HasTown = true;
     }
 
+    internal bool IsSafeRegion(int regionId)
+    {
+        Region? region = _regions.SingleOrDefault(r => r.Id == regionId);
+
+        if (region == null)
+        {
+            Logger.Error($"Region not found for id {regionId} in IsSafeRegion");
+            return false;
+        }
+
+        return region.HasTown;
+    }
+
+    internal int GetInstabilityLevel(int regionId)
+    {
+        Region? region = _regions.SingleOrDefault(r => r.Id == regionId);
+
+        if (region == null)
+        {
+            Logger.Error($"Region not found for id {regionId} in GetInstabilityLevel");
+            return 0;
+        }
+
+        return region.Instability;
+    }
+
     internal void ResetRegions()
     {
         _regions.ForEach(r => r.ResetCounts());
@@ -1458,6 +1518,116 @@ internal class Town
         X = x;
         Y = y;
         DesiredConnections = desiredConnections;
+    }
+}
+
+
+internal class TrackCandidate
+{
+    internal Point CellPosition { get; private set; }
+
+    internal int RegionId { get; set; }
+
+    internal int ActionCost { get; set; }
+
+    internal int DesirePathCount { get; set; }
+
+    internal List<DesirePath> DesirePaths { get; set; }
+
+    internal bool IsInSafeRegion { get; set; }
+
+    internal int InstabilityLevel { get; set; }
+
+    private HashSet<string> _towns = new HashSet<string>();
+
+    internal TrackCandidate(Point cellPosition, int regionId, int actionCost, bool isInSafeRegion, int instabilityLevel)
+    {
+        CellPosition = cellPosition;
+        RegionId = regionId;
+        ActionCost = actionCost;
+        DesirePaths = new List<DesirePath>();
+        IsInSafeRegion = isInSafeRegion;
+        InstabilityLevel = instabilityLevel;
+    }
+
+    internal void AddDesirePath(DesirePath desirePath)
+    {
+        DesirePaths.Add(desirePath);
+
+        DesirePathCount++;
+
+        // Add to towns list
+        _towns.Add(desirePath.TownConnection);
+    }
+
+    internal int GetTownCount()
+    {
+        return _towns.Count;
+    }
+}
+
+
+internal class TrackPlacementCalculator
+{
+    private Dictionary<Point, TrackCandidate> _candidates;
+
+    private Map _map;
+    private RegionTracker _regionTracker;
+
+    public TrackPlacementCalculator(Map map, RegionTracker regionTracker)
+    {
+        _candidates = new Dictionary<Point, TrackCandidate>();
+        _map = map;
+        _regionTracker = regionTracker;
+    }
+
+    public void CalculateBestCandidates(List<DesirePath> desirePaths)
+    {
+        _candidates.Clear();
+
+        // Before doing anything, check if we can complete a desire path fully this turn.
+        // If so, we should do that first. This is a higher priority than any other placement strategy.
+        // Open question: Should we check instability levels of the desire paths for this? THis won'r matter at first because 
+        // We currently exclude any amout of instability from the path finding search. At some point we'll change this
+
+        FillCandidates(desirePaths);
+
+        Logger.TrackCandidates(_candidates);
+        
+        // Group candidates by region and/or town join
+        // Get the best scoring candidates. Note, don't take them all from the same one, unless they're a lot stronger
+
+    }
+
+    private void FillCandidates(List<DesirePath> desirePaths)
+    {
+        foreach (var desirePath in desirePaths)
+        {
+            foreach (var cellPosition in desirePath.RemainingPath)
+            {
+                TrackCandidate? candidate = null;
+
+                if (_candidates.ContainsKey(cellPosition))
+                {
+                    candidate = _candidates[cellPosition];
+                }
+                else
+                {
+                    int regionId = _map.RegionIds[cellPosition.X, cellPosition.Y];
+                    int actionCost = _map.CellCosts[cellPosition.X, cellPosition.Y];
+
+                    bool isInSafeRegion = _regionTracker.IsSafeRegion(regionId);
+
+                    int instabilityLevel = _regionTracker.GetInstabilityLevel(regionId);
+
+                    candidate = new TrackCandidate(cellPosition, regionId, actionCost, isInSafeRegion, instabilityLevel);
+                }
+
+                candidate.AddDesirePath(desirePath);
+
+                _candidates[cellPosition] = candidate;
+            }
+        }
     }
 }
 

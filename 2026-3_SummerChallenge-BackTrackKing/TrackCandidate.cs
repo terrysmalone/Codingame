@@ -19,8 +19,9 @@ internal class TrackCandidate
 
     internal int InstabilityLevel { get; set; }
 
+    private HashSet<string> _towns = new HashSet<string>();
 
-    public TrackCandidate(Point cellPosition, int regionId, int actionCost, bool isInSafeRegion, int instabilityLevel)
+    internal TrackCandidate(Point cellPosition, int regionId, int actionCost, bool isInSafeRegion, int instabilityLevel)
     {
         CellPosition = cellPosition;
         RegionId = regionId;
@@ -30,9 +31,18 @@ internal class TrackCandidate
         InstabilityLevel = instabilityLevel;
     }
 
-    public void AddDesirePath(DesirePath desirePath)
+    internal void AddDesirePath(DesirePath desirePath)
     {
         DesirePaths.Add(desirePath);
+
         DesirePathCount++;
+
+        // Add to towns list
+        _towns.Add(desirePath.TownConnection);
+    }
+
+    internal int GetTownCount()
+    {
+        return _towns.Count;
     }
 }

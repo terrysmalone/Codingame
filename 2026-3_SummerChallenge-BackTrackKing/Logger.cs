@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
 
 namespace BackTrackKing;
 
@@ -132,6 +133,11 @@ internal static class Logger
 
     internal static void ConnectionScoresMap(int[,] connectionScoresMap)
     {
+        if (DISABLE_LOGGING)
+        {
+            return;
+        }
+
         Console.Error.WriteLine("CONNECTION SCORES MAP");
 
         for (int y = 0; y < connectionScoresMap.GetLength(1); y++)
@@ -141,6 +147,23 @@ internal static class Logger
                 Console.Error.Write($"{connectionScoresMap[x, y]} ");
             }
             Console.Error.WriteLine();
+        }
+    }
+
+    internal static void TrackCandidates(Dictionary<Point, TrackCandidate> candidates)
+    {
+        if (DISABLE_LOGGING)
+        {
+            return;
+        }
+
+        Console.Error.WriteLine("TRACK CANDIDATES");
+
+        foreach (var candidate in candidates)
+        {
+            var cellPosition = candidate.Key;
+            var trackCandidate = candidate.Value;
+            Console.Error.WriteLine($"Cell: {cellPosition.X},{cellPosition.Y} - Region: {trackCandidate.RegionId}, Cost: {trackCandidate.ActionCost}, DesirePaths: {trackCandidate.DesirePathCount}, TownPathsCount: {trackCandidate.GetTownCount()}, Instability: {trackCandidate.InstabilityLevel}, SafeRegion: {trackCandidate.IsInSafeRegion}");
         }
     }
 }

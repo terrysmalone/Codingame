@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Reflection.Metadata;
+using System.Linq;
 
 namespace BackTrackKing;
 
@@ -46,8 +46,10 @@ internal class TrackPlacementCalculator
         _regionTracker = regionTracker;
     }
 
-    public void CalculateBestCandidates(List<DesirePath> desirePaths)
+    public (string, int) CalculateBestCandidates(List<DesirePath> desirePaths)
     {
+        string actions = string.Empty;
+
         _candidates.Clear();
 
         // Before doing anything, check if we can complete a desire path fully this turn.
@@ -57,11 +59,47 @@ internal class TrackPlacementCalculator
 
         FillCandidates(desirePaths);
 
-        Logger.TrackCandidates(_candidates);
-        
-        // Group candidates by region and/or town join
-        // Get the best scoring candidates. Note, don't take them all from the same one, unless they're a lot stronger
+        List<TrackCandidate> candidates = new List<TrackCandidate>(_candidates.Values);
 
+
+        //candidates = candidates.OrderBy(c => c.ActionCost)
+        //                       .ThenBy(c => c.ShortestRemainingCount())
+        //                       .ThenByDescending(c => c.GetTownCount())
+        //                       .ThenByDescending(c => c.IsInSafeRegion).ToList();
+
+        candidates = candidates.OrderBy(c => c.ActionCost)
+                               .ThenBy(c => c.ShortestRemainingCount())
+                               .ThenByDescending(c => c.GetTownCount())
+                               .ThenByDescending(c => c.IsInSafeRegion).ToList();
+
+        Logger.TrackCandidates(candidates);
+
+        HashSet<Point> placedCells = new HashSet<Point>();
+        HashSet<int> placedRegions = new HashSet<int>();
+
+        int actionPointsLeft = 3;
+        int timesChecked = 0;   // Do a maximum of 4 passes through the candidates to try and place tracks to avoid infinite loops
+
+        while (actionPointsLeft > 0 && timesChecked < 4)
+        {
+            // Reset placedRegions every time we do another passthrough
+            placedRegions.Clear();
+
+            foreach (var candidate in candidates)
+            {
+                if (candidate.ActionCost <= actionPointsLeft && !placedRegions.Contains(candidate.RegionId) && !placedCells.Contains(candidate.CellPosition))
+                {
+                    actionPointsLeft -= candidate.ActionCost;
+                    placedCells.Add(candidate.CellPosition);
+                    placedRegions.Add(candidate.RegionId);
+                    actions += $"PLACE_TRACKS {candidate.CellPosition.X} {candidate.CellPosition.Y};";
+                }
+            }
+
+            timesChecked++;
+        }
+
+        return (actions, actionPointsLeft);
     }
 
     private void FillCandidates(List<DesirePath> desirePaths)

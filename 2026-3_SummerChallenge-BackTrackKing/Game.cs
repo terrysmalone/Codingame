@@ -65,9 +65,12 @@ public class Game
         //_connectionTracker.LogConnections();
 
         TrackPlacementCalculator trackPlacementCalculator = new TrackPlacementCalculator(_map, _regionTracker);
-        trackPlacementCalculator.CalculateBestCandidates(desirePaths);
+        (var actions, var actionPointsLeft) =  trackPlacementCalculator.CalculateBestCandidates(desirePaths);
 
-        var actions = CalculatePaintActions(desirePaths);
+        if (actionPointsLeft > 0)
+        {
+            actions += CalculateNextBestPaintActions(desirePaths, actionPointsLeft);
+        }
 
         actions += CalculateDisruptAction();
 
@@ -79,34 +82,12 @@ public class Game
         return actions;
     }
 
-    private string CalculatePaintActions(List<DesirePath> desirePaths)
+    private string CalculateNextBestPaintActions(List<DesirePath> desirePaths, int remainingActionPoints)
     {
         List<Point> paintedPoints = new List<Point>();
-        int remainingActionPoints = 3;
 
-        remainingActionPoints = CheckDesirePaths(paintedPoints, desirePaths, remainingActionPoints, excludePathsWhereEnemyIsStronger: true);
-
-        // If we still have action points left check with a more relaxed criteria (allow painting on paths the opponent
-        // has more control of
         if (remainingActionPoints > 0)
         {
-            remainingActionPoints = CheckDesirePaths(paintedPoints, desirePaths, remainingActionPoints, excludePathsWhereEnemyIsStronger: false);
-        }
-            
-        if (remainingActionPoints > 0)
-        {
-            // Logger.Error($"Using up {remainingActionPoints} unspent action points");
-
-            // Logger.ConnectionScoresMap(_connectionTracker.GetConnectionScoresMap());
-
-            // Simple first pass
-            // Get the highest number from connection score map. 
-            // Loop through tracks with that number
-            // When we find one check its neighbours. If they're empty add track if we can
-            // If we've checked them all decrement number by 1
-            // Throughout cache where we've checked so we don't do it again. 
-
-            // Get the highest number from connection score map. 
             int getHighestAbsoluteScore = _connectionTracker.GetHighestAbsoluteConnectionScore();
 
             bool cutout = false;
@@ -297,7 +278,7 @@ public class Game
                 desirePaths.Add(desirePath);
 
                 //Logger.Message($"Found path from {town.Id} to {desiredConnection}");
-                //Logger.DesirePath(desirePath);
+                Logger.DesirePath(desirePath);
             }
         }
 

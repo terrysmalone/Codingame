@@ -150,7 +150,7 @@ internal static class Logger
         }
     }
 
-    internal static void TrackCandidates(Dictionary<Point, TrackCandidate> candidates)
+    internal static void TrackCandidates(List<TrackCandidate> candidates)
     {
         if (DISABLE_LOGGING)
         {
@@ -159,11 +159,9 @@ internal static class Logger
 
         Console.Error.WriteLine("TRACK CANDIDATES");
 
-        foreach (var candidate in candidates)
+        foreach (var trackCandidate in candidates)
         {
-            var cellPosition = candidate.Key;
-            var trackCandidate = candidate.Value;
-            Console.Error.WriteLine($"Cell: {cellPosition.X},{cellPosition.Y} - Region: {trackCandidate.RegionId}, Cost: {trackCandidate.ActionCost}, DesirePaths: {trackCandidate.DesirePathCount}, TownPathsCount: {trackCandidate.GetTownCount()}, Instability: {trackCandidate.InstabilityLevel}, SafeRegion: {trackCandidate.IsInSafeRegion}");
+            Console.Error.WriteLine($"Cell: {trackCandidate.CellPosition.X},{trackCandidate.CellPosition.Y} - Region: {trackCandidate.RegionId}, Cost: {trackCandidate.ActionCost}, ShortestPathCount: {trackCandidate.ShortestRemainingCount()}, TownsOnPathCount: {trackCandidate.GetTownCount()}, SafeRegion: {trackCandidate.IsInSafeRegion}, Instability: {trackCandidate.InstabilityLevel}");
         }
     }
 }

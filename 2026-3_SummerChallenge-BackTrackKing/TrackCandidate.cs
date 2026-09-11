@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
 
 namespace BackTrackKing;
@@ -21,6 +22,8 @@ internal class TrackCandidate
 
     private HashSet<string> _towns = new HashSet<string>();
 
+    private int _shortestRemainingCount = int.MaxValue;
+
     internal TrackCandidate(Point cellPosition, int regionId, int actionCost, bool isInSafeRegion, int instabilityLevel)
     {
         CellPosition = cellPosition;
@@ -39,10 +42,20 @@ internal class TrackCandidate
 
         // Add to towns list
         _towns.Add(desirePath.TownConnection);
+
+        if (desirePath.RemainingActionCount < _shortestRemainingCount)
+        {
+            _shortestRemainingCount = desirePath.RemainingActionCount;
+        }
     }
 
     internal int GetTownCount()
     {
         return _towns.Count;
+    }
+
+    internal int ShortestRemainingCount()
+    {
+        return _shortestRemainingCount;
     }
 }

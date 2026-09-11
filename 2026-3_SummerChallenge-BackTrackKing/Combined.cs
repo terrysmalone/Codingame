@@ -15,7 +15,6 @@ using System.Collections;
 using System.Diagnostics;
 using System.IO;
 using System.Numerics;
-using System.Reflection.Metadata;
 
 internal class BestPath
 {
@@ -221,9 +220,12 @@ public class Game
         //_connectionTracker.LogConnections();
 
         TrackPlacementCalculator trackPlacementCalculator = new TrackPlacementCalculator(_map, _regionTracker);
-        trackPlacementCalculator.CalculateBestCandidates(desirePaths);
+        (var actions, var actionPointsLeft) =  trackPlacementCalculator.CalculateBestCandidates(desirePaths);
 
-        var actions = CalculatePaintActions(desirePaths);
+        if (actionPointsLeft > 0)
+        {
+            actions += CalculateNextBestPaintActions(desirePaths, actionPointsLeft);
+        }
 
         actions += CalculateDisruptAction();
 
@@ -235,34 +237,12 @@ public class Game
         return actions;
     }
 
-    private string CalculatePaintActions(List<DesirePath> desirePaths)
+    private string CalculateNextBestPaintActions(List<DesirePath> desirePaths, int remainingActionPoints)
     {
         List<Point> paintedPoints = new List<Point>();
-        int remainingActionPoints = 3;
 
-        remainingActionPoints = CheckDesirePaths(paintedPoints, desirePaths, remainingActionPoints, excludePathsWhereEnemyIsStronger: true);
-
-        // If we still have action points left check with a more relaxed criteria (allow painting on paths the opponent
-        // has more control of
         if (remainingActionPoints > 0)
         {
-            remainingActionPoints = CheckDesirePaths(paintedPoints, desirePaths, remainingActionPoints, excludePathsWhereEnemyIsStronger: false);
-        }
-            
-        if (remainingActionPoints > 0)
-        {
-            // Logger.Error($"Using up {remainingActionPoints} unspent action points");
-
-            // Logger.ConnectionScoresMap(_connectionTracker.GetConnectionScoresMap());
-
-            // Simple first pass
-            // Get the highest number from connection score map. 
-            // Loop through tracks with that number
-            // When we find one check its neighbours. If they're empty add track if we can
-            // If we've checked them all decrement number by 1
-            // Throughout cache where we've checked so we don't do it again. 
-
-            // Get the highest number from connection score map. 
             int getHighestAbsoluteScore = _connectionTracker.GetHighestAbsoluteConnectionScore();
 
             bool cutout = false;
@@ -453,7 +433,7 @@ public class Game
                 desirePaths.Add(desirePath);
 
                 //Logger.Message($"Found path from {town.Id} to {desiredConnection}");
-                //Logger.DesirePath(desirePath);
+                Logger.DesirePath(desirePath);
             }
         }
 
@@ -757,7 +737,7 @@ internal static class Logger
         }
     }
 
-    internal static void TrackCandidates(Dictionary<Point, TrackCandidate> candidates)
+    internal static void TrackCandidates(List<TrackCandidate> candidates)
     {
         if (DISABLE_LOGGING)
         {
@@ -766,11 +746,9 @@ internal static class Logger
 
         Console.Error.WriteLine("TRACK CANDIDATES");
 
-        foreach (var candidate in candidates)
+        foreach (var trackCandidate in candidates)
         {
-            var cellPosition = candidate.Key;
-            var trackCandidate = candidate.Value;
-            Console.Error.WriteLine($"Cell: {cellPosition.X},{cellPosition.Y} - Region: {trackCandidate.RegionId}, Cost: {trackCandidate.ActionCost}, DesirePaths: {trackCandidate.DesirePathCount}, TownPathsCount: {trackCandidate.GetTownCount()}, Instability: {trackCandidate.InstabilityLevel}, SafeRegion: {trackCandidate.IsInSafeRegion}");
+            Console.Error.WriteLine($"Cell: {trackCandidate.CellPosition.X},{trackCandidate.CellPosition.Y} - Region: {trackCandidate.RegionId}, Cost: {trackCandidate.ActionCost}, ShortestPathCount: {trackCandidate.ShortestRemainingCount()}, TownsOnPathCount: {trackCandidate.GetTownCount()}, SafeRegion: {trackCandidate.IsInSafeRegion}, Instability: {trackCandidate.InstabilityLevel}");
         }
     }
 }
@@ -1540,6 +1518,8 @@ internal class TrackCandidate
 
     private HashSet<string> _towns = new HashSet<string>();
 
+    private int _shortestRemainingCount = int.MaxValue;
+
     internal TrackCandidate(Point cellPosition, int regionId, int actionCost, bool isInSafeRegion, int instabilityLevel)
     {
         CellPosition = cellPosition;
@@ -1558,11 +1538,21 @@ internal class TrackCandidate
 
         // Add to towns list
         _towns.Add(desirePath.TownConnection);
+
+        if (desirePath.RemainingActionCount < _shortestRemainingCount)
+        {
+            _shortestRemainingCount = desirePath.RemainingActionCount;
+        }
     }
 
     internal int GetTownCount()
     {
         return _towns.Count;
+    }
+
+    internal int ShortestRemainingCount()
+    {
+        return _shortestRemainingCount;
     }
 }
 
@@ -1581,8 +1571,10 @@ internal class TrackPlacementCalculator
         _regionTracker = regionTracker;
     }
 
-    public void CalculateBestCandidates(List<DesirePath> desirePaths)
+    public (string, int) CalculateBestCandidates(List<DesirePath> desirePaths)
     {
+        string actions = string.Empty;
+
         _candidates.Clear();
 
         // Before doing anything, check if we can complete a desire path fully this turn.
@@ -1592,11 +1584,47 @@ internal class TrackPlacementCalculator
 
         FillCandidates(desirePaths);
 
-        Logger.TrackCandidates(_candidates);
-        
-        // Group candidates by region and/or town join
-        // Get the best scoring candidates. Note, don't take them all from the same one, unless they're a lot stronger
+        List<TrackCandidate> candidates = new List<TrackCandidate>(_candidates.Values);
 
+
+        //candidates = candidates.OrderBy(c => c.ActionCost)
+        //                       .ThenBy(c => c.ShortestRemainingCount())
+        //                       .ThenByDescending(c => c.GetTownCount())
+        //                       .ThenByDescending(c => c.IsInSafeRegion).ToList();
+
+        candidates = candidates.OrderBy(c => c.ActionCost)
+                               .ThenBy(c => c.ShortestRemainingCount())
+                               .ThenByDescending(c => c.GetTownCount())
+                               .ThenByDescending(c => c.IsInSafeRegion).ToList();
+
+        Logger.TrackCandidates(candidates);
+
+        HashSet<Point> placedCells = new HashSet<Point>();
+        HashSet<int> placedRegions = new HashSet<int>();
+
+        int actionPointsLeft = 3;
+        int timesChecked = 0;   // Do a maximum of 4 passes through the candidates to try and place tracks to avoid infinite loops
+
+        while (actionPointsLeft > 0 && timesChecked < 4)
+        {
+            // Reset placedRegions every time we do another passthrough
+            placedRegions.Clear();
+
+            foreach (var candidate in candidates)
+            {
+                if (candidate.ActionCost <= actionPointsLeft && !placedRegions.Contains(candidate.RegionId) && !placedCells.Contains(candidate.CellPosition))
+                {
+                    actionPointsLeft -= candidate.ActionCost;
+                    placedCells.Add(candidate.CellPosition);
+                    placedRegions.Add(candidate.RegionId);
+                    actions += $"PLACE_TRACKS {candidate.CellPosition.X} {candidate.CellPosition.Y};";
+                }
+            }
+
+            timesChecked++;
+        }
+
+        return (actions, actionPointsLeft);
     }
 
     private void FillCandidates(List<DesirePath> desirePaths)

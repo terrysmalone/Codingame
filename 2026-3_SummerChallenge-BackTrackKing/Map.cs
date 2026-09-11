@@ -6,7 +6,8 @@ internal class Map {
     internal int Width { get; }
     internal int Height { get; }
 
-    internal CellType[,] CellTypes;
+    internal int[,] CellCosts;
+
     internal int[,] Regions;
 
     private int[,] _trackOwner;
@@ -16,7 +17,8 @@ internal class Map {
         Width = width;
         Height = height;
 
-        CellTypes = new CellType[width, height];
+        CellCosts = new int[width, height];
+
         Regions = new int[width, height];
 
         _trackOwner = new int[width, height];
@@ -24,7 +26,26 @@ internal class Map {
 
     internal void SetCell(int x, int y, CellType cellType, int region)
     {
-        CellTypes[x, y] = cellType;
+        int cellCost = 0;
+
+        switch (cellType)
+        {
+            case CellType.PLAINS:
+                cellCost = 1;
+                break;
+            case CellType.RIVER:
+                cellCost = 2;
+                break;
+            case CellType.MOUNTAIN:
+                cellCost = 3;
+                break;
+            default:
+                Logger.Error($"Unknown cell type: {cellType}");
+                break;
+        }
+
+        CellCosts[x, y] = cellCost;
+
         Regions[x, y] = region;
     }
 

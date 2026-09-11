@@ -63,24 +63,22 @@ internal static class Logger
         {
             for (int x = 0; x < map.Width; x++)
             {
-                Console.Error.Write(ToSymbol(map.CellTypes[x, y]));
+                Console.Error.Write(ToSymbol(map.CellCosts[x, y]));
             }
             Console.Error.WriteLine();
         }
     }
 
-    private static string ToSymbol(CellType cellType)
+    private static string ToSymbol(int cellCost)
     {
-        switch (cellType)
+        switch (cellCost)
         {
-                case CellType.PLAINS:
+                case 1:
                     return " ";
-                case CellType.RIVER:
+                case 2:
                     return "~";
-                case CellType.MOUNTAIN:
+                case 3:
                     return "^";
-                case CellType.POI:
-                    return "*";
                 default:
                     return " ";
         }

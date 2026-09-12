@@ -1,0 +1,143 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.Linq;
+
+namespace BackTrackKing;
+
+// Keeps track of scores for every cell in the game and works out which ones are best to place
+//
+// General strategy
+//
+// From all desire paths extract every viable cell. Store:
+// Cell 
+// { 
+//    CellPosition,
+//    Action Cost,
+//    RegionID,
+//    How many desire paths it is part of
+//      Store all of these paths:
+//        Full path points
+//        Remaining points
+//        Full path Action cost
+//        Remaining path action cost
+//        Highest instability level along this path
+//        town join (2 to 6)
+//    Is it in a safe region (safe regions contain town so can never be inked)
+//    This cells instability level
+//
+// We want to prioritise in this order
+// 1. If we can complete a desire path fully in this turn then do it. 
+// 2. Place tracks on the lowest cost cells. Defined by:
+//      a. plains > river > mountain
+//      b. place cells in safe regions first
+//      c. place cells in different regions and/or town-join to reduce the risk of being inked
+internal class TrackPlacementCalculator
+{
+    private Dictionary<Point, TrackCandidate> _candidates;
+
+    private Map _map;
+    private RegionTracker _regionTracker;
+
+    public TrackPlacementCalculator(Map map, RegionTracker regionTracker)
+    {
+        _candidates = new Dictionary<Point, TrackCandidate>();
+        _map = map;
+        _regionTracker = regionTracker;
+    }
+
+    public (string, int) CalculateBestCandidates(List<DesirePath> desirePaths)
+    {
+        string actions = string.Empty;
+
+        _candidates.Clear();
+
+        // Before doing anything, check if we can complete a desire path fully this turn.
+        // If so, we should do that first. This is a higher priority than any other placement strategy.
+        // Open question: Should we check instability levels of the desire paths for this? THis won'r matter at first because 
+        // We currently exclude any amout of instability from the path finding search. At some point we'll change this
+
+        FillCandidates(desirePaths);
+
+        List<TrackCandidate> candidates = new List<TrackCandidate>(_candidates.Values);
+
+
+        // Original - Loss 1657 - 747
+        //candidates = candidates.OrderBy(c => c.ActionCost)
+        //                       .ThenBy(c => c.ShortestRemainingCount())
+        //                       .ThenByDescending(c => c.GetTownCount())
+        //                       .ThenByDescending(c => c.IsInSafeRegion).ToList();
+
+        // Loss 736 - 181
+        //candidates = candidates.OrderBy(c => c.ShortestRemainingCount())
+        //                       .ThenBy(c => c.ActionCost)
+        //                       .ThenByDescending(c => c.GetTownCount())
+        //                       .ThenByDescending(c => c.IsInSafeRegion).ToList();
+
+        // Loss 511 - 394
+        candidates = candidates.OrderBy(c => c.ShortestRemainingCount())                               
+                               .ThenByDescending(c => c.GetTownCount())
+                               .ThenBy(c => c.ActionCost)
+                               .ThenByDescending(c => c.IsInSafeRegion).ToList();
+
+        Logger.TrackCandidates(candidates);
+
+        HashSet<Point> placedCells = new HashSet<Point>();
+        HashSet<int> placedRegions = new HashSet<int>();
+
+        int actionPointsLeft = 3;
+        int timesChecked = 0;   // Do a maximum of 4 passes through the candidates to try and place tracks to avoid infinite loops
+
+        while (actionPointsLeft > 0 && timesChecked < 4)
+        {
+            // Reset placedRegions every time we do another passthrough
+            placedRegions.Clear();
+
+            foreach (var candidate in candidates)
+            {
+                if (candidate.ActionCost <= actionPointsLeft && !placedRegions.Contains(candidate.RegionId) && !placedCells.Contains(candidate.CellPosition))
+                {
+                    actionPointsLeft -= candidate.ActionCost;
+                    placedCells.Add(candidate.CellPosition);
+                    placedRegions.Add(candidate.RegionId);
+                    actions += $"PLACE_TRACKS {candidate.CellPosition.X} {candidate.CellPosition.Y};";
+                }
+            }
+
+            timesChecked++;
+        }
+
+        return (actions, actionPointsLeft);
+    }
+
+    private void FillCandidates(List<DesirePath> desirePaths)
+    {
+        foreach (var desirePath in desirePaths)
+        {
+            foreach (var cellPosition in desirePath.RemainingPath)
+            {
+                TrackCandidate? candidate = null;
+
+                if (_candidates.ContainsKey(cellPosition))
+                {
+                    candidate = _candidates[cellPosition];
+                }
+                else
+                {
+                    int regionId = _map.RegionIds[cellPosition.X, cellPosition.Y];
+                    int actionCost = _map.CellCosts[cellPosition.X, cellPosition.Y];
+
+                    bool isInSafeRegion = _regionTracker.IsSafeRegion(regionId);
+
+                    int instabilityLevel = _regionTracker.GetInstabilityLevel(regionId);
+
+                    candidate = new TrackCandidate(cellPosition, regionId, actionCost, isInSafeRegion, instabilityLevel);
+                }
+
+                candidate.AddDesirePath(desirePath);
+
+                _candidates[cellPosition] = candidate;
+            }
+        }
+    }
+}

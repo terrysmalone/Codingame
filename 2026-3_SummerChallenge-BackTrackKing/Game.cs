@@ -64,7 +64,13 @@ public class Game
         // _regionTracker.LogRegions();
         //_connectionTracker.LogConnections();
 
-        var actions = CalculatePaintActions(desirePaths);
+        TrackPlacementCalculator trackPlacementCalculator = new TrackPlacementCalculator(_map, _regionTracker);
+        (var actions, var actionPointsLeft) =  trackPlacementCalculator.CalculateBestCandidates(desirePaths);
+
+        if (actionPointsLeft > 0)
+        {
+            actions += CalculateNextBestPaintActions(desirePaths, actionPointsLeft);
+        }
 
         actions += CalculateDisruptAction();
 
@@ -76,34 +82,12 @@ public class Game
         return actions;
     }
 
-    private string CalculatePaintActions(List<DesirePath> desirePaths)
+    private string CalculateNextBestPaintActions(List<DesirePath> desirePaths, int remainingActionPoints)
     {
         List<Point> paintedPoints = new List<Point>();
-        int remainingActionPoints = 3;
 
-        remainingActionPoints = CheckDesirePaths(paintedPoints, desirePaths, remainingActionPoints, excludePathsWhereEnemyIsStronger: true);
-
-        // If we still have action points left check with a more relaxed criteria (allow painting on paths the opponent
-        // has more control of
         if (remainingActionPoints > 0)
         {
-            remainingActionPoints = CheckDesirePaths(paintedPoints, desirePaths, remainingActionPoints, excludePathsWhereEnemyIsStronger: false);
-        }
-            
-        if (remainingActionPoints > 0)
-        {
-            // Logger.Error($"Using up {remainingActionPoints} unspent action points");
-
-            // Logger.ConnectionScoresMap(_connectionTracker.GetConnectionScoresMap());
-
-            // Simple first pass
-            // Get the highest number from connection score map. 
-            // Loop through tracks with that number
-            // When we find one check its neighbours. If they're empty add track if we can
-            // If we've checked them all decrement number by 1
-            // Throughout cache where we've checked so we don't do it again. 
-
-            // Get the highest number from connection score map. 
             int getHighestAbsoluteScore = _connectionTracker.GetHighestAbsoluteConnectionScore();
 
             bool cutout = false;
@@ -144,9 +128,9 @@ public class Game
                                 int regionId = _regionTracker.GetRegionId(pt.X, pt.Y);
 
                                 if (_map.isTrackFree(pt.X, pt.Y) && !towns.Contains(pt) && !paintedPoints.Contains(pt) && !_regionTracker.IsRegionInked(regionId))
-                                {                                    
-                                    CellType cellType = _map.CellTypes[pt.X, pt.Y];
-                                    int cellValue = (int)cellType + 1;
+                                {   
+                                    int cellValue = _map.CellCosts[pt.X, pt.Y];
+
                                     if (cellValue <= remainingActionPoints)
                                     {
                                         remainingActionPoints -= cellValue;
@@ -191,28 +175,28 @@ public class Game
                 }
             }
 
-            List<(Point, CellType)> cellTypes = new List<(Point, CellType)>();
+            List<(Point, int)> cellCosts = new List<(Point, int)>();
 
             foreach (var point in desirePath.RemainingPath)
             {
                 if (_map.isTrackFree(point.X, point.Y))
                 {
-                    CellType cellType = _map.CellTypes[point.X, point.Y];
-                    cellTypes.Add((point, cellType));
+                    int cellCost = _map.CellCosts[point.X, point.Y];
+                    cellCosts.Add((point, cellCost));
                 }
             }
 
             // Order by cell type, so we can prioritize plains over rivers and mountains
-            List<(Point, CellType)> orderedCellTypes = cellTypes.OrderBy(ct => ct.Item2).ToList();
+            List<(Point, int)> orderedCellTypes = cellCosts.OrderBy(ct => ct.Item2).ToList();
 
             foreach ((Point, CellType) pair in orderedCellTypes)
             {
                 Point cellPoint = pair.Item1;
 
                 // Don't count it if we've already painted it this turn
-                if ((int)pair.Item2 + 1 <= remainingActionPoints && !paintedPoints.Contains(cellPoint))
+                if ((int)pair.Item2 <= remainingActionPoints && !paintedPoints.Contains(cellPoint))
                 {
-                    int cellValue = (int)pair.Item2 + 1;
+                    int cellValue = (int)pair.Item2;
                     remainingActionPoints -= cellValue;
                     paintedPoints.Add(cellPoint);
                 }
@@ -283,7 +267,7 @@ public class Game
                 int remainingPathCount = remainingPathPoints.Count;
                 int remainingActionCount = CalculateActionCount(remainingPathPoints);
 
-                var desirePath = new DesirePath(fullSanitisedPath, remainingPathPoints)
+                var desirePath = new DesirePath(fullSanitisedPath, remainingPathPoints, $"{town.Id}-{desiredConnection}")
                 {
                     FullPathCount = fullPathCount,
                     FullActionCount = fullActionCount,
@@ -294,7 +278,7 @@ public class Game
                 desirePaths.Add(desirePath);
 
                 //Logger.Message($"Found path from {town.Id} to {desiredConnection}");
-                //Logger.DesirePath(desirePath);
+                Logger.DesirePath(desirePath);
             }
         }
 
@@ -372,23 +356,8 @@ public class Game
 
         foreach (var point in path)
         {
-            CellType cellType = _map.CellTypes[point.X, point.Y];
-
-            switch (cellType)
-            {
-                case CellType.PLAINS:
-                    actionCount += 1;
-                    break;
-                case CellType.RIVER:
-                    actionCount += 2;
-                    break;
-                case CellType.MOUNTAIN:
-                    actionCount += 3;
-                    break;
-                default:
-                    Logger.Error($"Unknown cell type: {cellType}");
-                    break;
-            }
+            int cellCost = _map.CellCosts[point.X, point.Y];
+            actionCount += cellCost;
         }
 
         return actionCount;

@@ -9,6 +9,8 @@ internal class DesirePath
 
     internal List<Point> RemainingPath { get; private set; }
 
+    internal string TownConnection { get; private set; }
+
     internal int FullPathCount { get; set; }
 
     internal int FullActionCount { get; set; }
@@ -17,10 +19,12 @@ internal class DesirePath
 
     internal int RemainingActionCount { get; set; }
 
-    public DesirePath(List<Point> fullPath, List<Point> remainingPath)
+    public DesirePath(List<Point> fullPath, List<Point> remainingPath, string townConnection)
     {
         FullPath = fullPath;
         RemainingPath = remainingPath;
+
+        TownConnection = townConnection;
     }
 }
 

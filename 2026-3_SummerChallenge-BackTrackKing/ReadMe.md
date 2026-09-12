@@ -7,9 +7,7 @@
 ## Improvements
 * I complete tracks even if it favours my opponent. Don't complete tracks if they will own as much of the finished result as me (Look a7 fight 32 against stem. On move 10 I shouldn't place a track on 13,4. It makes it even. If he had placed it there too he'd have won that one)
 * Use unspent action points. Just place anywhere. At least if they destry track we'll have more coverage.
-* Don't keep building on a region that has a high instability score. The opponent has started making it unstable. They'll keep doing it
 * Secondary order regions to disrupt by number of track pieces opponent has. Lets make him work harder to re-establish a connection
-* Prioritise where to place tracks based on it being on multiple desire paths.
 
 # Progress
 
@@ -98,6 +96,20 @@ c640216ee416fc8027159efe8b48c62824edd8b2
 	Changes: Don't place tracks on towns
 	Submitted: 2026-09-11 12:49am
 	Rank: (151) to 152
+
+
+
+915b4397069c06ca3ec9c10ff583fa437fc48cf2
+
+	Changes: Implement cell scoring
+	Submitted: 2026-09-12 12:08am
+	Rank: (157) to 155
+
+376cb99be7332d79a08791ffdb139cb9ee4c8f77
+
+	Changes: Swap ordering
+	Submitted: 2026-09-12 12:34am
+	Rank: (155) to 133
 
 
 

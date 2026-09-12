@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
 
 namespace BackTrackKing;
 
@@ -63,24 +64,22 @@ internal static class Logger
         {
             for (int x = 0; x < map.Width; x++)
             {
-                Console.Error.Write(ToSymbol(map.CellTypes[x, y]));
+                Console.Error.Write(ToSymbol(map.CellCosts[x, y]));
             }
             Console.Error.WriteLine();
         }
     }
 
-    private static string ToSymbol(CellType cellType)
+    private static string ToSymbol(int cellCost)
     {
-        switch (cellType)
+        switch (cellCost)
         {
-                case CellType.PLAINS:
+                case 1:
                     return " ";
-                case CellType.RIVER:
+                case 2:
                     return "~";
-                case CellType.MOUNTAIN:
+                case 3:
                     return "^";
-                case CellType.POI:
-                    return "*";
                 default:
                     return " ";
         }
@@ -134,6 +133,11 @@ internal static class Logger
 
     internal static void ConnectionScoresMap(int[,] connectionScoresMap)
     {
+        if (DISABLE_LOGGING)
+        {
+            return;
+        }
+
         Console.Error.WriteLine("CONNECTION SCORES MAP");
 
         for (int y = 0; y < connectionScoresMap.GetLength(1); y++)
@@ -143,6 +147,21 @@ internal static class Logger
                 Console.Error.Write($"{connectionScoresMap[x, y]} ");
             }
             Console.Error.WriteLine();
+        }
+    }
+
+    internal static void TrackCandidates(List<TrackCandidate> candidates)
+    {
+        if (DISABLE_LOGGING)
+        {
+            return;
+        }
+
+        Console.Error.WriteLine("TRACK CANDIDATES");
+
+        foreach (var trackCandidate in candidates)
+        {
+            Console.Error.WriteLine($"Cell: {trackCandidate.CellPosition.X},{trackCandidate.CellPosition.Y} - Region: {trackCandidate.RegionId}, Cost: {trackCandidate.ActionCost}, ShortestPathCount: {trackCandidate.ShortestRemainingCount()}, TownsOnPathCount: {trackCandidate.GetTownCount()}, SafeRegion: {trackCandidate.IsInSafeRegion}, Instability: {trackCandidate.InstabilityLevel}");
         }
     }
 }

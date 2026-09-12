@@ -28,11 +28,12 @@ class Player
 
         InitialiseTowns(game);
 
-
-
         // game loop
         while (true)
         {
+            Logger.StartRoundStopwatch();
+            Logger.LogTime($"Starting round set up");
+
             int myScore = int.Parse(Console.ReadLine());
             int foeScore = int.Parse(Console.ReadLine());
 
@@ -76,14 +77,18 @@ class Player
                 }
             }
 
+            Logger.LogTime($"Round set up complete");
+
             string actions = game.CalculateActions();
 
             // Write an action using Console.WriteLine()
             // To debug: Console.Error.WriteLine("Debug messages...");
 
+            Logger.LogTime($"Round end");
+            Logger.EndRoundStopwatch();
 
             // AUTOPLACE x1 y1 x2 | PLACE_TRACKS x y | DISRUPT regionId | MESSAGE text
-            Console.WriteLine(actions);
+            Console.WriteLine(actions);            
         }
     }
 

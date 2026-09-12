@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
+using System.Linq;
 
 namespace BackTrackKing;
 
@@ -8,6 +10,13 @@ internal static class Logger
 {
 
     private static bool DISABLE_LOGGING = false;
+
+    private static bool DISABLE_TIMES = false;
+
+    private static long _roundStartTime;
+    private static long _lastTimedLog;
+
+    private static List<TimeSpan> _roundTimes = new List<TimeSpan>();
 
     internal static void DisableLogging()
     {
@@ -18,6 +27,56 @@ internal static class Logger
     {
         DISABLE_LOGGING = false;
     }
+
+    internal static void EnableTimes()
+    {
+        DISABLE_LOGGING = false;
+    }
+
+    internal static void DisableTimes()
+    {
+        DISABLE_LOGGING = true;
+    }
+
+    internal static void LogTime(string message)
+    {
+        if (DISABLE_TIMES)
+        {
+            return;
+        }
+        TimeSpan elapsedTime = Stopwatch.GetElapsedTime(_roundStartTime);
+        TimeSpan elapsedSinceLastLog = Stopwatch.GetElapsedTime(_lastTimedLog);
+        Console.Error.WriteLine($"{elapsedTime.TotalMilliseconds}ms({elapsedSinceLastLog.TotalMilliseconds}ms): {message}");
+        _lastTimedLog = Stopwatch.GetTimestamp();
+    }
+
+    internal static void StartRoundStopwatch()
+    {
+        if (DISABLE_TIMES)
+        {
+            return;
+        }
+        _roundStartTime = Stopwatch.GetTimestamp();
+        _lastTimedLog = Stopwatch.GetTimestamp();
+    }
+
+    internal static void EndRoundStopwatch()
+    {
+        if (DISABLE_TIMES)
+        {
+            return;
+        }
+
+        TimeSpan totalRoundTime = Stopwatch.GetElapsedTime(_roundStartTime);
+        _roundTimes.Add(totalRoundTime);
+        Console.Error.WriteLine($"Total round time: {totalRoundTime.TotalMilliseconds}ms");
+
+        // Get an average of all round times
+        TimeSpan averageRoundTime = new TimeSpan((long)_roundTimes.Average(t => t.Ticks));
+        Console.Error.WriteLine($"Average round time: {averageRoundTime.TotalMilliseconds}ms");
+    }
+
+
 
     internal static void Error(string message)
     {

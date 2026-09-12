@@ -57,8 +57,11 @@ public class Game
     internal string CalculateActions()
     {
         // Logger.ConnectionScoresMap(_connectionTracker.GetConnectionScoresMap());
+        Logger.LogTime($"Starting to calculate actions");
 
         List<DesirePath> desirePaths = CalculateDesirePaths();
+
+        Logger.LogTime($"Calculated desire paths");
 
         // Logger.DesirePaths(desirePaths);
         // _regionTracker.LogRegions();
@@ -67,12 +70,18 @@ public class Game
         TrackPlacementCalculator trackPlacementCalculator = new TrackPlacementCalculator(_map, _regionTracker);
         (var actions, var actionPointsLeft) =  trackPlacementCalculator.CalculateBestCandidates(desirePaths);
 
+        Logger.LogTime($"Calculated cell placement");
+
         if (actionPointsLeft > 0)
         {
             actions += CalculateNextBestPaintActions(desirePaths, actionPointsLeft);
+
+            Logger.LogTime($"Calculated next best actions");
         }
 
         actions += CalculateDisruptAction();
+
+        Logger.LogTime($"Calculated disrupt actions");
 
         if (string.IsNullOrEmpty(actions))
         {

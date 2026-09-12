@@ -9,10 +9,10 @@ using System;
 using Microsoft.VisualBasic;
 using System.Linq;
 using System.Reflection.Metadata.Ecma335;
+using System.Diagnostics;
 using System.Text;
 using System.Xml.Linq;
 using System.Collections;
-using System.Diagnostics;
 using System.IO;
 using System.Numerics;
 
@@ -236,8 +236,11 @@ public class Game
     internal string CalculateActions()
     {
         // Logger.ConnectionScoresMap(_connectionTracker.GetConnectionScoresMap());
+        Logger.LogTime($"Starting to calculate actions");
 
         List<DesirePath> desirePaths = CalculateDesirePaths();
+
+        Logger.LogTime($"Calculated desire paths");
 
         // Logger.DesirePaths(desirePaths);
         // _regionTracker.LogRegions();
@@ -246,12 +249,18 @@ public class Game
         TrackPlacementCalculator trackPlacementCalculator = new TrackPlacementCalculator(_map, _regionTracker);
         (var actions, var actionPointsLeft) =  trackPlacementCalculator.CalculateBestCandidates(desirePaths);
 
+        Logger.LogTime($"Calculated cell placement");
+
         if (actionPointsLeft > 0)
         {
             actions += CalculateNextBestPaintActions(desirePaths, actionPointsLeft);
+
+            Logger.LogTime($"Calculated next best actions");
         }
 
         actions += CalculateDisruptAction();
+
+        Logger.LogTime($"Calculated disrupt actions");
 
         if (string.IsNullOrEmpty(actions))
         {
@@ -547,6 +556,13 @@ internal static class Logger
 
     private static bool DISABLE_LOGGING = false;
 
+    private static bool DISABLE_TIMES = false;
+
+    private static long _roundStartTime;
+    private static long _lastTimedLog;
+
+    private static List<TimeSpan> _roundTimes = new List<TimeSpan>();
+
     internal static void DisableLogging()
     {
         DISABLE_LOGGING = true;
@@ -556,6 +572,56 @@ internal static class Logger
     {
         DISABLE_LOGGING = false;
     }
+
+    internal static void EnableTimes()
+    {
+        DISABLE_LOGGING = false;
+    }
+
+    internal static void DisableTimes()
+    {
+        DISABLE_LOGGING = true;
+    }
+
+    internal static void LogTime(string message)
+    {
+        if (DISABLE_TIMES)
+        {
+            return;
+        }
+        TimeSpan elapsedTime = Stopwatch.GetElapsedTime(_roundStartTime);
+        TimeSpan elapsedSinceLastLog = Stopwatch.GetElapsedTime(_lastTimedLog);
+        Console.Error.WriteLine($"{elapsedTime.TotalMilliseconds}ms({elapsedSinceLastLog.TotalMilliseconds}ms): {message}");
+        _lastTimedLog = Stopwatch.GetTimestamp();
+    }
+
+    internal static void StartRoundStopwatch()
+    {
+        if (DISABLE_TIMES)
+        {
+            return;
+        }
+        _roundStartTime = Stopwatch.GetTimestamp();
+        _lastTimedLog = Stopwatch.GetTimestamp();
+    }
+
+    internal static void EndRoundStopwatch()
+    {
+        if (DISABLE_TIMES)
+        {
+            return;
+        }
+
+        TimeSpan totalRoundTime = Stopwatch.GetElapsedTime(_roundStartTime);
+        _roundTimes.Add(totalRoundTime);
+        Console.Error.WriteLine($"Total round time: {totalRoundTime.TotalMilliseconds}ms");
+
+        // Get an average of all round times
+        TimeSpan averageRoundTime = new TimeSpan((long)_roundTimes.Average(t => t.Ticks));
+        Console.Error.WriteLine($"Average round time: {averageRoundTime.TotalMilliseconds}ms");
+    }
+
+
 
     internal static void Error(string message)
     {
@@ -898,11 +964,12 @@ class Player
 
         InitialiseTowns(game);
 
-
-
         // game loop
         while (true)
         {
+            Logger.StartRoundStopwatch();
+            Logger.LogTime($"Starting round set up");
+
             int myScore = int.Parse(Console.ReadLine());
             int foeScore = int.Parse(Console.ReadLine());
 
@@ -946,14 +1013,18 @@ class Player
                 }
             }
 
+            Logger.LogTime($"Round set up complete");
+
             string actions = game.CalculateActions();
 
             // Write an action using Console.WriteLine()
             // To debug: Console.Error.WriteLine("Debug messages...");
 
+            Logger.LogTime($"Round end");
+            Logger.EndRoundStopwatch();
 
             // AUTOPLACE x1 y1 x2 | PLACE_TRACKS x y | DISRUPT regionId | MESSAGE text
-            Console.WriteLine(actions);
+            Console.WriteLine(actions);            
         }
     }
 
@@ -1575,21 +1646,34 @@ internal class TrackPlacementCalculator
         // Logger.TrackCandidates(candidates);
 
         HashSet<int> placedRegions = new HashSet<int>();
+        HashSet<string> placedDesirePaths = new HashSet<string>();
 
         int timesChecked = 0;   // Do a maximum of 4 passes through the candidates to try and place tracks to avoid infinite loops
 
         while (actionPointsLeft > 0 && timesChecked < 4)
         {
             // Reset placedRegions every time we do another passthrough
+            // TODO: Instead of basing it on placedRegions, based it on desirepaths. Every time we place a cell add all desirepaths to the list (town to town?)
+            // Before placing 
             placedRegions.Clear();
+            placedDesirePaths.Clear();
 
             foreach (var candidate in candidates)
             {
-                if (candidate.ActionCost <= actionPointsLeft && !placedRegions.Contains(candidate.RegionId) && !placedCells.Contains(candidate.CellPosition))
+                if (candidate.ActionCost <= actionPointsLeft 
+                    && !placedCells.Contains(candidate.CellPosition) 
+                    && !placedRegions.Contains(candidate.RegionId))
+                    // && !IsInPlacedDesirePaths(candidate, placedDesirePaths))
                 {
                     actionPointsLeft -= candidate.ActionCost;
                     placedCells.Add(candidate.CellPosition);
                     placedRegions.Add(candidate.RegionId);
+
+                    foreach (var desirePath in candidate.DesirePaths)
+                    {
+                        placedDesirePaths.Add(desirePath.TownConnection);
+                    }
+
                     actions += $"PLACE_TRACKS {candidate.CellPosition.X} {candidate.CellPosition.Y};";
                 }
             }

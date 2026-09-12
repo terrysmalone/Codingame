@@ -166,6 +166,26 @@ internal class DesirePath
 
 
 
+internal static class DesirePathUtil
+{
+    // Check if completing a path is worthwhile. If the opponent already owns most of it, there's no point
+    // pursuing it
+    internal static bool IsCompletionWorthwhile(DesirePath desirePath)
+    {
+        // Use: NetAdvantageAfterCompletion = (MyExistingCellsInPath + desirePath.RemainingPathCount) - OpponentExistingCellsInPath
+
+        int ntAdvantage = (desirePath.MyTracksOnPathCount + desirePath.RemainingPathCount) - desirePath.OpponentTracksOnPathCount;
+
+        if (ntAdvantage < 1)
+        {
+            return false;
+        }
+
+        return true;
+    }
+}
+
+
 public class Game
 {
     private int _myId;
@@ -333,7 +353,7 @@ public class Game
 
     private List<DesirePath> CalculateDesirePaths()
     {
-        Logger.Message("Calculating desire paths");
+        // Logger.Message("Calculating desire paths");
 
         List<DesirePath> desirePaths = new List<DesirePath>();
         foreach (var town in _towns)
@@ -368,18 +388,20 @@ public class Game
                     {
                         remainingPathPoints.Add(point);
                     }
-
-                    int trackOwner = _map.GetTrackOwner(point.X, point.Y);
-
-                    if (trackOwner != -1 && trackOwner != 2)
+                    else
                     {
-                        if (trackOwner == _myId)
+                        int trackOwner = _map.GetTrackOwner(point.X, point.Y);
+
+                        if (trackOwner != -1 && trackOwner != 2)
                         {
-                            myTracksOnPathCount++;
-                        }
-                        else
-                        {
-                            opponentTracksOnPathCount++;
+                            if (trackOwner == _myId)
+                            {
+                                myTracksOnPathCount++;
+                            }
+                            else
+                            {
+                                opponentTracksOnPathCount++;
+                            }
                         }
                     }
                 }
@@ -401,7 +423,7 @@ public class Game
             }
         }
 
-        Logger.Message($"Finished calculating {desirePaths.Count} desire paths");
+        // Logger.Message($"Finished calculating {desirePaths.Count} desire paths");
 
         return desirePaths.OrderBy(dp => dp.RemainingActionCount).ThenBy(dp => dp.RemainingPathCount).ToList();
     }
@@ -1475,7 +1497,7 @@ internal class TrackCandidate
             _shortestRemainingCount = desirePath.RemainingActionCount;
         }
 
-        if (!IsCompletionWorthwhile(desirePath))
+        if (!DesirePathUtil.IsCompletionWorthwhile(desirePath))
         {
             IsPathWorthwhile = false;
         }
@@ -1491,27 +1513,7 @@ internal class TrackCandidate
     {
         return _shortestRemainingCount;
     }
-
-    // Check if completing a path is worthwhile. If the opponent already owns most of it, there's no point
-    // pursuing it
-    private bool IsCompletionWorthwhile(DesirePath desirePath)
-    {
-        // Logger.Message($"Checking if path to {desirePath.TownConnection} is worthwhile. MyTracksOnPathCount: {desirePath.MyTracksOnPathCount}, RemainingPathCount: {desirePath.RemainingPathCount}, OpponentTracksOnPathCount: {desirePath.OpponentTracksOnPathCount}");
-        // Use: NetAdvantageAfterCompletion = (MyExistingCellsInPath + desirePath.RemainingPathCount) - OpponentExistingCellsInPath
-
-        int ntAdvantage = (desirePath.MyTracksOnPathCount + desirePath.RemainingPathCount) - desirePath.OpponentTracksOnPathCount;
-
-        if (ntAdvantage < 1)
-        {
-            // Logger.Message($"Path to {desirePath.TownConnection} is not worthwhile. NetAdvantageAfterCompletion: {ntAdvantage}");
-            return false;
-        }
-
-        // Logger.Message($"Path to {desirePath.TownConnection} is worthwhile. NetAdvantageAfterCompletion: {ntAdvantage}");
-        return true;
-    }
 }
-
 
 internal class TrackPlacementCalculator
 {
@@ -1530,32 +1532,50 @@ internal class TrackPlacementCalculator
     public (string, int) CalculateBestCandidates(List<DesirePath> desirePaths)
     {
         string actions = string.Empty;
+        int actionPointsLeft = 3;
 
         _candidates.Clear();
+        HashSet<Point> placedCells = new HashSet<Point>();
 
-        // TODO
         // Before doing anything, check if we can complete a desire path fully this turn.
         // If so, we should do that first. This is a higher priority than any other placement strategy.
-        // Open question: Should we check instability levels of the desire paths for this? THis won'r matter at first because 
-        // We currently exclude any amout of instability from the path finding search. At some point we'll change this
+        foreach (var desirePath in desirePaths)
+        {
+            // TODO: At some point lets check if we can complete multiple desire paths this turn. 
+            // We should picj the best. Not just the first one
+            if (desirePath.RemainingActionCount <= actionPointsLeft && DesirePathUtil.IsCompletionWorthwhile(desirePath))
+            {
+                // Get the actions for the remaining path
+                foreach (var cellPosition in desirePath.RemainingPath)
+                {
+                    actions += $"PLACE_TRACKS {cellPosition.X} {cellPosition.Y};";
+                    placedCells.Add(cellPosition);
+                    actionPointsLeft -= _map.CellCosts[cellPosition.X, cellPosition.Y];
+                }
+            }
+        }
+
+        if (actionPointsLeft <= 0)
+        {
+            return (actions, actionPointsLeft);
+        }
+
 
         FillCandidates(desirePaths);
 
         List<TrackCandidate> candidates = new List<TrackCandidate>(_candidates.Values);
 
-        // Priority order
+                                                                                    // Priority order
         candidates = candidates.Where(c => c.IsPathWorthwhile)                      // Filter out candidates that aren't worthwhile    
                                .OrderBy(c => c.ShortestRemainingCount())            // Shortest to complete                                        
                                .ThenByDescending(c => c.GetTownCount())             // Number of desire paths this route passes through
                                .ThenBy(c => c.ActionCost)                           // Lowest cost first
                                .ThenByDescending(c => c.IsInSafeRegion).ToList();   // Safe regions first
 
-        Logger.TrackCandidates(candidates);
+        // Logger.TrackCandidates(candidates);
 
-        HashSet<Point> placedCells = new HashSet<Point>();
         HashSet<int> placedRegions = new HashSet<int>();
 
-        int actionPointsLeft = 3;
         int timesChecked = 0;   // Do a maximum of 4 passes through the candidates to try and place tracks to avoid infinite loops
 
         while (actionPointsLeft > 0 && timesChecked < 4)

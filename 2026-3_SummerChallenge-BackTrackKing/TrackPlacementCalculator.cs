@@ -49,14 +49,34 @@ internal class TrackPlacementCalculator
     public (string, int) CalculateBestCandidates(List<DesirePath> desirePaths)
     {
         string actions = string.Empty;
+        int actionPointsLeft = 3;
 
         _candidates.Clear();
+        HashSet<Point> placedCells = new HashSet<Point>();
 
-        // TODO
         // Before doing anything, check if we can complete a desire path fully this turn.
         // If so, we should do that first. This is a higher priority than any other placement strategy.
-        // Open question: Should we check instability levels of the desire paths for this? THis won'r matter at first because 
-        // We currently exclude any amout of instability from the path finding search. At some point we'll change this
+        foreach (var desirePath in desirePaths)
+        {
+            // TODO: At some point lets check if we can complete multiple desire paths this turn. 
+            // We should picj the best. Not just the first one
+            if (desirePath.RemainingActionCount <= actionPointsLeft && DesirePathUtil.IsCompletionWorthwhile(desirePath))
+            {
+                // Get the actions for the remaining path
+                foreach (var cellPosition in desirePath.RemainingPath)
+                {
+                    actions += $"PLACE_TRACKS {cellPosition.X} {cellPosition.Y};";
+                    placedCells.Add(cellPosition);
+                    actionPointsLeft -= _map.CellCosts[cellPosition.X, cellPosition.Y];
+                }
+            }
+        }
+
+        if (actionPointsLeft <= 0)
+        {
+            return (actions, actionPointsLeft);
+        }
+
 
         FillCandidates(desirePaths);
 
@@ -69,12 +89,10 @@ internal class TrackPlacementCalculator
                                .ThenBy(c => c.ActionCost)                           // Lowest cost first
                                .ThenByDescending(c => c.IsInSafeRegion).ToList();   // Safe regions first
 
-        Logger.TrackCandidates(candidates);
+        // Logger.TrackCandidates(candidates);
 
-        HashSet<Point> placedCells = new HashSet<Point>();
         HashSet<int> placedRegions = new HashSet<int>();
 
-        int actionPointsLeft = 3;
         int timesChecked = 0;   // Do a maximum of 4 passes through the candidates to try and place tracks to avoid infinite loops
 
         while (actionPointsLeft > 0 && timesChecked < 4)

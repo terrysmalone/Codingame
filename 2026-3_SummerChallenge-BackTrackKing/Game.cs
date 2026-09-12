@@ -174,7 +174,7 @@ public class Game
 
     private List<DesirePath> CalculateDesirePaths()
     {
-        Logger.Message("Calculating desire paths");
+        // Logger.Message("Calculating desire paths");
 
         List<DesirePath> desirePaths = new List<DesirePath>();
         foreach (var town in _towns)
@@ -244,7 +244,7 @@ public class Game
             }
         }
 
-        Logger.Message($"Finished calculating {desirePaths.Count} desire paths");
+        // Logger.Message($"Finished calculating {desirePaths.Count} desire paths");
 
         return desirePaths.OrderBy(dp => dp.RemainingActionCount).ThenBy(dp => dp.RemainingPathCount).ToList();
     }

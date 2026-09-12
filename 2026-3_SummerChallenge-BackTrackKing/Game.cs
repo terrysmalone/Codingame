@@ -28,7 +28,7 @@ public class Game
 
         _towns = new List<Town>();
 
-        _regionTracker = new RegionTracker(_myId);
+        _regionTracker = new RegionTracker(_myId, width, height);
         _connectionTracker = new ConnectionTracker(width, height);
     }
 

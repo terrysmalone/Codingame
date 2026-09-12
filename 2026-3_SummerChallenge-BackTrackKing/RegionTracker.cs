@@ -12,26 +12,29 @@ internal class RegionTracker
 
     private Dictionary<int, int> _activeRegionScores;
 
-    public RegionTracker(int myId)
+    private int[,] _regionIds;
+
+    private Dictionary<int, Region> _regionsById = new Dictionary<int, Region>();
+
+    public RegionTracker(int myId, int width, int height)
     {
         _myId = myId;
         _regions = new List<Region>();
+        _regionIds = new int[width, height];
     }
 
     internal void AddCellToRegion(int x, int y, int regionId)
     {
-        Region? existingRegion = _regions.SingleOrDefault(r => r.Id == regionId);
+        _regionIds[x, y] = regionId;
 
-        if (existingRegion == null)
+        if (!_regionsById.TryGetValue(regionId, out var region))
         {
-            Region region = new Region(regionId);
-            region.AddCell(x, y);
+            region = new Region(regionId);
             _regions.Add(region);
+            _regionsById[regionId] = region;
         }
-        else
-        {
-            existingRegion.AddCell(x, y);
-        }
+
+        region.AddCell(x, y);
     }
 
     internal HashSet<Point> GetExcludePoints()
@@ -51,35 +54,29 @@ internal class RegionTracker
 
     internal int GetRegionId(int x, int y)
     {
-        Region? region = _regions.SingleOrDefault(r => r.GetCells().Contains(new Point(x, y)));
-
-        if (region == null)
-        {
-            Logger.Error($"Region not found for cell ({x}, {y}) in GetRegionId");
-            return -1;
-        }
-
-        return region.Id;
+        return _regionIds[x, y];
     }
 
     internal bool IsRegionInked(int regionId)
     {
-        Region? region = _regions.SingleOrDefault(r => r.Id == regionId);
+        _regionsById.TryGetValue(regionId, out var region);
+
         if (region == null)
         {
             Logger.Error($"Region not found for id {regionId} in IsRegionInked");
             return false;
         }
+        
         return region.IsInked;
     }
 
     internal void AddTrack(int regionId, int x, int y, int tracksOwner, string[]? connections)
     {
-        Region? region = _regions.SingleOrDefault(r => r.GetCells().Contains(new Point(x, y)));
+        _regionsById.TryGetValue(regionId, out var region);
 
         if (region == null)
         {
-            Logger.Error($"Region not found for cell ({x}, {y}) in AddTrack");
+            Logger.Error($"Region not found for id {regionId} in AddTrack");
             return;
         }
 
@@ -122,11 +119,12 @@ internal class RegionTracker
 
     internal void UpdateRegion(int regionId, int instability, bool inked)
     {
-        Region? region = _regions.SingleOrDefault(r => r.Id == regionId);
+        _regionsById.TryGetValue(regionId, out var region);
 
         if (region == null)
         {
             Logger.Error($"Region not found for id {regionId} in UpdateRegion");
+            return;
         }
 
         region.UpdateInstability(instability, inked);
@@ -173,15 +171,21 @@ internal class RegionTracker
             {
                 if (regionScore.Value == highScore)
                 {
-                    Region? region = _regions.SingleOrDefault(r => r.Id == regionScore.Key);
+                    _regionsById.TryGetValue(regionScore.Key, out var region);
+
+                    if (region == null)
+                    {
+                        Logger.Error($"Region not found for id {regionScore.Key} in GetStrongestEnemyRegionWithActiveTracks");
+                        break;
+                    }
                     
-                    if (region != null && region.Instability > highestInstability)
+                    if (region.Instability > highestInstability)
                     {
                         highestInstability = region.Instability;
                         highestInstabilityRegionIds.Clear();
                         highestInstabilityRegionIds.Add(region.Id);
                     }
-                    else if (region != null && region.Instability == highestInstability)
+                    else if (region.Instability == highestInstability)
                     {
                         highestInstabilityRegionIds.Add(region.Id);
                     }
@@ -204,17 +208,20 @@ internal class RegionTracker
 
                 foreach (int regionId in highestInstabilityRegionIds)
                 {
-                    Region? region = _regions.SingleOrDefault(r => r.Id == regionId);
+                    _regionsById.TryGetValue(regionId, out var region);
 
-                    if (region != null)
+                    if (region == null)
                     {
-                        int enemyTracks = region.GetEnemyTracks();
-                        if (enemyTracks > mostEnemyTracks)
-                        {
-                            mostEnemyTracks = enemyTracks;
-                            mostEnemyTracksRegionId = region.Id;
-                        }
+                        Logger.Error($"Region not found for id {regionId} in GetStrongestEnemyRegionWithActiveTracks");
+                        return -1;
                     }
+                   
+                    int enemyTracks = region.GetEnemyTracks();
+                    if (enemyTracks > mostEnemyTracks)
+                    {
+                        mostEnemyTracks = enemyTracks;
+                        mostEnemyTracksRegionId = region.Id;
+                    }                    
                 }
 
                 return mostEnemyTracksRegionId;
@@ -270,11 +277,13 @@ internal class RegionTracker
 
     internal void AddTown(int townId, int townX, int townY)
     {
-        Region? region = _regions.SingleOrDefault(r => r.GetCells().Contains(new Point(townX, townY)));
+        int regionId = _regionIds[townX, townY];
+
+        _regionsById.TryGetValue(regionId, out var region);
 
         if (region == null)
         {
-            Logger.Error($"Region not found for cell ({townX}, {townY}) in AddTown");
+            Logger.Error($"Region not found for id {regionId} in AddTown");
             return;
         }
 
@@ -283,7 +292,7 @@ internal class RegionTracker
 
     internal bool IsSafeRegion(int regionId)
     {
-        Region? region = _regions.SingleOrDefault(r => r.Id == regionId);
+        _regionsById.TryGetValue(regionId, out var region);
 
         if (region == null)
         {
@@ -296,12 +305,12 @@ internal class RegionTracker
 
     internal int GetInstabilityLevel(int regionId)
     {
-        Region? region = _regions.SingleOrDefault(r => r.Id == regionId);
+        _regionsById.TryGetValue(regionId, out var region);
 
         if (region == null)
         {
             Logger.Error($"Region not found for id {regionId} in GetInstabilityLevel");
-            return 0;
+            return -1;
         }
 
         return region.Instability;

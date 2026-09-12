@@ -107,6 +107,10 @@ internal class Region
     internal void ResetCounts()
     {
         _activeConnections.Clear();
+        _myTracks.Clear();
+        _opponentTracks.Clear();
+        _jointTracks.Clear();
+        _allTracks.Clear();
     }
 
     internal HashSet<string> GetActiveConnections()

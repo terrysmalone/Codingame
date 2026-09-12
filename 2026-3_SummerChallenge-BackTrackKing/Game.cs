@@ -159,62 +159,6 @@ public class Game
         return GetActionsString(paintedPoints);
     }
 
-    private int CheckDesirePaths(List<Point> paintedPoints, List<DesirePath> desirePaths, int remainingActionPoints, bool excludePathsWhereEnemyIsStronger)
-    {
-        // CHeck for desire path points (excluding anyhintg that's even a little unstable)
-        foreach (var desirePath in desirePaths)
-        {
-            if (excludePathsWhereEnemyIsStronger)
-            {
-                bool isWorthwhile = IsPathWorthwhile(desirePath);
-
-                if (!isWorthwhile)
-                {
-                    Logger.Message($"Skipping desire path from {desirePath.FullPath[0]} to {desirePath.FullPath[desirePath.FullPath.Count-1]} for initial check");
-                    continue;
-                }
-            }
-
-            List<(Point, int)> cellCosts = new List<(Point, int)>();
-
-            foreach (var point in desirePath.RemainingPath)
-            {
-                if (_map.isTrackFree(point.X, point.Y))
-                {
-                    int cellCost = _map.CellCosts[point.X, point.Y];
-                    cellCosts.Add((point, cellCost));
-                }
-            }
-
-            // Order by cell type, so we can prioritize plains over rivers and mountains
-            List<(Point, int)> orderedCellTypes = cellCosts.OrderBy(ct => ct.Item2).ToList();
-
-            foreach ((Point, CellType) pair in orderedCellTypes)
-            {
-                Point cellPoint = pair.Item1;
-
-                // Don't count it if we've already painted it this turn
-                if ((int)pair.Item2 <= remainingActionPoints && !paintedPoints.Contains(cellPoint))
-                {
-                    int cellValue = (int)pair.Item2;
-                    remainingActionPoints -= cellValue;
-                    paintedPoints.Add(cellPoint);
-                }
-                else
-                {
-                    continue;
-                }
-
-                if (remainingActionPoints <= 0)
-                {
-                    return remainingActionPoints;
-                }
-            }
-        }
-
-        return remainingActionPoints;
-    }
-
     private static string GetActionsString(List<Point> actionPoints)
     {
         // Action points to a string of actions
@@ -256,11 +200,31 @@ public class Game
 
                 List<Point> remainingPathPoints = new List<Point>();
 
+                int myTracksOnPathCount = 0;
+                int opponentTracksOnPathCount = 0;
+
                 foreach (var point in fullSanitisedPath)
                 {
                     if (_map.isTrackFree(point.X, point.Y))
                     {
                         remainingPathPoints.Add(point);
+                    }
+                    else
+                    {
+                        int trackOwner = _map.GetTrackOwner(point.X, point.Y);
+
+                        if (trackOwner != -1 && trackOwner != 2)
+                        {
+                            if (trackOwner == _myId)
+                            {
+                                myTracksOnPathCount++;
+                            }
+                            else if (trackOwner != -1 && trackOwner != _myId)
+                            {
+                                opponentTracksOnPathCount++;
+                            }
+                        }
+
                     }
                 }
 
@@ -272,54 +236,18 @@ public class Game
                     FullPathCount = fullPathCount,
                     FullActionCount = fullActionCount,
                     RemainingPathCount = remainingPathCount,
-                    RemainingActionCount = remainingActionCount
+                    RemainingActionCount = remainingActionCount,
+                    MyTracksOnPathCount = myTracksOnPathCount,
+                    OpponentTracksOnPathCount = opponentTracksOnPathCount
                 };
 
                 desirePaths.Add(desirePath);
-
-                //Logger.Message($"Found path from {town.Id} to {desiredConnection}");
-                Logger.DesirePath(desirePath);
             }
         }
 
         Logger.Message($"Finished calculating {desirePaths.Count} desire paths");
 
         return desirePaths.OrderBy(dp => dp.RemainingActionCount).ThenBy(dp => dp.RemainingPathCount).ToList();
-    }
-
-    // Check if completing a path is worthwhile. If the opponent already owns most of it, there's no point
-    // pursuing it
-    private bool IsPathWorthwhile(DesirePath desirePath)
-    {
-        // Use: NetAdvantageAfterCompletion = (MyExistingCellsInPath + desirePath.RemainingPathCount) - OpponentExistingCellsInPath
-
-        int myExistingCells = 0;
-        int opponentExistingCells = 0;
-
-        foreach (var point in desirePath.FullPath)
-        {
-            int trackOwner = _map.GetTrackOwner(point.X, point.Y);
-
-            if (trackOwner != -1 && trackOwner != 2)
-            {
-                if (trackOwner == _myId)
-                {
-                    myExistingCells++;
-                }
-                else if (trackOwner != -1 && trackOwner != _myId)
-                {
-                    opponentExistingCells++;
-                }
-            }
-        }
-
-        // For now, just avoid it if they have more on that path
-        if (opponentExistingCells > myExistingCells)
-        {
-            return false;
-        }
-
-        return true;
     }
 
     private List<Point> FindShortestSanitisedPath(Point startPoint, int desiredConnection)

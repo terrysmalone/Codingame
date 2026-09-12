@@ -20,6 +20,8 @@ internal class TrackCandidate
 
     internal int InstabilityLevel { get; set; }
 
+    internal bool IsPathWorthwhile { get; set; } = true;
+
     private HashSet<string> _towns = new HashSet<string>();
 
     private int _shortestRemainingCount = int.MaxValue;
@@ -47,6 +49,12 @@ internal class TrackCandidate
         {
             _shortestRemainingCount = desirePath.RemainingActionCount;
         }
+
+        if (!IsCompletionWorthwhile(desirePath))
+        {
+            IsPathWorthwhile = false;
+        }
+
     }
 
     internal int GetTownCount()
@@ -57,5 +65,21 @@ internal class TrackCandidate
     internal int ShortestRemainingCount()
     {
         return _shortestRemainingCount;
+    }
+
+    // Check if completing a path is worthwhile. If the opponent already owns most of it, there's no point
+    // pursuing it
+    private bool IsCompletionWorthwhile(DesirePath desirePath)
+    {
+        // Use: NetAdvantageAfterCompletion = (MyExistingCellsInPath + desirePath.RemainingPathCount) - OpponentExistingCellsInPath
+
+        int ntAdvantage = (desirePath.MyTracksOnPathCount + desirePath.RemainingPathCount) - desirePath.OpponentTracksOnPathCount;
+
+        if (ntAdvantage < 1)
+        {
+            return false;
+        }
+
+        return true;
     }
 }

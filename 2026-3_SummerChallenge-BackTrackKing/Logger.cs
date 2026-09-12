@@ -41,10 +41,10 @@ internal static class Logger
             return;
         }
 
-        Console.Error.WriteLine($"DesirePaths");
+        Console.Error.WriteLine($"DESIRE PATHS");
         foreach (var desirePath in desirePaths)
         {
-            Console.Error.WriteLine($"{desirePath.FullPath[0].X},{desirePath.FullPath[0].Y} -> {desirePath.FullPath[desirePath.FullPathCount-1].X},{desirePath.FullPath[desirePath.FullPathCount - 1].Y} - Path:{desirePath.RemainingPathCount}/{desirePath.FullPathCount}, Action:{desirePath.RemainingActionCount}/{desirePath.FullActionCount}");
+            Console.Error.WriteLine($"{desirePath.FullPath[0].X},{desirePath.FullPath[0].Y} -> {desirePath.FullPath[desirePath.FullPathCount-1].X},{desirePath.FullPath[desirePath.FullPathCount - 1].Y} - Path:{desirePath.RemainingPathCount}/{desirePath.FullPathCount}, Action:{desirePath.RemainingActionCount}/{desirePath.FullActionCount}, Me/Opponenet tracks:{desirePath.MyTracksOnPathCount}/{desirePath.OpponentTracksOnPathCount}");
         }
     }
 

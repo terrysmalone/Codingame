@@ -52,6 +52,7 @@ internal class TrackPlacementCalculator
 
         _candidates.Clear();
 
+        // TODO
         // Before doing anything, check if we can complete a desire path fully this turn.
         // If so, we should do that first. This is a higher priority than any other placement strategy.
         // Open question: Should we check instability levels of the desire paths for this? THis won'r matter at first because 
@@ -60,25 +61,12 @@ internal class TrackPlacementCalculator
         FillCandidates(desirePaths);
 
         List<TrackCandidate> candidates = new List<TrackCandidate>(_candidates.Values);
-
-
-        // Original - Loss 1657 - 747
-        //candidates = candidates.OrderBy(c => c.ActionCost)
-        //                       .ThenBy(c => c.ShortestRemainingCount())
-        //                       .ThenByDescending(c => c.GetTownCount())
-        //                       .ThenByDescending(c => c.IsInSafeRegion).ToList();
-
-        // Loss 736 - 181
-        //candidates = candidates.OrderBy(c => c.ShortestRemainingCount())
-        //                       .ThenBy(c => c.ActionCost)
-        //                       .ThenByDescending(c => c.GetTownCount())
-        //                       .ThenByDescending(c => c.IsInSafeRegion).ToList();
-
-        // Loss 511 - 394
-        candidates = candidates.OrderBy(c => c.ShortestRemainingCount())                               
-                               .ThenByDescending(c => c.GetTownCount())
-                               .ThenBy(c => c.ActionCost)
-                               .ThenByDescending(c => c.IsInSafeRegion).ToList();
+                                                                                    // Priority order
+        candidates = candidates.Where(c => c.IsPathWorthwhile)                      // Filter out candidates that aren't worthwhile    
+                               .OrderBy(c => c.ShortestRemainingCount())            // Shortest to complete                                        
+                               .ThenByDescending(c => c.GetTownCount())             // Number of desire paths this route passes through
+                               .ThenBy(c => c.ActionCost)                           // Lowest cost first
+                               .ThenByDescending(c => c.IsInSafeRegion).ToList();   // Safe regions first
 
         Logger.TrackCandidates(candidates);
 

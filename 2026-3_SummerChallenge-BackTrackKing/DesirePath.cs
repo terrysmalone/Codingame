@@ -19,6 +19,10 @@ internal class DesirePath
 
     internal int RemainingActionCount { get; set; }
 
+    internal int MyTracksOnPathCount { get; set; }
+
+    internal int OpponentTracksOnPathCount { get; set; }
+
     public DesirePath(List<Point> fullPath, List<Point> remainingPath, string townConnection)
     {
         FullPath = fullPath;

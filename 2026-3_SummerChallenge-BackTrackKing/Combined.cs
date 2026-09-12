@@ -1623,6 +1623,30 @@ internal class TrackPlacementCalculator
         _candidates.Clear();
         HashSet<Point> placedCells = new HashSet<Point>();
 
+        // Before doing anything, check if we can complete a desire path fully this turn.
+        // If so, we should do that first. This is a higher priority than any other placement strategy.
+        foreach (var desirePath in desirePaths)
+        {
+            // TODO: At some point lets check if we can complete multiple desire paths this turn. 
+            // We should picj the best. Not just the first one
+            if (desirePath.RemainingActionCount <= actionPointsLeft && DesirePathUtil.IsCompletionWorthwhile(desirePath))
+            {
+                // Get the actions for the remaining path
+                foreach (var cellPosition in desirePath.RemainingPath)
+                {
+                    actions += $"PLACE_TRACKS {cellPosition.X} {cellPosition.Y};";
+                    placedCells.Add(cellPosition);
+                    actionPointsLeft -= _map.CellCosts[cellPosition.X, cellPosition.Y];
+                }
+            }
+        }
+
+        if (actionPointsLeft <= 0)
+        {
+            return (actions, actionPointsLeft);
+        }
+
+
         FillCandidates(desirePaths);
 
         List<TrackCandidate> candidates = new List<TrackCandidate>(_candidates.Values);

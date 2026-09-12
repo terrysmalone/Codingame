@@ -92,7 +92,6 @@ internal class TrackPlacementCalculator
         // Logger.TrackCandidates(candidates);
 
         HashSet<int> placedRegions = new HashSet<int>();
-        HashSet<string> placedDesirePaths = new HashSet<string>();
 
         int timesChecked = 0;   // Do a maximum of 4 passes through the candidates to try and place tracks to avoid infinite loops
 
@@ -100,19 +99,14 @@ internal class TrackPlacementCalculator
         {
             // Reset placedRegions every time we do another passthrough
             placedRegions.Clear();
-            placedDesirePaths.Clear();
 
             foreach (var candidate in candidates)
             {
-                if (candidate.ActionCost <= actionPointsLeft
-                    && !placedRegions.Contains(candidate.RegionId)
-                    && !placedCells.Contains(candidate.CellPosition)
-                    && !HasCandidateRegionBeenPlaced(candidate, placedDesirePaths))
+                if (candidate.ActionCost <= actionPointsLeft && !placedRegions.Contains(candidate.RegionId) && !placedCells.Contains(candidate.CellPosition))
                 {
                     actionPointsLeft -= candidate.ActionCost;
                     placedCells.Add(candidate.CellPosition);
                     placedRegions.Add(candidate.RegionId);
-                    placedDesirePaths.UnionWith(candidate.DesirePaths.Select(dp => dp.TownConnection));
                     actions += $"PLACE_TRACKS {candidate.CellPosition.X} {candidate.CellPosition.Y};";
                 }
             }
@@ -152,18 +146,5 @@ internal class TrackPlacementCalculator
                 _candidates[cellPosition] = candidate;
             }
         }
-    }
-
-    private bool HasCandidateRegionBeenPlaced(TrackCandidate candidate, HashSet<string> placedDesirePaths)
-    {
-        foreach (var desirePath in candidate.DesirePaths)
-        {
-            if (placedDesirePaths.Contains(desirePath.TownConnection))
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 }

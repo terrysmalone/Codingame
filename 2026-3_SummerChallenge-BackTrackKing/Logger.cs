@@ -30,12 +30,12 @@ internal static class Logger
 
     internal static void EnableTimes()
     {
-        DISABLE_TIMES = false;
+        DISABLE_LOGGING = false;
     }
 
     internal static void DisableTimes()
     {
-        DISABLE_TIMES = true;
+        DISABLE_LOGGING = true;
     }
 
     internal static void LogTime(string message)

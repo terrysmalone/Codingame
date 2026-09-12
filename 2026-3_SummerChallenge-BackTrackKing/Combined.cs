@@ -368,22 +368,19 @@ public class Game
                     {
                         remainingPathPoints.Add(point);
                     }
-                    else
+
+                    int trackOwner = _map.GetTrackOwner(point.X, point.Y);
+
+                    if (trackOwner != -1 && trackOwner != 2)
                     {
-                        int trackOwner = _map.GetTrackOwner(point.X, point.Y);
-
-                        if (trackOwner != -1 && trackOwner != 2)
+                        if (trackOwner == _myId)
                         {
-                            if (trackOwner == _myId)
-                            {
-                                myTracksOnPathCount++;
-                            }
-                            else if (trackOwner != -1 && trackOwner != _myId)
-                            {
-                                opponentTracksOnPathCount++;
-                            }
+                            myTracksOnPathCount++;
                         }
-
+                        else
+                        {
+                            opponentTracksOnPathCount++;
+                        }
                     }
                 }
 
@@ -680,7 +677,7 @@ internal static class Logger
 
         foreach (var trackCandidate in candidates)
         {
-            Console.Error.WriteLine($"Cell: {trackCandidate.CellPosition.X},{trackCandidate.CellPosition.Y} - Region: {trackCandidate.RegionId}, Cost: {trackCandidate.ActionCost}, ShortestPathCount: {trackCandidate.ShortestRemainingCount()}, TownsOnPathCount: {trackCandidate.GetTownCount()}, SafeRegion: {trackCandidate.IsInSafeRegion}, Instability: {trackCandidate.InstabilityLevel}");
+            Console.Error.WriteLine($"Cell: {trackCandidate.CellPosition.X},{trackCandidate.CellPosition.Y} - IsWorthwhile: {trackCandidate.IsPathWorthwhile} - Region: {trackCandidate.RegionId}, Cost: {trackCandidate.ActionCost}, ShortestPathCount: {trackCandidate.ShortestRemainingCount()}, TownsOnPathCount: {trackCandidate.GetTownCount()}, SafeRegion: {trackCandidate.IsInSafeRegion}, Instability: {trackCandidate.InstabilityLevel}");
         }
     }
 }
@@ -1499,15 +1496,18 @@ internal class TrackCandidate
     // pursuing it
     private bool IsCompletionWorthwhile(DesirePath desirePath)
     {
+        // Logger.Message($"Checking if path to {desirePath.TownConnection} is worthwhile. MyTracksOnPathCount: {desirePath.MyTracksOnPathCount}, RemainingPathCount: {desirePath.RemainingPathCount}, OpponentTracksOnPathCount: {desirePath.OpponentTracksOnPathCount}");
         // Use: NetAdvantageAfterCompletion = (MyExistingCellsInPath + desirePath.RemainingPathCount) - OpponentExistingCellsInPath
 
         int ntAdvantage = (desirePath.MyTracksOnPathCount + desirePath.RemainingPathCount) - desirePath.OpponentTracksOnPathCount;
 
         if (ntAdvantage < 1)
         {
+            // Logger.Message($"Path to {desirePath.TownConnection} is not worthwhile. NetAdvantageAfterCompletion: {ntAdvantage}");
             return false;
         }
 
+        // Logger.Message($"Path to {desirePath.TownConnection} is worthwhile. NetAdvantageAfterCompletion: {ntAdvantage}");
         return true;
     }
 }
@@ -1542,7 +1542,8 @@ internal class TrackPlacementCalculator
         FillCandidates(desirePaths);
 
         List<TrackCandidate> candidates = new List<TrackCandidate>(_candidates.Values);
-                                                                                    // Priority order
+
+        // Priority order
         candidates = candidates.Where(c => c.IsPathWorthwhile)                      // Filter out candidates that aren't worthwhile    
                                .OrderBy(c => c.ShortestRemainingCount())            // Shortest to complete                                        
                                .ThenByDescending(c => c.GetTownCount())             // Number of desire paths this route passes through

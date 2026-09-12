@@ -61,6 +61,7 @@ internal class TrackPlacementCalculator
         FillCandidates(desirePaths);
 
         List<TrackCandidate> candidates = new List<TrackCandidate>(_candidates.Values);
+
                                                                                     // Priority order
         candidates = candidates.Where(c => c.IsPathWorthwhile)                      // Filter out candidates that aren't worthwhile    
                                .OrderBy(c => c.ShortestRemainingCount())            // Shortest to complete                                        

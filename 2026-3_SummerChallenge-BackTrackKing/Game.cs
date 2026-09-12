@@ -219,12 +219,11 @@ public class Game
                             {
                                 myTracksOnPathCount++;
                             }
-                            else if (trackOwner != -1 && trackOwner != _myId)
+                            else
                             {
                                 opponentTracksOnPathCount++;
                             }
                         }
-
                     }
                 }
 

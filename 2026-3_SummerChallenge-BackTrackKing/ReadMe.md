@@ -5,6 +5,7 @@
 * Scores should be the same no matter what side I am. Verify.
 
 ## Improvements
+* Instead of not putting tracks on same region, don't put them on same desirepath!
 * I complete tracks even if it favours my opponent. Don't complete tracks if they will own as much of the finished result as me (Look a7 fight 32 against stem. On move 10 I shouldn't place a track on 13,4. It makes it even. If he had placed it there too he'd have won that one)
 * Use unspent action points. Just place anywhere. At least if they destry track we'll have more coverage.
 * Secondary order regions to disrupt by number of track pieces opponent has. Lets make him work harder to re-establish a connection
@@ -111,5 +112,9 @@ c640216ee416fc8027159efe8b48c62824edd8b2
 	Submitted: 2026-09-12 12:34am
 	Rank: (155) to 133
 
+fb5a9bf3f0a37d6fa330ee9007c81a6273b7b918
 
+	Changes: Swap ordering
+	Submitted: 2026-09-12 02:53pm
+	Rank: (137) to 
 

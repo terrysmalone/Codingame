@@ -5,12 +5,13 @@
 * Scores should be the same no matter what side I am. Verify.
 
 ## Improvements
-Use flood fill to place tracks if we couldn't find one via desire paths
+1. Use flood fill to place tracks if we couldn't find one via desire paths
  
-Make regions unstable based on areas giving enemies more points.Score each desire path for how dangerous 
+2 . Make regions unstable based on areas giving enemies more points.Score each desire path for how dangerous 
 it is, and would be if the enemy completed it. Make the most dangerous one the target.
-	
 
+3. Add in checks so that we don't put all points along same path
+	
 
 ## Disrupt choice notes
 

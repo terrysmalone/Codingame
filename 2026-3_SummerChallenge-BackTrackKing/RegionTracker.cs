@@ -37,7 +37,7 @@ internal class RegionTracker
         region.AddCell(x, y);
     }
 
-    internal HashSet<Point> GetExcludePoints()
+    internal HashSet<Point> GetExcludeUnstablePoints()
     {
         HashSet<Point> excludePoints = new HashSet<Point>();
 
@@ -51,6 +51,23 @@ internal class RegionTracker
 
         return excludePoints;
     }
+
+    internal HashSet<Point> GetExcludeInkedPoints()
+    {
+        HashSet<Point> excludePoints = new HashSet<Point>();
+
+        foreach (var region in _regions)
+        {
+            if (region.IsInked)
+            {
+                excludePoints.UnionWith(region.GetCells());
+            }
+        }
+
+        return excludePoints;
+    }
+
+
 
     internal int GetRegionId(int x, int y)
     {

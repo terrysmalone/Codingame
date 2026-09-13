@@ -155,4 +155,4 @@ ed4ec0caeb75c1b8b273e0c940de9f711ba0d97a
 
 	Changes: Prioritise by action cost first, remove town ordering
 	Submitted: 2026-09-13 08:07pm
-	Rank: (150) to 187
+	Rank: (150) to 191

@@ -16,6 +16,7 @@ class Player
 {
     static void Main(string[] args)
     {
+        // Logger.DisableLogging();
         string[] inputs;
         int myId = int.Parse(Console.ReadLine()); // 0 or 1
 

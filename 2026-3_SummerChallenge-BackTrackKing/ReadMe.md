@@ -153,6 +153,13 @@ ace4e7bbcaafb27f79374427dd8623968a360cf4
 
 ed4ec0caeb75c1b8b273e0c940de9f711ba0d97a
 
-	Changes: Prioritise by action cost first, remove town ordering
+	Changes: Remove ordering by town count
 	Submitted: 2026-09-13 08:07pm
 	Rank: (150) to 191
+
+55a927055ce70597cd443fd665d25bbbd5810cf0
+
+	Changes: Prioritise short and long paths separately
+             Run two passes through pathfinding
+	Submitted: 2026-09-13 09:48pm
+	Rank: (190) to 194

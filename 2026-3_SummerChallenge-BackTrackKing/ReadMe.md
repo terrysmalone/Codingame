@@ -163,3 +163,11 @@ ed4ec0caeb75c1b8b273e0c940de9f711ba0d97a
              Run two passes through pathfinding
 	Submitted: 2026-09-13 09:48pm
 	Rank: (190) to 194
+
+3c9d33374f42b758227bdf9df3365d1b645eaa29
+
+	Changes: Remove complex ordering. Just focus on path length
+	Submitted: 2026-09-13 10:37pm
+	Rank: (195) to 215
+
+NOTE: Current code in codingame is from ace4e7bbcaafb27f79374427dd8623968a360cf4

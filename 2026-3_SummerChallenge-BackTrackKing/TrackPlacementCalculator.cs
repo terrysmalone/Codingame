@@ -38,6 +38,11 @@ internal class TrackPlacementCalculator
                 // Get the actions for the remaining path
                 foreach (var cellPosition in desirePath.RemainingPath)
                 {
+                    if (placedCells.Contains(cellPosition))
+                    {
+                        continue; // Skip if already placed
+                    }
+
                     actions += $"PLACE_TRACKS {cellPosition.X} {cellPosition.Y};";
                     placedCells.Add(cellPosition);
                     actionPointsLeft -= _map.CellCosts[cellPosition.X, cellPosition.Y];

@@ -5,33 +5,6 @@ using System.Linq;
 
 namespace BackTrackKing;
 
-// Keeps track of scores for every cell in the game and works out which ones are best to place
-//
-// General strategy
-//
-// From all desire paths extract every viable cell. Store:
-// Cell 
-// { 
-//    CellPosition,
-//    Action Cost,
-//    RegionID,
-//    How many desire paths it is part of
-//      Store all of these paths:
-//        Full path points
-//        Remaining points
-//        Full path Action cost
-//        Remaining path action cost
-//        Highest instability level along this path
-//        town join (2 to 6)
-//    Is it in a safe region (safe regions contain town so can never be inked)
-//    This cells instability level
-//
-// We want to prioritise in this order
-// 1. If we can complete a desire path fully in this turn then do it. 
-// 2. Place tracks on the lowest cost cells. Defined by:
-//      a. plains > river > mountain
-//      b. place cells in safe regions first
-//      c. place cells in different regions and/or town-join to reduce the risk of being inked
 internal class TrackPlacementCalculator
 {
     private Dictionary<Point, TrackCandidate> _candidates;
@@ -80,16 +53,19 @@ internal class TrackPlacementCalculator
 
         FillCandidates(desirePaths);
 
+        // Have two priorities and alternate between the two.
+        // First, prioritise shortest first paths, then longest first paths.
+        //
+
         List<TrackCandidate> candidates = new List<TrackCandidate>(_candidates.Values);
 
                                                                                     // Priority order
         candidates = candidates.Where(c => c.IsPathWorthwhile)                      // Filter out candidates that aren't worthwhile    
                                .OrderBy(c => c.ActionCost)                           // Lowest cost first
-                               .ThenByDescending(c => c.GetTownCount())             // Number of desire paths this route passes through
                                .ThenBy(c => c.ShortestRemainingCount())            // Shortest to complete    
                                .ThenByDescending(c => c.IsInSafeRegion).ToList();   // Safe regions first
 
-        // Logger.TrackCandidates(candidates);
+        Logger.TrackCandidates(candidates);
 
         HashSet<int> placedRegions = new HashSet<int>();
 

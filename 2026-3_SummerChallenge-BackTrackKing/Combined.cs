@@ -1647,16 +1647,20 @@ internal class TrackPlacementCalculator
 
         FillCandidates(desirePaths);
 
+        // Have two priorities and alternate between the two.
+        // First, prioritise shortest first paths, then longest first paths.
+        //
+
         List<TrackCandidate> candidates = new List<TrackCandidate>(_candidates.Values);
 
                                                                                     // Priority order
         candidates = candidates.Where(c => c.IsPathWorthwhile)                      // Filter out candidates that aren't worthwhile    
                                .OrderBy(c => c.ActionCost)                           // Lowest cost first
-                               .ThenByDescending(c => c.GetTownCount())             // Number of desire paths this route passes through
+                               //.ThenByDescending(c => c.GetTownCount())             // Number of desire paths this route passes through
                                .ThenBy(c => c.ShortestRemainingCount())            // Shortest to complete    
                                .ThenByDescending(c => c.IsInSafeRegion).ToList();   // Safe regions first
 
-        // Logger.TrackCandidates(candidates);
+        Logger.TrackCandidates(candidates);
 
         HashSet<int> placedRegions = new HashSet<int>();
 

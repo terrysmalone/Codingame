@@ -150,3 +150,9 @@ ace4e7bbcaafb27f79374427dd8623968a360cf4
 	Changes: Reverted back to 6b324e36f25a625827f31c43a88b0503ddf9da0c. I'll need to bring in some of the above 2
 	Submitted: 2026-09-12 11:55pm
 	Rank: 165
+
+ed4ec0caeb75c1b8b273e0c940de9f711ba0d97a
+
+	Changes: Prioritise by action cost first, remove town ordering
+	Submitted: 2026-09-13 08:07pm
+	Rank: (150) to 

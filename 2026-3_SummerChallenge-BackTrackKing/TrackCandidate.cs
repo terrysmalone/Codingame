@@ -26,6 +26,8 @@ internal class TrackCandidate
 
     private int _shortestRemainingCount = int.MaxValue;
 
+    private int _highestActionCostOnRemainingPath = int.MinValue;
+
     internal TrackCandidate(Point cellPosition, int regionId, int actionCost, bool isInSafeRegion, int instabilityLevel)
     {
         CellPosition = cellPosition;
@@ -50,11 +52,15 @@ internal class TrackCandidate
             _shortestRemainingCount = desirePath.RemainingActionCount;
         }
 
+        if (desirePath.HighestActionCostOnRemainingPath > _highestActionCostOnRemainingPath)
+        {
+            _highestActionCostOnRemainingPath = desirePath.HighestActionCostOnRemainingPath;
+        }
+
         if (!DesirePathUtil.IsCompletionWorthwhile(desirePath))
         {
             IsPathWorthwhile = false;
         }
-
     }
 
     internal int GetTownCount()
@@ -65,5 +71,10 @@ internal class TrackCandidate
     internal int ShortestRemainingCount()
     {
         return _shortestRemainingCount;
+    }
+
+    internal int GetHighestActionCostOnRemainingPath()
+    {
+        return _highestActionCostOnRemainingPath;
     }
 }

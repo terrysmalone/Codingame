@@ -212,11 +212,19 @@ public class Game
                 int myTracksOnPathCount = 0;
                 int opponentTracksOnPathCount = 0;
 
+                int highestActionCostOnRemainingPath = 0;
+
                 foreach (var point in fullSanitisedPath)
                 {
                     if (_map.isTrackFree(point.X, point.Y))
                     {
                         remainingPathPoints.Add(point);
+
+                        // Track the highest action cost on the remaining path for later use in prioritisation
+                        if (_map.CellCosts[point.X, point.Y] > highestActionCostOnRemainingPath)
+                        {
+                            highestActionCostOnRemainingPath = _map.CellCosts[point.X, point.Y];
+                        }
                     }
                     else
                     {
@@ -246,7 +254,8 @@ public class Game
                     RemainingPathCount = remainingPathCount,
                     RemainingActionCount = remainingActionCount,
                     MyTracksOnPathCount = myTracksOnPathCount,
-                    OpponentTracksOnPathCount = opponentTracksOnPathCount
+                    OpponentTracksOnPathCount = opponentTracksOnPathCount,
+                    HighestActionCostOnRemainingPath = highestActionCostOnRemainingPath
                 };
 
                 desirePaths.Add(desirePath);

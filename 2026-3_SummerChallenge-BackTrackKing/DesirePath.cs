@@ -23,6 +23,8 @@ internal class DesirePath
 
     internal int OpponentTracksOnPathCount { get; set; }
 
+    internal int HighestActionCostOnRemainingPath { get; set; }
+
     public DesirePath(List<Point> fullPath, List<Point> remainingPath, string townConnection)
     {
         FullPath = fullPath;

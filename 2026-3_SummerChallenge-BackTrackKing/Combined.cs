@@ -155,6 +155,8 @@ internal class DesirePath
 
     internal int OpponentTracksOnPathCount { get; set; }
 
+    internal int HighestActionCostOnRemainingPath { get; set; }
+
     public DesirePath(List<Point> fullPath, List<Point> remainingPath, string townConnection)
     {
         FullPath = fullPath;
@@ -391,11 +393,19 @@ public class Game
                 int myTracksOnPathCount = 0;
                 int opponentTracksOnPathCount = 0;
 
+                int highestActionCostOnRemainingPath = 0;
+
                 foreach (var point in fullSanitisedPath)
                 {
                     if (_map.isTrackFree(point.X, point.Y))
                     {
                         remainingPathPoints.Add(point);
+
+                        // Track the highest action cost on the remaining path for later use in prioritisation
+                        if (_map.CellCosts[point.X, point.Y] > highestActionCostOnRemainingPath)
+                        {
+                            highestActionCostOnRemainingPath = _map.CellCosts[point.X, point.Y];
+                        }
                     }
                     else
                     {
@@ -425,7 +435,8 @@ public class Game
                     RemainingPathCount = remainingPathCount,
                     RemainingActionCount = remainingActionCount,
                     MyTracksOnPathCount = myTracksOnPathCount,
-                    OpponentTracksOnPathCount = opponentTracksOnPathCount
+                    OpponentTracksOnPathCount = opponentTracksOnPathCount,
+                    HighestActionCostOnRemainingPath = highestActionCostOnRemainingPath
                 };
 
                 desirePaths.Add(desirePath);
@@ -765,7 +776,7 @@ internal static class Logger
 
         foreach (var trackCandidate in candidates)
         {
-            Console.Error.WriteLine($"Cell: {trackCandidate.CellPosition.X},{trackCandidate.CellPosition.Y} - IsWorthwhile: {trackCandidate.IsPathWorthwhile} - Region: {trackCandidate.RegionId}, Cost: {trackCandidate.ActionCost}, ShortestPathCount: {trackCandidate.ShortestRemainingCount()}, TownsOnPathCount: {trackCandidate.GetTownCount()}, SafeRegion: {trackCandidate.IsInSafeRegion}, Instability: {trackCandidate.InstabilityLevel}");
+            Console.Error.WriteLine($"Cell: {trackCandidate.CellPosition.X},{trackCandidate.CellPosition.Y} - IsWorthwhile: {trackCandidate.IsPathWorthwhile} - HighestActionCostOnRemainingPath: {trackCandidate.GetHighestActionCostOnRemainingPath()}   - Region: {trackCandidate.RegionId}, Cost: {trackCandidate.ActionCost}, ShortestPathCount: {trackCandidate.ShortestRemainingCount()}, TownsOnPathCount: {trackCandidate.GetTownCount()}, SafeRegion: {trackCandidate.IsInSafeRegion}, Instability: {trackCandidate.InstabilityLevel}");
         }
     }
 }
@@ -1557,6 +1568,8 @@ internal class TrackCandidate
 
     private int _shortestRemainingCount = int.MaxValue;
 
+    private int _highestActionCostOnRemainingPath = int.MinValue;
+
     internal TrackCandidate(Point cellPosition, int regionId, int actionCost, bool isInSafeRegion, int instabilityLevel)
     {
         CellPosition = cellPosition;
@@ -1581,11 +1594,15 @@ internal class TrackCandidate
             _shortestRemainingCount = desirePath.RemainingActionCount;
         }
 
+        if (desirePath.HighestActionCostOnRemainingPath > _highestActionCostOnRemainingPath)
+        {
+            _highestActionCostOnRemainingPath = desirePath.HighestActionCostOnRemainingPath;
+        }
+
         if (!DesirePathUtil.IsCompletionWorthwhile(desirePath))
         {
             IsPathWorthwhile = false;
         }
-
     }
 
     internal int GetTownCount()
@@ -1596,6 +1613,11 @@ internal class TrackCandidate
     internal int ShortestRemainingCount()
     {
         return _shortestRemainingCount;
+    }
+
+    internal int GetHighestActionCostOnRemainingPath()
+    {
+        return _highestActionCostOnRemainingPath;
     }
 }
 
@@ -1653,12 +1675,12 @@ internal class TrackPlacementCalculator
 
         List<TrackCandidate> candidates = new List<TrackCandidate>(_candidates.Values);
 
-                                                                                    // Priority order
-        candidates = candidates.Where(c => c.IsPathWorthwhile)                      // Filter out candidates that aren't worthwhile    
-                               .OrderBy(c => c.ActionCost)                           // Lowest cost first
-                               //.ThenByDescending(c => c.GetTownCount())             // Number of desire paths this route passes through
-                               .ThenBy(c => c.ShortestRemainingCount())            // Shortest to complete    
-                               .ThenByDescending(c => c.IsInSafeRegion).ToList();   // Safe regions first
+                                                                                      // Priority order
+        candidates = candidates.Where(c => c.IsPathWorthwhile)                        // Filter out candidates that aren't worthwhile    
+                               .OrderBy(c => c.GetHighestActionCostOnRemainingPath()) // Lowest cost on remaining path first
+                               .ThenBy(c => c.ActionCost)                             // Lowest cost first
+                               .ThenBy(c => c.ShortestRemainingCount())               // Shortest to complete    
+                               .ThenByDescending(c => c.IsInSafeRegion).ToList();     // Safe regions first
 
         Logger.TrackCandidates(candidates);
 

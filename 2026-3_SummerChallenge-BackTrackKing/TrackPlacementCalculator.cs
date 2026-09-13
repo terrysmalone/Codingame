@@ -59,13 +59,14 @@ internal class TrackPlacementCalculator
 
         List<TrackCandidate> candidates = new List<TrackCandidate>(_candidates.Values);
 
-                                                                                    // Priority order
-        candidates = candidates.Where(c => c.IsPathWorthwhile)                      // Filter out candidates that aren't worthwhile    
-                               .OrderBy(c => c.ActionCost)                           // Lowest cost first
-                               .ThenBy(c => c.ShortestRemainingCount())            // Shortest to complete    
-                               .ThenByDescending(c => c.IsInSafeRegion).ToList();   // Safe regions first
+                                                                                      // Priority order
+        candidates = candidates.Where(c => c.IsPathWorthwhile)                        // Filter out candidates that aren't worthwhile    
+                               .OrderBy(c => c.GetHighestActionCostOnRemainingPath()) // Lowest cost on remaining path first
+                               .ThenBy(c => c.ActionCost)                             // Lowest cost first
+                               .ThenBy(c => c.ShortestRemainingCount())               // Shortest to complete    
+                               .ThenByDescending(c => c.IsInSafeRegion).ToList();     // Safe regions first
 
-        Logger.TrackCandidates(candidates);
+        // Logger.TrackCandidates(candidates);
 
         HashSet<int> placedRegions = new HashSet<int>();
 

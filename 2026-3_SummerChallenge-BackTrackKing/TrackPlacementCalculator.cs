@@ -69,15 +69,17 @@ internal class TrackPlacementCalculator
         List<TrackCandidate>  shortPriorityCandidates = 
             candidates.OrderBy(c => c.GetShortestRemainingActionCount())  // Shortest to complete
                       .ThenBy(c => c.ActionCost)                          // Lowest cost first
+                      .ThenByDescending(c => c.GetTownCount())            // Number of desire paths this route passes through
                       .ThenByDescending(c => c.IsInSafeRegion).ToList();  // Safe regions first
 
         // Logger.TrackCandidates(shortPriorityCandidates, "SHORT PRIORITY CANDIDATES", 5);
 
         List<TrackCandidate> longPriorityCandidates = 
-            candidates.OrderBy(c => c.GetLongestRemainingPathCount())         // Logest paths first 
-                      .ThenBy(c => c.GetShortestRemainingActionCount())      // Shortest to complete
-                      .ThenBy(c => c.ActionCost)                            // Lowest cost first
-                      .ThenByDescending(c => c.IsInSafeRegion).ToList();     // Safe regions first
+            candidates.OrderBy(c => c.GetLongestRemainingPathCount())     // Logest paths first 
+                      .ThenBy(c => c.GetShortestRemainingActionCount())   // Shortest to complete
+                      .ThenBy(c => c.ActionCost)                           // Lowest cost first
+                      .ThenByDescending(c => c.GetTownCount())            // Number of desire paths this route passes through
+                      .ThenByDescending(c => c.IsInSafeRegion).ToList();  // Safe regions first
 
         // Logger.TrackCandidates(longPriorityCandidates, "LONG PRIORITY CANDIDATES", 5);
 

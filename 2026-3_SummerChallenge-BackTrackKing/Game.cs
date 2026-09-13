@@ -79,6 +79,10 @@ public class Game
 
         if (actionPointsLeft > 0)
         {
+            // Generate a map of available points to place tracks
+            // Remove all inked areas, and anywhere where a town can't reach a target tow n(flood fill to check)
+
+
             actions += CalculateNextBestPaintActions(desirePaths, actionPointsLeft);
 
             Logger.LogTime($"Calculated next best actions");

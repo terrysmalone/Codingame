@@ -261,6 +261,10 @@ public class Game
 
         if (actionPointsLeft > 0)
         {
+            // Generate a map of available points to place tracks
+            // Remove all inked areas, and anywhere where a town can't reach a target tow n(flood fill to check)
+
+
             actions += CalculateNextBestPaintActions(desirePaths, actionPointsLeft);
 
             Logger.LogTime($"Calculated next best actions");
@@ -977,7 +981,7 @@ class Player
 {
     static void Main(string[] args)
     {
-        // Logger.DisableLogging();
+        Logger.DisableLogging();
         string[] inputs;
         int myId = int.Parse(Console.ReadLine()); // 0 or 1
 
@@ -1729,15 +1733,17 @@ internal class TrackPlacementCalculator
         List<TrackCandidate>  shortPriorityCandidates = 
             candidates.OrderBy(c => c.GetShortestRemainingActionCount())  // Shortest to complete
                       .ThenBy(c => c.ActionCost)                          // Lowest cost first
+                      .ThenByDescending(c => c.GetTownCount())            // Number of desire paths this route passes through
                       .ThenByDescending(c => c.IsInSafeRegion).ToList();  // Safe regions first
 
         // Logger.TrackCandidates(shortPriorityCandidates, "SHORT PRIORITY CANDIDATES", 5);
 
         List<TrackCandidate> longPriorityCandidates = 
-            candidates.OrderBy(c => c.GetLongestRemainingPathCount())         // Logest paths first 
-                      .ThenBy(c => c.GetShortestRemainingActionCount())      // Shortest to complete
-                      .ThenBy(c => c.ActionCost)                            // Lowest cost first
-                      .ThenByDescending(c => c.IsInSafeRegion).ToList();     // Safe regions first
+            candidates.OrderBy(c => c.GetLongestRemainingPathCount())     // Logest paths first 
+                      .ThenBy(c => c.GetShortestRemainingActionCount())   // Shortest to complete
+                      .ThenBy(c => c.ActionCost)                           // Lowest cost first
+                      .ThenByDescending(c => c.GetTownCount())            // Number of desire paths this route passes through
+                      .ThenByDescending(c => c.IsInSafeRegion).ToList();  // Safe regions first
 
         // Logger.TrackCandidates(longPriorityCandidates, "LONG PRIORITY CANDIDATES", 5);
 

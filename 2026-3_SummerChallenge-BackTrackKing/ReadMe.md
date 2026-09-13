@@ -5,9 +5,12 @@
 * Scores should be the same no matter what side I am. Verify.
 
 ## Improvements
-* Instead of not putting tracks on same region, don't put them on same desirepath!
-* Use unspent action points. Just place anywhere. At least if they destry track we'll have more coverage.
-* Secondary order regions to disrupt by number of track pieces opponent has. Lets make him work harder to re-establish a connection
+Use flood fill to place tracks if we couldn't find one via desire paths
+ 
+Make regions unstable based on areas giving enemies more points.Score each desire path for how dangerous 
+it is, and would be if the enemy completed it. Make the most dangerous one the target.
+	
+
 
 ## Disrupt choice notes
 
@@ -170,4 +173,33 @@ ed4ec0caeb75c1b8b273e0c940de9f711ba0d97a
 	Submitted: 2026-09-13 10:37pm
 	Rank: (195) to 215
 
-NOTE: Current code in codingame is from ace4e7bbcaafb27f79374427dd8623968a360cf4
+NOTE: Testing ace4e7bbcaafb27f79374427dd8623968a360cf4 
+	
+	Submitted: 2026-09-13 11:37pm
+	Rank: (215) to 188
+
+---------------------
+
+# Analysis on changes since best recent result
+
+## ace4e7bbcaafb27f79374427dd8623968a360cf4 - 165
+
+Tweak ordering - Put ActionCost before ShortestRemainingCount
+Remove ordering by town count - Remove get town count from ordering *** NOTE: I don't have any verification that this was a good idea *** 
+
+## ed4ec0caeb75c1b8b273e0c940de9f711ba0d97a - dropped 41 places to 191
+
+Prioritise cells where there are no high action costs along the whole track (NOTE: This is later removed)
+Prioritise short and long paths separately
+Run two passes through pathfinding
+
+## 55a927055ce70597cd443fd665d25bbbd5810cf0 - dropped 4 places to 194
+
+Remove complex ordering. Just focus on path length - 
+
+## 3c9d33374f42b758227bdf9df3365d1b645eaa29 - dropped 20 places to 215
+
+-------------------
+
+
+

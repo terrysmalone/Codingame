@@ -24,7 +24,9 @@ internal class TrackCandidate
 
     private HashSet<string> _towns = new HashSet<string>();
 
-    private int _shortestRemainingCount = int.MaxValue;
+    private int _shortestRemainingActionCount = int.MaxValue;
+
+    private int _longestRemainingPathCount = int.MinValue;
 
     private int _highestActionCostOnRemainingPath = int.MinValue;
 
@@ -47,9 +49,14 @@ internal class TrackCandidate
         // Add to towns list
         _towns.Add(desirePath.TownConnection);
 
-        if (desirePath.RemainingActionCount < _shortestRemainingCount)
+        if (desirePath.RemainingActionCount < _shortestRemainingActionCount)
         {
-            _shortestRemainingCount = desirePath.RemainingActionCount;
+            _shortestRemainingActionCount = desirePath.RemainingActionCount;
+        }
+
+        if (desirePath.RemainingPathCount > _longestRemainingPathCount)
+        {
+            _longestRemainingPathCount = desirePath.RemainingPathCount;
         }
 
         if (desirePath.HighestActionCostOnRemainingPath > _highestActionCostOnRemainingPath)
@@ -68,9 +75,14 @@ internal class TrackCandidate
         return _towns.Count;
     }
 
-    internal int ShortestRemainingCount()
+    internal int GetShortestRemainingActionCount()
     {
-        return _shortestRemainingCount;
+        return _shortestRemainingActionCount;
+    }
+
+    internal int GetLongestRemainingPathCount()
+    {
+        return _longestRemainingPathCount;
     }
 
     internal int GetHighestActionCostOnRemainingPath()

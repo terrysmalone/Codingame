@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
+using System.Net.Http;
 
 namespace BackTrackKing;
 
@@ -209,18 +210,25 @@ internal static class Logger
         }
     }
 
-    internal static void TrackCandidates(List<TrackCandidate> candidates)
+    internal static void TrackCandidates(List<TrackCandidate> candidates, string message = "TRACK CANDIDATES", int cutoff = int.MaxValue)
     {
         if (DISABLE_LOGGING)
         {
             return;
         }
 
-        Console.Error.WriteLine("TRACK CANDIDATES");
+        Console.Error.WriteLine(message);
 
         foreach (var trackCandidate in candidates)
         {
-            Console.Error.WriteLine($"Cell: {trackCandidate.CellPosition.X},{trackCandidate.CellPosition.Y} - IsWorthwhile: {trackCandidate.IsPathWorthwhile} - HighestActionCostOnRemainingPath: {trackCandidate.GetHighestActionCostOnRemainingPath()}   - Region: {trackCandidate.RegionId}, Cost: {trackCandidate.ActionCost}, ShortestPathCount: {trackCandidate.ShortestRemainingCount()}, TownsOnPathCount: {trackCandidate.GetTownCount()}, SafeRegion: {trackCandidate.IsInSafeRegion}, Instability: {trackCandidate.InstabilityLevel}");
+            if (cutoff == 0)
+            {
+                break;
+            }
+
+            Console.Error.WriteLine($"Cell: {trackCandidate.CellPosition.X},{trackCandidate.CellPosition.Y} - IsWorthwhile: {trackCandidate.IsPathWorthwhile} - HighestActionCostOnRemainingPath: {trackCandidate.GetHighestActionCostOnRemainingPath()}   - Region: {trackCandidate.RegionId}, Cost: {trackCandidate.ActionCost}, ShortestPathCount: {trackCandidate.GetShortestRemainingActionCount()}, TownsOnPathCount: {trackCandidate.GetTownCount()}, SafeRegion: {trackCandidate.IsInSafeRegion}, Instability: {trackCandidate.InstabilityLevel}");
+
+            cutoff--;
         }
     }
 }

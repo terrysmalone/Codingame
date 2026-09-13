@@ -61,7 +61,7 @@ public class Game
 
         List<DesirePath> desirePaths = CalculateDesirePaths();
 
-        Logger.LogTime($"Calculated desire paths");
+        Logger.LogTime($"Calculated {desirePaths.Count} desire paths");
 
         // Logger.DesirePaths(desirePaths);
         // _regionTracker.LogRegions();
@@ -176,6 +176,7 @@ public class Game
         foreach (var point in actionPoints)
         {
             actions += $"PLACE_TRACKS {point.X} {point.Y};";
+            Logger.Message($"Placed track:{point.X} {point.Y}, Priority: NextBestAction");
         }
 
         return actions;

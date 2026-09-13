@@ -10,6 +10,7 @@ using Microsoft.VisualBasic;
 using System.Linq;
 using System.Reflection.Metadata.Ecma335;
 using System.Diagnostics;
+using System.Net.Http;
 using System.Text;
 using System.Xml.Linq;
 using System.Collections;
@@ -242,7 +243,7 @@ public class Game
 
         List<DesirePath> desirePaths = CalculateDesirePaths();
 
-        Logger.LogTime($"Calculated desire paths");
+        Logger.LogTime($"Calculated {desirePaths.Count} desire paths");
 
         // Logger.DesirePaths(desirePaths);
         // _regionTracker.LogRegions();
@@ -357,6 +358,7 @@ public class Game
         foreach (var point in actionPoints)
         {
             actions += $"PLACE_TRACKS {point.X} {point.Y};";
+            Logger.Message($"Placed track:{point.X} {point.Y}, Priority: NextBestAction");
         }
 
         return actions;
@@ -765,18 +767,25 @@ internal static class Logger
         }
     }
 
-    internal static void TrackCandidates(List<TrackCandidate> candidates)
+    internal static void TrackCandidates(List<TrackCandidate> candidates, string message = "TRACK CANDIDATES", int cutoff = int.MaxValue)
     {
         if (DISABLE_LOGGING)
         {
             return;
         }
 
-        Console.Error.WriteLine("TRACK CANDIDATES");
+        Console.Error.WriteLine(message);
 
         foreach (var trackCandidate in candidates)
         {
-            Console.Error.WriteLine($"Cell: {trackCandidate.CellPosition.X},{trackCandidate.CellPosition.Y} - IsWorthwhile: {trackCandidate.IsPathWorthwhile} - HighestActionCostOnRemainingPath: {trackCandidate.GetHighestActionCostOnRemainingPath()}   - Region: {trackCandidate.RegionId}, Cost: {trackCandidate.ActionCost}, ShortestPathCount: {trackCandidate.ShortestRemainingCount()}, TownsOnPathCount: {trackCandidate.GetTownCount()}, SafeRegion: {trackCandidate.IsInSafeRegion}, Instability: {trackCandidate.InstabilityLevel}");
+            if (cutoff == 0)
+            {
+                break;
+            }
+
+            Console.Error.WriteLine($"Cell: {trackCandidate.CellPosition.X},{trackCandidate.CellPosition.Y} - IsWorthwhile: {trackCandidate.IsPathWorthwhile} - HighestActionCostOnRemainingPath: {trackCandidate.GetHighestActionCostOnRemainingPath()}   - Region: {trackCandidate.RegionId}, Cost: {trackCandidate.ActionCost}, ShortestPathCount: {trackCandidate.GetShortestRemainingActionCount()}, TownsOnPathCount: {trackCandidate.GetTownCount()}, SafeRegion: {trackCandidate.IsInSafeRegion}, Instability: {trackCandidate.InstabilityLevel}");
+
+            cutoff--;
         }
     }
 }
@@ -1566,7 +1575,9 @@ internal class TrackCandidate
 
     private HashSet<string> _towns = new HashSet<string>();
 
-    private int _shortestRemainingCount = int.MaxValue;
+    private int _shortestRemainingActionCount = int.MaxValue;
+
+    private int _longestRemainingPathCount = int.MinValue;
 
     private int _highestActionCostOnRemainingPath = int.MinValue;
 
@@ -1589,9 +1600,14 @@ internal class TrackCandidate
         // Add to towns list
         _towns.Add(desirePath.TownConnection);
 
-        if (desirePath.RemainingActionCount < _shortestRemainingCount)
+        if (desirePath.RemainingActionCount < _shortestRemainingActionCount)
         {
-            _shortestRemainingCount = desirePath.RemainingActionCount;
+            _shortestRemainingActionCount = desirePath.RemainingActionCount;
+        }
+
+        if (desirePath.RemainingPathCount > _longestRemainingPathCount)
+        {
+            _longestRemainingPathCount = desirePath.RemainingPathCount;
         }
 
         if (desirePath.HighestActionCostOnRemainingPath > _highestActionCostOnRemainingPath)
@@ -1610,9 +1626,14 @@ internal class TrackCandidate
         return _towns.Count;
     }
 
-    internal int ShortestRemainingCount()
+    internal int GetShortestRemainingActionCount()
     {
-        return _shortestRemainingCount;
+        return _shortestRemainingActionCount;
+    }
+
+    internal int GetLongestRemainingPathCount()
+    {
+        return _longestRemainingPathCount;
     }
 
     internal int GetHighestActionCostOnRemainingPath()
@@ -1657,6 +1678,7 @@ internal class TrackPlacementCalculator
                     actions += $"PLACE_TRACKS {cellPosition.X} {cellPosition.Y};";
                     placedCells.Add(cellPosition);
                     actionPointsLeft -= _map.CellCosts[cellPosition.X, cellPosition.Y];
+                    Logger.Message($"Placed track:{cellPosition.X},{cellPosition.Y}, Priority:CanCompleteThisTurn");
                 }
             }
         }
@@ -1673,25 +1695,44 @@ internal class TrackPlacementCalculator
         // First, prioritise shortest first paths, then longest first paths.
         //
 
-        List<TrackCandidate> candidates = new List<TrackCandidate>(_candidates.Values);
+        List<TrackCandidate> candidates = new List<TrackCandidate>(_candidates.Values).Where(c => c.IsPathWorthwhile).ToList(); // Filter out candidates that aren't worthwhile  
 
-                                                                                      // Priority order
-        candidates = candidates.Where(c => c.IsPathWorthwhile)                        // Filter out candidates that aren't worthwhile    
-                               .OrderBy(c => c.GetHighestActionCostOnRemainingPath()) // Lowest cost on remaining path first
-                               .ThenBy(c => c.ActionCost)                             // Lowest cost first
-                               .ThenBy(c => c.ShortestRemainingCount())               // Shortest to complete    
-                               .ThenByDescending(c => c.IsInSafeRegion).ToList();     // Safe regions first
+        // Priority order
+        List<TrackCandidate>  shortPriorityCandidates = 
+            candidates.OrderBy(c => c.ActionCost)                            // Lowest cost first
+                      .ThenBy(c => c.GetShortestRemainingActionCount())      // Shortest to complete
+                      .ThenBy(c => c.GetHighestActionCostOnRemainingPath())  // Lowest cost on remaining path first
+                      .ThenByDescending(c => c.IsInSafeRegion).ToList();     // Safe regions first
 
-        Logger.TrackCandidates(candidates);
+        // Logger.TrackCandidates(shortPriorityCandidates, "SHORT PRIORITY CANDIDATES", 5);
+
+        List<TrackCandidate> longPriorityCandidates = 
+            candidates.OrderBy(c => c.ActionCost)                            // Lowest cost first
+                      .ThenBy(c => c.GetLongestRemainingPathCount())         // Logest paths first 
+                      .ThenBy(c => c.GetShortestRemainingActionCount())      // Shortest to complete  
+                      .ThenBy(c => c.GetHighestActionCostOnRemainingPath())  // Lowest cost on remaining path first
+                      .ThenByDescending(c => c.IsInSafeRegion).ToList();     // Safe regions first
+
+        // Logger.TrackCandidates(longPriorityCandidates, "LONG PRIORITY CANDIDATES", 5);
 
         HashSet<int> placedRegions = new HashSet<int>();
 
-        int timesChecked = 0;   // Do a maximum of 4 passes through the candidates to try and place tracks to avoid infinite loops
+        int timesChecked = 0;   // Do a maximum of 20 passes through the candidates to try and place tracks to avoid infinite loops
 
-        while (actionPointsLeft > 0 && timesChecked < 4)
+        bool shortestFirst = true;
+
+        while (actionPointsLeft > 0 && timesChecked < 20)
         {
-            // Reset placedRegions every time we do another passthrough
-            placedRegions.Clear();
+            if (shortestFirst)
+            {
+                candidates = shortPriorityCandidates;
+            }
+            else
+            {
+                candidates = longPriorityCandidates;
+            }
+
+            int countDown = candidates.Count;
 
             foreach (var candidate in candidates)
             {
@@ -1701,7 +1742,20 @@ internal class TrackPlacementCalculator
                     placedCells.Add(candidate.CellPosition);
                     placedRegions.Add(candidate.RegionId);
                     actions += $"PLACE_TRACKS {candidate.CellPosition.X} {candidate.CellPosition.Y};";
+
+                    string priority = shortestFirst ? "Shortest First" : "Longest First";
+                    Logger.Message($"Placed track:{candidate.CellPosition}, cost:{candidate.ActionCost}, Priority:{priority}");
+                    shortestFirst = !shortestFirst; // Alternate between shortest and longest first
+                    break;
                 }
+
+                countDown--;
+            }
+
+            // If we made an entire pass without placing any tracks, clear placedRegions to allow for more placements next pass
+            if (countDown == 0 && actionPointsLeft > 0)
+            {
+                placedRegions.Clear();
             }
 
             timesChecked++;

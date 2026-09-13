@@ -1651,9 +1651,9 @@ internal class TrackPlacementCalculator
 
                                                                                     // Priority order
         candidates = candidates.Where(c => c.IsPathWorthwhile)                      // Filter out candidates that aren't worthwhile    
-                               .OrderBy(c => c.ShortestRemainingCount())            // Shortest to complete                                        
+                               .OrderBy(c => c.ActionCost)                           // Lowest cost first
                                .ThenByDescending(c => c.GetTownCount())             // Number of desire paths this route passes through
-                               .ThenBy(c => c.ActionCost)                           // Lowest cost first
+                               .ThenBy(c => c.ShortestRemainingCount())            // Shortest to complete    
                                .ThenByDescending(c => c.IsInSafeRegion).ToList();   // Safe regions first
 
         // Logger.TrackCandidates(candidates);

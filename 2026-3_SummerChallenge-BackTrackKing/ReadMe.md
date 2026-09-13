@@ -6,9 +6,12 @@
 
 ## Improvements
 * Instead of not putting tracks on same region, don't put them on same desirepath!
-* I complete tracks even if it favours my opponent. Don't complete tracks if they will own as much of the finished result as me (Look a7 fight 32 against stem. On move 10 I shouldn't place a track on 13,4. It makes it even. If he had placed it there too he'd have won that one)
 * Use unspent action points. Just place anywhere. At least if they destry track we'll have more coverage.
 * Secondary order regions to disrupt by number of track pieces opponent has. Lets make him work harder to re-establish a connection
+
+## Disrupt choice notes
+
+* I sometimes switch to a longer track, even though I should just finish where I am. 
 
 # Progress
 
@@ -114,7 +117,7 @@ c640216ee416fc8027159efe8b48c62824edd8b2
 
 fb5a9bf3f0a37d6fa330ee9007c81a6273b7b918
 
-	Changes: Swap ordering
+	Changes: Filter out tracks that would give opponenet advantage
 	Submitted: 2026-09-12 02:53pm
 	Rank: (137) to 146
 
@@ -124,3 +127,26 @@ de9246b52c67268569cc932279b0189e8400ea47
 	Submitted: 2026-09-12 04:04pm
 	Rank: (147) to 149
 
+6b324e36f25a625827f31c43a88b0503ddf9da0c
+
+	Changes: Make search for region more efficient
+	Submitted: 2026-09-12 08:15pm
+	Rank: (153) to 146
+
+ad8a0df0ab3a9523d199372853870503e370be4c
+
+	Changes: Don't go for quick wins
+	Submitted: 2026-09-12 09:05pm
+	Rank: (146) to 161
+
+491a873a5ed2b40a8457bda8230a4659f1b4b7b6
+
+	Changes: Don't place tracks in same town path
+	Submitted: 2026-09-12 10:12pm
+	Rank: (164) to 182
+
+ace4e7bbcaafb27f79374427dd8623968a360cf4
+
+	Changes: Reverted back to 6b324e36f25a625827f31c43a88b0503ddf9da0c. I'll need to bring in some of the above 2
+	Submitted: 2026-09-12 11:55pm
+	Rank: 165

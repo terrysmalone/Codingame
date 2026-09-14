@@ -58,13 +58,16 @@ public class Game
     {
         Logger.LogTime($"Calculating desire paths with full unstable regions exclusion");
 
-        List<DesirePath> desirePaths = CalculateDesirePaths();
+        List<DesirePath> desirePaths = CalculateDesirePaths(_regionTracker.GetExcludeUnstablePoints());
 
         Logger.LogTime($"Calculated {desirePaths.Count} fully excluded desire paths");
 
-        // Logger.DesirePaths(desirePaths);
-        // _regionTracker.LogRegions();
-        //_connectionTracker.LogConnections();
+        if (desirePaths.Count == 0)
+        {
+            Logger.Message($"No desire paths found, calculating desire paths with inked only exclusions");
+            desirePaths = CalculateDesirePaths(_regionTracker.GetExcludeInkedPoints());
+            Logger.LogTime($"Calculated {desirePaths.Count} inked only excluded desire paths");
+        }
 
         TrackPlacementCalculator trackPlacementCalculator = new TrackPlacementCalculator(_map, _regionTracker);
         (var actions, var actionPointsLeft) =  trackPlacementCalculator.CalculateBestCandidates(desirePaths);
@@ -180,7 +183,7 @@ public class Game
         return actions;
     }
 
-    private List<DesirePath> CalculateDesirePaths()
+    private List<DesirePath> CalculateDesirePaths(HashSet<Point> excludePoints)
     {
         // Logger.Message("Calculating desire paths");
 
@@ -189,7 +192,7 @@ public class Game
         {
             foreach (var desiredConnection in town.DesiredConnections)
             {
-                List<Point> fullSanitisedPath = FindShortestSanitisedPath(new Point(town.X, town.Y), desiredConnection);
+                List<Point> fullSanitisedPath = FindShortestSanitisedPath(new Point(town.X, town.Y), desiredConnection, excludePoints);
                 
                 if (fullSanitisedPath == null || fullSanitisedPath.Count == 0)
                 {
@@ -257,11 +260,11 @@ public class Game
         return desirePaths.OrderBy(dp => dp.RemainingActionCount).ThenBy(dp => dp.RemainingPathCount).ToList();
     }
 
-    private List<Point> FindShortestSanitisedPath(Point startPoint, int desiredConnection)
+    private List<Point> FindShortestSanitisedPath(Point startPoint, int desiredConnection, HashSet<Point> excludePoints)
     {
         Town desiredTown = _towns.First(t => t.Id == desiredConnection);
 
-        List<Point> shortestPath = _pathFinder.GetShortestPath(new Point(startPoint.X, startPoint.Y), new Point(desiredTown.X, desiredTown.Y), _regionTracker.GetExcludePoints());
+        List<Point> shortestPath = _pathFinder.GetShortestPath(new Point(startPoint.X, startPoint.Y), new Point(desiredTown.X, desiredTown.Y), excludePoints);
 
         if (shortestPath.Count <= 0)
         {

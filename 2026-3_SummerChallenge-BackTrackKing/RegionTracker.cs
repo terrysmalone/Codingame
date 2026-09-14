@@ -37,13 +37,28 @@ internal class RegionTracker
         region.AddCell(x, y);
     }
 
-    internal HashSet<Point> GetExcludePoints()
+    internal HashSet<Point> GetExcludeUnstablePoints()
     {
         HashSet<Point> excludePoints = new HashSet<Point>();
 
         foreach (var region in _regions)
         {
             if (region.Instability > 0)
+            {
+                excludePoints.UnionWith(region.GetCells());
+            }
+        }
+
+        return excludePoints;
+    }
+
+    internal HashSet<Point> GetExcludeInkedPoints()
+    {
+        HashSet<Point> excludePoints = new HashSet<Point>();
+
+        foreach (var region in _regions)
+        {
+            if (region.IsInked)
             {
                 excludePoints.UnionWith(region.GetCells());
             }
@@ -160,7 +175,9 @@ internal class RegionTracker
 
         if (_activeRegionScores.Count > 0 && _activeRegionScores.First().Value > 0)
         {
-            // Logger.RegionScores(_activeRegionScores);
+            Logger.RegionScores(_activeRegionScores);
+
+            // TODO: We should order by number of opponent tracks in region
 
             int highScore = _activeRegionScores.First().Value;
 

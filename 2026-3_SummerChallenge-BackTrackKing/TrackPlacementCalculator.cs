@@ -59,7 +59,7 @@ internal class TrackPlacementCalculator
         foreach (var desirePath in desirePaths)
         {
             // TODO: At some point lets check if we can complete multiple desire paths this turn. 
-            // We should picj the best. Not just the first one
+            // We should pick the best. Not just the first one
             if (desirePath.RemainingActionCount <= actionPointsLeft && DesirePathUtil.IsCompletionWorthwhile(desirePath))
             {
                 // Get the actions for the remaining path
@@ -87,7 +87,8 @@ internal class TrackPlacementCalculator
                                .OrderBy(c => c.ShortestRemainingCount())            // Shortest to complete                                        
                                .ThenByDescending(c => c.GetTownCount())             // Number of desire paths this route passes through
                                .ThenBy(c => c.ActionCost)                           // Lowest cost first
-                               .ThenByDescending(c => c.IsInSafeRegion).ToList();   // Safe regions first
+                               .ThenByDescending(c => c.IsInSafeRegion)             // Safe regions first
+                               .ThenBy(c => c.InstabilityLevel).ToList();           // Highest instability level first
 
         // Logger.TrackCandidates(candidates);
 

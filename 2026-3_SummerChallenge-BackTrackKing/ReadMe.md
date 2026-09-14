@@ -213,6 +213,12 @@ Note: ace4e7bbcaafb27f79374427dd8623968a360cf4 is still better than the others b
 
 ace4e7bbcaafb27f79374427dd8623968a360cf4
 
-Changes: Revert
+	Changes: Revert
 	Submitted: 2026-09-14 09:13am
 	Rank: (255) to 188
+
+
+Add in second pass at path finding - (179) to 195
+
+With ordering by lower instability first (195) to
+

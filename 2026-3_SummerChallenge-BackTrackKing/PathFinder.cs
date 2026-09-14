@@ -71,7 +71,7 @@ internal class PathFinder
                     continue;
                 }
 
-                if (excludePoints != null && excludePoints.Contains(pt))
+                if (excludePoints != null && excludePoints.Contains(pt) && pt != targetPosition)
                 {
                     continue;
                 }

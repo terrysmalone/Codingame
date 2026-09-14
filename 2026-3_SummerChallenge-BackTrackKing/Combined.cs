@@ -237,13 +237,16 @@ public class Game
     {
         Logger.LogTime($"Calculating desire paths with full unstable regions exclusion");
 
-        List<DesirePath> desirePaths = CalculateDesirePaths();
+        List<DesirePath> desirePaths = CalculateDesirePaths(_regionTracker.GetExcludeUnstablePoints());
 
         Logger.LogTime($"Calculated {desirePaths.Count} fully excluded desire paths");
 
-        // Logger.DesirePaths(desirePaths);
-        // _regionTracker.LogRegions();
-        //_connectionTracker.LogConnections();
+        if (desirePaths.Count == 0)
+        {
+            Logger.Message($"No desire paths found, calculating desire paths with inked only exclusions");
+            desirePaths = CalculateDesirePaths(_regionTracker.GetExcludeInkedPoints());
+            Logger.LogTime($"Calculated {desirePaths.Count} inked only excluded desire paths");
+        }
 
         TrackPlacementCalculator trackPlacementCalculator = new TrackPlacementCalculator(_map, _regionTracker);
         (var actions, var actionPointsLeft) =  trackPlacementCalculator.CalculateBestCandidates(desirePaths);
@@ -359,7 +362,7 @@ public class Game
         return actions;
     }
 
-    private List<DesirePath> CalculateDesirePaths()
+    private List<DesirePath> CalculateDesirePaths(HashSet<Point> excludePoints)
     {
         // Logger.Message("Calculating desire paths");
 
@@ -368,7 +371,7 @@ public class Game
         {
             foreach (var desiredConnection in town.DesiredConnections)
             {
-                List<Point> fullSanitisedPath = FindShortestSanitisedPath(new Point(town.X, town.Y), desiredConnection);
+                List<Point> fullSanitisedPath = FindShortestSanitisedPath(new Point(town.X, town.Y), desiredConnection, excludePoints);
                 
                 if (fullSanitisedPath == null || fullSanitisedPath.Count == 0)
                 {
@@ -436,11 +439,11 @@ public class Game
         return desirePaths.OrderBy(dp => dp.RemainingActionCount).ThenBy(dp => dp.RemainingPathCount).ToList();
     }
 
-    private List<Point> FindShortestSanitisedPath(Point startPoint, int desiredConnection)
+    private List<Point> FindShortestSanitisedPath(Point startPoint, int desiredConnection, HashSet<Point> excludePoints)
     {
         Town desiredTown = _towns.First(t => t.Id == desiredConnection);
 
-        List<Point> shortestPath = _pathFinder.GetShortestPath(new Point(startPoint.X, startPoint.Y), new Point(desiredTown.X, desiredTown.Y), _regionTracker.GetExcludePoints());
+        List<Point> shortestPath = _pathFinder.GetShortestPath(new Point(startPoint.X, startPoint.Y), new Point(desiredTown.X, desiredTown.Y), excludePoints);
 
         if (shortestPath.Count <= 0)
         {
@@ -919,7 +922,7 @@ internal class PathFinder
                     continue;
                 }
 
-                if (excludePoints != null && excludePoints.Contains(pt))
+                if (excludePoints != null && excludePoints.Contains(pt) && pt != targetPosition)
                 {
                     continue;
                 }
@@ -1223,13 +1226,28 @@ internal class RegionTracker
         region.AddCell(x, y);
     }
 
-    internal HashSet<Point> GetExcludePoints()
+    internal HashSet<Point> GetExcludeUnstablePoints()
     {
         HashSet<Point> excludePoints = new HashSet<Point>();
 
         foreach (var region in _regions)
         {
             if (region.Instability > 0)
+            {
+                excludePoints.UnionWith(region.GetCells());
+            }
+        }
+
+        return excludePoints;
+    }
+
+    internal HashSet<Point> GetExcludeInkedPoints()
+    {
+        HashSet<Point> excludePoints = new HashSet<Point>();
+
+        foreach (var region in _regions)
+        {
+            if (region.IsInked)
             {
                 excludePoints.UnionWith(region.GetCells());
             }
@@ -1346,7 +1364,7 @@ internal class RegionTracker
 
         if (_activeRegionScores.Count > 0 && _activeRegionScores.First().Value > 0)
         {
-            // Logger.RegionScores(_activeRegionScores);
+            Logger.RegionScores(_activeRegionScores);
 
             int highScore = _activeRegionScores.First().Value;
 
@@ -1625,7 +1643,7 @@ internal class TrackPlacementCalculator
         foreach (var desirePath in desirePaths)
         {
             // TODO: At some point lets check if we can complete multiple desire paths this turn. 
-            // We should picj the best. Not just the first one
+            // We should pick the best. Not just the first one
             if (desirePath.RemainingActionCount <= actionPointsLeft && DesirePathUtil.IsCompletionWorthwhile(desirePath))
             {
                 // Get the actions for the remaining path
@@ -1653,7 +1671,8 @@ internal class TrackPlacementCalculator
                                .OrderBy(c => c.ShortestRemainingCount())            // Shortest to complete                                        
                                .ThenByDescending(c => c.GetTownCount())             // Number of desire paths this route passes through
                                .ThenBy(c => c.ActionCost)                           // Lowest cost first
-                               .ThenByDescending(c => c.IsInSafeRegion).ToList();   // Safe regions first
+                               .ThenByDescending(c => c.IsInSafeRegion)             // Safe regions first
+                               .ThenBy(c => c.InstabilityLevel).ToList();           // Highest instability level first
 
         // Logger.TrackCandidates(candidates);
 

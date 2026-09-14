@@ -98,8 +98,6 @@ c640216ee416fc8027159efe8b48c62824edd8b2
 	Submitted: 2026-09-11 12:49am
 	Rank: (151) to 152
 
-
-
 915b4397069c06ca3ec9c10ff583fa437fc48cf2
 
 	Changes: Implement cell scoring
@@ -124,3 +122,88 @@ de9246b52c67268569cc932279b0189e8400ea47
 	Submitted: 2026-09-12 04:04pm
 	Rank: (147) to 149
 
+6b324e36f25a625827f31c43a88b0503ddf9da0c
+
+	Changes: Make search for region more efficient
+	Submitted: 2026-09-12 08:15pm
+	Rank: (153) to 146
+
+ad8a0df0ab3a9523d199372853870503e370be4c
+
+	Changes: Don't go for quick wins
+	Submitted: 2026-09-12 09:05pm
+	Rank: (146) to 161
+
+491a873a5ed2b40a8457bda8230a4659f1b4b7b6
+
+	Changes: Don't place tracks in same town path
+	Submitted: 2026-09-12 10:12pm
+	Rank: (164) to 182
+
+ace4e7bbcaafb27f79374427dd8623968a360cf4
+
+	Changes: Reverted back to 6b324e36f25a625827f31c43a88b0503ddf9da0c. I'll need to bring in some of the above 2
+	Submitted: 2026-09-12 11:55pm
+	Rank: 165
+
+ed4ec0caeb75c1b8b273e0c940de9f711ba0d97a
+
+	Changes: Remove ordering by town count
+	Submitted: 2026-09-13 08:07pm
+	Rank: (150) to 191
+
+55a927055ce70597cd443fd665d25bbbd5810cf0
+
+	Changes: Prioritise short and long paths separately
+             Run two passes through pathfinding
+	Submitted: 2026-09-13 09:48pm
+	Rank: (190) to 194
+
+3c9d33374f42b758227bdf9df3365d1b645eaa29
+
+	Changes: Remove complex ordering. Just focus on path length
+	Submitted: 2026-09-13 10:37pm
+	Rank: (195) to 215
+
+NOTE: Testing ace4e7bbcaafb27f79374427dd8623968a360cf4 
+	
+	Submitted: 2026-09-13 11:37pm
+	Rank: (215) to 188
+
+---------------------
+
+# Analysis on changes since best recent result
+
+## ace4e7bbcaafb27f79374427dd8623968a360cf4 - 165
+
+Tweak ordering - Put ActionCost before ShortestRemainingCount
+Remove ordering by town count - Remove get town count from ordering *** NOTE: I don't have any verification that this was a good idea *** 
+
+## ed4ec0caeb75c1b8b273e0c940de9f711ba0d97a - dropped 41 places to 191
+
+Prioritise cells where there are no high action costs along the whole track (NOTE: This is later removed)
+Prioritise short and long paths separately
+Run two passes through pathfinding
+
+## 55a927055ce70597cd443fd665d25bbbd5810cf0 - dropped 4 places to 194
+
+Remove complex ordering. Just focus on path length - 
+
+## 3c9d33374f42b758227bdf9df3365d1b645eaa29 - dropped 20 places to 215
+
+-------------------
+
+16e6bf3bfd21d4dd4b3345a3ee21256c6e5e2ad4
+
+	Changes: Add town ordering count back in 
+	Submitted: 2026-09-14 12:13am
+	Rank: (188) to 252
+
+Note: ace4e7bbcaafb27f79374427dd8623968a360cf4 is still better than the others by far.
+      I'm going to revert back to that and try to incrementally add things in.
+
+ace4e7bbcaafb27f79374427dd8623968a360cf4
+
+Changes: Revert
+	Submitted: 2026-09-14 09:13am
+	Rank: (255) to 188

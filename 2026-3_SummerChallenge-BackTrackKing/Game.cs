@@ -56,12 +56,11 @@ public class Game
 
     internal string CalculateActions()
     {
-        // Logger.ConnectionScoresMap(_connectionTracker.GetConnectionScoresMap());
-        Logger.LogTime($"Starting to calculate actions");
+        Logger.LogTime($"Calculating desire paths with full unstable regions exclusion");
 
         List<DesirePath> desirePaths = CalculateDesirePaths();
 
-        Logger.LogTime($"Calculated desire paths");
+        Logger.LogTime($"Calculated {desirePaths.Count} fully excluded desire paths");
 
         // Logger.DesirePaths(desirePaths);
         // _regionTracker.LogRegions();

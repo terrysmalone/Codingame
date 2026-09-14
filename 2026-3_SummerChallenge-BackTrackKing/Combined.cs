@@ -235,12 +235,11 @@ public class Game
 
     internal string CalculateActions()
     {
-        // Logger.ConnectionScoresMap(_connectionTracker.GetConnectionScoresMap());
-        Logger.LogTime($"Starting to calculate actions");
+        Logger.LogTime($"Calculating desire paths with full unstable regions exclusion");
 
         List<DesirePath> desirePaths = CalculateDesirePaths();
 
-        Logger.LogTime($"Calculated desire paths");
+        Logger.LogTime($"Calculated {desirePaths.Count} fully excluded desire paths");
 
         // Logger.DesirePaths(desirePaths);
         // _regionTracker.LogRegions();
@@ -573,14 +572,14 @@ internal static class Logger
         DISABLE_LOGGING = false;
     }
 
-    internal static void EnableTimes()
-    {
-        DISABLE_LOGGING = false;
-    }
-
     internal static void DisableTimes()
     {
-        DISABLE_LOGGING = true;
+        DISABLE_TIMES = true;
+    }
+
+    internal static void EnableTimes()
+    {
+        DISABLE_TIMES = false;
     }
 
     internal static void LogTime(string message)

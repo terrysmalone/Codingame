@@ -10,6 +10,15 @@
 * Use unspent action points. Just place anywhere. At least if they destry track we'll have more coverage.
 * Secondary order regions to disrupt by number of track pieces opponent has. Lets make him work harder to re-establish a connection
 
+# Revert fix
+I need to add these back in a lot of the changes and tet them one by one. I'm going to start with the low impact changes.
+
+1. Run two passes through pathfinding - 55a927055ce70597cd443fd665d25bbbd5810cf0
+1. 
+
+
+
+
 # Progress
 
 f05509c54374211605954d8148a2ac5e7b7692ad

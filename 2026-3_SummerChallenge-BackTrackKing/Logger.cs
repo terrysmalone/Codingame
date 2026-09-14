@@ -190,6 +190,21 @@ internal static class Logger
 
     }
 
+    internal static void RegionScores(List<RegionScore> regionScores)
+    {
+        if (DISABLE_LOGGING)
+        {
+            return;
+        }
+
+        Console.Error.WriteLine("REGION SCORES");
+
+        foreach (var regionScore in regionScores)
+        {
+            Console.Error.WriteLine($"{regionScore.Id}, RegionEfficiencyScore: {regionScore.RegionEfficiencyScore}, ActiveConnectionsScore:{regionScore.ActiveConnectionsTracksScore}, Connections: {string.Join(",", regionScore.ActiveRegionConnections)}, MyTracks: {regionScore.myTracksCount}, EnemyTracks: {regionScore.enemyTracksCount}");
+        }
+    }
+
     internal static void ConnectionScoresMap(int[,] connectionScoresMap)
     {
         if (DISABLE_LOGGING)

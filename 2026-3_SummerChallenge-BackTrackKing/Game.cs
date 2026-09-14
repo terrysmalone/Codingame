@@ -62,11 +62,13 @@ public class Game
 
         Logger.LogTime($"Calculated {desirePaths.Count} fully excluded desire paths");
 
+        List<DesirePath> inkedOnlyDesirePaths = new List<DesirePath>();
         if (desirePaths.Count == 0)
         {
             Logger.Message($"No desire paths found, calculating desire paths with inked only exclusions");
-            desirePaths = CalculateDesirePaths(_regionTracker.GetExcludeInkedPoints());
-            Logger.LogTime($"Calculated {desirePaths.Count} inked only excluded desire paths");
+            inkedOnlyDesirePaths = CalculateDesirePaths(_regionTracker.GetExcludeInkedPoints());
+            desirePaths = inkedOnlyDesirePaths;
+            Logger.LogTime($"Calculated {inkedOnlyDesirePaths.Count} inked only excluded desire paths");
         }
 
         TrackPlacementCalculator trackPlacementCalculator = new TrackPlacementCalculator(_map, _regionTracker);
@@ -81,7 +83,14 @@ public class Game
             Logger.LogTime($"Calculated next best actions");
         }
 
-        actions += CalculateDisruptAction();
+        if (inkedOnlyDesirePaths.Count == 0)
+        {
+            Logger.Message($"No inked only desire paths, calculating for disrupt actions");
+            inkedOnlyDesirePaths = CalculateDesirePaths(_regionTracker.GetExcludeInkedPoints());
+            Logger.LogTime($"Calculated {inkedOnlyDesirePaths.Count} inked only excluded desire paths");
+        }
+
+        actions += CalculateDisruptAction(inkedOnlyDesirePaths);
 
         Logger.LogTime($"Calculated disrupt actions");
 
@@ -301,7 +310,7 @@ public class Game
         return actionCount;
     }
 
-    private string CalculateDisruptAction()
+    private string CalculateDisruptAction(List<DesirePath> inkedOnlyDesirePaths)
     {
         int region = -1;
         // PLAN
@@ -310,15 +319,7 @@ public class Game
         //
         // Priorities
         // 1. Target regions that contain completed tracks generating the enemy the most points
-        region = _regionTracker.GetStrongestEnemyRegionWithActiveTracks(_connectionTracker.GetConnectionScores());
-
-
-        // 2. Target regions that contain the most partially completed tracks that belong to the enemy
-        // 3. Target the region with the highest ratio of enemy tracks to my tracks
-        if (region == -1)
-        {
-            region = _regionTracker.GetStrongestEnemyRegion();
-        }
+        region = _regionTracker.GetStrongestEnemyRegion(_connectionTracker.GetConnectionScores(), inkedOnlyDesirePaths);
 
         return region != -1 ? $"DISRUPT {region};" : string.Empty;
     }

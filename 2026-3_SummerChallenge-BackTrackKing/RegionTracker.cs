@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Globalization;
 using System.Linq;
 
 namespace BackTrackKing;
@@ -10,11 +11,12 @@ internal class RegionTracker
     private int _myId;
     private List<Region> _regions;
 
-    private Dictionary<int, int> _activeRegionScores;
+    private HashSet<RegionScore> _regionScores;
 
     private int[,] _regionIds;
 
     private Dictionary<int, Region> _regionsById = new Dictionary<int, Region>();
+    private readonly float INK_CUTOFF = 4;
 
     public RegionTracker(int myId, int width, int height)
     {
@@ -145,151 +147,52 @@ internal class RegionTracker
         region.UpdateInstability(instability, inked);
     }
 
-    internal int GetStrongestEnemyRegionWithActiveTracks(Dictionary<string, int> dictionary)
+    internal int GetStrongestEnemyRegion(Dictionary<string, int> connectionScores, List<DesirePath> inkedOnlyDesirePaths)
     {
-        _activeRegionScores = new Dictionary<int, int>();
+        _regionScores = new HashSet<RegionScore>();
 
         foreach (Region region in _regions)
         {
-            if (region.IsInked || region.HasTown)
+            if (region.IsInked || region.HasTown || region.GetEnemyTracks() == 0)
             {
                 continue;
             }
 
-            int regionScore = 0;
+            int activeConnectionsTracksScore = 0;
 
+            // Get all active connections passing through this region
             HashSet<string> regionConnections = region.GetActiveConnections();
 
             foreach (string connection in regionConnections)
             {
-                if (dictionary.TryGetValue(connection, out int score))
+                if (connectionScores.TryGetValue(connection, out int score))
                 {
-                    regionScore += score;
+                    activeConnectionsTracksScore += score;
                 }
             }
 
-            _activeRegionScores.Add(region.Id, regionScore);
+            var regionScore = new RegionScore(region.Id, regionConnections, activeConnectionsTracksScore);
+
+            regionScore.myTracksCount = region.GetMyTracks();
+            regionScore.enemyTracksCount = region.GetEnemyTracks();
+
+            regionScore.Instability = region.Instability;
+
+            regionScore.RegionEfficiencyScore = (float)regionScore.ActiveConnectionsTracksScore / (INK_CUTOFF - (float)regionScore.Instability);
+
+            _regionScores.Add(regionScore);
         }
 
-        _activeRegionScores = _activeRegionScores.OrderByDescending(kv => kv.Value).ToDictionary(kv => kv.Key, kv => kv.Value);
+        var sortedRegionScores = 
+            _regionScores.OrderByDescending(r => r.RegionEfficiencyScore)
+                         .ThenByDescending(r => r.ActiveConnectionsTracksScore)                         
+                         .ThenByDescending(r => r.enemyTracksCount - r.myTracksCount)
+                         .ThenByDescending(r => r.Instability)
+                         .ToList();
 
-        if (_activeRegionScores.Count > 0 && _activeRegionScores.First().Value > 0)
-        {
-            Logger.RegionScores(_activeRegionScores);
+        Logger.RegionScores(sortedRegionScores);
 
-            // TODO: We should order by number of opponent tracks in region
-
-            int highScore = _activeRegionScores.First().Value;
-
-            int highestInstability = int.MinValue;
-            List<int> highestInstabilityRegionIds = new List<int>();
-
-            foreach (var regionScore in _activeRegionScores)
-            {
-                if (regionScore.Value == highScore)
-                {
-                    _regionsById.TryGetValue(regionScore.Key, out var region);
-
-                    if (region == null)
-                    {
-                        Logger.Error($"Region not found for id {regionScore.Key} in GetStrongestEnemyRegionWithActiveTracks");
-                        break;
-                    }
-                    
-                    if (region.Instability > highestInstability)
-                    {
-                        highestInstability = region.Instability;
-                        highestInstabilityRegionIds.Clear();
-                        highestInstabilityRegionIds.Add(region.Id);
-                    }
-                    else if (region.Instability == highestInstability)
-                    {
-                        highestInstabilityRegionIds.Add(region.Id);
-                    }
-                }
-                else
-                {
-                    break;
-                }
-            }
-
-            if (highestInstabilityRegionIds.Count == 1)
-            {
-                return highestInstabilityRegionIds.First();
-            }
-            else
-            {
-                // If there are multiple regions with the same high score and instability, choose the one with the most enemy tracks on it
-                int mostEnemyTracks = int.MinValue;
-                int mostEnemyTracksRegionId = -1;
-
-                foreach (int regionId in highestInstabilityRegionIds)
-                {
-                    _regionsById.TryGetValue(regionId, out var region);
-
-                    if (region == null)
-                    {
-                        Logger.Error($"Region not found for id {regionId} in GetStrongestEnemyRegionWithActiveTracks");
-                        return -1;
-                    }
-                   
-                    int enemyTracks = region.GetEnemyTracks();
-                    if (enemyTracks > mostEnemyTracks)
-                    {
-                        mostEnemyTracks = enemyTracks;
-                        mostEnemyTracksRegionId = region.Id;
-                    }                    
-                }
-
-                return mostEnemyTracksRegionId;
-            }
-        }
-        else
-        {
-            return -1;
-        }
-    }
-
-    // First pass at getting a disrupt action
-    // For every region calculate enemyTracks - myTracks, Choose the region with the highest
-    // score
-    internal int GetStrongestEnemyRegion()
-    {
-        // For every region calculate enemyTracks - myTracks, Choose the region with the highest score
-        int strongestEnemyRegion = int.MinValue;
-        int strongerstEnemyRegionId = -1;
-
-        foreach (Region region in _regions)
-        {
-            if (region.IsInked || region.HasTown)
-            {
-                continue;
-            }
-
-            // Don't check this if the region has active connections in my favour
-            int activeRegionScore = _activeRegionScores[region.Id];
-            if(activeRegionScore < 0)
-            {
-                continue;
-            }
-
-            int score = region.GetEnemyTracks() - region.GetMyTracks();
-
-            // If it's already been attacked, and it favours the enemy attack here straight away. 
-            // Lets finish what we started.
-            if (score > 0 && region.Instability > 0)
-            {
-                return region.Id;
-            }
-
-            if (score > strongestEnemyRegion && score > 0)
-            {
-                strongestEnemyRegion = score;
-                strongerstEnemyRegionId = region.Id;
-            }
-        }
-
-        return strongerstEnemyRegionId;
+        return sortedRegionScores.Count > 0 ? sortedRegionScores[0].Id : -1;
     }
 
     internal void AddTown(int townId, int townX, int townY)

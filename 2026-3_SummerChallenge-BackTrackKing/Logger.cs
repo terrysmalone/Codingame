@@ -209,18 +209,25 @@ internal static class Logger
         }
     }
 
-    internal static void TrackCandidates(List<TrackCandidate> candidates)
+    internal static void TrackCandidates(List<TrackCandidate> candidates, int cutoff = int.MaxValue, string message = "TRACK CANDIDATES")
     {
         if (DISABLE_LOGGING)
         {
             return;
         }
 
-        Console.Error.WriteLine("TRACK CANDIDATES");
+        Console.Error.WriteLine(message);
 
         foreach (var trackCandidate in candidates)
         {
-            Console.Error.WriteLine($"Cell: {trackCandidate.CellPosition.X},{trackCandidate.CellPosition.Y} - IsWorthwhile: {trackCandidate.IsPathWorthwhile} - Region: {trackCandidate.RegionId}, Cost: {trackCandidate.ActionCost}, ShortestPathCount: {trackCandidate.ShortestRemainingCount()}, TownsOnPathCount: {trackCandidate.GetTownCount()}, SafeRegion: {trackCandidate.IsInSafeRegion}, Instability: {trackCandidate.InstabilityLevel}");
+            if (cutoff == 0)
+            {
+                break;
+            }
+
+            Console.Error.WriteLine($"Cell: {trackCandidate.CellPosition.X},{trackCandidate.CellPosition.Y} - IsWorthwhile: {trackCandidate.IsPathWorthwhile} - Region: {trackCandidate.RegionId}, Cost: {trackCandidate.ActionCost}, ShortestPathCount: {trackCandidate.GetShortestRemainingActionCount()}, LongestPathCount: {trackCandidate.GetLongestRemainingPathCount()}, TownsOnPathCount: {trackCandidate.GetTownCount()}, SafeRegion: {trackCandidate.IsInSafeRegion}, Instability: {trackCandidate.InstabilityLevel}");
+        
+            cutoff--;
         }
     }
 }

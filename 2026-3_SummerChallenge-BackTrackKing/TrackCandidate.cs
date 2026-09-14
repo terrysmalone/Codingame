@@ -24,7 +24,9 @@ internal class TrackCandidate
 
     private HashSet<string> _towns = new HashSet<string>();
 
-    private int _shortestRemainingCount = int.MaxValue;
+    private int _shortestRemainingActionCount = int.MaxValue;
+
+    private int _longestRemainingPathCount = int.MinValue;
 
     internal TrackCandidate(Point cellPosition, int regionId, int actionCost, bool isInSafeRegion, int instabilityLevel)
     {
@@ -45,9 +47,14 @@ internal class TrackCandidate
         // Add to towns list
         _towns.Add(desirePath.TownConnection);
 
-        if (desirePath.RemainingActionCount < _shortestRemainingCount)
+        if (desirePath.RemainingActionCount < _shortestRemainingActionCount)
         {
-            _shortestRemainingCount = desirePath.RemainingActionCount;
+            _shortestRemainingActionCount = desirePath.RemainingActionCount;
+        }
+
+        if (desirePath.RemainingPathCount > _longestRemainingPathCount)
+        {
+            _longestRemainingPathCount = desirePath.RemainingPathCount;
         }
 
         if (!DesirePathUtil.IsCompletionWorthwhile(desirePath))
@@ -62,8 +69,13 @@ internal class TrackCandidate
         return _towns.Count;
     }
 
-    internal int ShortestRemainingCount()
+    internal int GetShortestRemainingActionCount()
     {
-        return _shortestRemainingCount;
+        return _shortestRemainingActionCount;
+    }
+
+    internal int GetLongestRemainingPathCount()
+    {
+        return _longestRemainingPathCount;
     }
 }

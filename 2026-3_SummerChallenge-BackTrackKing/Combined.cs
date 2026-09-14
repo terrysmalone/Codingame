@@ -756,18 +756,25 @@ internal static class Logger
         }
     }
 
-    internal static void TrackCandidates(List<TrackCandidate> candidates)
+    internal static void TrackCandidates(List<TrackCandidate> candidates, int cutoff = int.MaxValue, string message = "TRACK CANDIDATES")
     {
         if (DISABLE_LOGGING)
         {
             return;
         }
 
-        Console.Error.WriteLine("TRACK CANDIDATES");
+        Console.Error.WriteLine(message);
 
         foreach (var trackCandidate in candidates)
         {
-            Console.Error.WriteLine($"Cell: {trackCandidate.CellPosition.X},{trackCandidate.CellPosition.Y} - IsWorthwhile: {trackCandidate.IsPathWorthwhile} - Region: {trackCandidate.RegionId}, Cost: {trackCandidate.ActionCost}, ShortestPathCount: {trackCandidate.ShortestRemainingCount()}, TownsOnPathCount: {trackCandidate.GetTownCount()}, SafeRegion: {trackCandidate.IsInSafeRegion}, Instability: {trackCandidate.InstabilityLevel}");
+            if (cutoff == 0)
+            {
+                break;
+            }
+
+            Console.Error.WriteLine($"Cell: {trackCandidate.CellPosition.X},{trackCandidate.CellPosition.Y} - IsWorthwhile: {trackCandidate.IsPathWorthwhile} - Region: {trackCandidate.RegionId}, Cost: {trackCandidate.ActionCost}, ShortestPathCount: {trackCandidate.GetShortestRemainingActionCount()}, LongestPathCount: {trackCandidate.GetLongestRemainingPathCount()}, TownsOnPathCount: {trackCandidate.GetTownCount()}, SafeRegion: {trackCandidate.IsInSafeRegion}, Instability: {trackCandidate.InstabilityLevel}");
+        
+            cutoff--;
         }
     }
 }
@@ -1366,6 +1373,8 @@ internal class RegionTracker
         {
             Logger.RegionScores(_activeRegionScores);
 
+            // TODO: We should order by number of opponent tracks in region
+
             int highScore = _activeRegionScores.First().Value;
 
             int highestInstability = int.MinValue;
@@ -1572,7 +1581,9 @@ internal class TrackCandidate
 
     private HashSet<string> _towns = new HashSet<string>();
 
-    private int _shortestRemainingCount = int.MaxValue;
+    private int _shortestRemainingActionCount = int.MaxValue;
+
+    private int _longestRemainingPathCount = int.MinValue;
 
     internal TrackCandidate(Point cellPosition, int regionId, int actionCost, bool isInSafeRegion, int instabilityLevel)
     {
@@ -1593,9 +1604,14 @@ internal class TrackCandidate
         // Add to towns list
         _towns.Add(desirePath.TownConnection);
 
-        if (desirePath.RemainingActionCount < _shortestRemainingCount)
+        if (desirePath.RemainingActionCount < _shortestRemainingActionCount)
         {
-            _shortestRemainingCount = desirePath.RemainingActionCount;
+            _shortestRemainingActionCount = desirePath.RemainingActionCount;
+        }
+
+        if (desirePath.RemainingPathCount > _longestRemainingPathCount)
+        {
+            _longestRemainingPathCount = desirePath.RemainingPathCount;
         }
 
         if (!DesirePathUtil.IsCompletionWorthwhile(desirePath))
@@ -1610,9 +1626,14 @@ internal class TrackCandidate
         return _towns.Count;
     }
 
-    internal int ShortestRemainingCount()
+    internal int GetShortestRemainingActionCount()
     {
-        return _shortestRemainingCount;
+        return _shortestRemainingActionCount;
+    }
+
+    internal int GetLongestRemainingPathCount()
+    {
+        return _longestRemainingPathCount;
     }
 }
 
@@ -1649,6 +1670,11 @@ internal class TrackPlacementCalculator
                 // Get the actions for the remaining path
                 foreach (var cellPosition in desirePath.RemainingPath)
                 {
+                    if (placedCells.Contains(cellPosition))
+                    {
+                        continue; // Skip if already placed
+                    }
+
                     actions += $"PLACE_TRACKS {cellPosition.X} {cellPosition.Y};";
                     placedCells.Add(cellPosition);
                     actionPointsLeft -= _map.CellCosts[cellPosition.X, cellPosition.Y];
@@ -1668,7 +1694,7 @@ internal class TrackPlacementCalculator
 
                                                                                     // Priority order
         candidates = candidates.Where(c => c.IsPathWorthwhile)                      // Filter out candidates that aren't worthwhile    
-                               .OrderBy(c => c.ShortestRemainingCount())            // Shortest to complete                                        
+                               .OrderBy(c => c.GetShortestRemainingActionCount())   // Shortest to complete                                        
                                .ThenByDescending(c => c.GetTownCount())             // Number of desire paths this route passes through
                                .ThenBy(c => c.ActionCost)                           // Lowest cost first
                                .ThenByDescending(c => c.IsInSafeRegion)             // Safe regions first

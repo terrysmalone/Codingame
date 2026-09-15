@@ -223,6 +223,8 @@ public class Game
                 int myTracksOnPathCount = 0;
                 int opponentTracksOnPathCount = 0;
 
+
+
                 foreach (var point in fullSanitisedPath)
                 {
                     if (_map.isTrackFree(point.X, point.Y))
@@ -257,7 +259,8 @@ public class Game
                     RemainingPathCount = remainingPathCount,
                     RemainingActionCount = remainingActionCount,
                     MyTracksOnPathCount = myTracksOnPathCount,
-                    OpponentTracksOnPathCount = opponentTracksOnPathCount
+                    OpponentTracksOnPathCount = opponentTracksOnPathCount,
+                    LowActionScore = remainingPathCount - remainingActionCount,
                 };
 
                 desirePaths.Add(desirePath);

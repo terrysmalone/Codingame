@@ -22,6 +22,10 @@ internal class DesirePath
     internal int MyTracksOnPathCount { get; set; }
 
     internal int OpponentTracksOnPathCount { get; set; }
+    
+    // We want to prioritise paths that have low action scores. For the untracked cells,
+    // count action action cost - number of cells. Lower is better. 
+    public int LowActionScore { get; internal set; }
 
     public DesirePath(List<Point> fullPath, List<Point> remainingPath, string townConnection)
     {

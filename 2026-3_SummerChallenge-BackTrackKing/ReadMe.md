@@ -10,14 +10,11 @@
 * Use unspent action points. Just place anywhere. At least if they destry track we'll have more coverage.
 * Secondary order regions to disrupt by number of track pieces opponent has. Lets make him work harder to re-establish a connection
 
-# Revert fix
-I need to add these back in a lot of the changes and tet them one by one. I'm going to start with the low impact changes.
+## Useful seeds
 
-1. Run two passes through pathfinding - 55a927055ce70597cd443fd665d25bbbd5810cf0
-1. 
+seed=8074289755211185000
 
-
-
+4 to 8 and 3 to 4 are good examples of why the shortest path isn't always best. They go through mountains and rivers, so are very expensive
 
 # Progress
 
@@ -223,3 +220,10 @@ ace4e7bbcaafb27f79374427dd8623968a360cf4
 	Submitted: 2026-09-14 11:41am
 	Rank: (195) to 162	
 
+b64f96412ff2e09493f522cf3f5e9a974d3a0f9e
+	
+	Changes: Revert
+	Submitted: 2026-09-14 04:04m
+	Rank: (172) to 152
+
+(43 silver)

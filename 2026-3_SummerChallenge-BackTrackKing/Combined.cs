@@ -155,6 +155,10 @@ internal class DesirePath
     internal int MyTracksOnPathCount { get; set; }
 
     internal int OpponentTracksOnPathCount { get; set; }
+    
+    // We want to prioritise paths that have low action scores. For the untracked cells,
+    // count action action cost - number of cells. Lower is better. 
+    public int LowActionScore { get; internal set; }
 
     public DesirePath(List<Point> fullPath, List<Point> remainingPath, string townConnection)
     {
@@ -403,6 +407,8 @@ public class Game
                 int myTracksOnPathCount = 0;
                 int opponentTracksOnPathCount = 0;
 
+
+
                 foreach (var point in fullSanitisedPath)
                 {
                     if (_map.isTrackFree(point.X, point.Y))
@@ -437,7 +443,8 @@ public class Game
                     RemainingPathCount = remainingPathCount,
                     RemainingActionCount = remainingActionCount,
                     MyTracksOnPathCount = myTracksOnPathCount,
-                    OpponentTracksOnPathCount = opponentTracksOnPathCount
+                    OpponentTracksOnPathCount = opponentTracksOnPathCount,
+                    LowActionScore = remainingPathCount - remainingActionCount,
                 };
 
                 desirePaths.Add(desirePath);
@@ -1530,6 +1537,8 @@ internal class TrackCandidate
 
     private int _longestRemainingPathCount = int.MinValue;
 
+    private int _smallestLowActionScore = int.MaxValue;
+
     internal TrackCandidate(Point cellPosition, int regionId, int actionCost, bool isInSafeRegion, int instabilityLevel)
     {
         CellPosition = cellPosition;
@@ -1559,6 +1568,11 @@ internal class TrackCandidate
             _longestRemainingPathCount = desirePath.RemainingPathCount;
         }
 
+        if (desirePath.LowActionScore < _smallestLowActionScore)
+        {
+            _smallestLowActionScore = desirePath.LowActionScore;
+        }
+
         if (!DesirePathUtil.IsCompletionWorthwhile(desirePath))
         {
             IsPathWorthwhile = false;
@@ -1579,6 +1593,11 @@ internal class TrackCandidate
     internal int GetLongestRemainingPathCount()
     {
         return _longestRemainingPathCount;
+    }
+
+    internal int GetSmallestLowActionScore()
+    {
+        return _smallestLowActionScore;
     }
 }
 
@@ -1639,6 +1658,7 @@ internal class TrackPlacementCalculator
 
                                                                                     // Priority order
         candidates = candidates.Where(c => c.IsPathWorthwhile)                      // Filter out candidates that aren't worthwhile    
+                               .OrderBy(c => c.GetSmallestLowActionScore())         // Prioritise paths of mostly plains
                                .OrderBy(c => c.GetShortestRemainingActionCount())   // Shortest to complete                                        
                                .ThenByDescending(c => c.GetTownCount())             // Number of desire paths this route passes through
                                .ThenBy(c => c.ActionCost)                           // Lowest cost first

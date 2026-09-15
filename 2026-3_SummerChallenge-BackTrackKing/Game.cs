@@ -36,7 +36,7 @@ public class Game
     {
         _map = map;
 
-        _pathFinder = new PathFinder(_map.Width, _map.Height);
+        _pathFinder = new PathFinder(_map.Width, _map.Height, _map.CellCosts);
     }
 
     internal void SetMyScore(int myScore)
@@ -70,6 +70,8 @@ public class Game
             desirePaths = inkedOnlyDesirePaths;
             Logger.LogTime($"Calculated {inkedOnlyDesirePaths.Count} inked only excluded desire paths");
         }
+
+        // Logger.DesirePaths(desirePaths);
 
         TrackPlacementCalculator trackPlacementCalculator = new TrackPlacementCalculator(_map, _regionTracker);
         (var actions, var actionPointsLeft) =  trackPlacementCalculator.CalculateBestCandidates(desirePaths);

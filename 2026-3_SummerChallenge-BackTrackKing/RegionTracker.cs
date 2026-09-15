@@ -190,7 +190,7 @@ internal class RegionTracker
                          .ThenByDescending(r => r.Instability)
                          .ToList();
 
-        Logger.RegionScores(sortedRegionScores);
+        // Logger.RegionScores(sortedRegionScores);
 
         return sortedRegionScores.Count > 0 ? sortedRegionScores[0].Id : -1;
     }

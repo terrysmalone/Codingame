@@ -220,7 +220,7 @@ public class Game
     {
         _map = map;
 
-        _pathFinder = new PathFinder(_map.Width, _map.Height);
+        _pathFinder = new PathFinder(_map.Width, _map.Height, _map.CellCosts);
     }
 
     internal void SetMyScore(int myScore)
@@ -254,6 +254,8 @@ public class Game
             desirePaths = inkedOnlyDesirePaths;
             Logger.LogTime($"Calculated {inkedOnlyDesirePaths.Count} inked only excluded desire paths");
         }
+
+        // Logger.DesirePaths(desirePaths);
 
         TrackPlacementCalculator trackPlacementCalculator = new TrackPlacementCalculator(_map, _regionTracker);
         (var actions, var actionPointsLeft) =  trackPlacementCalculator.CalculateBestCandidates(desirePaths);
@@ -893,11 +895,13 @@ internal class PathFinder
 {
     private readonly int _width;
     private readonly int _height;
+    private readonly int[,] _cellCosts;
 
-    internal PathFinder(int width, int height)
+    internal PathFinder(int width, int height, int[,] cellCosts)
     {
         _width = width;
         _height = height;
+        _cellCosts = cellCosts;
     }
 
     internal List<Point> GetShortestPath(Point startPosition, Point targetPosition, HashSet<Point>? excludePoints = null)
@@ -908,7 +912,10 @@ internal class PathFinder
         }
 
         var nodesByPos = new Dictionary<Point, Node>();
-        var queue = new Queue<Node>();
+
+        // Prioritise nodes first by cost, and then by insertion order (since we add by N > E > S > W)
+        var queue = new PriorityQueue<Node, (int Cost, int Order)>();
+        int insertionCounter = 0;
 
         var startNode = new Node(startPosition)
         {
@@ -917,7 +924,7 @@ internal class PathFinder
         };
 
         nodesByPos[startPosition] = startNode;
-        queue.Enqueue(startNode);
+        queue.Enqueue(startNode, (startNode.G, insertionCounter++));
 
         while (queue.Count > 0)
         {
@@ -953,26 +960,36 @@ internal class PathFinder
                     continue;
                 }
 
-                if (excludePoints != null && excludePoints.Contains(pt) && pt != targetPosition)
+                if (excludePoints != null && excludePoints.Contains(pt))
                 {
                     continue;
                 }
 
-                // already visited
-                if (nodesByPos.ContainsKey(pt))
+                int newG = current.G + _cellCosts[pt.X, pt.Y];
+
+                if (nodesByPos.TryGetValue(pt, out var existingNode))
                 {
+                    if (newG < existingNode.G)
+                    {
+                        existingNode.G = newG;
+                        existingNode.Parent = current;
+                        existingNode.FirstMove = current.Position == startPosition ? pt : current.FirstMove;
+
+                        queue.Enqueue(existingNode, (newG, insertionCounter++));
+                    }
+
                     continue;
                 }
 
                 var node = new Node(pt)
                 {
                     Parent = current,
-                    G = current.G + 1,
+                    G = newG,
                     FirstMove = current.Position == startPosition ? pt : current.FirstMove
                 };
 
                 nodesByPos[pt] = node;
-                queue.Enqueue(node);
+                queue.Enqueue(node, (newG, insertionCounter++));
             }
         }
 
@@ -1435,7 +1452,7 @@ internal class RegionTracker
                          .ThenByDescending(r => r.Instability)
                          .ToList();
 
-        Logger.RegionScores(sortedRegionScores);
+        // Logger.RegionScores(sortedRegionScores);
 
         return sortedRegionScores.Count > 0 ? sortedRegionScores[0].Id : -1;
     }

@@ -5,10 +5,17 @@
 * Scores should be the same no matter what side I am. Verify.
 
 ## Improvements
-* Instead of not putting tracks on same region, don't put them on same desirepath!
-* I complete tracks even if it favours my opponent. Don't complete tracks if they will own as much of the finished result as me (Look a7 fight 32 against stem. On move 10 I shouldn't place a track on 13,4. It makes it even. If he had placed it there too he'd have won that one)
-* Use unspent action points. Just place anywhere. At least if they destry track we'll have more coverage.
-* Secondary order regions to disrupt by number of track pieces opponent has. Lets make him work harder to re-establish a connection
+
+I need to start disrupting before my opponent finishes tracks
+
+Example - seed=-8220911213405463000 (battle 153)
+
+At move 7 he starts a path from 2 to 1. I place some in there on turn 8, then by turn 9 give up because it's clear I won't have enough.
+
+Solution: Start logging desire paths and seeing how many tracks each of us have on it. Score region strength based on that.
+
+Questions: Do we reuse desire paths from creating tracks? That won't cover all paths, just the ones I think are good. 
+           Maybe that's fine for now...
 
 ## Useful seeds
 
@@ -226,6 +233,8 @@ b64f96412ff2e09493f522cf3f5e9a974d3a0f9e
 	Submitted: 2026-09-14 04:04m
 	Rank: (172) to 152
 
+Promoted to silver league 
+
 9cddccd8eff9ceda858a05d255e0c28abf4e0028
 
 	Changes: Track diff between path size and action cost
@@ -237,3 +246,12 @@ ac7c715012bb71023f8fe5794eb7fc4cc7e88728
 	Changes: Path find using action cost
 	Submitted: 2026-09-15 02:11pm
 	Rank:(13) to 10
+
+61a451eea29f837e901cc11ad1bd89e46dd3e56b
+
+	Changes: No longer block multiple cells in the same region
+	Submitted: 2026-09-15 08:42pm
+	Rank:(14) to 10
+
+Promoted to Gold league
+

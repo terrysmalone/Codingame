@@ -315,16 +315,11 @@ public class Game
         return actionCount;
     }
 
-    private string CalculateDisruptAction(List<DesirePath> inkedOnlyDesirePaths)
+    private string CalculateDisruptAction(List<DesirePath> desirePaths)
     {
         int region = -1;
-        // PLAN
-        // NOTE: In most cases if we've started to disrupt a region then finish. Only point 1 should override that. 
-        //       We want to always prioritise stopping the opponent from scoring
-        //
-        // Priorities
-        // 1. Target regions that contain completed tracks generating the enemy the most points
-        region = _regionTracker.GetStrongestEnemyRegion(_connectionTracker.GetConnectionScores(), inkedOnlyDesirePaths);
+
+        region = _regionTracker.GetStrongestEnemyRegion(_connectionTracker.GetConnectionScores(), desirePaths);
 
         return region != -1 ? $"DISRUPT {region};" : string.Empty;
     }

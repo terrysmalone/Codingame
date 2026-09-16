@@ -499,16 +499,11 @@ public class Game
         return actionCount;
     }
 
-    private string CalculateDisruptAction(List<DesirePath> inkedOnlyDesirePaths)
+    private string CalculateDisruptAction(List<DesirePath> desirePaths)
     {
         int region = -1;
-        // PLAN
-        // NOTE: In most cases if we've started to disrupt a region then finish. Only point 1 should override that. 
-        //       We want to always prioritise stopping the opponent from scoring
-        //
-        // Priorities
-        // 1. Target regions that contain completed tracks generating the enemy the most points
-        region = _regionTracker.GetStrongestEnemyRegion(_connectionTracker.GetConnectionScores(), inkedOnlyDesirePaths);
+
+        region = _regionTracker.GetStrongestEnemyRegion(_connectionTracker.GetConnectionScores(), desirePaths);
 
         return region != -1 ? $"DISRUPT {region};" : string.Empty;
     }
@@ -759,7 +754,7 @@ internal static class Logger
 
         foreach (var regionScore in regionScores)
         {
-            Console.Error.WriteLine($"{regionScore.Id}, RegionEfficiencyScore: {regionScore.RegionEfficiencyScore}, ActiveConnectionsScore:{regionScore.ActiveConnectionsTracksScore}, Connections: {string.Join(",", regionScore.ActiveRegionConnections)}, MyTracks: {regionScore.myTracksCount}, EnemyTracks: {regionScore.enemyTracksCount}");
+            Console.Error.WriteLine($"{regionScore.Id}, RegionEfficiencyScore: {regionScore.ActiveConnectionsScore}, ActiveConnectionsScore:{regionScore.ActiveConnectionsTracksScore}, Connections: {string.Join(",", regionScore.ActiveRegionConnections)}, MyTracks: {regionScore.myTracksCount}, EnemyTracks: {regionScore.enemyTracksCount}");
         }
     }
 
@@ -1246,10 +1241,6 @@ internal class RegionScore
 {
     internal int Id { get; private set; }
     
-    internal int ActiveConnectionCount 
-    { 
-        get =>  ActiveRegionConnections.Count;
-    }
     internal int ActiveConnectionsTracksScore { get; set; }
 
     internal HashSet<string> ActiveRegionConnections { get; private set; }
@@ -1257,12 +1248,11 @@ internal class RegionScore
     internal int myTracksCount { get; set; }
     internal int enemyTracksCount { get; set; }
     public int Instability { get; internal set; }
-    public float RegionEfficiencyScore { get; internal set; }
+    public float ActiveConnectionsScore { get; internal set; }
 
-    public RegionScore(int id, HashSet<string> regionConnections, int activeConnectionsTracksScore)
+    public RegionScore(int id, int activeConnectionsTracksScore)
     {
         Id = id;
-        ActiveRegionConnections = regionConnections;
         ActiveConnectionsTracksScore = activeConnectionsTracksScore;
     }
 }
@@ -1409,9 +1399,19 @@ internal class RegionTracker
         region.UpdateInstability(instability, inked);
     }
 
-    internal int GetStrongestEnemyRegion(Dictionary<string, int> connectionScores, List<DesirePath> inkedOnlyDesirePaths)
+    internal int GetStrongestEnemyRegion(Dictionary<string, int> connectionScores, List<DesirePath> desirePaths)
     {
         _regionScores = new HashSet<RegionScore>();
+
+        // As well as an ActiveConnectionsScore we want to give it a non active connections score
+        // Active connections score == points for each active connection that passes through that region
+        // Non active connection score == points for each non active connection that passes through that region
+        // We'll likely add these together after finding a way to weight them against each other
+        //
+        // Active connection score
+        // For each active connection that passes throught the region (enemy track - my tracks)
+        // Non active connection score
+        // For each desire path that passes through the region (enemy track - my tracks)
 
         foreach (Region region in _regions)
         {
@@ -1420,33 +1420,22 @@ internal class RegionTracker
                 continue;
             }
 
-            int activeConnectionsTracksScore = 0;
+            int activeConnectionsTracksScore = CalculateActiveConnectionsTracksScore(region, connectionScores);
 
-            // Get all active connections passing through this region
-            HashSet<string> regionConnections = region.GetActiveConnections();
-
-            foreach (string connection in regionConnections)
-            {
-                if (connectionScores.TryGetValue(connection, out int score))
-                {
-                    activeConnectionsTracksScore += score;
-                }
-            }
-
-            var regionScore = new RegionScore(region.Id, regionConnections, activeConnectionsTracksScore);
+            var regionScore = new RegionScore(region.Id, activeConnectionsTracksScore);
 
             regionScore.myTracksCount = region.GetMyTracks();
             regionScore.enemyTracksCount = region.GetEnemyTracks();
 
             regionScore.Instability = region.Instability;
 
-            regionScore.RegionEfficiencyScore = (float)regionScore.ActiveConnectionsTracksScore / (INK_CUTOFF - (float)regionScore.Instability);
+            regionScore.ActiveConnectionsScore = (float)activeConnectionsTracksScore / (INK_CUTOFF - (float)regionScore.Instability);
 
             _regionScores.Add(regionScore);
         }
 
         var sortedRegionScores = 
-            _regionScores.OrderByDescending(r => r.RegionEfficiencyScore)
+            _regionScores.OrderByDescending(r => r.ActiveConnectionsScore)
                          .ThenByDescending(r => r.ActiveConnectionsTracksScore)                         
                          .ThenByDescending(r => r.enemyTracksCount - r.myTracksCount)
                          .ThenByDescending(r => r.Instability)
@@ -1455,6 +1444,24 @@ internal class RegionTracker
         // Logger.RegionScores(sortedRegionScores);
 
         return sortedRegionScores.Count > 0 ? sortedRegionScores[0].Id : -1;
+    }
+
+    private int CalculateActiveConnectionsTracksScore(Region region, Dictionary<string, int> connectionScores)
+    {
+        int activeConnectionsTracksScore = 0;
+
+        // Get all active connections passing through this region
+        HashSet<string> activeRegionConnections = region.GetActiveConnections();
+
+        foreach (string connection in activeRegionConnections)
+        {
+            if (connectionScores.TryGetValue(connection, out int score))
+            {
+                activeConnectionsTracksScore += score;
+            }
+        }
+
+        return activeConnectionsTracksScore;
     }
 
     internal void AddTown(int townId, int townX, int townY)

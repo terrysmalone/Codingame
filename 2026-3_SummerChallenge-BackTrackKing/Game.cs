@@ -225,10 +225,12 @@ public class Game
                 int myTracksOnPathCount = 0;
                 int opponentTracksOnPathCount = 0;
 
-
+                HashSet<int> regionIds = new HashSet<int>();
 
                 foreach (var point in fullSanitisedPath)
                 {
+                    regionIds.Add(_regionTracker.GetRegionId(point.X, point.Y));
+
                     if (_map.isTrackFree(point.X, point.Y))
                     {
                         remainingPathPoints.Add(point);
@@ -264,6 +266,8 @@ public class Game
                     OpponentTracksOnPathCount = opponentTracksOnPathCount,
                     LowActionScore = remainingPathCount - remainingActionCount,
                 };
+
+                desirePath.SetRegions(regionIds);
 
                 desirePaths.Add(desirePath);
             }

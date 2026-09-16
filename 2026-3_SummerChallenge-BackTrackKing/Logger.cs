@@ -201,7 +201,7 @@ internal static class Logger
 
         foreach (var regionScore in regionScores)
         {
-            Console.Error.WriteLine($"{regionScore.Id}, RegionEfficiencyScore: {regionScore.ActiveConnectionsScore}, ActiveConnectionsScore:{regionScore.ActiveConnectionsTracksScore}, Connections: {string.Join(",", regionScore.ActiveRegionConnections)}, MyTracks: {regionScore.myTracksCount}, EnemyTracks: {regionScore.enemyTracksCount}");
+            Console.Error.WriteLine($"{regionScore.Id}, ActiveConnectionsScore: {regionScore.ActiveConnectionsScore},  NonActiveConnectionsScore: {regionScore.NonActiveConnectionsScore}, ActiveConnectionsTracksScore:{regionScore.ActiveConnectionsTracksScore}, MyTracks: {regionScore.myTracksCount}, EnemyTracks: {regionScore.enemyTracksCount}");
         }
     }
 

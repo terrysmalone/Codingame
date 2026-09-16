@@ -155,17 +155,36 @@ internal class DesirePath
     internal int MyTracksOnPathCount { get; set; }
 
     internal int OpponentTracksOnPathCount { get; set; }
-    
+
     // We want to prioritise paths that have low action scores. For the untracked cells,
     // count action action cost - number of cells. Lower is better. 
-    public int LowActionScore { get; internal set; }
+    internal int LowActionScore { get; set; }
 
-    public DesirePath(List<Point> fullPath, List<Point> remainingPath, string townConnection)
+    private HashSet<int> _regionIds;
+
+    internal DesirePath(List<Point> fullPath, List<Point> remainingPath, string townConnection)
     {
         FullPath = fullPath;
         RemainingPath = remainingPath;
 
         TownConnection = townConnection;
+
+        _regionIds = new HashSet<int>();
+    }
+
+    internal void AddRegions(int regionId)
+    {
+        _regionIds.Add(regionId);
+    }
+
+    internal HashSet<int> GetRegionIds()
+    {
+        return _regionIds;
+    }
+
+    internal void SetRegions(HashSet<int> regionIds)
+    {
+        _regionIds = regionIds;
     }
 }
 
@@ -409,10 +428,12 @@ public class Game
                 int myTracksOnPathCount = 0;
                 int opponentTracksOnPathCount = 0;
 
-
+                HashSet<int> regionIds = new HashSet<int>();
 
                 foreach (var point in fullSanitisedPath)
                 {
+                    regionIds.Add(_regionTracker.GetRegionId(point.X, point.Y));
+
                     if (_map.isTrackFree(point.X, point.Y))
                     {
                         remainingPathPoints.Add(point);
@@ -448,6 +469,8 @@ public class Game
                     OpponentTracksOnPathCount = opponentTracksOnPathCount,
                     LowActionScore = remainingPathCount - remainingActionCount,
                 };
+
+                desirePath.SetRegions(regionIds);
 
                 desirePaths.Add(desirePath);
             }
@@ -754,7 +777,7 @@ internal static class Logger
 
         foreach (var regionScore in regionScores)
         {
-            Console.Error.WriteLine($"{regionScore.Id}, RegionEfficiencyScore: {regionScore.ActiveConnectionsScore}, ActiveConnectionsScore:{regionScore.ActiveConnectionsTracksScore}, Connections: {string.Join(",", regionScore.ActiveRegionConnections)}, MyTracks: {regionScore.myTracksCount}, EnemyTracks: {regionScore.enemyTracksCount}");
+            Console.Error.WriteLine($"{regionScore.Id}, ActiveConnectionsScore: {regionScore.ActiveConnectionsScore},  NonActiveConnectionsScore: {regionScore.NonActiveConnectionsScore}, ActiveConnectionsTracksScore:{regionScore.ActiveConnectionsTracksScore}, MyTracks: {regionScore.myTracksCount}, EnemyTracks: {regionScore.enemyTracksCount}");
         }
     }
 
@@ -1243,12 +1266,12 @@ internal class RegionScore
     
     internal int ActiveConnectionsTracksScore { get; set; }
 
-    internal HashSet<string> ActiveRegionConnections { get; private set; }
-
     internal int myTracksCount { get; set; }
     internal int enemyTracksCount { get; set; }
     public int Instability { get; internal set; }
     public float ActiveConnectionsScore { get; internal set; }
+
+    public float NonActiveConnectionsScore { get; internal set; }
 
     public RegionScore(int id, int activeConnectionsTracksScore)
     {
@@ -1422,26 +1445,30 @@ internal class RegionTracker
 
             int activeConnectionsTracksScore = CalculateActiveConnectionsTracksScore(region, connectionScores);
 
+            float nonActiveConnectionsScore = CalculateNonActiveConnectionsScore(region, desirePaths);
+
             var regionScore = new RegionScore(region.Id, activeConnectionsTracksScore);
 
             regionScore.myTracksCount = region.GetMyTracks();
             regionScore.enemyTracksCount = region.GetEnemyTracks();
 
             regionScore.Instability = region.Instability;
-
+            
             regionScore.ActiveConnectionsScore = (float)activeConnectionsTracksScore / (INK_CUTOFF - (float)regionScore.Instability);
+            regionScore.NonActiveConnectionsScore = (float)nonActiveConnectionsScore;
 
             _regionScores.Add(regionScore);
         }
 
         var sortedRegionScores = 
             _regionScores.OrderByDescending(r => r.ActiveConnectionsScore)
+                         .ThenByDescending(r => r.NonActiveConnectionsScore)
                          .ThenByDescending(r => r.ActiveConnectionsTracksScore)                         
                          .ThenByDescending(r => r.enemyTracksCount - r.myTracksCount)
                          .ThenByDescending(r => r.Instability)
                          .ToList();
 
-        // Logger.RegionScores(sortedRegionScores);
+        Logger.RegionScores(sortedRegionScores);
 
         return sortedRegionScores.Count > 0 ? sortedRegionScores[0].Id : -1;
     }
@@ -1462,6 +1489,34 @@ internal class RegionTracker
         }
 
         return activeConnectionsTracksScore;
+    }
+
+    private float CalculateNonActiveConnectionsScore(Region region, List<DesirePath> desirePaths)
+    {
+        float nonActiveConnectionsScore = 0;
+        foreach (DesirePath desirePath in desirePaths)
+        {
+            if (!desirePath.GetRegionIds().Contains(region.Id))
+            {
+                continue;
+            }
+
+            int opponentAdvantage = desirePath.OpponentTracksOnPathCount - desirePath.MyTracksOnPathCount;
+
+            if (opponentAdvantage <= 0)
+            {
+                continue;
+            }
+
+            // Proportion of the path already completed (0 = nothing built, close to 1 = nearly finished)
+            float completionRatio = desirePath.FullActionCount > 0
+                ? 1f - ((float)desirePath.RemainingActionCount / desirePath.FullActionCount)
+                : 0f;
+
+            // Weight advantage by how close to completion the path is
+            nonActiveConnectionsScore += opponentAdvantage * (completionRatio * completionRatio);
+        }
+        return nonActiveConnectionsScore;
     }
 
     internal void AddTown(int townId, int townX, int townY)

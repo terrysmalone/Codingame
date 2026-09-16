@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
 
 namespace BackTrackKing;
@@ -22,17 +23,36 @@ internal class DesirePath
     internal int MyTracksOnPathCount { get; set; }
 
     internal int OpponentTracksOnPathCount { get; set; }
-    
+
     // We want to prioritise paths that have low action scores. For the untracked cells,
     // count action action cost - number of cells. Lower is better. 
-    public int LowActionScore { get; internal set; }
+    internal int LowActionScore { get; set; }
 
-    public DesirePath(List<Point> fullPath, List<Point> remainingPath, string townConnection)
+    private HashSet<int> _regionIds;
+
+    internal DesirePath(List<Point> fullPath, List<Point> remainingPath, string townConnection)
     {
         FullPath = fullPath;
         RemainingPath = remainingPath;
 
         TownConnection = townConnection;
+
+        _regionIds = new HashSet<int>();
+    }
+
+    internal void AddRegions(int regionId)
+    {
+        _regionIds.Add(regionId);
+    }
+
+    internal HashSet<int> GetRegionIds()
+    {
+        return _regionIds;
+    }
+
+    internal void SetRegions(HashSet<int> regionIds)
+    {
+        _regionIds = regionIds;
     }
 }
 

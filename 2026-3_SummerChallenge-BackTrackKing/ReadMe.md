@@ -216,14 +216,24 @@ ace4e7bbcaafb27f79374427dd8623968a360cf4
 
 36e6936021c4b785d42326f4a452736563555db1
 	
-	Changes: Revert
+	Changes: Add a fallback exclude points withoud unstable regions
 	Submitted: 2026-09-14 11:41am
 	Rank: (195) to 162	
 
 b64f96412ff2e09493f522cf3f5e9a974d3a0f9e
 	
-	Changes: Revert
+	Changes: Add region unstability scorer
 	Submitted: 2026-09-14 04:04m
 	Rank: (172) to 152
 
-(43 silver)
+9cddccd8eff9ceda858a05d255e0c28abf4e0028
+
+	Changes: Track diff between path size and action cost
+	Submitted: 2026-09-15 10:53m
+	Rank:(43 silver) to 19
+
+ac7c715012bb71023f8fe5794eb7fc4cc7e88728
+
+	Changes: Path find using action cost
+	Submitted: 2026-09-15 02:11pm
+	Rank:(13) to 10

@@ -61,13 +61,13 @@ internal class TrackPlacementCalculator
         List<TrackCandidate> candidates = new List<TrackCandidate>(_candidates.Values);
 
                                                                                     // Priority order
-        candidates = candidates.Where(c => c.IsPathWorthwhile)                      // Filter out candidates that aren't worthwhile    
-                               .OrderBy(c => c.GetSmallestLowActionScore())         // Prioritise paths of mostly plains
+        candidates = candidates.Where(c => c.IsPathWorthwhile)                      // Filter out candidates that aren't worthwhile                                
                                .OrderBy(c => c.GetShortestRemainingActionCount())   // Shortest to complete                                        
                                .ThenByDescending(c => c.GetTownCount())             // Number of desire paths this route passes through
-                               .ThenBy(c => c.ActionCost)                           // Lowest cost first
-                               .ThenByDescending(c => c.IsInSafeRegion)             // Safe regions first
-                               .ThenBy(c => c.InstabilityLevel).ToList();           // Highest instability level first
+                               .ThenBy(c => c.ActionCost)                           // Lowest cost first                               
+                               .ThenBy(c => c.InstabilityLevel)                     // Lowest instability level firs
+                               .ThenByDescending(c => c.IsInSafeRegion).ToList();  // Safe regions first
+
 
         // Logger.TrackCandidates(candidates);
 
@@ -86,7 +86,7 @@ internal class TrackPlacementCalculator
                 {
                     actionPointsLeft -= candidate.ActionCost;
                     placedCells.Add(candidate.CellPosition);
-                    placedRegions.Add(candidate.RegionId);
+                    //placedRegions.Add(candidate.RegionId); // TODO: If we don't want to use this remove it properly
                     actions += $"PLACE_TRACKS {candidate.CellPosition.X} {candidate.CellPosition.Y};";
                 }
             }

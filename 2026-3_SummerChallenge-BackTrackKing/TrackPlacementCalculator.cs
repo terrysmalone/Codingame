@@ -86,6 +86,7 @@ internal class TrackPlacementCalculator
         {
             // Reset placedRegions every time we do another passthrough
             placedRegions.Clear();
+            bool placedSomethingThisPass = false;
 
             foreach (var candidate in candidates)
             {
@@ -95,7 +96,14 @@ internal class TrackPlacementCalculator
                     placedCells.Add(candidate.CellPosition);
                     //placedRegions.Add(candidate.RegionId); // TODO: If we don't want to use this remove it properly
                     actions += $"PLACE_TRACKS {candidate.CellPosition.X} {candidate.CellPosition.Y};";
+                    placedSomethingThisPass = true;
                 }
+            }
+
+            // No progress is possible. Stop looping
+            if (!placedSomethingThisPass)
+            {
+                break; 
             }
 
             timesChecked++;

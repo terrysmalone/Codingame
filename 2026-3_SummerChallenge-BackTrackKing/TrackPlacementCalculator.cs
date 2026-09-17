@@ -27,27 +27,33 @@ internal class TrackPlacementCalculator
         _candidates.Clear();
         HashSet<Point> placedCells = new HashSet<Point>();
 
-        // Before doing anything, check if we can complete a desire path fully this turn.
-        // If so, we should do that first. This is a higher priority than any other placement strategy.
-        foreach (var desirePath in desirePaths)
-        {
-            // TODO: At some point lets check if we can complete multiple desire paths this turn. 
-            // We should pick the best. Not just the first one
-            if (desirePath.RemainingActionCount <= actionPointsLeft && DesirePathUtil.IsCompletionWorthwhile(desirePath))
-            {
-                // Get the actions for the remaining path
-                foreach (var cellPosition in desirePath.RemainingPath)
-                {
-                    if (placedCells.Contains(cellPosition))
-                    {
-                        continue; // Skip if already placed
-                    }
+        // Before doing anything, check if we can complete any desire paths fully this turn.
+        // If so, pick the best one. This is a higher priority than any other placement strategy.
+        var completablePaths = desirePaths
+            .Where(dp => dp.RemainingActionCount <= actionPointsLeft && DesirePathUtil.IsCompletionWorthwhile(dp))
+            .OrderByDescending(dp => dp.FullPathCount) // Prioritise completing larger paths
+            .ToList();
 
-                    actions += $"PLACE_TRACKS {cellPosition.X} {cellPosition.Y};";
-                    placedCells.Add(cellPosition);
-                    actionPointsLeft -= _map.CellCosts[cellPosition.X, cellPosition.Y];
-                }
+        foreach (var desirePath in completablePaths)
+        {
+            // Can we afford to do this one
+            if (desirePath.RemainingActionCount > actionPointsLeft)
+            {
+                continue;
             }
+
+            foreach (var cellPosition in desirePath.RemainingPath)
+            {
+                // Skip if already placed
+                if (placedCells.Contains(cellPosition))
+                {
+                    continue; 
+                }
+
+                actions += $"PLACE_TRACKS {cellPosition.X} {cellPosition.Y};";
+                placedCells.Add(cellPosition);
+                actionPointsLeft -= _map.CellCosts[cellPosition.X, cellPosition.Y];
+            }            
         }
 
         if (actionPointsLeft <= 0)

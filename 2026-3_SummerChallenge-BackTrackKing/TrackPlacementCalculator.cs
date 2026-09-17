@@ -57,6 +57,7 @@ internal class TrackPlacementCalculator
 
 
         FillCandidates(desirePaths);
+        CalculatePotentialScoresThroughCells(desirePaths);
 
         List<TrackCandidate> candidates = new List<TrackCandidate>(_candidates.Values);
 
@@ -69,7 +70,7 @@ internal class TrackPlacementCalculator
                                .ThenByDescending(c => c.IsInSafeRegion).ToList();  // Safe regions first
 
 
-        // Logger.TrackCandidates(candidates);
+        Logger.TrackCandidates(candidates);
 
         HashSet<int> placedRegions = new HashSet<int>();
 
@@ -95,6 +96,27 @@ internal class TrackPlacementCalculator
         }
 
         return (actions, actionPointsLeft);
+    }
+
+    private void CalculatePotentialScoresThroughCells(List<DesirePath> desirePaths)
+    {
+        foreach (var desirePath in desirePaths)
+        {
+            int potentialScoreInDesirePath = desirePath.MyTracksOnPathCount + desirePath.RemainingPathCount;
+
+            foreach (var cellPosition in desirePath.RemainingPath)
+            {
+                if (_candidates.ContainsKey(cellPosition))
+                {
+                    _candidates[cellPosition].PotentialScoresthroughCells = 
+                        _candidates[cellPosition].PotentialScoresthroughCells + potentialScoreInDesirePath;
+                }
+                else
+                {
+                    Logger.Error($"Candidate not found for cell position {cellPosition.X}, {cellPosition.Y} when calculating potential scores through cells.");
+                }
+            }
+        }
     }
 
     private void FillCandidates(List<DesirePath> desirePaths)

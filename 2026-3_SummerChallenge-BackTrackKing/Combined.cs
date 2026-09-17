@@ -1046,6 +1046,10 @@ class Player
 
             game.ResetRegions();
 
+            Dictionary<string, (int, int)> connectionScores = new Dictionary<string, (int, int)>();
+            int myPoints = 0;
+            int opponentPoints = 0;
+
             for (int i = 0; i < height; i++)
             {
                 for (int j = 0; j < width; j++)
@@ -1065,15 +1069,55 @@ class Player
                     if (partOfActiveConnections != "x")
                     {
                         connections = partOfActiveConnections.Split(',');
-                        //foreach (var connection in connections)
-                        //{
-                            // var towns = connection.Split('-');
+                        foreach (var connection in connections)
+                        {
+                             var towns = connection.Split('-');
                             // int townAId = int.Parse(towns[0]);
                             // int townBId = int.Parse(towns[1]);
 
-                        //    connectionCounts.Add
 
-                        //}
+                            if (tracksOwner == 2)
+                            {
+                                //myPoints++;
+                                //opponentPoints++;
+                                // If towns already exists, increment item 1 and2
+                                if (connectionScores.ContainsKey(connection))
+                                {
+                                    connectionScores[connection] = (connectionScores[connection].Item1 + 1, connectionScores[connection].Item2 + 1);
+                                }
+                                else
+                                {
+                                    connectionScores[connection] = (1, 1);
+                                }
+                            }
+                            else if (tracksOwner == myId)
+                            {
+                                myPoints++;
+                                // If towns already exists, increment item 1
+                                if (connectionScores.ContainsKey(connection))
+                                {
+                                    connectionScores[connection] = (connectionScores[connection].Item1 + 1, connectionScores[connection].Item2);
+                                }
+                                else
+                                {
+                                    connectionScores[connection] = (1, 0);
+                                }
+                            }
+                            else if (tracksOwner != -1)
+                            {
+                                opponentPoints++;
+                                // If towns already exists, increment item 2
+                                if (connectionScores.ContainsKey(connection))
+                                {
+                                    connectionScores[connection] = (connectionScores[connection].Item1, connectionScores[connection].Item2 + 1);
+                                }
+                                else
+                                {
+                                    connectionScores[connection] = (0, 1);
+                                }
+                            }
+
+                        }
                     }
 
 
@@ -1082,6 +1126,8 @@ class Player
             }
 
             Logger.LogTime($"Round set up complete");
+
+            Logger.Message($"Round points - Me: {myPoints}, Opponent: {opponentPoints}");
 
             string actions = game.CalculateActions();
 
@@ -1610,6 +1656,8 @@ internal class TrackCandidate
 
     internal bool IsPathWorthwhile { get; set; } = true;
 
+    internal int PotentialScoresthroughCells { get; set; }
+
     private HashSet<string> _towns = new HashSet<string>();
 
     private int _shortestRemainingActionCount = int.MaxValue;
@@ -1732,6 +1780,7 @@ internal class TrackPlacementCalculator
 
 
         FillCandidates(desirePaths);
+        CalculatePotentialScoresThroughCells(desirePaths);
 
         List<TrackCandidate> candidates = new List<TrackCandidate>(_candidates.Values);
 
@@ -1744,7 +1793,7 @@ internal class TrackPlacementCalculator
                                .ThenByDescending(c => c.IsInSafeRegion).ToList();  // Safe regions first
 
 
-        // Logger.TrackCandidates(candidates);
+        Logger.TrackCandidates(candidates);
 
         HashSet<int> placedRegions = new HashSet<int>();
 
@@ -1770,6 +1819,27 @@ internal class TrackPlacementCalculator
         }
 
         return (actions, actionPointsLeft);
+    }
+
+    private void CalculatePotentialScoresThroughCells(List<DesirePath> desirePaths)
+    {
+        foreach (var desirePath in desirePaths)
+        {
+            int potentialScoreInDesirePath = desirePath.MyTracksOnPathCount + desirePath.RemainingPathCount;
+
+            foreach (var cellPosition in desirePath.RemainingPath)
+            {
+                if (_candidates.ContainsKey(cellPosition))
+                {
+                    _candidates[cellPosition].PotentialScoresthroughCells = 
+                        _candidates[cellPosition].PotentialScoresthroughCells + potentialScoreInDesirePath;
+                }
+                else
+                {
+                    Logger.Error($"Candidate not found for cell position {cellPosition.X}, {cellPosition.Y} when calculating potential scores through cells.");
+                }
+            }
+        }
     }
 
     private void FillCandidates(List<DesirePath> desirePaths)

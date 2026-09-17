@@ -42,6 +42,10 @@ class Player
 
             game.ResetRegions();
 
+            Dictionary<string, (int, int)> connectionScores = new Dictionary<string, (int, int)>();
+            int myPoints = 0;
+            int opponentPoints = 0;
+
             for (int i = 0; i < height; i++)
             {
                 for (int j = 0; j < width; j++)
@@ -61,15 +65,55 @@ class Player
                     if (partOfActiveConnections != "x")
                     {
                         connections = partOfActiveConnections.Split(',');
-                        //foreach (var connection in connections)
-                        //{
-                            // var towns = connection.Split('-');
+                        foreach (var connection in connections)
+                        {
+                             var towns = connection.Split('-');
                             // int townAId = int.Parse(towns[0]);
                             // int townBId = int.Parse(towns[1]);
 
-                        //    connectionCounts.Add
 
-                        //}
+                            if (tracksOwner == 2)
+                            {
+                                //myPoints++;
+                                //opponentPoints++;
+                                // If towns already exists, increment item 1 and2
+                                if (connectionScores.ContainsKey(connection))
+                                {
+                                    connectionScores[connection] = (connectionScores[connection].Item1 + 1, connectionScores[connection].Item2 + 1);
+                                }
+                                else
+                                {
+                                    connectionScores[connection] = (1, 1);
+                                }
+                            }
+                            else if (tracksOwner == myId)
+                            {
+                                myPoints++;
+                                // If towns already exists, increment item 1
+                                if (connectionScores.ContainsKey(connection))
+                                {
+                                    connectionScores[connection] = (connectionScores[connection].Item1 + 1, connectionScores[connection].Item2);
+                                }
+                                else
+                                {
+                                    connectionScores[connection] = (1, 0);
+                                }
+                            }
+                            else if (tracksOwner != -1)
+                            {
+                                opponentPoints++;
+                                // If towns already exists, increment item 2
+                                if (connectionScores.ContainsKey(connection))
+                                {
+                                    connectionScores[connection] = (connectionScores[connection].Item1, connectionScores[connection].Item2 + 1);
+                                }
+                                else
+                                {
+                                    connectionScores[connection] = (0, 1);
+                                }
+                            }
+
+                        }
                     }
 
 
@@ -78,6 +122,8 @@ class Player
             }
 
             Logger.LogTime($"Round set up complete");
+
+            Logger.Message($"Round points - Me: {myPoints}, Opponent: {opponentPoints}");
 
             string actions = game.CalculateActions();
 

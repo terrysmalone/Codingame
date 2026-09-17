@@ -22,6 +22,8 @@ internal class TrackCandidate
 
     internal bool IsPathWorthwhile { get; set; } = true;
 
+    internal int PotentialScoresthroughCells { get; set; }
+
     private HashSet<string> _towns = new HashSet<string>();
 
     private int _shortestRemainingActionCount = int.MaxValue;

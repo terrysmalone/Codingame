@@ -261,6 +261,13 @@ c21a0bf405a1dcf8e7c3e5e12360fc027547d1f6
 	Submitted: 2026-09-16 10:38pm
 	Rank:(124) to 117	
 
-(125)
+a3bca54481acbf804940b865e2379e9b9385e220
+
+	Changes: Order potential finishers by largest size first
+	Submitted: 2026-09-17 11:02pm
+	Rank:(118) to 122
+
+(124)
+
 
 

@@ -1046,7 +1046,6 @@ class Player
 
             game.ResetRegions();
 
-            Dictionary<string, (int, int)> connectionScores = new Dictionary<string, (int, int)>();
             int myPoints = 0;
             int opponentPoints = 0;
 
@@ -1076,45 +1075,13 @@ class Player
                             // int townBId = int.Parse(towns[1]);
 
 
-                            if (tracksOwner == 2)
+                            if (tracksOwner == myId)
                             {
-                                //myPoints++;
-                                //opponentPoints++;
-                                // If towns already exists, increment item 1 and2
-                                if (connectionScores.ContainsKey(connection))
-                                {
-                                    connectionScores[connection] = (connectionScores[connection].Item1 + 1, connectionScores[connection].Item2 + 1);
-                                }
-                                else
-                                {
-                                    connectionScores[connection] = (1, 1);
-                                }
-                            }
-                            else if (tracksOwner == myId)
-                            {
-                                myPoints++;
-                                // If towns already exists, increment item 1
-                                if (connectionScores.ContainsKey(connection))
-                                {
-                                    connectionScores[connection] = (connectionScores[connection].Item1 + 1, connectionScores[connection].Item2);
-                                }
-                                else
-                                {
-                                    connectionScores[connection] = (1, 0);
-                                }
+                                myPoints++;                                
                             }
                             else if (tracksOwner != -1)
                             {
-                                opponentPoints++;
-                                // If towns already exists, increment item 2
-                                if (connectionScores.ContainsKey(connection))
-                                {
-                                    connectionScores[connection] = (connectionScores[connection].Item1, connectionScores[connection].Item2 + 1);
-                                }
-                                else
-                                {
-                                    connectionScores[connection] = (0, 1);
-                                }
+                                opponentPoints++;                                
                             }
 
                         }
@@ -1759,8 +1726,12 @@ internal class TrackPlacementCalculator
 
         foreach (var desirePath in completablePaths)
         {
+            int trueRemainingCost = desirePath.RemainingPath
+                .Where(p => !placedCells.Contains(p))
+                .Sum(p => _map.CellCosts[p.X, p.Y]);
+
             // Can we afford to do this one
-            if (desirePath.RemainingActionCount > actionPointsLeft)
+            if (trueRemainingCost > actionPointsLeft)
             {
                 continue;
             }
@@ -1793,8 +1764,8 @@ internal class TrackPlacementCalculator
                                                                                     // Priority order
         candidates = candidates.Where(c => c.IsPathWorthwhile)                      // Filter out candidates that aren't worthwhile                                
                                .OrderBy(c => c.GetShortestRemainingActionCount())   // Shortest to complete                                        
+                               .ThenBy(c => c.ActionCost)                           // Lowest cost first
                                .ThenByDescending(c => c.GetTownCount())             // Number of desire paths this route passes through
-                               .ThenBy(c => c.ActionCost)                           // Lowest cost first                               
                                .ThenBy(c => c.InstabilityLevel)                     // Lowest instability level firs
                                .ThenByDescending(c => c.IsInSafeRegion).ToList();  // Safe regions first
 

@@ -42,7 +42,6 @@ class Player
 
             game.ResetRegions();
 
-            Dictionary<string, (int, int)> connectionScores = new Dictionary<string, (int, int)>();
             int myPoints = 0;
             int opponentPoints = 0;
 
@@ -72,45 +71,13 @@ class Player
                             // int townBId = int.Parse(towns[1]);
 
 
-                            if (tracksOwner == 2)
+                            if (tracksOwner == myId)
                             {
-                                //myPoints++;
-                                //opponentPoints++;
-                                // If towns already exists, increment item 1 and2
-                                if (connectionScores.ContainsKey(connection))
-                                {
-                                    connectionScores[connection] = (connectionScores[connection].Item1 + 1, connectionScores[connection].Item2 + 1);
-                                }
-                                else
-                                {
-                                    connectionScores[connection] = (1, 1);
-                                }
-                            }
-                            else if (tracksOwner == myId)
-                            {
-                                myPoints++;
-                                // If towns already exists, increment item 1
-                                if (connectionScores.ContainsKey(connection))
-                                {
-                                    connectionScores[connection] = (connectionScores[connection].Item1 + 1, connectionScores[connection].Item2);
-                                }
-                                else
-                                {
-                                    connectionScores[connection] = (1, 0);
-                                }
+                                myPoints++;                                
                             }
                             else if (tracksOwner != -1)
                             {
-                                opponentPoints++;
-                                // If towns already exists, increment item 2
-                                if (connectionScores.ContainsKey(connection))
-                                {
-                                    connectionScores[connection] = (connectionScores[connection].Item1, connectionScores[connection].Item2 + 1);
-                                }
-                                else
-                                {
-                                    connectionScores[connection] = (0, 1);
-                                }
+                                opponentPoints++;                                
                             }
 
                         }

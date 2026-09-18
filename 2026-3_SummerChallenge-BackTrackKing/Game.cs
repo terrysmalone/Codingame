@@ -201,6 +201,7 @@ public class Game
         List<DesirePath> desirePaths = new List<DesirePath>();
         foreach (var town in _towns)
         {
+            // TODO: DO I still check even if there's already a connection? Should I?
             foreach (var desiredConnection in town.DesiredConnections)
             {
                 List<Point> fullSanitisedPath = FindShortestSanitisedPath(new Point(town.X, town.Y), desiredConnection, excludePoints);

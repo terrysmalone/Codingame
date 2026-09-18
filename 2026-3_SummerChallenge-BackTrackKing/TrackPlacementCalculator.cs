@@ -36,8 +36,12 @@ internal class TrackPlacementCalculator
 
         foreach (var desirePath in completablePaths)
         {
+            int trueRemainingCost = desirePath.RemainingPath
+                .Where(p => !placedCells.Contains(p))
+                .Sum(p => _map.CellCosts[p.X, p.Y]);
+
             // Can we afford to do this one
-            if (desirePath.RemainingActionCount > actionPointsLeft)
+            if (trueRemainingCost > actionPointsLeft)
             {
                 continue;
             }
@@ -70,8 +74,8 @@ internal class TrackPlacementCalculator
                                                                                     // Priority order
         candidates = candidates.Where(c => c.IsPathWorthwhile)                      // Filter out candidates that aren't worthwhile                                
                                .OrderBy(c => c.GetShortestRemainingActionCount())   // Shortest to complete                                        
+                               .ThenBy(c => c.ActionCost)                           // Lowest cost first
                                .ThenByDescending(c => c.GetTownCount())             // Number of desire paths this route passes through
-                               .ThenBy(c => c.ActionCost)                           // Lowest cost first                               
                                .ThenBy(c => c.InstabilityLevel)                     // Lowest instability level firs
                                .ThenByDescending(c => c.IsInSafeRegion).ToList();  // Safe regions first
 

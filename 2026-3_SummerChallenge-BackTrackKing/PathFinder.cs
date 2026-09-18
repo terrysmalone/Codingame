@@ -5,21 +5,24 @@ using System.Text;
 using System.Xml.Linq;
 
 namespace BackTrackKing;
-
 internal class PathFinder
 {
     private readonly int _width;
     private readonly int _height;
-    private readonly int[,] _cellCosts;
+    private Map _map;
 
-    internal PathFinder(int width, int height, int[,] cellCosts)
+    private const int COST_SCALE = 10; // Multiply base costs by this so fractional weighting doesn't collapse to 0
+    private const float SAFE_REGION_WEIGHT = 0.9f;
+
+
+    internal PathFinder(int width, int height, Map map)
     {
         _width = width;
         _height = height;
-        _cellCosts = cellCosts;
+        _map = map;
     }
 
-    internal List<Point> GetShortestPath(Point startPosition, Point targetPosition, HashSet<Point>? excludePoints = null)
+    internal List<Point> GetShortestPath(Point startPosition, Point targetPosition, HashSet<Point>? excludePoints = null, PathCostMode costMode = PathCostMode.TrackAware)
     {
         if (startPosition == targetPosition)
         {
@@ -80,7 +83,7 @@ internal class PathFinder
                     continue;
                 }
 
-                int newG = current.G + _cellCosts[pt.X, pt.Y];
+                int newG = current.G + GetCost(pt, costMode);
 
                 if (nodesByPos.TryGetValue(pt, out var existingNode))
                 {
@@ -110,5 +113,26 @@ internal class PathFinder
 
         // no path found
         return new List<Point>();
+    }
+
+    private int GetCost(Point point, PathCostMode costMode)
+    {
+        if (costMode == PathCostMode.TrackAware
+            && !_map.isTrackFree(point.X, point.Y))
+        {
+            return 0;
+        }
+
+        int baseCost = _map.CellCosts[point.X, point.Y] * COST_SCALE;
+
+        float weight = 1.0f;
+
+        // Add weigthtings
+        if (_map.IsInTown(point.X, point.Y))
+        {
+            weight *= SAFE_REGION_WEIGHT;
+        }
+
+        return (int)(baseCost * weight);
     }
 }

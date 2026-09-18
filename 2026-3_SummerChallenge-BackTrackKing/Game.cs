@@ -36,7 +36,7 @@ public class Game
     {
         _map = map;
 
-        _pathFinder = new PathFinder(_map.Width, _map.Height, _map.CellCosts);
+        _pathFinder = new PathFinder(_map.Width, _map.Height, _map);
     }
 
     internal void SetMyScore(int myScore)
@@ -52,6 +52,8 @@ public class Game
     internal void SetTowns(List<Town> towns)
     {
         _towns = towns;
+
+        _map.SetSafeRegions(_regionTracker);
     }
 
     internal string CalculateActions()

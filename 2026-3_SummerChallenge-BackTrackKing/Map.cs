@@ -12,12 +12,15 @@ internal class Map {
 
     private int[,] _trackOwner;
 
+    private bool[,] _isInTown;
+
     internal Map(int width, int height)
     {
         Width = width;
         Height = height;
 
         CellCosts = new int[width, height];
+        _isInTown = new bool[width, height];
 
         RegionIds = new int[width, height];
 
@@ -62,5 +65,30 @@ internal class Map {
     internal int GetTrackOwner(int x, int y)
     {
         return _trackOwner[x, y];
+    }
+
+    internal void AddToTownMap(int x, int y)
+    {
+        _isInTown[x, y] = true;
+    }
+
+    internal bool IsInTown(int x, int y)
+    {
+        return _isInTown[x, y];
+    }
+
+    internal void SetSafeRegions(RegionTracker regionTracker)
+    {
+        for (int y = 0; y < Height; y++)
+        {
+            for (int x = 0; x < Width; x++)
+            {
+                int regionId = RegionIds[x, y];
+                if (regionTracker.IsSafeRegion(regionId))
+                {
+                    _isInTown[x, y] = true;
+                }
+            }
+        }
     }
 }

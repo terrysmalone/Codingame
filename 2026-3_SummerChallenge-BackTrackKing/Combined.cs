@@ -239,7 +239,7 @@ public class Game
     {
         _map = map;
 
-        _pathFinder = new PathFinder(_map.Width, _map.Height, _map.CellCosts);
+        _pathFinder = new PathFinder(_map.Width, _map.Height, _map);
     }
 
     internal void SetMyScore(int myScore)
@@ -255,6 +255,8 @@ public class Game
     internal void SetTowns(List<Town> towns)
     {
         _towns = towns;
+
+        _map.SetSafeRegions(_regionTracker);
     }
 
     internal string CalculateActions()
@@ -404,6 +406,7 @@ public class Game
         List<DesirePath> desirePaths = new List<DesirePath>();
         foreach (var town in _towns)
         {
+            // TODO: DO I still check even if there's already a connection? Should I?
             foreach (var desiredConnection in town.DesiredConnections)
             {
                 List<Point> fullSanitisedPath = FindShortestSanitisedPath(new Point(town.X, town.Y), desiredConnection, excludePoints);
@@ -833,12 +836,15 @@ internal class Map {
 
     private int[,] _trackOwner;
 
+    private bool[,] _isInTown;
+
     internal Map(int width, int height)
     {
         Width = width;
         Height = height;
 
         CellCosts = new int[width, height];
+        _isInTown = new bool[width, height];
 
         RegionIds = new int[width, height];
 
@@ -884,6 +890,31 @@ internal class Map {
     {
         return _trackOwner[x, y];
     }
+
+    internal void AddToTownMap(int x, int y)
+    {
+        _isInTown[x, y] = true;
+    }
+
+    internal bool IsInTown(int x, int y)
+    {
+        return _isInTown[x, y];
+    }
+
+    internal void SetSafeRegions(RegionTracker regionTracker)
+    {
+        for (int y = 0; y < Height; y++)
+        {
+            for (int x = 0; x < Width; x++)
+            {
+                int regionId = RegionIds[x, y];
+                if (regionTracker.IsSafeRegion(regionId))
+                {
+                    _isInTown[x, y] = true;
+                }
+            }
+        }
+    }
 }
 
 internal sealed class Node
@@ -909,20 +940,31 @@ internal sealed class Node
 
 
 
+internal enum PathCostMode
+{
+    Optimal,
+    TrackAware,
+}
+
+
 internal class PathFinder
 {
     private readonly int _width;
     private readonly int _height;
-    private readonly int[,] _cellCosts;
+    private Map _map;
 
-    internal PathFinder(int width, int height, int[,] cellCosts)
+    private const int COST_SCALE = 10; // Multiply base costs by this so fractional weighting doesn't collapse to 0
+    private const float SAFE_REGION_WEIGHT = 0.9f;
+
+
+    internal PathFinder(int width, int height, Map map)
     {
         _width = width;
         _height = height;
-        _cellCosts = cellCosts;
+        _map = map;
     }
 
-    internal List<Point> GetShortestPath(Point startPosition, Point targetPosition, HashSet<Point>? excludePoints = null)
+    internal List<Point> GetShortestPath(Point startPosition, Point targetPosition, HashSet<Point>? excludePoints = null, PathCostMode costMode = PathCostMode.TrackAware)
     {
         if (startPosition == targetPosition)
         {
@@ -983,7 +1025,7 @@ internal class PathFinder
                     continue;
                 }
 
-                int newG = current.G + _cellCosts[pt.X, pt.Y];
+                int newG = current.G + GetCost(pt, costMode);
 
                 if (nodesByPos.TryGetValue(pt, out var existingNode))
                 {
@@ -1013,6 +1055,27 @@ internal class PathFinder
 
         // no path found
         return new List<Point>();
+    }
+
+    private int GetCost(Point point, PathCostMode costMode)
+    {
+        if (costMode == PathCostMode.TrackAware
+            && !_map.isTrackFree(point.X, point.Y))
+        {
+            return 0;
+        }
+
+        int baseCost = _map.CellCosts[point.X, point.Y] * COST_SCALE;
+
+        float weight = 1.0f;
+
+        // Add weigthtings
+        if (_map.IsInTown(point.X, point.Y))
+        {
+            weight *= SAFE_REGION_WEIGHT;
+        }
+
+        return (int)(baseCost * weight);
     }
 }
 
@@ -1763,7 +1826,7 @@ internal class TrackPlacementCalculator
 
                                                                                     // Priority order
         candidates = candidates.Where(c => c.IsPathWorthwhile)                      // Filter out candidates that aren't worthwhile                                
-                               .OrderBy(c => c.GetShortestRemainingActionCount())   // Shortest to complete                                        
+                               .OrderBy(c => c.GetShortestRemainingActionCount())   // Shortest to complete 
                                .ThenBy(c => c.ActionCost)                           // Lowest cost first
                                .ThenByDescending(c => c.GetTownCount())             // Number of desire paths this route passes through
                                .ThenBy(c => c.InstabilityLevel)                     // Lowest instability level firs

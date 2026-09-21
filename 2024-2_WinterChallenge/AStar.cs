@@ -111,7 +111,7 @@ internal sealed class AStar
 
             if (timeToSearch > 1000)
             {
-                Console.Error.WriteLine("Warning: Time to search hit 1000");
+                Logger.Line("Warning: Time to search hit 1000");
             }
         }
 

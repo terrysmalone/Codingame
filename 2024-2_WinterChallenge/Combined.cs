@@ -67,6 +67,7 @@ internal enum ActionSource
     NONE,
     FINAL_WAIT,
     CHECK_FOR_TENTACLES,
+    CHECK_FOR_BLOCK_TENTACLES,
     CHECK_FOR_SPORER,
     CHECK_FOR_ROOT,
     VERY_DESPERATE_DESTRUCTIVE_MOVE,
@@ -99,7 +100,7 @@ internal sealed class ActionFinder
 
         foreach (Protein protein in proteins)
         {
-            // If it's harvested or blocked (this can only be from a tentacle facing it) then ignore it
+            
             if (!protein.IsHarvested && !_game.opponentTentaclePath[protein.Position.X, protein.Position.Y])
             {
                 _proteinsToCheck.Add(protein.Clone());
@@ -145,7 +146,7 @@ internal sealed class ActionFinder
             Protein protein = _proteinsToCheck[i];
             foreach (Organ organ in organism.Organs)
             {
-                //Console.Error.WriteLine($"Checking protein {protein.Position} to organ {organ.Position}");
+                
                 int manhattanDistance = MapChecker.CalculateManhattanDistance(organ.Position, protein.Position);
                 
                 if (manhattanDistance > maxDistance)
@@ -155,10 +156,10 @@ internal sealed class ActionFinder
 
                 List<Point> path = _aStar.GetShortestPath(organ.Position, protein.Position, maxDistance, growStrategy, false);
                 
-               // Console.Error.WriteLine($"Path from {organ.Position} to {protein.Position} is {path.Count} long");
+               
                 if (path.Count > 0)
                 {
-                    //actions.Add(new Tuple<int, ProteinType, List<Point>>(organ.Id, protein.Type, path));
+                    
 
                     Action? action = CreateAction(organism.RootId, organ.Id, protein.Type, path);
 
@@ -183,7 +184,7 @@ internal sealed class ActionFinder
         return actions;
     }
 
-    // TODO: Where does it decide on using a tentacle??
+    
     private Action? CreateAction(int organismId, int organId, ProteinType proteinType, List<Point> path)
     {
         Action? action = new Action();
@@ -198,8 +199,8 @@ internal sealed class ActionFinder
 
         action.Source = ActionSource.CHECK_FOR_HARVESTS;
 
-        // TODO: Add longer consume actions (We might need to consume something if we 
-        //       Have no stock or harvests for C or alculator.CanProduceOrgan(OrganType.H
+        
+        
         if (path.Count == 1)
         {
             action.TurnsToGoal = 1;
@@ -386,7 +387,7 @@ internal sealed class AStar
 
             if (timeToSearch > 1000)
             {
-                Console.Error.WriteLine("Warning: Time to search hit 1000");
+                Logger.Line("Warning: Time to search hit 1000");
             }
         }
 
@@ -560,7 +561,7 @@ internal class DirectionCalculator
     {
         if (Math.Abs(endPoint.X - startPoint.X) >= Math.Abs(endPoint.Y - startPoint.Y))
         {
-            // It's either east or west
+            
             if (endPoint.X > startPoint.X)
             {
                 if (startPoint.X + 1 < _game.Width && !_game.Walls[startPoint.X + 1, startPoint.Y])
@@ -578,7 +579,7 @@ internal class DirectionCalculator
         }
         else
         {
-            // It's either north or south
+            
             if (endPoint.Y > startPoint.Y)
             {
                 if (startPoint.Y + 1 < _game.Height && !_game.Walls[startPoint.X, startPoint.Y + 1])
@@ -595,9 +596,9 @@ internal class DirectionCalculator
             }
         }
 
-        // If we've gotten this far it means that pointing towards the 
-        // opponents main root would point towards a wall. We don't want that. 
-        // Grow towards an open space
+        
+        
+        
         foreach (Point direction in _directions)
         {
             Point directionPoint = new Point(startPoint.X + direction.X, startPoint.Y + direction.Y);
@@ -614,7 +615,7 @@ internal class DirectionCalculator
             }
         }
 
-        // if we got this far it really doesn't matter 
+        
         return OrganDirection.E;
     }
 
@@ -682,18 +683,18 @@ internal static class Display
 {
     internal static void ProteinStock(ProteinStock proteinStock)
     {
-        Console.Error.WriteLine($"A: {proteinStock.A}");
-        Console.Error.WriteLine($"B: {proteinStock.B}");
-        Console.Error.WriteLine($"C: {proteinStock.C}");
-        Console.Error.WriteLine($"D: {proteinStock.D}");
+        Logger.Line($"A: {proteinStock.A}");
+        Logger.Line($"B: {proteinStock.B}");
+        Logger.Line($"C: {proteinStock.C}");
+        Logger.Line($"D: {proteinStock.D}");
     }
 
     internal static void Proteins(List<Protein> proteins)
     {
-        Console.Error.WriteLine($"Proteins");
+        Logger.Line($"Proteins");
 
         proteins.ForEach(p =>
-            Console.Error.WriteLine($"Type:{p.Type} - Position:({p.Position.X},{p.Position.Y}) - BeingHarvested:{p.IsHarvested}"));
+            Logger.Line($"Type:{p.Type} - Position:({p.Position.X},{p.Position.Y}) - BeingHarvested:{p.IsHarvested}"));
     }
 
     internal static void Organisms(List<Organism> organisms)
@@ -701,7 +702,7 @@ internal static class Display
         foreach (Organism organism in organisms)
         {
             Organism(organism);
-            Console.Error.WriteLine("-----------------------------------");
+            Logger.Line("-----------------------------------");
         }
     }
 
@@ -713,13 +714,13 @@ internal static class Display
             {
                 case OrganType.BASIC:
                 case OrganType.ROOT:
-                    Console.Error.WriteLine($" ID:{organ.Id} - Type:{organ.Type.ToString()} - Position:({organ.Position.X},{organ.Position.Y})");
+                    Logger.Line($" ID:{organ.Id} - Type:{organ.Type.ToString()} - Position:({organ.Position.X},{organ.Position.Y})");
                     break;
 
                 case OrganType.HARVESTER:
                 case OrganType.SPORER:
                 case OrganType.TENTACLE:
-                    Console.Error.WriteLine($" ID:{organ.Id} - Type:{organ.Type.ToString()} - Position:({organ.Position.X},{organ.Position.Y}) - Direction:{organ.Direction.ToString()}");
+                    Logger.Line($" ID:{organ.Id} - Type:{organ.Type.ToString()} - Position:({organ.Position.X},{organ.Position.Y}) - Direction:{organ.Direction.ToString()}");
                     break;
             }
         }
@@ -728,7 +729,7 @@ internal static class Display
     internal static void Nodes(List<Node> nodes)
     {
         nodes.ForEach(n =>
-            Console.Error.WriteLine($"Position:({n.Position.X},{n.Position.Y}) - Closed:{n.Closed}"));
+            Logger.Line($"Position:({n.Position.X},{n.Position.Y}) - Closed:{n.Closed}"));
     }
 
     internal static void Map(Game game)
@@ -775,7 +776,7 @@ internal static class Display
             }
         }
 
-        Console.Error.WriteLine("----------");
+        Logger.Line("----------");
         for (int y = 0; y < game.Height; y++)
         {
             string row = "|";
@@ -787,24 +788,24 @@ internal static class Display
 
             row += "|";
 
-            Console.Error.WriteLine(row);
+            Logger.Line(row);
         }
-        Console.Error.WriteLine("----------");
+        Logger.Line("----------");
     }
 
     internal static void TimeStamp(long totalTime, long segmentTime, string task)
     {
         TimeSpan total = TimeSpan.FromTicks(totalTime);
         TimeSpan segment = TimeSpan.FromTicks(segmentTime);
-        Console.Error.WriteLine($"{total.Milliseconds}ms-{segment.Milliseconds}ms-{task}");
+        Logger.Line($"{total.Milliseconds}ms-{segment.Milliseconds}ms-{task}");
     }
 
     internal static void Actions(List<Action> actions)
     {
         foreach (Action action in actions)
         {
-            // Console.Error.WriteLine($"Goal type:{action.GoalType}, Protein type:{action.GoalProteinType}, Turns:{action.TurnsToGoal}, score:{action.Score}");
-            Console.Error.WriteLine(action.ToString() + $" - score:{ action.Score} - from {action.Source}");
+            
+            Logger.Line(action.ToString() + $" - score:{ action.Score} - from {action.Source}");
         }
     }
 
@@ -812,18 +813,18 @@ internal static class Display
     {
         foreach (KeyValuePair<int, List<Action>> actions in actionsDictionarly)
         {
-            Console.Error.WriteLine("-----------------------------------");
-            Console.Error.WriteLine($"OrganismId:{actions.Key}");
+            Logger.Line("-----------------------------------");
+            Logger.Line($"OrganismId:{actions.Key}");
             Actions(actions.Value);
         }
     }
 
     internal static void ActionSources(Dictionary<ActionSource, int> trackedActions)
     {
-        Console.Error.WriteLine("Tracked actions count");
+        Logger.Line("Tracked actions count");
         foreach (KeyValuePair<ActionSource, int> trackedAction in trackedActions)
         {
-            Console.Error.WriteLine($"{trackedAction.Key} - {trackedAction.Value}");
+            Logger.Line($"{trackedAction.Key} - {trackedAction.Value}");
         }
     }
 }
@@ -943,20 +944,32 @@ internal sealed class Game
         {   
             List<Action> possibleActions = new List<Action>();
 
-            Console.Error.WriteLine("-------------------------------------");
-            Console.Error.WriteLine($"Checking organism: {organism.RootId}");
+            Logger.Line("-------------------------------------");
+            Logger.Line($"Checking organism: {organism.RootId}");
 
+            
             List<Action> tentacleActions = CheckForTentacleAction(organism);
 
             possibleActions.AddRange(tentacleActions);
             
             DisplayTime($"Checked for tentacle action. {possibleActions.Count} possible actions");
+
             
+            List<Action> tentacleBlockActions = CheckForTentacleBlockAction(organism);
+            possibleActions.AddRange(tentacleBlockActions);
+
+            DisplayTime($"Checked for tentacle blockaction. {possibleActions.Count} possible actions");
+
             if (possibleActions.Count == 0 && !_createdSporer.Contains(organism.RootId))
             {
                 List<Action> actions = GetHarvestAndConsumeActions(organism, maxProteinDistance);
                 DisplayTime($"Checked for harvest action. {actions.Count} possible actions");
-                
+
+                foreach (Action action in actions)
+                {
+                    Console.Error.WriteLine(action.ToString() + "-" + action.Score);
+                }
+
                 if (actions.Count > 0)
                 {
                     possibleActions.AddRange(actions);
@@ -1003,15 +1016,15 @@ internal sealed class Game
                     possibleActions.AddRange(actions);
                 }
 
-                // We hit this if we couldn't get a spore root action, even though 
-                // we prioritised it. There's no point trying again.
+                
+                
                 if (possibleActions.Count == 0)
                 {
                     _createdSporer.Remove(organism.RootId);
                 }
             }
 
-            // Don't create a sporer if we already did
+            
             if (!_createdSporer.Contains(organism.RootId) && (HasHarvestedAllProteins() || PlayerOrganisms.Count < 3))
             { 
                 Action? sporerAction = CheckForSporerAction(organism, minRootSporerDistance, extraPriorityScore);
@@ -1032,7 +1045,7 @@ internal sealed class Game
 
             if (possibleActions.Count == 0)
             { 
-                // Note: This is a horrible hack until i get scoring sorted. All of this has already been done above!
+                
                 List<Action> actions = GetHarvestAndConsumeActions(organism, 1000000);
                
                 if (actions.Count > 0)
@@ -1040,7 +1053,7 @@ internal sealed class Game
                     possibleActions.AddRange(actions);
                 }
 
-                Console.Error.WriteLine($"Checked for Action that was rejected by CheckForHarvestOrConsumeAction. {actions.Count} possible actions");
+                Logger.Line($"Checked for Action that was rejected by CheckForHarvestOrConsumeAction. {actions.Count} possible actions");
             }
 
             List<Action> desperateActions = GetDesperateDestructiveMove(organism, GrowStrategy.UNHARVESTED, 4, ActionSource.DESPERATE_DESTRUCTIVE_MOVE);
@@ -1062,8 +1075,8 @@ internal sealed class Game
             
             if (possibleActions.Count == 0)
             {
-                // If we've done only WAIT moves for more than 3 moves assume that 
-                // We're done and start destroying proteins
+                
+                
                 if (_waitCount > 3)
                 {
                    List<Action> endGameDestroyMoves = GetEndGameDestroyMoves(organism);
@@ -1086,8 +1099,8 @@ internal sealed class Game
 
             possibleActions = possibleActions.OrderByDescending(p => p.Score).ToList();
 
-            //Display.Actions(possibleActions);
-            //Console.Error.WriteLine($"Possible actions: {possibleActions.Count}");
+            
+            
 
             allPossibleActions.Add(organism.RootId, possibleActions);
         }
@@ -1127,11 +1140,113 @@ internal sealed class Game
 
         DisplayTime("Done picking best actions");
 
-        // Display.ActionSources(_trackedActions);
+        
 
         _timer.Stop();
 
         return chosenActions;
+    }
+
+    private List<Action> CheckForTentacleBlockAction(Organism organism)
+    {
+        List<Action> tentacleBlockActions = new List<Action>();
+
+        List<Point> possibleSporePoints = new List<Point>();
+
+        int maxDistance = 2;
+        int minDistance = 2;
+
+        
+        
+        foreach (Organism enemyOrganism in OpponentOrganisms)
+        {
+            foreach (Organ organ in enemyOrganism.Organs)
+            {
+                
+                if (organ.Type == OrganType.SPORER)
+                {
+                    
+                    Point direction = _directionCalculator.GetDelta(organ.Direction);
+
+                    Point checkPoint = new Point(organ.Position.X, organ.Position.Y);
+
+                    bool stopped = false;
+                    while (!stopped)
+                    {
+                        checkPoint = new Point(checkPoint.X + direction.X,
+                                               checkPoint.Y + direction.Y);
+
+                        if (CheckBounds(checkPoint)
+                            && MapChecker.CanGrowOn(checkPoint, this, GrowStrategy.ALL_PROTEINS, true))
+                        {
+                            possibleSporePoints.Add(checkPoint);
+                        }
+                        else
+                        {
+                            stopped = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (possibleSporePoints.Count == 0)
+        {
+            return tentacleBlockActions;
+        }
+
+        AStar aStar = new AStar(this);
+
+        
+        foreach (var organ in organism.Organs)
+        {
+            foreach (Organism opponentOrganism in OpponentOrganisms)
+            {
+                foreach (Point possibleSporePoint in possibleSporePoints)
+                {
+                    int manhattanDistance = MapChecker.CalculateManhattanDistance(organ.Position, possibleSporePoint);
+
+                    if (manhattanDistance > maxDistance)
+                    {
+                        continue;
+                    }
+
+                    List<Point> path = aStar.GetShortestPath(organ.Position, possibleSporePoint, maxDistance, GrowStrategy.NO_PROTEINS, false);
+
+                    if (path.Count >= minDistance && path.Count <= maxDistance && !opponentTentaclePath[path[0].X, path[0].Y])
+                    {
+                        OrganDirection? direction = null;
+
+                        
+                        if (path.Count == 2 || path.Count == 3)
+                        {
+                            direction = _directionCalculator.GetDirection(path[0], path[1]);
+                        }
+                        else
+                        {
+                            direction = _directionCalculator.CalculateClosestOpponentDirection(path[0], path[path.Count - 1]);
+                        }
+
+                        Point target = path[path.Count - 1];
+                        int childCount = opponentOrganChildren[target.X, target.Y];
+
+                        tentacleBlockActions.Add(new Action()
+                        {
+                            OrganismId = organism.RootId,
+                            ActionType = ActionType.GROW,
+                            OrganId = organ.Id,
+                            TargetPosition = path[0],
+                            OrganType = OrganType.TENTACLE,
+                            OrganDirection = direction,
+                            Score = 500 + childCount,
+                            Source = ActionSource.CHECK_FOR_BLOCK_TENTACLES
+                        });
+                    }
+                }
+            }
+        }
+
+        return tentacleBlockActions;
     }
 
     private bool HasHarvestedAllProteins()
@@ -1158,13 +1273,13 @@ internal sealed class Game
 
                 if (CheckBounds(checkPoint))
                 {
-                    // if organ is on the check point create an action
+                    
                     if (organism.Organs.Any(organ => organ.Position == checkPoint))
                     {
                         Organ organ = organism.Organs.Single(organ => organ.Position == checkPoint);
 
-                        Console.Error.WriteLine($"Found organ to destroy: {organ.Position.X},{organ.Position.Y}");
-                        // Create 4 grow type actions for tis check point 
+                        Logger.Line($"Found organ to destroy: {organ.Position.X},{organ.Position.Y}");
+                        
                         return CreateGrowActions(organism.RootId, organ.Id, protein.Position, 0, ActionSource.END_GAME_DESTROY).ToList();
                     }
                 }
@@ -1184,7 +1299,7 @@ internal sealed class Game
         return true;
     }
 
-    // Check to see if any protein is being harvested and mark it as such
+    
     private void CheckForHarvestedProtein()
     {
         _harvestedAProteins = 0;
@@ -1227,8 +1342,8 @@ internal sealed class Game
             }
         }
 
-        // We don't care about enemy harvested proteins because
-        // we're still happy to consume them.
+        
+        
     }
 
     private static Point GetHarvestedPosition(Organ organ)
@@ -1250,8 +1365,8 @@ internal sealed class Game
 
     internal void UpdateMaps()
     {
-        // Reset them all at the start because some of the calculation 
-        // will make changes to the others.
+        
+        
         isBlocked = new bool[Width, Height];
 
         hasHarvestedProtein = new bool[Width, Height];
@@ -1270,7 +1385,7 @@ internal sealed class Game
 
     private void UpdateIsBlocked()
     {
-        // Not walkable if player organ on that spot
+        
         foreach (Organism organism in PlayerOrganisms)
         {
             foreach (Organ organ in organism.Organs)
@@ -1279,7 +1394,7 @@ internal sealed class Game
             }
         }
 
-        // Not walkable if opponent organ on that spot
+        
         foreach (Organism organism in OpponentOrganisms)
         {
             foreach (Organ organ in organism.Organs)
@@ -1288,7 +1403,7 @@ internal sealed class Game
             }
         }
 
-        // Not walkable if wall on that spot
+        
         for (int x = 0; x < Width; x++)
         {
             for (int y = 0; y < Height; y++)
@@ -1327,10 +1442,10 @@ internal sealed class Game
                 int childCount = GetChildCount(organism.RootId, organ);
                 opponentOrganChildren[organ.Position.X, organ.Position.Y] = childCount;
 
-                // We can't walk on an outward facing tentacle
-                // So add these to the isBlocked list and not to the valid edges
+                
+                
 
-                // North
+                
                 if (organ.Position.Y - 1 >= 0)
                 {
                     opponentOrganEdges[organ.Position.X, organ.Position.Y - 1] = true;
@@ -1341,7 +1456,7 @@ internal sealed class Game
                     }
                 }
 
-                // East
+                
                 if (organ.Position.X + 1 < Width)
                 {
                     opponentOrganEdges[organ.Position.X + 1, organ.Position.Y] = true;
@@ -1352,7 +1467,7 @@ internal sealed class Game
                     }
                 }
 
-                // South
+                
                 if (organ.Position.Y + 1 < Height)
                 {
                     opponentOrganEdges[organ.Position.X, organ.Position.Y + 1] = true;
@@ -1363,7 +1478,7 @@ internal sealed class Game
                     }
                 }
 
-                // WEST
+                
                 if (organ.Position.X - 1 >= 0)
                 {
                     opponentOrganEdges[organ.Position.X - 1, organ.Position.Y] = true;
@@ -1413,7 +1528,7 @@ internal sealed class Game
 
         AStar aStar = new AStar(this);
 
-        // Get the closest protein to Organs
+        
         foreach (Protein protein in proteins)
         {
             if (protein.IsHarvested || isBlocked[protein.Position.X, protein.Position.Y] || opponentTentaclePath[protein.Position.X, protein.Position.Y])
@@ -1452,42 +1567,44 @@ internal sealed class Game
 
     private List<Action> CheckForTentacleAction(Organism organism)
     {
-        Console.Error.WriteLine("Checking for tentacle action");
+        Logger.Line("Checking for tentacle action");
         List<Action> tentacleActions = new List<Action>();
 
-        if (CostCalculator.CanProduceOrgan(OrganType.TENTACLE, PlayerProteinStock))
+        if (!CostCalculator.CanProduceOrgan(OrganType.TENTACLE, PlayerProteinStock))
         {
-            List<Action> twoMoveActions = GetShortestPathToOpponent(organism, 2, 2, GrowStrategy.ALL_PROTEINS, false, "Two ply search");
-            tentacleActions.AddRange(twoMoveActions);
+            return tentacleActions;
+        }
 
-            // If we didn't find a path check we're just not seeing it because it's too close
-            // Note these ones are always 2 long
-            foreach (Organ organ in organism.Organs)
+        List<Action> twoMoveActions = GetShortestPathToOpponent(organism, 2, 2, GrowStrategy.ALL_PROTEINS, false, "Two ply search");
+        tentacleActions.AddRange(twoMoveActions);
+
+        
+        
+        foreach (Organ organ in organism.Organs)
+        {
+            foreach (Point dir in _directions)
             {
-                foreach (Point dir in _directions)
+                Point checkPoint = new Point(organ.Position.X + dir.X, organ.Position.Y + dir.Y);
+
+                if (CheckBounds(checkPoint) && MapChecker.CanGrowOn(checkPoint, this, GrowStrategy.ALL_PROTEINS, false))
                 {
-                    Point checkPoint = new Point(organ.Position.X + dir.X, organ.Position.Y + dir.Y);
+                    List<Action> tooShortActions = GetShortestPathToOpponent(checkPoint, 2, 2, GrowStrategy.ALL_PROTEINS, organism.RootId, organ.Id, "Next door search");
 
-                    if (CheckBounds(checkPoint) && MapChecker.CanGrowOn(checkPoint, this, GrowStrategy.ALL_PROTEINS, false))
-                    {
-                        List<Action> tooShortActions = GetShortestPathToOpponent(checkPoint, 2, 2, GrowStrategy.ALL_PROTEINS, organism.RootId, organ.Id, "Next door search");
-
-                        tentacleActions.AddRange(tooShortActions);
-                    }
+                    tentacleActions.AddRange(tooShortActions);
                 }
             }
+        }
 
-            if (tentacleActions.Count == 0)
-            {
-                List<Action> threeMoveActions = GetShortestPathToOpponent(organism, 3, 3, GrowStrategy.ALL_PROTEINS, true, "Three ply search");
-                tentacleActions.AddRange(threeMoveActions);
-            }
+        if (tentacleActions.Count == 0)
+        {
+            List<Action> threeMoveActions = GetShortestPathToOpponent(organism, 3, 3, GrowStrategy.ALL_PROTEINS, true, "Three ply search");
+            tentacleActions.AddRange(threeMoveActions);
+        }
 
-            if (tentacleActions.Count == 0)
-            {
-                List<Action> fourMoveActions = GetShortestPathToOpponent(organism, 4, 4, GrowStrategy.ALL_PROTEINS, true, "Four ply search");
-                tentacleActions.AddRange(fourMoveActions);
-            }
+        if (tentacleActions.Count == 0)
+        {
+            List<Action> fourMoveActions = GetShortestPathToOpponent(organism, 4, 4, GrowStrategy.ALL_PROTEINS, true, "Four ply search");
+            tentacleActions.AddRange(fourMoveActions);
         }
 
         return tentacleActions;
@@ -1523,7 +1640,7 @@ internal sealed class Game
                     {
                         OrganDirection? direction = null;
 
-                        // If it's a direct attack then face it. Otherwise get the direction right
+                        
                         if (path.Count == 2 || path.Count == 3)
                         {
                             direction = _directionCalculator.GetDirection(path[0], path[1]);
@@ -1579,7 +1696,7 @@ internal sealed class Game
                     OrganDirection? direction = null;
 
 
-                    // If it's a direct attack then face it. Otherwise get the direction right
+                    
                     if (path.Count == 2 || path.Count == 3)
                     {
                         direction = _directionCalculator.GetDirection(path[0], path[1]);
@@ -1597,7 +1714,7 @@ internal sealed class Game
                         TargetPosition = path[0],
                         OrganType = OrganType.TENTACLE,
                         OrganDirection = direction,
-                        Score = 500, // Tentacle moves are higher than the rest by default
+                        Score = 500, 
                         Source = ActionSource.CHECK_FOR_TENTACLES
                     });
                 }
@@ -1752,7 +1869,7 @@ internal sealed class Game
 
                 if (direction == new Point(0, 0))
                 {
-                    Console.Error.WriteLine($"ERROR: Couldn't get sporer direction for {sporer.Position.X}{sporer.Position.Y}");
+                    Logger.Line($"ERROR: Couldn't get sporer direction for {sporer.Position.X}{sporer.Position.Y}");
                 }
 
                 Point checkPoint = new Point(sporer.Position.X, sporer.Position.Y);
@@ -1825,7 +1942,7 @@ internal sealed class Game
             Point furthestSporerPoint = new Point(0, 0);
             OrganDirection? furthestDirection = null;
 
-            // for each organ
+            
             foreach (Organ organ in organism.Organs)
             {
                 Point organPoint = organ.Position;
@@ -1851,7 +1968,7 @@ internal sealed class Game
                     directions.Add(new Point(-1, 0));
                 }
 
-                // Check the four points around the organ
+                
                 foreach (Point side in directions)
                 {
                     Point sporerPoint = new Point(organPoint.X + side.X,
@@ -1862,7 +1979,7 @@ internal sealed class Game
                         continue;
                     }
 
-                    // Check in all 4 directions
+                    
                     foreach (Point direction in directions)
                     {
                         Point checkPoint = new Point(sporerPoint.X,
@@ -1885,7 +2002,7 @@ internal sealed class Game
 
                             if (distance >= minRootSporerDistance)
                             {
-                                //    if it's on a spawn point 
+                                
                                 if (_sporerPoints[checkPoint.X, checkPoint.Y])
                                 {
                                     OrganDirection? dir = null;
@@ -2245,7 +2362,7 @@ internal sealed class Game
                             {
                                 if (checkAction.OrganType is null)
                                 {
-                                    Console.Error.WriteLine("ERROR: Organ type is null");
+                                    Logger.Line("ERROR: Organ type is null");
 
                                 }
                                 if (CostCalculator.CanProduceOrgan(checkAction.OrganType.Value, tempProteinStock))
@@ -2316,7 +2433,7 @@ internal sealed class Game
                                 if (actionIndex >= possibleActions.Count)
                                 {
                                     actionIndex--;
-                                    // We can't create it. Should we do a wait?
+                                    
                                     break;
                                 }
                             }
@@ -2334,8 +2451,8 @@ internal sealed class Game
                     }
                     else
                     {
-                        Console.Error.WriteLine("ERROR: No possible actions for organism");
-                        // THIS SHOULD NEVER HAPPEN. MAYBE THROW A WAIT IN JUST IN CASE
+                        Logger.Line("ERROR: No possible actions for organism");
+                        
                     }
                 }   
             }
@@ -2348,12 +2465,12 @@ internal sealed class Game
             targetPositions.Add(chosenAction.TargetPosition);
             if (chosenAction.OrganType == OrganType.HARVESTER)
             {
-                // We don't want to harvest the same protein
+                
                 Point delta = _directionCalculator.GetDelta(chosenAction.OrganDirection.Value);
                 harvestTargetPositions.Add(new Point(chosenAction.TargetPosition.X + delta.X, 
                                                      chosenAction.TargetPosition.Y + delta.Y));
 
-                // We don't want to land on a harvested protein
+                
                 targetPositions.Add(new Point(chosenAction.TargetPosition.X + delta.X,
                                              chosenAction.TargetPosition.Y + delta.Y));
             }
@@ -2379,7 +2496,7 @@ internal sealed class Game
             {
                 if (chosenAction.OrganType is null)
                 {
-                    Console.Error.WriteLine("ERROR: Organ type is null");
+                    Logger.Line("ERROR: Organ type is null");
 
                 }
 
@@ -2447,6 +2564,15 @@ internal enum GrowStrategy
     UNHARVESTED,
     ALL_PROTEINS
 }
+
+internal static class Logger
+{
+    internal static void Line(string message)
+    {
+        Console.Error.WriteLine(message);
+    }
+}
+
 
 internal static class MapChecker
 {
@@ -2596,7 +2722,7 @@ internal static class MapChecker
         return false;
     }
 
-    // If we can draw a line from the sporer to a root then it's spored
+    
     internal static bool HasSporerSpored(Organ sporer, Game game)
     {
         int xDelta = 0;

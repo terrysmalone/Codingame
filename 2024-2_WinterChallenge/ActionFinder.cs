@@ -73,7 +73,7 @@ internal sealed class ActionFinder
             Protein protein = _proteinsToCheck[i];
             foreach (Organ organ in organism.Organs)
             {
-                //Console.Error.WriteLine($"Checking protein {protein.Position} to organ {organ.Position}");
+                //Logger.Line($"Checking protein {protein.Position} to organ {organ.Position}");
                 int manhattanDistance = MapChecker.CalculateManhattanDistance(organ.Position, protein.Position);
                 
                 if (manhattanDistance > maxDistance)
@@ -83,7 +83,7 @@ internal sealed class ActionFinder
 
                 List<Point> path = _aStar.GetShortestPath(organ.Position, protein.Position, maxDistance, growStrategy, false);
                 
-               // Console.Error.WriteLine($"Path from {organ.Position} to {protein.Position} is {path.Count} long");
+               // Logger.Line($"Path from {organ.Position} to {protein.Position} is {path.Count} long");
                 if (path.Count > 0)
                 {
                     //actions.Add(new Tuple<int, ProteinType, List<Point>>(organ.Id, protein.Type, path));

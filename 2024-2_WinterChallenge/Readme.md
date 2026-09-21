@@ -59,3 +59,14 @@ seed=-7134633389896397000
 
 TEST: This will be a good test of changing my flood fill
 seed=6317245032757462000
+
+# Progress
+
+5428eea7b59a05a343ab01dba496aaf1dc5ba6ff
+
+	Changes: Check if we can block a player from placing a tentacle
+	Submitted: 2026-09-21 02:15pm
+	Rank: (112) to 66
+
+
+

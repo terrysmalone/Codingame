@@ -7,16 +7,18 @@ namespace WinterChallenge2024;
 internal sealed class ActionFinder
 {
     private readonly Game _game;
+    private readonly Map _map;
     private readonly DirectionCalculator _directionCalculator;
     private readonly AStar _aStar;
 
     private List<Protein> _proteinsToCheck = new List<Protein>();
 
-    public ActionFinder(Game game, DirectionCalculator directionCalculator)
+    public ActionFinder(Game game, Map map, DirectionCalculator directionCalculator)
     {
         _game = game;
+        _map = map;
         _directionCalculator = directionCalculator;
-        _aStar = new AStar(game);
+        _aStar = new AStar(_map);
     }
 
     internal List<Action> GetProteinActions(Organism organism, List<Protein> proteins)
@@ -28,7 +30,7 @@ internal sealed class ActionFinder
         foreach (Protein protein in proteins)
         {
             // If it's harvested or blocked (this can only be from a tentacle facing it) then ignore it
-            if (!protein.IsHarvested && !_game.opponentTentaclePath[protein.Position.X, protein.Position.Y])
+            if (!protein.IsHarvested && !_map.HasOpponentTentaclePath(protein.Position.X, protein.Position.Y))
             {
                 _proteinsToCheck.Add(protein.Clone());
             }
@@ -137,7 +139,7 @@ internal sealed class ActionFinder
           
             if (action.OrganType != OrganType.BASIC)
             {
-                action.OrganDirection = _directionCalculator.CalculateClosestOpponentDirection(path[0]);
+                action.OrganDirection = _directionCalculator.CalculateClosestOpponentDirection(path[0], _game.OpponentOrganisms);
             }
         }
         else if (path.Count == 2)
@@ -168,7 +170,7 @@ internal sealed class ActionFinder
 
             if (action.OrganType != OrganType.BASIC)
             {
-                action.OrganDirection = _directionCalculator.CalculateClosestOpponentDirection(path[0]);
+                action.OrganDirection = _directionCalculator.CalculateClosestOpponentDirection(path[0], _game.OpponentOrganisms);
             }
         }
 
@@ -177,7 +179,7 @@ internal sealed class ActionFinder
 
     private OrganType GetOrgan(Point point)
     {
-        bool hasProtein = _game.hasAnyProtein[point.X, point.Y];
+        bool hasProtein = _map.HasAnyProtein(point.X, point.Y);
         if (CostCalculator.CanProduceOrgan(OrganType.BASIC, _game.PlayerProteinStock))
         {
             return OrganType.BASIC;

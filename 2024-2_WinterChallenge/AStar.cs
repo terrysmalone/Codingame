@@ -8,13 +8,13 @@ internal sealed class AStar
 {
     private int _diagnosticCount = 0;
 
-    private readonly Game _game;
+    private Map _map;
 
     private List<Node> _nodes = new List<Node>();
 
-    internal AStar(Game game)
+    internal AStar(Map map)
     {
-        _game = game;
+        _map = map;
     }
 
     internal List<Point> GetShortestPath(Point startPoint, Point targetPoint, int maxDistance)
@@ -56,7 +56,7 @@ internal sealed class AStar
  
                 if (existingNode == null)
                 {
-                    if (pointToCheck == startPoint || pointToCheck == targetPoint || MapChecker.CanGrowOn(pointToCheck, _game, growStrategy, walkOnOpponentTentaclePath))
+                    if (pointToCheck == startPoint || pointToCheck == targetPoint || MapChecker.CanGrowOn(pointToCheck, _map, growStrategy, walkOnOpponentTentaclePath))
                     {                        
                         Node node = new Node(pointToCheck);
 

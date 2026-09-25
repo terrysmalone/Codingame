@@ -45,22 +45,12 @@ partial class Player
                             if (owner == 1)
                             {
                                 unsortedPlayerOrgans.Add(
-                                    CreateOrgan(
-                                        organId,
-                                        organRootId,
-                                        organTypeEnum,
-                                        new Point(x, y),
-                                        organParentId));
+                                    new Organ(organId, organRootId, organTypeEnum, new Point(x, y), organParentId));
                             }
                             else if (owner == 0)
                             {
                                 unsortedOpponentOrgans.Add(
-                                    CreateOrgan(
-                                        organId,
-                                        organRootId,
-                                        organTypeEnum,
-                                        new Point(x, y),
-                                        organParentId));
+                                    new Organ(organId, organRootId, organTypeEnum, new Point(x, y), organParentId));
                             }
 
                             break;
@@ -155,11 +145,6 @@ partial class Player
         ProteinStock proteins = new ProteinStock(proteinA, proteinB, proteinC, proteinD);
 
         return proteins;
-    }
-
-    private static Organ CreateOrgan(int organId, int rootId, OrganType organType, Point point, int parentId)
-    {
-        return new Organ(organId, rootId, organType, point, parentId);
     }
 
     private static Organ CreateDirectionOrgan(int organId, int rootId, OrganType organType, Point point, int parentId, OrganDirection direction)

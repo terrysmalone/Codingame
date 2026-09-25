@@ -7,8 +7,6 @@ using System.Drawing;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Xml.Linq;
-using static System.Formats.Asn1.AsnWriter;
 using System.Diagnostics;
 using System.Reflection.Metadata.Ecma335;
 using System.Text;
@@ -80,16 +78,18 @@ internal enum ActionSource
 internal sealed class ActionFinder
 {
     private readonly Game _game;
+    private readonly Map _map;
     private readonly DirectionCalculator _directionCalculator;
     private readonly AStar _aStar;
 
     private List<Protein> _proteinsToCheck = new List<Protein>();
 
-    public ActionFinder(Game game, DirectionCalculator directionCalculator)
+    public ActionFinder(Game game, Map map, DirectionCalculator directionCalculator)
     {
         _game = game;
+        _map = map;
         _directionCalculator = directionCalculator;
-        _aStar = new AStar(game);
+        _aStar = new AStar(_map);
     }
 
     internal List<Action> GetProteinActions(Organism organism, List<Protein> proteins)
@@ -101,7 +101,7 @@ internal sealed class ActionFinder
         foreach (Protein protein in proteins)
         {
             
-            if (!protein.IsHarvested && !_game.opponentTentaclePath[protein.Position.X, protein.Position.Y])
+            if (!protein.IsHarvested && !_map.HasOpponentTentaclePath(protein.Position.X, protein.Position.Y))
             {
                 _proteinsToCheck.Add(protein.Clone());
             }
@@ -210,7 +210,7 @@ internal sealed class ActionFinder
           
             if (action.OrganType != OrganType.BASIC)
             {
-                action.OrganDirection = _directionCalculator.CalculateClosestOpponentDirection(path[0]);
+                action.OrganDirection = _directionCalculator.CalculateClosestOpponentDirection(path[0], _game.OpponentOrganisms);
             }
         }
         else if (path.Count == 2)
@@ -241,7 +241,7 @@ internal sealed class ActionFinder
 
             if (action.OrganType != OrganType.BASIC)
             {
-                action.OrganDirection = _directionCalculator.CalculateClosestOpponentDirection(path[0]);
+                action.OrganDirection = _directionCalculator.CalculateClosestOpponentDirection(path[0], _game.OpponentOrganisms);
             }
         }
 
@@ -250,7 +250,7 @@ internal sealed class ActionFinder
 
     private OrganType GetOrgan(Point point)
     {
-        bool hasProtein = _game.hasAnyProtein[point.X, point.Y];
+        bool hasProtein = _map.HasAnyProtein(point.X, point.Y);
         if (CostCalculator.CanProduceOrgan(OrganType.BASIC, _game.PlayerProteinStock))
         {
             return OrganType.BASIC;
@@ -284,13 +284,13 @@ internal sealed class AStar
 {
     private int _diagnosticCount = 0;
 
-    private readonly Game _game;
+    private Map _map;
 
     private List<Node> _nodes = new List<Node>();
 
-    internal AStar(Game game)
+    internal AStar(Map map)
     {
-        _game = game;
+        _map = map;
     }
 
     internal List<Point> GetShortestPath(Point startPoint, Point targetPoint, int maxDistance)
@@ -332,7 +332,7 @@ internal sealed class AStar
  
                 if (existingNode == null)
                 {
-                    if (pointToCheck == startPoint || pointToCheck == targetPoint || MapChecker.CanGrowOn(pointToCheck, _game, growStrategy, walkOnOpponentTentaclePath))
+                    if (pointToCheck == startPoint || pointToCheck == targetPoint || MapChecker.CanGrowOn(pointToCheck, _map, growStrategy, walkOnOpponentTentaclePath))
                     {                        
                         Node node = new Node(pointToCheck);
 
@@ -535,7 +535,7 @@ internal static class CostCalculator
 
 internal class DirectionCalculator
 {
-    private readonly Game _game;
+    private readonly Map _map;
 
     private readonly List<Point> _directions = new List<Point>
     {
@@ -545,15 +545,15 @@ internal class DirectionCalculator
         new Point(-1, 0)
     };
 
-    public DirectionCalculator(Game game)
+    public DirectionCalculator(Map map)
     {
-        _game = game;
+        _map = map;
     }
 
 
-    internal OrganDirection? CalculateClosestOpponentDirection(Point startPoint)
+    internal OrganDirection? CalculateClosestOpponentDirection(Point startPoint, List<Organism> opponentOrganisms)
     {
-        Point endPoint = GetClosestRoot(startPoint);
+        Point endPoint = GetClosestRoot(startPoint, opponentOrganisms);
 
         return CalculateClosestOpponentDirection(startPoint, endPoint);
     }
@@ -564,14 +564,14 @@ internal class DirectionCalculator
             
             if (endPoint.X > startPoint.X)
             {
-                if (startPoint.X + 1 < _game.Width && !_game.Walls[startPoint.X + 1, startPoint.Y])
+                if (startPoint.X + 1 < _map.Width && !_map.HasWall(startPoint.X + 1, startPoint.Y))
                 {
                     return OrganDirection.E;
                 }
             }
             else
             {
-                if (startPoint.X - 1 >= 0 && !_game.Walls[startPoint.X - 1, startPoint.Y])
+                if (startPoint.X - 1 >= 0 && !_map.HasWall(startPoint.X - 1, startPoint.Y))
                 {
                     return OrganDirection.W;
                 }
@@ -582,14 +582,14 @@ internal class DirectionCalculator
             
             if (endPoint.Y > startPoint.Y)
             {
-                if (startPoint.Y + 1 < _game.Height && !_game.Walls[startPoint.X, startPoint.Y + 1])
+                if (startPoint.Y + 1 < _map.Height && !_map.HasWall(startPoint.X, startPoint.Y + 1))
                 {
                     return OrganDirection.S;
                 }
             }
             else
             {
-                if (startPoint.Y - 1 >= 0 && !_game.Walls[startPoint.X, startPoint.Y - 1])
+                if (startPoint.Y - 1 >= 0 && !_map.HasWall(startPoint.X, startPoint.Y - 1))
                 {
                     return OrganDirection.N;
                 }
@@ -607,7 +607,7 @@ internal class DirectionCalculator
 
             if (MapChecker.CanGrowOn(
                 directionPoint,
-                _game,
+                _map,
                 GrowStrategy.ALL_PROTEINS,
                 false))
             {
@@ -656,12 +656,12 @@ internal class DirectionCalculator
         }
     }
 
-    private Point GetClosestRoot(Point startPoint)
+    private static Point GetClosestRoot(Point startPoint, List<Organism> opponentOrganisms)
     {
         int closestDistance = int.MaxValue;
         Point closestPoint = new Point(-1, -1);
 
-        foreach (Organism opponentOrganism in _game.OpponentOrganisms)
+        foreach (Organism opponentOrganism in opponentOrganisms)
         {
             Organ root = opponentOrganism.Organs.Single(o => o.Type == OrganType.ROOT);
 
@@ -679,157 +679,6 @@ internal class DirectionCalculator
 }
 
 
-internal static class Display
-{
-    internal static void ProteinStock(ProteinStock proteinStock)
-    {
-        Logger.Line($"A: {proteinStock.A}");
-        Logger.Line($"B: {proteinStock.B}");
-        Logger.Line($"C: {proteinStock.C}");
-        Logger.Line($"D: {proteinStock.D}");
-    }
-
-    internal static void Proteins(List<Protein> proteins)
-    {
-        Logger.Line($"Proteins");
-
-        proteins.ForEach(p =>
-            Logger.Line($"Type:{p.Type} - Position:({p.Position.X},{p.Position.Y}) - BeingHarvested:{p.IsHarvested}"));
-    }
-
-    internal static void Organisms(List<Organism> organisms)
-    {
-        foreach (Organism organism in organisms)
-        {
-            Organism(organism);
-            Logger.Line("-----------------------------------");
-        }
-    }
-
-    internal static void Organism(Organism organism)
-    {
-        foreach (Organ organ in organism.Organs)
-        {
-            switch (organ.Type)
-            {
-                case OrganType.BASIC:
-                case OrganType.ROOT:
-                    Logger.Line($" ID:{organ.Id} - Type:{organ.Type.ToString()} - Position:({organ.Position.X},{organ.Position.Y})");
-                    break;
-
-                case OrganType.HARVESTER:
-                case OrganType.SPORER:
-                case OrganType.TENTACLE:
-                    Logger.Line($" ID:{organ.Id} - Type:{organ.Type.ToString()} - Position:({organ.Position.X},{organ.Position.Y}) - Direction:{organ.Direction.ToString()}");
-                    break;
-            }
-        }
-    }
-
-    internal static void Nodes(List<Node> nodes)
-    {
-        nodes.ForEach(n =>
-            Logger.Line($"Position:({n.Position.X},{n.Position.Y}) - Closed:{n.Closed}"));
-    }
-
-    internal static void Map(Game game)
-    {
-        string[,] map = new string[game.Width, game.Height];
-
-        for (int y = 0; y < game.Height; y++)
-        {
-            for (int x = 0; x < game.Width; x++)
-            {
-                map[x, y] = " ";
-            }
-        }
-
-        for (int y = 0; y < game.Height; y++)
-        {
-            for (int x = 0; x < game.Width; x++)
-            {
-                if (game.Walls[x, y])
-                {
-                    map[x, y] = "X";
-                }
-            }
-        }
-
-        foreach (Protein protein in game.Proteins)
-        {
-            map[protein.Position.X, protein.Position.Y] = protein.Type.ToString();
-        }
-
-        foreach (Organism organism in game.PlayerOrganisms)
-        {
-            foreach (Organ organ in organism.Organs)
-            {
-                map[organ.Position.X, organ.Position.Y] = "O";
-            }
-        }
-
-        foreach (Organism organism in game.OpponentOrganisms)
-        {
-            foreach (Organ organ in organism.Organs)
-            {
-                map[organ.Position.X, organ.Position.Y] = "o";
-            }
-        }
-
-        Logger.Line("----------");
-        for (int y = 0; y < game.Height; y++)
-        {
-            string row = "|";
-
-            for (int x = 0; x < game.Width; x++)
-            {
-                row += map[x, y];
-            }
-
-            row += "|";
-
-            Logger.Line(row);
-        }
-        Logger.Line("----------");
-    }
-
-    internal static void TimeStamp(long totalTime, long segmentTime, string task)
-    {
-        TimeSpan total = TimeSpan.FromTicks(totalTime);
-        TimeSpan segment = TimeSpan.FromTicks(segmentTime);
-        Logger.Line($"{total.Milliseconds}ms-{segment.Milliseconds}ms-{task}");
-    }
-
-    internal static void Actions(List<Action> actions)
-    {
-        foreach (Action action in actions)
-        {
-            
-            Logger.Line(action.ToString() + $" - score:{ action.Score} - from {action.Source}");
-        }
-    }
-
-    internal static void ActionsDictionary(Dictionary<int, List<Action>> actionsDictionarly)
-    {
-        foreach (KeyValuePair<int, List<Action>> actions in actionsDictionarly)
-        {
-            Logger.Line("-----------------------------------");
-            Logger.Line($"OrganismId:{actions.Key}");
-            Actions(actions.Value);
-        }
-    }
-
-    internal static void ActionSources(Dictionary<ActionSource, int> trackedActions)
-    {
-        Logger.Line("Tracked actions count");
-        foreach (KeyValuePair<ActionSource, int> trackedAction in trackedActions)
-        {
-            Logger.Line($"{trackedAction.Key} - {trackedAction.Value}");
-        }
-    }
-}
-
-
 internal sealed class Game
 {
     internal int Width { get; private set; }
@@ -840,24 +689,13 @@ internal sealed class Game
 
     internal ProteinStock PlayerProteinStock { get; private set; }
     internal ProteinStock OpponentProteinStock { get; private set; }
-    
-    public bool[,] Walls { get; private set; }
+
+    private Map _map;
+
     public List<Protein> Proteins { get; private set; }
 
     private ActionFinder _pathFinder;
     private DirectionCalculator _directionCalculator;
-
-    private bool[,] _sporerPoints;
-
-    internal bool[,] isBlocked;
-    internal bool[,] hasAnyProtein;
-    internal ProteinType[,] proteinTypes;
-    internal bool[,] hasHarvestedProtein;
-    internal bool[,] opponentOrgans;
-    internal bool[,] opponentOrganEdges;
-    internal int[,] opponentOrganChildren;
-
-    internal bool[,] opponentTentaclePath;
 
     private Stopwatch _timer;
     private long _totalTime;
@@ -889,7 +727,8 @@ internal sealed class Game
         PlayerOrganisms = new List<Organism>();
         OpponentOrganisms = new List<Organism>();
 
-        Walls = new bool[Width, Height];
+        _map = new Map(width, height);
+        
         Proteins = new List<Protein>();
     }
 
@@ -901,25 +740,23 @@ internal sealed class Game
 
     internal void SetOpponentOrganisms(List<Organism> opponentOrganisms) => OpponentOrganisms = opponentOrganisms;
 
-    internal void SetWalls(bool[,] walls) => Walls = walls;
+    internal void SetWalls(bool[,] walls) => _map.SetWalls(walls);
 
     internal void SetProteins(List<Protein> proteins) => Proteins = proteins;
 
     internal List<Action> GetActions()
     {
-        _directionCalculator = new DirectionCalculator(this);
-        _pathFinder = new ActionFinder(this, _directionCalculator);
+        _directionCalculator = new DirectionCalculator(_map);
+        _pathFinder = new ActionFinder(this, _map, _directionCalculator);
 
         _totalTime = 0;
         _timer = new Stopwatch();
         _timer.Start();
 
-        _sporerPoints = new bool[Width, Height];
-
         CheckForHarvestedProtein();
         DisplayTime("Updated check for harvested protein");
 
-        UpdateMaps();
+        ResetMaps();
         DisplayTime("Updated maps");
 
         Dictionary<int, List<Action>> allPossibleActions = new Dictionary<int, List<Action>>();
@@ -1069,8 +906,7 @@ internal sealed class Game
             List<Action> randomActions = GetRandomGrowActions(organism, getFloodFillScores);
             DisplayTime($"Checked for random move action. {randomActions.Count} possible actions");
             randomActions = randomActions.OrderByDescending(a => a.Score).ToList();
-            Display.Actions(randomActions);
-
+            
             possibleActions.AddRange(randomActions);
             
             if (possibleActions.Count == 0)
@@ -1177,7 +1013,7 @@ internal sealed class Game
                                                checkPoint.Y + direction.Y);
 
                         if (CheckBounds(checkPoint)
-                            && MapChecker.CanGrowOn(checkPoint, this, GrowStrategy.ALL_PROTEINS, true))
+                            && MapChecker.CanGrowOn(checkPoint, _map, GrowStrategy.ALL_PROTEINS, true))
                         {
                             possibleSporePoints.Add(checkPoint);
                         }
@@ -1195,7 +1031,7 @@ internal sealed class Game
             return tentacleBlockActions;
         }
 
-        AStar aStar = new AStar(this);
+        AStar aStar = new AStar(_map);
 
         
         foreach (var organ in organism.Organs)
@@ -1213,7 +1049,7 @@ internal sealed class Game
 
                     List<Point> path = aStar.GetShortestPath(organ.Position, possibleSporePoint, maxDistance, GrowStrategy.NO_PROTEINS, false);
 
-                    if (path.Count >= minDistance && path.Count <= maxDistance && !opponentTentaclePath[path[0].X, path[0].Y])
+                    if (path.Count >= minDistance && path.Count <= maxDistance && !_map.HasOpponentTentaclePath(path[0].X, path[0].Y))
                     {
                         OrganDirection? direction = null;
 
@@ -1228,7 +1064,7 @@ internal sealed class Game
                         }
 
                         Point target = path[path.Count - 1];
-                        int childCount = opponentOrganChildren[target.X, target.Y];
+                        int childCount = _map.OpponentOrganChildren(target.X, target.Y);
 
                         tentacleBlockActions.Add(new Action()
                         {
@@ -1363,158 +1199,20 @@ internal sealed class Game
         return new Point(-1, -1);
     }
 
-    internal void UpdateMaps()
+    internal void ResetMaps()
     {
-        
-        
-        isBlocked = new bool[Width, Height];
+        _map.ResetMaps();
 
-        hasHarvestedProtein = new bool[Width, Height];
-        hasAnyProtein = new bool[Width, Height];
-        proteinTypes = new ProteinType[Width, Height];
-
-        opponentOrgans = new bool[Width, Height];
-        opponentOrganEdges = new bool[Width, Height];
-        opponentTentaclePath = new bool[Width, Height];
-        opponentOrganChildren = new int[Width, Height];
-
-        UpdateIsBlocked();
-        UpdateHasProteins();
-        UpdateOpponentOrgans();
-    }
-
-    private void UpdateIsBlocked()
-    {
-        
-        foreach (Organism organism in PlayerOrganisms)
-        {
-            foreach (Organ organ in organism.Organs)
-            {
-                isBlocked[organ.Position.X, organ.Position.Y] = true;
-            }
-        }
-
-        
-        foreach (Organism organism in OpponentOrganisms)
-        {
-            foreach (Organ organ in organism.Organs)
-            {
-                isBlocked[organ.Position.X, organ.Position.Y] = true;
-            }
-        }
-
-        
-        for (int x = 0; x < Width; x++)
-        {
-            for (int y = 0; y < Height; y++)
-            {
-                if (Walls[x, y])
-                {
-                    isBlocked[x, y] = true;
-                }
-            }
-        }
-    }
-
-    private void UpdateHasProteins()
-    {
-        foreach (Protein protein in Proteins)
-        {
-            hasAnyProtein[protein.Position.X, protein.Position.Y] = true;
-
-            proteinTypes[protein.Position.X, protein.Position.Y] = protein.Type;
-
-            if (protein.IsHarvested)
-            {
-                hasHarvestedProtein[protein.Position.X, protein.Position.Y] = true;
-            }
-        }
-    }
-
-    private void UpdateOpponentOrgans()
-    {
-        foreach (Organism organism in OpponentOrganisms)
-        {
-            foreach (Organ organ in organism.Organs)
-            {
-                opponentOrgans[organ.Position.X, organ.Position.Y] = true;
-
-                int childCount = GetChildCount(organism.RootId, organ);
-                opponentOrganChildren[organ.Position.X, organ.Position.Y] = childCount;
-
-                
-                
-
-                
-                if (organ.Position.Y - 1 >= 0)
-                {
-                    opponentOrganEdges[organ.Position.X, organ.Position.Y - 1] = true;
-
-                    if (organ.Type == OrganType.TENTACLE && organ.Direction == OrganDirection.N)
-                    {
-                        opponentTentaclePath[organ.Position.X, organ.Position.Y - 1] = true;
-                    }
-                }
-
-                
-                if (organ.Position.X + 1 < Width)
-                {
-                    opponentOrganEdges[organ.Position.X + 1, organ.Position.Y] = true;
-
-                    if (organ.Type == OrganType.TENTACLE && organ.Direction == OrganDirection.E)
-                    {
-                        opponentTentaclePath[organ.Position.X + 1, organ.Position.Y] = true;
-                    }
-                }
-
-                
-                if (organ.Position.Y + 1 < Height)
-                {
-                    opponentOrganEdges[organ.Position.X, organ.Position.Y + 1] = true;
-
-                    if (organ.Type == OrganType.TENTACLE && organ.Direction == OrganDirection.S)
-                    {
-                        opponentTentaclePath[organ.Position.X, organ.Position.Y + 1] = true;
-                    }
-                }
-
-                
-                if (organ.Position.X - 1 >= 0)
-                {
-                    opponentOrganEdges[organ.Position.X - 1, organ.Position.Y] = true;
-
-                    if (organ.Type == OrganType.TENTACLE && organ.Direction == OrganDirection.W)
-                    { 
-                        opponentTentaclePath[organ.Position.X - 1, organ.Position.Y] = true;
-                    }
-                }
-            }   
-        }
-    }
-
-    private int GetChildCount(int organismId, Organ organ)
-    {
-        int count = 0;
-        if (OpponentOrganisms.First(o => o.RootId == organismId).Organs.Any(o => o.ParentId == organ.Id))
-        {
-            List<Organ> children = OpponentOrganisms.First(o => o.RootId == organismId).Organs.Where(o => o.ParentId == organ.Id).ToList();
-
-            count += children.Count;
-
-            foreach (Organ child in children)
-            {
-                count += GetChildCount(organismId, child);
-            }
-        }
-
-        return count;
+        _map.UpdateIsBlocked(PlayerOrganisms, OpponentOrganisms);
+        _map.UpdateHasProteins(Proteins);
+        _map.UpdateOpponentOrgans(OpponentOrganisms);
     }
 
     private void DisplayTime(string message)
     {
         long segmentTime = _timer.ElapsedTicks;
         _totalTime += segmentTime;
-        Display.TimeStamp(_totalTime, segmentTime, message);
+        Logger.TimeStamp(_totalTime, segmentTime, message);
         _timer.Restart();
     }
 
@@ -1526,12 +1224,12 @@ internal sealed class Game
         int closestId = -1;
         List<Point> shortestPath = new List<Point>();
 
-        AStar aStar = new AStar(this);
+        AStar aStar = new AStar(_map);
 
         
         foreach (Protein protein in proteins)
         {
-            if (protein.IsHarvested || isBlocked[protein.Position.X, protein.Position.Y] || opponentTentaclePath[protein.Position.X, protein.Position.Y])
+            if (protein.IsHarvested || _map.IsBlocked(protein.Position.X, protein.Position.Y) || _map.HasOpponentTentaclePath(protein.Position.X, protein.Position.Y))
             {
                 continue;
             }
@@ -1586,7 +1284,7 @@ internal sealed class Game
             {
                 Point checkPoint = new Point(organ.Position.X + dir.X, organ.Position.Y + dir.Y);
 
-                if (CheckBounds(checkPoint) && MapChecker.CanGrowOn(checkPoint, this, GrowStrategy.ALL_PROTEINS, false))
+                if (CheckBounds(checkPoint) && MapChecker.CanGrowOn(checkPoint, _map, GrowStrategy.ALL_PROTEINS, false))
                 {
                     List<Action> tooShortActions = GetShortestPathToOpponent(checkPoint, 2, 2, GrowStrategy.ALL_PROTEINS, organism.RootId, organ.Id, "Next door search");
 
@@ -1619,7 +1317,7 @@ internal sealed class Game
     {
         List<Action> actions = new List<Action>();
 
-        AStar aStar = new AStar(this);
+        AStar aStar = new AStar(_map);
 
         foreach (var organ in organism.Organs)
         {
@@ -1636,7 +1334,7 @@ internal sealed class Game
 
                     List<Point> path = aStar.GetShortestPath(organ.Position, opponentOrgan.Position, maxDistance, growStrategy, canWalkOnOpponentTentaclePaths);
                     
-                    if (path.Count >= minDistance && path.Count <= maxDistance && !opponentTentaclePath[path[0].X, path[0].Y])
+                    if (path.Count >= minDistance && path.Count <= maxDistance && !_map.HasOpponentTentaclePath(path[0].X, path[0].Y))
                     {
                         OrganDirection? direction = null;
 
@@ -1651,7 +1349,7 @@ internal sealed class Game
                         }
 
                         Point target = path[path.Count - 1];
-                        int childCount = opponentOrganChildren[target.X, target.Y];
+                        int childCount = _map.OpponentOrganChildren(target.X, target.Y);
 
                         actions.Add(new Action()
                         {
@@ -1676,7 +1374,7 @@ internal sealed class Game
     {
         List<Action> actions = new List<Action>();
 
-        AStar aStar = new AStar(this);
+        AStar aStar = new AStar(_map);
 
         foreach (Organism opponentOrganism in OpponentOrganisms)
         {
@@ -1691,7 +1389,7 @@ internal sealed class Game
 
                 List<Point> path = aStar.GetShortestPath(point, opponentOrgan.Position, maxDistance, growStrategy, false);
 
-                if (path.Count >= minDistance && path.Count <= maxDistance && opponentTentaclePath[path[0].X, path[0].Y])
+                if (path.Count >= minDistance && path.Count <= maxDistance && !_map.HasOpponentTentaclePath(path[0].X, path[0].Y))
                 {
                     OrganDirection? direction = null;
 
@@ -1833,7 +1531,7 @@ internal sealed class Game
     {
         foreach (Protein protein in Proteins.Where(p => !p.IsHarvested))
         {
-            List<Point> possibleRootPoints = MapChecker.GetRootPoints(protein.Position, this);
+            List<Point> possibleRootPoints = MapChecker.GetRootPoints(protein.Position, _map);
             foreach (var possPoint in possibleRootPoints)
             {
                 int minDistance = 3;
@@ -1846,7 +1544,7 @@ internal sealed class Game
                 
                 if (!MapChecker.HasNearbyOrgan(possPoint, PlayerOrganisms, minDistance))
                 {
-                    _sporerPoints[possPoint.X, possPoint.Y] = true;
+                    _map.SetSporerPoints(possPoint.X, possPoint.Y, true);
                 }
             }
         }
@@ -1888,7 +1586,7 @@ internal sealed class Game
 
                     if (distance >= minRootSporerDistance)
                     {
-                        if (_sporerPoints[checkPoint.X, checkPoint.Y])
+                        if (_map.IsSporerPoint(checkPoint.X, checkPoint.Y))
                         {
                             if (distance > furthestDistance)
                             {
@@ -1899,7 +1597,7 @@ internal sealed class Game
                         }
                     }
 
-                    if (!MapChecker.CanGrowOn(checkPoint, this, GrowStrategy.ALL_PROTEINS, false))
+                    if (!MapChecker.CanGrowOn(checkPoint, _map, GrowStrategy.ALL_PROTEINS, false))
                     {
                         pathClear = false;
                     }
@@ -1974,7 +1672,7 @@ internal sealed class Game
                     Point sporerPoint = new Point(organPoint.X + side.X,
                                                   organPoint.Y + side.Y);
 
-                    if (!MapChecker.CanGrowOn(sporerPoint, this, GrowStrategy.NO_PROTEINS, false))
+                    if (!MapChecker.CanGrowOn(sporerPoint, _map, GrowStrategy.NO_PROTEINS, false))
                     {
                         continue;
                     }
@@ -2003,7 +1701,7 @@ internal sealed class Game
                             if (distance >= minRootSporerDistance)
                             {
                                 
-                                if (_sporerPoints[checkPoint.X, checkPoint.Y])
+                                if (_map.IsSporerPoint(checkPoint.X, checkPoint.Y))
                                 {
                                     OrganDirection? dir = null;
 
@@ -2034,7 +1732,7 @@ internal sealed class Game
                                 }
                             }
 
-                            if (!MapChecker.CanGrowOn(checkPoint, this, GrowStrategy.ALL_PROTEINS, false))
+                            if (!MapChecker.CanGrowOn(checkPoint, _map, GrowStrategy.ALL_PROTEINS, false))
                             {
                                 pathClear = false;
                             }
@@ -2074,7 +1772,7 @@ internal sealed class Game
 
         if (closestOrgan != -1)
         {
-            if (!(hasHarvestedProtein[shortestPath[0].X, shortestPath[0].Y] && !CanFloodFillTo(shortestPath[0], 5)))
+            if (!(_map.HasHarvestedProtein(shortestPath[0].X, shortestPath[0].Y) && !CanFloodFillTo(shortestPath[0], 5)))
             {
                 possibleActions.AddRange(CreateGrowActions(organism.RootId,
                                                        closestOrgan,
@@ -2109,8 +1807,8 @@ internal sealed class Game
                 var nextPoint = new Point(current.X + direction.X, current.Y + direction.Y);
 
                 if (CheckBounds(nextPoint) && !visited[nextPoint.X, nextPoint.Y] && 
-                    !isBlocked[nextPoint.X, nextPoint.Y] && 
-                    !opponentTentaclePath[nextPoint.X, nextPoint.Y])
+                    !_map.IsBlocked(nextPoint.X, nextPoint.Y) && 
+                    !_map.HasOpponentTentaclePath(nextPoint.X, nextPoint.Y))
                 {
                     queue.Enqueue(nextPoint);
                     visited[nextPoint.X, nextPoint.Y] = true;
@@ -2125,7 +1823,7 @@ internal sealed class Game
     {
         List<Action> actions = new List<Action>();
 
-        OrganDirection? closestRootDirection = _directionCalculator.CalculateClosestOpponentDirection(point);
+        OrganDirection? closestRootDirection = _directionCalculator.CalculateClosestOpponentDirection(point, OpponentOrganisms);
 
         if (CostCalculator.CanProduceOrgan(OrganType.BASIC, PlayerProteinStock))
         {
@@ -2216,25 +1914,25 @@ internal sealed class Game
                 }
 
                 List<Action> actions = new List<Action>();
-                if (MapChecker.CanGrowOn(checkPoint, this, GrowStrategy.UNHARVESTED, false))
+                if (MapChecker.CanGrowOn(checkPoint, _map, GrowStrategy.UNHARVESTED, false))
                 {
-                    if (!(hasHarvestedProtein[checkPoint.X, checkPoint.Y] && !CanFloodFillTo(checkPoint, 5)))
+                    if (!(_map.HasHarvestedProtein(checkPoint.X, checkPoint.Y) && !CanFloodFillTo(checkPoint, 5)))
                     {
                         actions.AddRange(CreateGrowActions(organism.RootId, current.Id, checkPoint, unharvestedScore, ActionSource.RANDOM_GROW_ACTIONS));
                         possibleActions.AddRange(actions);
                     }
                 }
 
-                if (actions.Count == 0 && MapChecker.CanGrowOn(checkPoint, this, GrowStrategy.ALL_PROTEINS, false))
+                if (actions.Count == 0 && MapChecker.CanGrowOn(checkPoint, _map, GrowStrategy.ALL_PROTEINS, false))
                 {
                     foreach (Point d in _directions)
                     {
                         if (MapChecker.CanGrowOn(new Point(checkPoint.X + d.X, checkPoint.Y + d.Y),
-                                                 this,
+                                                 _map,
                                                  GrowStrategy.ALL_PROTEINS,
                                                  false))
                         {
-                            if (!(hasHarvestedProtein[checkPoint.X, checkPoint.Y] && !CanFloodFillTo(checkPoint, 5)))
+                            if (!(_map.HasHarvestedProtein(checkPoint.X, checkPoint.Y) && !CanFloodFillTo(checkPoint, 5)))
                             {
                                 possibleActions.AddRange(CreateGrowActions(organism.RootId, current.Id, checkPoint, harvestedScore, ActionSource.RANDOM_GROW_ACTIONS));
 
@@ -2263,8 +1961,8 @@ internal sealed class Game
             {
                 var nextPoint = new Point(current.X + direction.X, current.Y + direction.Y);
                 if (CheckBounds(nextPoint) && !visited[nextPoint.X, nextPoint.Y] &&
-                    !isBlocked[nextPoint.X, nextPoint.Y] &&
-                    !opponentTentaclePath[nextPoint.X, nextPoint.Y])
+                    !_map.IsBlocked(nextPoint.X, nextPoint.Y) &&
+                    !_map.HasOpponentTentaclePath(nextPoint.X, nextPoint.Y))
                 {
                     queue.Enqueue(nextPoint);
                     visited[nextPoint.X, nextPoint.Y] = true;
@@ -2276,10 +1974,10 @@ internal sealed class Game
 
     private (OrganType?, OrganDirection?) GetOrganAction(Point point)
     {
-        OrganDirection? direction = _directionCalculator.CalculateClosestOpponentDirection(point);
+        OrganDirection? direction = _directionCalculator.CalculateClosestOpponentDirection(point, OpponentOrganisms);
 
 
-        bool hasProtein = hasAnyProtein[point.X, point.Y];
+        bool hasProtein = _map.HasAnyProtein(point.X, point.Y);
         if (CostCalculator.CanProduceOrgan(OrganType.BASIC, PlayerProteinStock))
         {
             return (OrganType.BASIC, null);
@@ -2571,7 +2269,317 @@ internal static class Logger
     {
         Console.Error.WriteLine(message);
     }
+
+    internal static void ProteinStock(ProteinStock proteinStock)
+    {
+        Console.Error.WriteLine($"A: {proteinStock.A}");
+        Console.Error.WriteLine($"B: {proteinStock.B}");
+        Console.Error.WriteLine($"C: {proteinStock.C}");
+        Console.Error.WriteLine($"D: {proteinStock.D}");
+    }
+
+    internal static void Proteins(List<Protein> proteins)
+    {
+        Console.Error.WriteLine($"Proteins");
+
+        proteins.ForEach(p =>
+            Console.Error.WriteLine($"Type:{p.Type} - Position:({p.Position.X},{p.Position.Y}) - BeingHarvested:{p.IsHarvested}"));
+    }
+
+    internal static void Organisms(List<Organism> organisms)
+    {
+        foreach (Organism organism in organisms)
+        {
+            Organism(organism);
+            Console.Error.WriteLine("-----------------------------------");
+        }
+    }
+
+    internal static void Organism(Organism organism)
+    {
+        foreach (Organ organ in organism.Organs)
+        {
+            switch (organ.Type)
+            {
+                case OrganType.BASIC:
+                case OrganType.ROOT:
+                    Console.Error.WriteLine($" ID:{organ.Id} - Type:{organ.Type.ToString()} - Position:({organ.Position.X},{organ.Position.Y})");
+                    break;
+
+                case OrganType.HARVESTER:
+                case OrganType.SPORER:
+                case OrganType.TENTACLE:
+                    Console.Error.WriteLine($" ID:{organ.Id} - Type:{organ.Type.ToString()} - Position:({organ.Position.X},{organ.Position.Y}) - Direction:{organ.Direction.ToString()}");
+                    break;
+            }
+        }
+    }
+
+    internal static void Nodes(List<Node> nodes)
+    {
+        nodes.ForEach(n =>
+            Console.Error.WriteLine($"Position:({n.Position.X},{n.Position.Y}) - Closed:{n.Closed}"));
+    }
+
+    internal static void TimeStamp(long totalTime, long segmentTime, string task)
+    {
+        TimeSpan total = TimeSpan.FromTicks(totalTime);
+        TimeSpan segment = TimeSpan.FromTicks(segmentTime);
+        Console.Error.WriteLine($"{total.Milliseconds}ms-{segment.Milliseconds}ms-{task}");
+    }
+
+    internal static void Actions(List<Action> actions)
+    {
+        foreach (Action action in actions)
+        {
+            
+            Console.Error.WriteLine(action.ToString() + $" - score:{action.Score} - from {action.Source}");
+        }
+    }
+
+    internal static void ActionsDictionary(Dictionary<int, List<Action>> actionsDictionarly)
+    {
+        foreach (KeyValuePair<int, List<Action>> actions in actionsDictionarly)
+        {
+            Console.Error.WriteLine("-----------------------------------");
+            Console.Error.WriteLine($"OrganismId:{actions.Key}");
+            Actions(actions.Value);
+        }
+    }
+
+    internal static void ActionSources(Dictionary<ActionSource, int> trackedActions)
+    {
+        Console.Error.WriteLine("Tracked actions count");
+        foreach (KeyValuePair<ActionSource, int> trackedAction in trackedActions)
+        {
+            Console.Error.WriteLine($"{trackedAction.Key} - {trackedAction.Value}");
+        }
+    }
 }
+
+
+internal sealed class Map
+{
+    internal int Width { get; private set; }
+
+    internal int Height { get; private set; }
+
+    private bool[,] _walls;
+
+    private bool[,] _sporerPoints;
+
+    private bool[,] _isBlocked;
+
+    private bool[,] _hasAnyProtein;
+
+    private ProteinType[,] _proteinTypes;
+
+    private bool[,] _hasHarvestedProtein;
+
+    private bool[,] _opponentOrgans;
+
+    private bool[,] _opponentOrganEdges;
+
+    private int[,] _opponentOrganChildren;
+
+    private bool[,] _opponentTentaclePath;
+
+    internal Map(int width, int height)
+    {
+        Width = width;
+        Height = height;
+
+        _walls = new bool[width, height];
+
+        ResetMaps();
+    }
+
+    internal void ResetMaps()
+    {
+        _sporerPoints = new bool[Width, Height];
+        _isBlocked = new bool[Width, Height];
+        _hasAnyProtein = new bool[Width, Height];
+        _proteinTypes = new ProteinType[Width, Height];
+        _hasHarvestedProtein = new bool[Width, Height];
+        _opponentOrgans = new bool[Width, Height];
+        _opponentOrganEdges = new bool[Width, Height];
+        _opponentOrganChildren = new int[Width, Height];
+        _opponentTentaclePath = new bool[Width, Height];
+    }
+
+    internal void UpdateIsBlocked(List<Organism> playerOrganisms, List<Organism> opponentOrganisms)
+    {
+        
+        foreach (Organism organism in playerOrganisms)
+        {
+            foreach (Organ organ in organism.Organs)
+            {
+                _isBlocked[organ.Position.X, organ.Position.Y] = true;
+            }
+        }
+
+        
+        foreach (Organism organism in opponentOrganisms)
+        {
+            foreach (Organ organ in organism.Organs)
+            {
+                _isBlocked[organ.Position.X, organ.Position.Y] = true;
+            }
+        }
+
+        
+        for (int x = 0; x < Width; x++)
+        {
+            for (int y = 0; y < Height; y++)
+            {
+                if (_walls[x, y])
+                {
+                    _isBlocked[x, y] = true;
+                }
+            }
+        }
+    }
+
+    internal void UpdateHasProteins(List<Protein> proteins)
+    {
+        foreach (Protein protein in proteins)
+        {
+            _hasAnyProtein[protein.Position.X, protein.Position.Y] = true;
+
+            _proteinTypes[protein.Position.X, protein.Position.Y] = protein.Type;
+
+            if (protein.IsHarvested)
+            {
+                _hasHarvestedProtein[protein.Position.X, protein.Position.Y] = true;
+            }
+        }
+    }
+
+    internal void UpdateOpponentOrgans(List<Organism> opponentOrganisms)
+    {
+        foreach (Organism organism in opponentOrganisms)
+        {
+            foreach (Organ organ in organism.Organs)
+            {
+                _opponentOrgans[organ.Position.X, organ.Position.Y] = true;
+
+                int childCount = GetChildCount(opponentOrganisms, organism.RootId, organ);
+                _opponentOrganChildren[organ.Position.X, organ.Position.Y] = childCount;
+
+                
+                
+
+                
+                if (organ.Position.Y - 1 >= 0)
+                {
+                    _opponentOrganEdges[organ.Position.X, organ.Position.Y - 1] = true;
+
+                    if (organ.Type == OrganType.TENTACLE && organ.Direction == OrganDirection.N)
+                    {
+                        _opponentTentaclePath[organ.Position.X, organ.Position.Y - 1] = true;
+                    }
+                }
+
+                
+                if (organ.Position.X + 1 < Width)
+                {
+                    _opponentOrganEdges[organ.Position.X + 1, organ.Position.Y] = true;
+
+                    if (organ.Type == OrganType.TENTACLE && organ.Direction == OrganDirection.E)
+                    {
+                        _opponentTentaclePath[organ.Position.X + 1, organ.Position.Y] = true;
+                    }
+                }
+
+                
+                if (organ.Position.Y + 1 < Height)
+                {
+                    _opponentOrganEdges[organ.Position.X, organ.Position.Y + 1] = true;
+
+                    if (organ.Type == OrganType.TENTACLE && organ.Direction == OrganDirection.S)
+                    {
+                        _opponentTentaclePath[organ.Position.X, organ.Position.Y + 1] = true;
+                    }
+                }
+
+                
+                if (organ.Position.X - 1 >= 0)
+                {
+                    _opponentOrganEdges[organ.Position.X - 1, organ.Position.Y] = true;
+
+                    if (organ.Type == OrganType.TENTACLE && organ.Direction == OrganDirection.W)
+                    {
+                        _opponentTentaclePath[organ.Position.X - 1, organ.Position.Y] = true;
+                    }
+                }
+            }
+        }
+    }
+
+    private static int GetChildCount(List<Organism> opponentOrganisms, int organismId, Organ organ)
+    {
+        int count = 0;
+        if (opponentOrganisms.First(o => o.RootId == organismId).Organs.Any(o => o.ParentId == organ.Id))
+        {
+            List<Organ> children = opponentOrganisms.First(o => o.RootId == organismId).Organs.Where(o => o.ParentId == organ.Id).ToList();
+
+            count += children.Count;
+
+            foreach (Organ child in children)
+            {
+                count += GetChildCount(opponentOrganisms, organismId, child);
+            }
+        }
+
+        return count;
+    }
+
+    internal void SetWalls(bool[,] walls)
+    {
+        _walls = walls;
+    }
+
+    internal bool IsBlocked(int x, int y)
+    {
+        return _isBlocked[x, y];
+    }
+
+    internal bool HasOpponentTentaclePath(int x, int y)
+    {
+        return _opponentTentaclePath[x, y];
+    }
+
+    internal int OpponentOrganChildren(int x, int y)
+    {
+        return _opponentOrganChildren[x, y];
+    }
+
+    internal void SetSporerPoints(int x, int y, bool isSporePoint)
+    {
+        _sporerPoints[x, y] = isSporePoint;
+    }
+
+    internal bool IsSporerPoint(int x, int y)
+    {
+        return _sporerPoints[x, y];
+    }
+
+    internal bool HasHarvestedProtein(int x, int y)
+    {
+        return _hasHarvestedProtein[x, y];
+    }
+
+    internal bool HasAnyProtein(int x, int y)
+    {
+        return _hasAnyProtein[x, y];
+    }
+
+    internal bool HasWall(int x, int y)
+    {
+        return _walls[x, y];
+    }
+}
+
 
 
 internal static class MapChecker
@@ -2581,40 +2589,40 @@ internal static class MapChecker
         return Math.Abs(position1.X - position2.X) + Math.Abs(position1.Y - position2.Y);
     }
 
-    internal static bool CanGrowOn(Point pointToCheck, Game game)
+    internal static bool CanGrowOn(Point pointToCheck, Map map)
     {
-        return CanGrowOn(pointToCheck, game, GrowStrategy.NO_PROTEINS, false);
+        return CanGrowOn(pointToCheck, map, GrowStrategy.NO_PROTEINS, false);
     }
 
-    internal static bool CanGrowOn(Point pointToCheck, Game game, GrowStrategy growStrategy, bool walkAcrossEnemyTentacles)
+    internal static bool CanGrowOn(Point pointToCheck, Map map, GrowStrategy growStrategy, bool walkAcrossEnemyTentacles)
     {
         if (pointToCheck.X < 0 || 
             pointToCheck.Y < 0 || 
-            pointToCheck.X >= game.Width || 
-            pointToCheck.Y >= game.Height) 
+            pointToCheck.X >= map.Width || 
+            pointToCheck.Y >= map.Height) 
         { 
             return false; 
         }
 
-        if (game.isBlocked[pointToCheck.X, pointToCheck.Y])
+        if (map.IsBlocked(pointToCheck.X, pointToCheck.Y))
         {
             return false;
         }
 
         if (!walkAcrossEnemyTentacles)
         {
-            if (game.opponentTentaclePath[pointToCheck.X, pointToCheck.Y])
+            if (map.HasOpponentTentaclePath(pointToCheck.X, pointToCheck.Y))
             {
                 return false;
             }
             
         }
 
-        if (growStrategy == GrowStrategy.NO_PROTEINS && game.hasAnyProtein[pointToCheck.X, pointToCheck.Y])
+        if (growStrategy == GrowStrategy.NO_PROTEINS && map.HasAnyProtein(pointToCheck.X, pointToCheck.Y))
         {
             return false;
         }
-        else if (growStrategy == GrowStrategy.UNHARVESTED && game.hasHarvestedProtein[pointToCheck.X, pointToCheck.Y])
+        else if (growStrategy == GrowStrategy.UNHARVESTED && map.HasHarvestedProtein(pointToCheck.X, pointToCheck.Y))
         {
             return false;
         }
@@ -2622,19 +2630,19 @@ internal static class MapChecker
         return true;
     }
 
-    internal static List<Point> GetRootPoints(Point position, Game game)
+    internal static List<Point> GetRootPoints(Point position, Map map)
     {
         List<Point> rootPoints = new List<Point>();
 
-        bool canGrowNorth = CanGrowOn(new Point(position.X, position.Y - 1), game);
-        bool canGrowEast = CanGrowOn(new Point(position.X+1, position.Y), game);
-        bool canGrowSouth = CanGrowOn(new Point(position.X, position.Y + 1), game);
-        bool canGrowWest = CanGrowOn(new Point(position.X-1, position.Y), game);
+        bool canGrowNorth = CanGrowOn(new Point(position.X, position.Y - 1), map);
+        bool canGrowEast = CanGrowOn(new Point(position.X+1, position.Y), map);
+        bool canGrowSouth = CanGrowOn(new Point(position.X, position.Y + 1), map);
+        bool canGrowWest = CanGrowOn(new Point(position.X-1, position.Y), map);
 
         if (canGrowNorth)
         {
             Point farNorth = new Point(position.X, position.Y - 2);
-            if (CanGrowOn(farNorth, game))
+            if (CanGrowOn(farNorth, map))
             {
                 rootPoints.Add(farNorth);
             }
@@ -2643,7 +2651,7 @@ internal static class MapChecker
         if (canGrowNorth || canGrowEast)
         {
             Point northEast = new Point(position.X + 1, position.Y - 1);
-            if (CanGrowOn(northEast, game))
+            if (CanGrowOn(northEast, map))
             {
                 rootPoints.Add(northEast);
             }
@@ -2652,7 +2660,7 @@ internal static class MapChecker
         if (canGrowEast)
         {
             Point farEast = new Point(position.X + 2, position.Y);
-            if (CanGrowOn(farEast, game))
+            if (CanGrowOn(farEast, map))
             {
                 rootPoints.Add(farEast);
             }
@@ -2661,7 +2669,7 @@ internal static class MapChecker
         if (canGrowEast ||canGrowSouth)
         {
             Point southEast = new Point(position.X + 1, position.Y + 1);
-            if (CanGrowOn(southEast, game))
+            if (CanGrowOn(southEast, map))
             {
                 rootPoints.Add(southEast);
             }
@@ -2670,7 +2678,7 @@ internal static class MapChecker
         if (canGrowSouth)
         {
             Point farSouth = new Point(position.X, position.Y + 2);
-            if (CanGrowOn(farSouth, game))
+            if (CanGrowOn(farSouth, map))
             {
                 rootPoints.Add(farSouth);
             }
@@ -2679,7 +2687,7 @@ internal static class MapChecker
         if (canGrowSouth || canGrowWest)
         {
             Point southWest = new Point(position.X - 1, position.Y + 1);
-            if (CanGrowOn(southWest, game))
+            if (CanGrowOn(southWest, map))
             {
                 rootPoints.Add(southWest);
             }
@@ -2688,7 +2696,7 @@ internal static class MapChecker
         if (canGrowWest)
         {
             Point farWest = new Point(position.X - 2, position.Y);
-            if (CanGrowOn(farWest, game))
+            if (CanGrowOn(farWest, map))
             {
                 rootPoints.Add(farWest);
             }
@@ -2697,7 +2705,7 @@ internal static class MapChecker
         if (canGrowWest || canGrowNorth)
         {
             Point northWest = new Point(position.X - 1, position.Y - 1);
-            if (CanGrowOn(northWest, game))
+            if (CanGrowOn(northWest, map))
             {
                 rootPoints.Add(northWest);
             }
@@ -2717,59 +2725,6 @@ internal static class MapChecker
                     return true;
                 }
             }
-        }
-
-        return false;
-    }
-
-    
-    internal static bool HasSporerSpored(Organ sporer, Game game)
-    {
-        int xDelta = 0;
-        int yDelta = 0;
-
-        switch(sporer.Direction)
-        {
-            case OrganDirection.N:
-                xDelta = 0;
-                yDelta = -1;
-                break;
-            case OrganDirection.E:
-                xDelta = 1;
-                yDelta = 0;
-                break;
-            case OrganDirection.S:
-                xDelta = 0;
-                yDelta = 1;
-                break;
-            case OrganDirection.W:
-                xDelta = -1;
-                yDelta = 0;
-                break;
-        }
-
-        bool hitSomething = false;
-
-        Point checkPoint = new Point(sporer.Position.X + xDelta, sporer.Position.Y + yDelta);
-
-        while(!hitSomething)
-        {
-            foreach (Organism organism in game.PlayerOrganisms)
-            {
-                if(organism.Organs.Any(o => o.Type == OrganType.ROOT &&
-                                            o.Position == checkPoint))
-                {
-                    return true;
-                }
-            }
-
-            if (!CanGrowOn(checkPoint, game, GrowStrategy.UNHARVESTED, false))
-            {
-                hitSomething = true;    
-
-            }
-
-            checkPoint = new Point(checkPoint.X + xDelta, checkPoint.Y + yDelta);
         }
 
         return false;
@@ -2902,22 +2857,12 @@ partial class Player
                             if (owner == 1)
                             {
                                 unsortedPlayerOrgans.Add(
-                                    CreateOrgan(
-                                        organId,
-                                        organRootId,
-                                        organTypeEnum,
-                                        new Point(x, y),
-                                        organParentId));
+                                    new Organ(organId, organRootId, organTypeEnum, new Point(x, y), organParentId));
                             }
                             else if (owner == 0)
                             {
                                 unsortedOpponentOrgans.Add(
-                                    CreateOrgan(
-                                        organId,
-                                        organRootId,
-                                        organTypeEnum,
-                                        new Point(x, y),
-                                        organParentId));
+                                    new Organ(organId, organRootId, organTypeEnum, new Point(x, y), organParentId));
                             }
 
                             break;
@@ -3012,11 +2957,6 @@ partial class Player
         ProteinStock proteins = new ProteinStock(proteinA, proteinB, proteinC, proteinD);
 
         return proteins;
-    }
-
-    private static Organ CreateOrgan(int organId, int rootId, OrganType organType, Point point, int parentId)
-    {
-        return new Organ(organId, rootId, organType, point, parentId);
     }
 
     private static Organ CreateDirectionOrgan(int organId, int rootId, OrganType organType, Point point, int parentId, OrganDirection direction)

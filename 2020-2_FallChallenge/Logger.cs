@@ -3,7 +3,7 @@
 using System;
 using System.Collections.Generic;
 
-internal static class Display
+internal static class Logger
 {
     internal static void DisplayRecipes(List<Recipe> recipes)
     {

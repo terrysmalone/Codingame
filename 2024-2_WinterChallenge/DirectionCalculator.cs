@@ -7,7 +7,7 @@ namespace WinterChallenge2024;
 
 internal class DirectionCalculator
 {
-    private readonly Game _game;
+    private readonly Map _map;
 
     private readonly List<Point> _directions = new List<Point>
     {
@@ -17,15 +17,15 @@ internal class DirectionCalculator
         new Point(-1, 0)
     };
 
-    public DirectionCalculator(Game game)
+    public DirectionCalculator(Map map)
     {
-        _game = game;
+        _map = map;
     }
 
 
-    internal OrganDirection? CalculateClosestOpponentDirection(Point startPoint)
+    internal OrganDirection? CalculateClosestOpponentDirection(Point startPoint, List<Organism> opponentOrganisms)
     {
-        Point endPoint = GetClosestRoot(startPoint);
+        Point endPoint = GetClosestRoot(startPoint, opponentOrganisms);
 
         return CalculateClosestOpponentDirection(startPoint, endPoint);
     }
@@ -36,14 +36,14 @@ internal class DirectionCalculator
             // It's either east or west
             if (endPoint.X > startPoint.X)
             {
-                if (startPoint.X + 1 < _game.Width && !_game.Walls[startPoint.X + 1, startPoint.Y])
+                if (startPoint.X + 1 < _map.Width && !_map.HasWall(startPoint.X + 1, startPoint.Y))
                 {
                     return OrganDirection.E;
                 }
             }
             else
             {
-                if (startPoint.X - 1 >= 0 && !_game.Walls[startPoint.X - 1, startPoint.Y])
+                if (startPoint.X - 1 >= 0 && !_map.HasWall(startPoint.X - 1, startPoint.Y))
                 {
                     return OrganDirection.W;
                 }
@@ -54,14 +54,14 @@ internal class DirectionCalculator
             // It's either north or south
             if (endPoint.Y > startPoint.Y)
             {
-                if (startPoint.Y + 1 < _game.Height && !_game.Walls[startPoint.X, startPoint.Y + 1])
+                if (startPoint.Y + 1 < _map.Height && !_map.HasWall(startPoint.X, startPoint.Y + 1))
                 {
                     return OrganDirection.S;
                 }
             }
             else
             {
-                if (startPoint.Y - 1 >= 0 && !_game.Walls[startPoint.X, startPoint.Y - 1])
+                if (startPoint.Y - 1 >= 0 && !_map.HasWall(startPoint.X, startPoint.Y - 1))
                 {
                     return OrganDirection.N;
                 }
@@ -79,7 +79,7 @@ internal class DirectionCalculator
 
             if (MapChecker.CanGrowOn(
                 directionPoint,
-                _game,
+                _map,
                 GrowStrategy.ALL_PROTEINS,
                 false))
             {
@@ -128,12 +128,12 @@ internal class DirectionCalculator
         }
     }
 
-    private Point GetClosestRoot(Point startPoint)
+    private static Point GetClosestRoot(Point startPoint, List<Organism> opponentOrganisms)
     {
         int closestDistance = int.MaxValue;
         Point closestPoint = new Point(-1, -1);
 
-        foreach (Organism opponentOrganism in _game.OpponentOrganisms)
+        foreach (Organism opponentOrganism in opponentOrganisms)
         {
             Organ root = opponentOrganism.Organs.Single(o => o.Type == OrganType.ROOT);
 

@@ -54,7 +54,7 @@ internal sealed class Game
     }
     public string GetAction()
     {
-        // Display.DisplaySpells(TomeSpells);
+        Logger.DisplaySpells(TomeSpells);
 
         // Very naieve but lets just get the first 6 spells
         if (turnCount < 6)
